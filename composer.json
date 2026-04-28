@@ -7,12 +7,16 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "blade-ui-kit/blade-heroicons": "^2.7",
+        "illuminate/contracts": "*",
+        "illuminate/support": "*",
         "laravel-lang/common": "^6.8",
         "laravel/framework": "^13.0",
         "laravel/jetstream": "^5.5",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
-        "livewire/livewire": "^3.6.4",
+        "livewire/livewire": "^4.2",
+        "power-components/livewire-powergrid": "^6.9",
         "wireui/wireui": "^2.6"
     },
     "require-dev": {
