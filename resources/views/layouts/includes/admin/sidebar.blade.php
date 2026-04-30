@@ -10,19 +10,31 @@
         'header' => 'Administrar página',        
     ],
     [
-        'name' => 'Dashboard',
+        'name' => 'Doctor',
         'icon' => 'fa-solid fa-gauge',
         'href' => route('admin.dashboard'),
         'active' => false,
         'submenu' => [
             [
-                'name' => 'Products',
+                'name' => 'Plan',
+                'icon' => 'fa-solid fa-gauge',
+                'href' => route('doctor.profile.edit'),
+                'active' => false,
+            ],
+            [
+                'name' => 'Consultorios',
+                'icon' => 'fa-solid fa-gauge',
+                'href' => route('doctor.addresses.index'),
+                'active' => false,
+            ],
+            [
+                'name' => 'Agenda de Citas',
                 'icon' => 'fa-solid fa-gauge',
                 'href' => '#',
                 'active' => false,
             ],
             [
-                'name' => 'Billing',
+                'name' => 'Indisponibilidades',
                 'icon' => 'fa-solid fa-gauge',
                 'href' => '#',
                 'active' => false,

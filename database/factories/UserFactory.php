@@ -69,4 +69,44 @@ class UserFactory extends Factory
             'ownedTeams'
         );
     }
+
+    public function admin(): static
+    {
+        return $this->state(fn () => [
+            'role' => 'admin', // Llena tu columna personalizada
+        ])->afterCreating(function (User $user) {
+            // Registra el rol en el sistema de Spatie
+            $user->assignRole('admin');
+        });
+    }
+
+    public function doctor(): static
+    {
+        return $this->state(fn () => [
+            'role' => 'doctor', // Llena tu columna personalizada
+        ])->afterCreating(function (User $user) {
+            // Registra el rol en el sistema de Spatie
+            $user->assignRole('doctor');
+        });
+    }
+
+    public function patient(): static
+    {
+        return $this->state(fn () => [
+            'role' => 'patient', // Llena tu columna personalizada
+        ])->afterCreating(function (User $user) {
+            // Registra el rol en el sistema de Spatie
+            $user->assignRole('patient');
+        });
+    }
+
+    public function clinic(): static
+    {
+        return $this->state(fn () => [
+            'role' => 'clinic', // Llena tu columna personalizada
+        ])->afterCreating(function (User $user) {
+            // Registra el rol en el sistema de Spatie
+            $user->assignRole('clinic');
+        });
+    }
 }
