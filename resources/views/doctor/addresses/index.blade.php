@@ -63,7 +63,7 @@ $breadcrumbs = [
                     </div>
                     <div>
                         <h3 class="font-bold text-gray-900 text-lg">{{ $address->name }}</h3>
-                        <p class="text-gray-500">{{ $address->address }}</p>
+                        <p class="text-gray-500">{{ $address->address }}, {{ $address->city->name }}</p>
                         <p class="text-gray-500">{{ $address->phone }}</p>
                     </div>
                 </div>
@@ -73,14 +73,14 @@ $breadcrumbs = [
                             Inactivo por límite de plan
                         </span>
                     @else
-                        <a href="{{ route('doctor.schedules.index', $address->id) }}" class="text-blue-600 text-sm underline">
+                        <a href="{{ route('doctor.schedules.index', $address->id) }}" class="p-2 text-gray-400 hover:text-gray-700 transition">
                             Configurar horarios y duración
                         </a>
-                        <a class="p-2 text-gray-400 hover:text-indigo-600 transition" href="{{ route('doctor.addresses.edit', $address->id) }}">Editar</a>
+                        <a class="p-2 text-gray-400 hover:text-gray-700 transition" href="{{ route('doctor.addresses.edit', $address->id) }}">Editar</a>
                         <form action="{{ route('doctor.addresses.destroy', $address->id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar este consultorio?');">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="p-2 text-gray-400 hover:text-red-600 transition">Eliminar</button>                            
+                            <button type="submit" class="p-2 text-gray-400 hover:text-gray-700 transition">Eliminar</button>                            
                         </form>
                     @endif
                 </div>

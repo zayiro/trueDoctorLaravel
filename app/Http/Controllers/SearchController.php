@@ -20,4 +20,25 @@ class SearchController extends Controller
 
         return view('search.index', compact('doctors', 'specialties'));
     }
+
+    public function search(Request $request)
+    {
+        $query = Doctor::query()->with(['user', 'specialty', 'addresses.city']);
+
+        if ($request->filled('specialty')) {
+            $query->whereHas('specialty', function($q) use ($request) {
+                $q->where('slug', $request->specialty);
+            });
+        }
+
+        if ($request->filled('city')) {
+            $query->whereHas('addresses.city', function($q) use ($request) {
+                $q->where('slug', $request->city);
+            });
+        }
+
+        $doctors = $query->paginate(10);
+
+        return view('search-results', compact('doctors'));
+    }
 }

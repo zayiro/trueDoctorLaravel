@@ -7,13 +7,17 @@ use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\ProfileDoctorController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\RegisterDoctorController;
+use App\Http\Controllers\HomeController;
 
 //Route::redirect('/', '/admin');
 
 //para que se muestre de una el view login
-Route::get('/', function () {
+
+/*Route::get('/', function () {
     return view('welcome');
 });
+*/
+Route::get('/', [HomeController::class, 'index'])->name('home');
 
 Route::middleware([
     'auth:sanctum',
@@ -55,7 +59,10 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::delete('/doctor/addresses/{address}', [AddressController::class, 'destroy'])->name('doctor.addresses.destroy');
     Route::get('/doctor/addresses/{address}/edit', [AddressController::class, 'edit'])->name('doctor.addresses.edit');
     
-    // Gestión de Horarios
-    Route::get('/doctor/addresses/{address}/schedules', [ScheduleController::class, 'edit'])->name('doctor.schedules.edit');
+    // Ver el listado y formulario de horarios de una sede
+    Route::get('/doctor/addresses/{address}/schedules', [ScheduleController::class, 'index'])->name('doctor.schedules.index');
+    // Guardar el horario
     Route::post('/doctor/schedules', [ScheduleController::class, 'store'])->name('doctor.schedules.store');
+    Route::delete('/doctor/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('doctor.schedules.destroy');
+
 });
