@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('medical_license')->nullable();
             $table->text('bio')->nullable();
             $table->string('phone')->nullable();
+            $table->string('city')->nullable();
             $table->string('experience_years')->nullable();
             $table->string('language')->nullable();
             $table->string('plan')->default('basico'); // basico o avanzado

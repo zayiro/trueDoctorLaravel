@@ -11,13 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('schedules', function (Blueprint $table) {
+        Schema::create('cities', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('address_id')->constrained()->onDelete('cascade'); // Clave a addresses
-            $table->unsignedTinyInteger('day'); // 1=Lunes, 7=Domingo
-            $table->time('start_time');
-            $table->time('end_time');
-            $table->integer('duration')->default(20);
+            $table->string('name');            
+            // Opcional: Para filtros geográficos más grandes
+            $table->string('state')->nullable();
+            $table->string('slug')->unique();            
             $table->timestamps();
         });
     }
@@ -27,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('schedules');
+        Schema::dropIfExists('cities');
     }
 };

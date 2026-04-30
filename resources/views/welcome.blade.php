@@ -38,6 +38,14 @@
                             Log in
                         </a>
 
+                        <p class="text-sm text-gray-600">
+                            ¿Eres médico? 
+                            <a href="{{ route('doctor.register') }}" class="text-blue-600 font-bold hover:underline">
+                                Regístrate aquí como profesional
+                            </a>
+                        </p>
+
+
                         @if (Route::has('register'))
                             <a
                                 href="{{ route('register') }}"

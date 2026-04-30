@@ -6,12 +6,14 @@ use App\Http\Controllers\AddressController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\ProfileDoctorController;
 use App\Http\Controllers\PlanController;
+use App\Http\Controllers\RegisterDoctorController;
 
-Route::redirect('/', '/admin');
-/*
+//Route::redirect('/', '/admin');
+
+//para que se muestre de una el view login
 Route::get('/', function () {
     return view('welcome');
-});*/
+});
 
 Route::middleware([
     'auth:sanctum',
@@ -22,6 +24,13 @@ Route::middleware([
         return view('dashboard');
     })->name('dashboard');
 });
+
+// Ruta para mostrar el formulario (GET)
+Route::get('/register-doctor', [RegisterDoctorController::class, 'register'])->name('doctor.register');
+
+// Ruta para procesar el registro (POST) - La que definimos antes
+Route::post('/register-doctor', [RegisterDoctorController::class, 'store'])->name('doctor.register.store');
+
 
 // En web.php
 Route::post('/upgrade-plan', function() {

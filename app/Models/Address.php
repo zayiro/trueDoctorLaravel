@@ -12,12 +12,18 @@ class Address extends Model
         'name', 
         'address',
         'phone',
+        'city_id',
         'status',
     ];
 
     public function doctor()
     {
         return $this->belongsTo(Doctor::class);
+    }
+
+    public function city()
+    {
+        return $this->belongsTo(City::class);
     }
 
 

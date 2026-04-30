@@ -25,6 +25,8 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             RoleSeeder::class,
+            CitySeeder::class,
+            SpecialtySeeder::class
         ]);
 /*
         User::factory()->create(
@@ -49,7 +51,7 @@ class DatabaseSeeder extends Seeder
 
         $doctor = Doctor::create([
             'user_id' => $doctorUser->id,
-            'specialty_id' => $specialty->id,
+            'specialty_id' => $specialty->id,            
             'bio' => 'Experto en diagnósticos complejos.',
         ]);
 
@@ -58,6 +60,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Consultorio Central',
             'address' => 'Calle Falsa 123, Ciudad Médica',
             'phone' => '3026433874',
+            'city_id' => 1,
         ]);
 
         // Crear horario de Lunes a Viernes para esta dirección
@@ -67,6 +70,7 @@ class DatabaseSeeder extends Seeder
                 'day' => $i,
                 'start_time' => '08:00:00',
                 'end_time' => '17:00:00',
+                'duration' => 30,
             ]);
         }
 

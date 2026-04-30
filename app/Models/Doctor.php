@@ -9,6 +9,7 @@ class Doctor extends Model
     protected $fillable = [
         'medical_license',
         'phone',
+        'specialty_id',
         'experience_years',
         'language',
         'bio',

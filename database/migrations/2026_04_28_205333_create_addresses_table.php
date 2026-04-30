@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('name'); // Ej: "Consultorio Centro", "Clínica Norte"
             $table->string('address');
             $table->string('phone');
+            $table->foreignId('city_id')->constrained()->onDelete('cascade');
             $table->boolean('status')->default(true);
             $table->timestamps();
         });
