@@ -1,46 +1,32 @@
 @php
  $links = [
     [
-        'name' => 'Dashboard',
-        'icon' => 'fa-solid fa-gauge',
-        'href' => route('admin.dashboard'),
-        'active' => request()->routeIs('admin.dashboard')
-    ],
-    [
         'header' => 'Administrar página',        
     ],
     [
-        'name' => 'Doctor',
+        'name' => 'Plan',
         'icon' => 'fa-solid fa-gauge',
-        'href' => route('admin.dashboard'),
+        'href' => route('doctor.profile.edit'),
         'active' => false,
-        'submenu' => [
-            [
-                'name' => 'Plan',
-                'icon' => 'fa-solid fa-gauge',
-                'href' => route('doctor.profile.edit'),
-                'active' => false,
-            ],
-            [
-                'name' => 'Consultorios',
-                'icon' => 'fa-solid fa-gauge',
-                'href' => route('doctor.addresses.index'),
-                'active' => false,
-            ],
-            [
-                'name' => 'Agenda de Citas',
-                'icon' => 'fa-solid fa-gauge',
-                'href' => '#',
-                'active' => false,
-            ],
-            [
-                'name' => 'Indisponibilidades',
-                'icon' => 'fa-solid fa-gauge',
-                'href' => '#',
-                'active' => false,
-            ],
-        ]
-    ]
+    ],    
+    [
+        'name' => 'Consultorios',
+        'icon' => 'fa-solid fa-gauge',
+        'href' => route('doctor.addresses.index'),
+        'active' => false,
+    ],
+    [
+        'name' => 'Servicios',
+        'icon' => 'fa-solid fa-gauge',
+        'href' => route('doctor.services.index'),
+        'active' => false,
+    ],
+    [
+        'name' => 'Indisponibilidades',
+        'icon' => 'fa-solid fa-gauge',
+        'href' => '#',
+        'active' => false,
+    ],
  ];
 @endphp
 

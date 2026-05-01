@@ -10,8 +10,8 @@ class HomeController extends Controller
 {
     public function index()
     {
-        $specialties = Specialty::orderBy('name')->get();
-        $cities = City::orderBy('name')->get();
+        $specialties = Specialty::orderBy('name', 'asc')->get();        
+        $cities = City::orderBy('name', 'asc')->get();
 
         return view('home', compact('specialties', 'cities'));
     }

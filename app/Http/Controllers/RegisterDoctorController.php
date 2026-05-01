@@ -23,7 +23,8 @@ class RegisterDoctorController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:8|confirmed',
-            'specialty_id' => 'required|integer|exists:specialties,id',
+            'specialties' => 'required|array|min:1', // Debe ser un array
+            'specialties.*' => 'exists:specialties,id',
         ]);
 
         // Usamos transacción para asegurar que se cree el usuario Y el doctor
@@ -39,10 +40,12 @@ class RegisterDoctorController extends Controller
             $user->assignRole('doctor');
 
             // 3. Crear Perfil de Doctor asociado
-            $user->doctor()->create([
-                'specialty_id' => $request->specialty_id, 
+            $doctor =   $user->doctor()->create([
+                'phone' => $request->phone,
                 'plan' => 'basico', // Plan inicial por defecto
             ]);
+
+            $doctor->specialties()->attach($request->specialties);
         });
 
         return redirect()->route('login')->with('success', 'Registro exitoso. Ya puedes iniciar sesión.');

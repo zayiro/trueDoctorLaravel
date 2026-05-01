@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use App\Models\Specialty;
+use App\Models\City;
 use App\Models\Doctor;
 use App\Models\Patient;
 use App\Models\Address;
@@ -11,6 +12,7 @@ use App\Models\Schedule;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -21,46 +23,44 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
         $this->call([
             RoleSeeder::class,
             CitySeeder::class,
             SpecialtySeeder::class
         ]);
-/*
-        User::factory()->create(
-            [
-                'name' => 'Andres ocampo',
-                'email' => 'ocampotecnologo@gmail.com',
-                'password' => bcrypt('123456789'),
-            ]
-        );*/
 
-        ///////////////////
-        
-        // 1. Crear especialidad base
-        $specialty = Specialty::create(['name' => 'Urología']);
+        $specialties = Specialty::all();
 
-        // 2. Crear Doctor con Perfil, Dirección y Horario
+        // 1. Crear Doctor con Perfil, Dirección y Horario
         $doctorUser = User::factory()->doctor()->create([
             'name' => 'Dr. Gregory House',
             'email' => 'doctor@ejemplo.com',
             'password' => bcrypt('123456789'),
         ]);
 
+        $doctorUser->assignRole('doctor');
+
         $doctor = Doctor::create([
             'user_id' => $doctorUser->id,
-            'specialty_id' => $specialty->id,            
-            'bio' => 'Experto en diagnósticos complejos.',
+            'phone' => '3026433877',
+            'plan' => 'basico',            
+            'bio' => 'Experto en diagnósticos complejos y difíciles.',
+            'slug' => Str::slug($doctorUser->name) . '-' . Str::lower(Str::random(5)),
         ]);
+
+        $doctor->specialties()->attach([
+            $specialties->where('name', 'Psicólogia')->first()->id,
+            $specialties->where('name', 'Medicina General')->first()->id,
+        ]);
+
+        $city = City::where('slug', 'bogota')->first();
 
         $address = Address::create([
             'doctor_id' => $doctor->id,
             'name' => 'Consultorio Central',
             'address' => 'Calle Falsa 123, Ciudad Médica',
             'phone' => '3026433874',
-            'city_id' => 1,
+            'city_id' => $city->id,
         ]);
 
         // Crear horario de Lunes a Viernes para esta dirección

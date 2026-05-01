@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Specialty;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class SpecialtySeeder extends Seeder
 {
@@ -22,8 +23,7 @@ class SpecialtySeeder extends Seeder
             ['id' => 10, 'name' => 'Traumatología', 'description' => '', 'status' => true],
             ['id' => 11, 'name' => 'Urología', 'description' => '', 'status' => true],
             ['id' => 12, 'name' => 'Ortopedista y Traumatólogia', 'description' => '', 'status' => true],
-            ['id' => 13, 'name' => 'Odontólogia', 'description' => '', 'status' => true],
-            ['id' => 14, 'name' => 'Urólogia', 'description' => '', 'status' => true],
+            ['id' => 13, 'name' => 'Odontólogia', 'description' => '', 'status' => true],            
             ['id' => 15, 'name' => 'Cirujano Plástico', 'description' => '', 'status' => true],
             ['id' => 16, 'name' => 'Internista', 'description' => '', 'status' => true],
             ['id' => 17, 'name' => 'Endocrinólogia', 'description' => '', 'status' => true],
@@ -113,7 +113,10 @@ class SpecialtySeeder extends Seeder
         ];
 
         foreach ($specialties as $specialty) {
-            Specialty::firstOrCreate($specialty);
+            Specialty::updateOrCreate(
+                ['name' => $specialty['name']],
+                ['slug' => Str::slug($specialty['name'])]
+            );
         }
     }
 }

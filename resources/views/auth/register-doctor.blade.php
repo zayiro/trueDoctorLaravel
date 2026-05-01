@@ -1,4 +1,5 @@
 <x-guest-layout>
+    <div class="mt-5"></div>
     <x-authentication-card>
         <x-slot name="logo">
             <x-authentication-card-logo />
@@ -11,38 +12,55 @@
                 @csrf
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Nombre Completo</label>
-                    <input type="text" name="name" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-3 border" required>
+                    <x-label for="name" value="{{ __('Name') }}" />
+                    <x-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name')" required autofocus autocomplete="name" />
                 </div>
 
                 <div class="mt-4">
-                    <label class="block text-sm font-medium text-gray-700">Correo Electrónico</label>
-                    <input type="email" name="email" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-3 border" required>
+                    <x-label for="email" value="{{ __('Email') }}" />
+                    <x-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autocomplete="username" />
                 </div>
 
                 <div class="mt-4">
-                    <label class="block text-sm font-medium text-gray-700">Especialidad Principal</label>
-                    <select name="specialty_id" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-3 border">
-                        @foreach ($specialties as $specialty)
-                            <option value="{{$specialty->id}}">{{$specialty->name}}</option>                        
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Especialidades (Puedes elegir varias)</label>
+                    <select name="specialties[]" multiple class="w-full rounded-xl border-slate-200 focus:ring-blue-500 p-3 border select2">
+                        @foreach($specialties as $specialty)
+                            <option value="{{ $specialty->id }}">{{ $specialty->name }}</option>
                         @endforeach
                     </select>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="mt-4">
-                        <label class="block text-sm font-medium text-gray-700">Contraseña</label>
-                        <input type="password" name="password" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-3 border" required>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Confirmar</label>
-                        <input type="password" name="password_confirmation" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 p-3 border" required>
+                <div class="mt-4">
+                    <label class="block font-medium text-sm text-slate-500 ml-1">Teléfono de Contacto</label>
+                    <div class="relative mt-1">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                            </svg>
+                        </div>
+                        <x-input id="phone" class="block mt-1 w-full pl-10" type="tel" name="phone" :value="old('phone')" required autofocus autocomplete="phone" />
                     </div>
                 </div>
 
-                <button type="submit" class="mt-4 w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition shadow-md">
-                    Crear Cuenta de Doctor
-                </button>
+                <div>
+                    <x-label for="password" value="{{ __('Password') }}" />
+                    <x-input id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="new-password" />
+                </div>
+
+                <div>
+                    <x-label for="password_confirmation" value="{{ __('Confirm Password') }}" />
+                    <x-input id="password_confirmation" class="block mt-1 w-full" type="password" name="password_confirmation" required autocomplete="new-password" />
+                </div>
+
+                <div class="flex items-center justify-end mt-4">
+                    <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('login') }}">
+                        {{ __('Already registered?') }}
+                    </a>
+
+                    <x-button class="ms-4">
+                        {{ __('Register') }}
+                    </x-button>
+                </div>
             </form>
         </div>
     </x-authentication-card>

@@ -18,35 +18,30 @@ class AppointmentController extends Controller
 
     public function store(Request $request)
     {
-        // 1. Validar datos básicos
-        $request->validate([
-            'doctor_id' => 'required',
-            'address_id' => 'required',
-            'appointment_date' => 'required|date',
-            // el paciente suele ser el usuario autenticado
-        ]);
+        $service = Service::findOrFail($request->service_id);
+        
+        $appointmentData = [
+            'patient_id' => auth()->id(),
+            'doctor_id'  => $request->doctor_id,
+            'service_id' => $service->id,
+            'date'       => $request->date,
+            'start_time' => $request->start_time,
+            'status'     => 'confirmada',
+        ];
 
-        // 2. Usar el Service para validar disponibilidad real (seguridad)
-        $isAvailable = $this->appointmentService->isAvailable(
-            $request->doctor_id,
-            $request->address_id,
-            $request->appointment_date
-        );
-
-        if (!$isAvailable) {
-            return back()->withErrors('El horario ya no está disponible.');
+        // Lógica para el link automático
+        if ($service->type === 'virtual') {
+            // Opción A: Generar un link único interno (ej: /meet/ABC-123)
+            $appointmentData['meeting_link'] = url('/meet/' . Str::random(10));
+            
+            // Opción B: Podrías conectar con la API de Zoom aquí
+        } else {
+            $appointmentData['address_id'] = $request->address_id;
         }
 
-        // 3. El Controlador usa el Modelo para guardar
-        Appointment::create([
-            'patient_id' => auth()->user()->patient->id,
-            'doctor_id' => $request->doctor_id,
-            'address_id' => $request->address_id,
-            'appointment_date' => $request->appointment_date,
-            'status' => 'pending'
-        ]);
+        $appointment = Appointment::create($appointmentData);
 
-        return redirect()->route('appointments.index')->with('success', 'Cita reservada.');
+        return redirect()->route('patient.appointments')
+            ->with('success', 'Cita agendada. ' . ($service->type === 'virtual' ? 'El link de la reunión está listo.' : ''));
     }
 }
-

@@ -19,6 +19,11 @@ class CitySeeder extends Seeder
             ['name' => 'Medellín', 'state' => 'Antioquia'],
             ['name' => 'Barranquilla', 'state' => 'Atlántico'],
             ['name' => 'Cartagena', 'state' => 'Bolívar'],
+            ['name' => 'Cúcuta', 'state' => 'Norte de Santander'],
+            ['name' => 'Bucaramanga', 'state' => 'Santander'],
+            ['name' => 'Pereira', 'state' => 'Risaralda'],
+            ['name' => 'Ibagué', 'state' => 'Tolima'],
+            ['name' => 'Manizales', 'state' => 'Caldas'],
         ];
 
         foreach ($cities as $city) {

@@ -7,7 +7,10 @@ use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\ProfileDoctorController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\RegisterDoctorController;
+use App\Http\Controllers\RegisterClinicController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\PublicProfileController;
 
 //Route::redirect('/', '/admin');
 
@@ -17,7 +20,14 @@ use App\Http\Controllers\HomeController;
     return view('welcome');
 });
 */
+
 Route::get('/', [HomeController::class, 'index'])->name('home');
+
+/*
+//si usamos el middleware role.redirect
+Route::get('/', function () {
+    return view('dashboard');
+})->middleware(['auth', 'role.redirect'])->name('dashboard');*/
 
 Route::middleware([
     'auth:sanctum',
@@ -29,13 +39,30 @@ Route::middleware([
     })->name('dashboard');
 });
 
+Route::get('/register-options', function () {
+    return view('auth.register-options');
+})->name('register.options');
+
 // Ruta para mostrar el formulario (GET)
 Route::get('/register-doctor', [RegisterDoctorController::class, 'register'])->name('doctor.register');
 
 // Ruta para procesar el registro (POST) - La que definimos antes
 Route::post('/register-doctor', [RegisterDoctorController::class, 'store'])->name('doctor.register.store');
 
+Route::get('/register-clinic', function () {
+    return view('auth.register-clinic');
+})->name('clinic.register');
 
+Route::post('/register-clinic', [RegisterClinicController::class, 'store'])->name('clinic.register.store');
+
+Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
+/*
+// Ruta para ver el perfil y disponibilidad
+Route::get('/doctor/{doctor:slug}', [PublicProfileController::class, 'show'])->name('doctor.public.profile');
+
+// Ruta API para que FullCalendar cargue los huecos libres
+Route::get('/api/doctor/{doctor}/availability', [PublicProfileController::class, 'getAvailability'])->name('api.doctor.availability');
+*/
 // En web.php
 Route::post('/upgrade-plan', function() {
     Auth::user()->doctor->update(['plan' => 'avanzado']);
@@ -48,9 +75,15 @@ Route::get('/search', [SearchController::class, 'index'])->name('search');
 // Rutas Privadas (Doctores)
 Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::post('/doctor/profile/plan', [PlanController::class, 'update'])->name('doctor.profile.plan.update');
+    
     // Ver y editar el perfil
     Route::get('/doctor/profile', [ProfileDoctorController::class, 'edit'])->name('doctor.profile.edit');
     
+    //Gestion de servicios
+    Route::get('/doctor/services', [ServiceController::class, 'index'])->name('doctor.services.index');
+    Route::get('/doctor/services/create', [ServiceController::class, 'create'])->name('doctor.services.create');
+    Route::post('/doctor/services', [ServiceController::class, 'store'])->name('doctor.services.store');
+
     // Gestión de Sedes
     Route::get('/doctor/addresses', [AddressController::class, 'index'])->name('doctor.addresses.index');
     Route::get('/doctor/addresses/create', [AddressController::class, 'create'])->name('doctor.addresses.create');
@@ -61,6 +94,7 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     
     // Ver el listado y formulario de horarios de una sede
     Route::get('/doctor/addresses/{address}/schedules', [ScheduleController::class, 'index'])->name('doctor.schedules.index');
+    
     // Guardar el horario
     Route::post('/doctor/schedules', [ScheduleController::class, 'store'])->name('doctor.schedules.store');
     Route::delete('/doctor/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('doctor.schedules.destroy');

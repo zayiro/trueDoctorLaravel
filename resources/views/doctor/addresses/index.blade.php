@@ -1,11 +1,11 @@
 @php
 $breadcrumbs = [
     [
-        'name' => 'Doctor',
+        'name' => 'Dashboard',
         'href' => route('admin.dashboard'),
     ],
     [
-        'name' => 'Mis Consultorios',
+        'name' => 'Consultorios',
     ]
 ];
 @endphp
@@ -29,13 +29,6 @@ $breadcrumbs = [
             </button>
         </div>
     @endif
-
-    <div class="mb-5">
-        <h2 class="text-xl font-bold">Tus Consultorios</h2>
-        <span class="px-2 py-1 text-xs font-semibold rounded-full {{ Auth::user()->doctor->plan === 'avanzado' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700' }}">
-            Plan {{ ucfirst(Auth::user()->doctor->plan) }}
-        </span>
-    </div>
 
     @if(Auth::user()->doctor->canAddMoreAddresses())
     <div class="flex justify-between items-center mb-8">            

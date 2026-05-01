@@ -11,13 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('cities', function (Blueprint $table) {
+        Schema::create('address_service', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('state')->nullable();
-            $table->string('slug')->unique();           
-            $table->boolean('status')->default(true); 
-            $table->timestamps();
+            $table->foreignId('address_id')->constrained()->onDelete('cascade');
+            $table->foreignId('service_id')->constrained()->onDelete('cascade');
         });
     }
 
@@ -26,6 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('cities');
+        Schema::dropIfExists('address_service');
     }
 };

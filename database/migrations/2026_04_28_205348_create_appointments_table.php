@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('patient_id')->constrained();
             $table->foreignId('doctor_id')->constrained();
             $table->foreignId('address_id')->constrained(); // Dónde será la cita
+            $table->text('meeting_link')->nullable();
             $table->dateTime('appointment_date');
             $table->enum('status', ['pending', 'confirmed', 'cancelled', 'completed'])->default('pending');
             $table->timestamps();

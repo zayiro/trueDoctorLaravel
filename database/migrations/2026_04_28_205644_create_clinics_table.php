@@ -13,7 +13,14 @@ return new class extends Migration
     {
         Schema::create('clinics', function (Blueprint $table) {
             $table->id();
+            $table->string('slug')->unique();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->text('name');
+            $table->text('nit');
             $table->string('plan')->default('basico'); // basico o avanzado
+            $table->string('phone')->nullable();
+            $table->decimal('rating', 3, 2)->default(0);
+            $table->integer('reviews_count')->default(0);
             $table->timestamps();
         });
     }
