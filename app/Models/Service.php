@@ -11,7 +11,8 @@ class Service extends Model
         'name', 
         'price', 
         'type', 
-        'duration'
+        'duration',
+        'active'
     ];
 
     public function addresses() 

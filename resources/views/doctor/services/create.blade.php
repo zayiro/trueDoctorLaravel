@@ -16,6 +16,29 @@ $breadcrumbs = [
             <a href="{{ route('doctor.services.index') }}" class="text-blue-600 hover:underline text-sm">Volver al listado</a>
         </div>
 
+        p-layout>
+    <div class="max-w-4xl mx-auto py-10 px-4">
+        
+        @if(!$hasAddresses)
+            <!-- Alerta: No hay sedes -->
+            <div class="mb-8 p-6 bg-amber-50 border-2 border-amber-200 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="bg-amber-200 p-3 rounded-full">
+                        <svg class="w-6 h-6 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-amber-900">No tienes sedes físicas registradas</h4>
+                        <p class="text-sm text-amber-700">Para crear servicios presenciales, primero debes registrar un consultorio.</p>
+                    </div>
+                </div>
+                <a href="{{ route('doctor.addresses.create') }}" class="whitespace-nowrap bg-amber-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-amber-700 transition">
+                    + Crear Sede ahora
+                </a>
+            </div>
+        @endif
+
         <!-- Contenedor con Alpine.js -->
         <div x-data="{ type: 'presencial' }" class="bg-white shadow-xl rounded-3xl overflow-hidden border border-gray-100">
             <form action="{{ route('doctor.services.store') }}" method="POST" class="p-8 space-y-6">
@@ -43,9 +66,7 @@ $breadcrumbs = [
                         <label class="block text-sm font-bold text-gray-700 mb-2">Duración (minutos)</label>
                         <select name="duration" class="w-full rounded-2xl border-gray-300 py-3">
                             <option value="15">15 min</option>
-                            <option value="30" selected>30 min</option>
-                            <option value="45">45 min</option>
-                            <option value="60">60 min</option>
+                            <option value="20" selected>20 min</option>
                         </select>
                     </div>
 

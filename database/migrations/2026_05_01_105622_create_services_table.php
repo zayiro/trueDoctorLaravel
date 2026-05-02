@@ -18,6 +18,7 @@ return new class extends Migration
             $table->decimal('price', 10, 2);
             $table->enum('type', ['presencial', 'virtual'])->default('presencial');
             $table->integer('duration'); // Duración en minutos específica del servicio
+            $table->boolean('active')->default(true);
             $table->timestamps();
         });
     }

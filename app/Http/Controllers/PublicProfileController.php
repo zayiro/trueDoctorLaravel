@@ -8,10 +8,12 @@ use Illuminate\Http\Request;
 class PublicProfileController extends Controller
 {
     public function show(Doctor $doctor)
-    {        
-        $doctor->load(['specialties', 'services', 'addresses' => function($q) {
-            $q->where('status', true);
-        }]);
+    {
+        $doctor->load([
+            'specialties', 
+            'services' => fn($q) => $q->where('active', true),
+            'addresses' => fn($q) => $q->where('status', true)->with('city')
+        ]);
 
         return view('public.doctor-profile', compact('doctor'));
     }

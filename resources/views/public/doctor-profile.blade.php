@@ -45,30 +45,42 @@
                                 </a>
                             </div>
                         @else
-                            <div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
-                        
-                                <!-- Barra de Progreso Visual -->
-                                <div class="bg-gray-50 px-8 py-4 flex justify-between border-b border-gray-100">
-                                    <span :class="step >= 1 ? 'text-blue-600 font-bold' : 'text-gray-400'">1. Servicio</span>
-                                    <span :class="step >= 2 ? 'text-blue-600 font-bold' : 'text-gray-400'">2. Ubicación</span>
-                                    <span :class="step >= 3 ? 'text-blue-600 font-bold' : 'text-gray-400'">3. Horario</span>
+                            <div x-data="{ 
+                                step: 1, 
+                                selectedService: null, 
+                                serviceType: '', 
+                                addressId: null,
+                                addressName: '' 
+                            }" class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+
+                                <!-- Indicador de Pasos -->
+                                <div class="bg-gray-50 px-8 py-4 flex justify-between border-b border-gray-100 text-xs font-bold uppercase tracking-widest">
+                                    <span :class="step >= 1 ? 'text-blue-600' : 'text-gray-400'">1. Servicio</span>
+                                    <span :class="step >= 2 ? 'text-blue-600' : 'text-gray-400'" x-show="serviceType !== 'virtual'">2. Sede</span>
+                                    <span :class="step >= 3 ? 'text-blue-600' : 'text-gray-400'">3. Horario</span>
                                 </div>
 
                                 <div class="p-8">
-                                    <!-- PASO 1: SERVICIOS -->
+                                    <!-- PASO 1: SELECCIÓN DE SERVICIO -->
                                     <template x-if="step === 1">
                                         <div>
-                                            <h3 class="text-xl font-black text-gray-800 mb-6">¿Qué tipo de atención necesitas?</h3>
-                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <h3 class="text-xl font-black text-gray-800 mb-6">¿Qué servicio necesitas?</h3>
+                                            <div class="grid grid-cols-1 gap-4">
                                                 @foreach($doctor->services as $service)
-                                                    <button @click="selectService({{ json_encode($service) }})" 
-                                                        class="text-left p-5 rounded-2xl border-2 border-gray-100 hover:border-blue-500 hover:bg-blue-50 transition group">
-                                                        <div class="flex justify-between items-start">
+                                                    <button @click="
+                                                        selectedService = {{ $service->id }}; 
+                                                        serviceType = '{{ $service->type }}';
+                                                        step = (serviceType === 'virtual') ? 3 : 2;
+                                                        if(serviceType === 'virtual') initCalendar('virtual');
+                                                    " class="w-full text-left p-5 rounded-2xl border-2 border-gray-100 hover:border-blue-500 hover:bg-blue-50 transition group">
+                                                        <div class="flex justify-between items-center">
                                                             <div>
                                                                 <span class="block font-bold text-gray-800 group-hover:text-blue-700">{{ $service->name }}</span>
                                                                 <span class="text-xs text-gray-500">{{ $service->duration }} min | {{ ucfirst($service->type) }}</span>
                                                             </div>
-                                                            <span class="font-black text-blue-600">${{ number_format($service->price, 0) }}</span>
+                                                            <div class="text-right">
+                                                                <span class="block font-black text-blue-600">${{ number_format($service->price, 0) }}</span>
+                                                            </div>
                                                         </div>
                                                     </button>
                                                 @endforeach
@@ -76,18 +88,19 @@
                                         </div>
                                     </template>
 
-                                    <!-- PASO 2: SEDES -->
+                                    <!-- PASO 2: SELECCIÓN DE SEDE (Solo presencial) -->
                                     <template x-if="step === 2">
                                         <div>
-                                            <button @click="step = 1" class="mb-4 text-sm text-blue-600 font-bold flex items-center">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
-                                                Cambiar servicio
-                                            </button>
-                                            <h3 class="text-xl font-black text-gray-800 mb-6">¿Dónde prefieres la cita?</h3>
+                                            <button @click="step = 1" class="mb-4 text-sm text-blue-600 font-bold">← Volver a servicios</button>
+                                            <h3 class="text-xl font-black text-gray-800 mb-6">Selecciona el consultorio</h3>
                                             <div class="space-y-3">
                                                 @foreach($doctor->addresses as $address)
-                                                    <button @click="selectAddress({{ json_encode($address) }})"
-                                                        class="w-full text-left p-5 rounded-2xl border-2 border-gray-100 hover:border-blue-500 hover:bg-blue-50 transition">
+                                                    <button @click="
+                                                        addressId = {{ $address->id }};
+                                                        addressName = '{{ $address->name }}';
+                                                        step = 3;
+                                                        initCalendar({{ $address->id }});
+                                                    " class="w-full text-left p-5 rounded-2xl border-2 border-gray-100 hover:border-blue-500 transition">
                                                         <p class="font-bold text-gray-800">{{ $address->name }}</p>
                                                         <p class="text-sm text-gray-500">{{ $address->address }}, {{ $address->city->name }}</p>
                                                     </button>
@@ -98,18 +111,17 @@
 
                                     <!-- PASO 3: CALENDARIO -->
                                     <template x-if="step === 3">
-                                        <div x-init="initCalendar()">
-                                            <button @click="goBackFromCalendar()" class="mb-4 text-sm text-blue-600 font-bold flex items-center">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
-                                                Volver atrás
-                                            </button>
+                                        <div>
+                                            <button @click="step = (serviceType === 'virtual' ? 1 : 2)" class="mb-4 text-sm text-blue-600 font-bold">← Volver atrás</button>
                                             <h3 class="text-xl font-black text-gray-800 mb-2">Selecciona tu horario</h3>
-                                            <p class="text-sm text-gray-500 mb-6" x-text="serviceType === 'virtual' ? 'Consulta vía Telemedicina' : 'Consulta en: ' + addressName"></p>
-                                            <div id="calendar-public" class="rounded-xl overflow-hidden border border-gray-100"></div>
+                                            <p class="text-sm text-gray-500 mb-6" x-text="serviceType === 'virtual' ? 'Consulta por Telemedicina' : 'Sede: ' + addressName"></p>
+                                            
+                                            <div id="calendar-public" class="rounded-xl border border-gray-100"></div>
                                         </div>
                                     </template>
                                 </div>
                             </div>
+
                         @endif
                     </div>                    
                 </div>

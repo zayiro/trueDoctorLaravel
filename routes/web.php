@@ -83,6 +83,10 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::get('/doctor/services', [ServiceController::class, 'index'])->name('doctor.services.index');
     Route::get('/doctor/services/create', [ServiceController::class, 'create'])->name('doctor.services.create');
     Route::post('/doctor/services', [ServiceController::class, 'store'])->name('doctor.services.store');
+    Route::get('/doctor/services/{service}/edit', [ServiceController::class, 'edit'])->name('doctor.services.edit');
+    Route::put('/doctor/services/{service}', [ServiceController::class, 'update'])->name('doctor.services.update');
+    Route::delete('/doctor/services/{service}', [ServiceController::class, 'destroy'])->name('doctor.services.destroy');
+
 
     // Gestión de Sedes
     Route::get('/doctor/addresses', [AddressController::class, 'index'])->name('doctor.addresses.index');
@@ -91,6 +95,7 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::put('/doctor/addresses/{address}', [AddressController::class, 'update'])->name('doctor.addresses.update');
     Route::delete('/doctor/addresses/{address}', [AddressController::class, 'destroy'])->name('doctor.addresses.destroy');
     Route::get('/doctor/addresses/{address}/edit', [AddressController::class, 'edit'])->name('doctor.addresses.edit');
+    Route::patch('/doctor/services/{service}/toggle', [ServiceController::class, 'toggleStatus'])->name('doctor.services.toggle');
     
     // Ver el listado y formulario de horarios de una sede
     Route::get('/doctor/addresses/{address}/schedules', [ScheduleController::class, 'index'])->name('doctor.schedules.index');
