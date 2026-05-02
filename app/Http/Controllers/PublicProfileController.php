@@ -14,6 +14,7 @@ use App\Models\Address;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 
 class PublicProfileController extends Controller
 {
@@ -48,7 +49,7 @@ class PublicProfileController extends Controller
     {
         $service = Service::with('doctor.user')->findOrFail($request->service);
         $address = $request->address ? Address::with('city')->find($request->address) : null;
-        $datetime = \Carbon\Carbon::parse($request->datetime);
+        $datetime = Carbon::parse($request->datetime);
         
         // Datos del paciente que vienen del paso previo
         $notes = $request->notes;

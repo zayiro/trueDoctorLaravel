@@ -12,7 +12,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\PublicProfileController;
 use App\Http\Controllers\NotificationController;
-
+use App\Http\Controllers\DoctorAppointmentController;
 //Route::redirect('/', '/admin');
 
 //para que se muestre de una el view login
@@ -103,6 +103,9 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     // Guardar el horario
     Route::post('/doctor/schedules', [ScheduleController::class, 'store'])->name('doctor.schedules.store');
     Route::delete('/doctor/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('doctor.schedules.destroy');
+
+    Route::get('/doctor/appointments', [DoctorAppointmentController::class, 'index'])->name('doctor.appointments.index');
+
 });
 
 Route::get('/appointment/patient-data', [PublicProfileController::class, 'patientStep'])->name('appointments.patient');

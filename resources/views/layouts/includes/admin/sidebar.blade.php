@@ -33,6 +33,12 @@
         'href' => route('notifications.index'),
         'active' => false,
     ],
+    [
+        'name' => 'Agenda',
+        'icon' => 'fa-solid fa-gauge',
+        'href' => route('doctor.appointments.index'),
+        'active' => false,
+    ],
  ];
 @endphp
 

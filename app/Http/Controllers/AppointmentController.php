@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Appointment; // Importa el modelo
 use App\Services\AppointmentService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class AppointmentController extends Controller
 {
