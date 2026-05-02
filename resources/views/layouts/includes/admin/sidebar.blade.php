@@ -27,6 +27,12 @@
         'href' => '#',
         'active' => false,
     ],
+    [
+        'name' => 'Notificaciones',
+        'icon' => 'fa-solid fa-gauge',
+        'href' => route('notifications.index'),
+        'active' => false,
+    ],
  ];
 @endphp
 

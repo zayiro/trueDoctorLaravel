@@ -43,6 +43,7 @@ class DatabaseSeeder extends Seeder
         $doctor = Doctor::create([
             'user_id' => $doctorUser->id,
             'phone' => '3026433877',
+            'identification' => '16944752',
             'plan' => 'basico',            
             'bio' => 'Experto en diagnósticos complejos y difíciles.',
             'slug' => Str::slug($doctorUser->name) . '-' . Str::lower(Str::random(5)),
@@ -83,6 +84,8 @@ class DatabaseSeeder extends Seeder
         
         Patient::create([
             'user_id' => $patientUser->id,
+            'identification' => '1067123456',
+            'phone' => '3001234567',
         ]);
 
         // 4. Crear Administrador y Clínica

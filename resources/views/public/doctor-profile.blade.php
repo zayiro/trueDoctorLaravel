@@ -142,11 +142,14 @@
                 selectService(service) {
                     this.selectedService = service.id;
                     this.serviceType = service.type;
-                    if (this.serviceType === 'virtual') {
-                        this.step = 3;
-                    } else {
-                        this.step = 2;
+                    this.serviceDuration = service.duration;
+
+                    // Si ya hay un calendario creado, lo actualizamos
+                    if (this.calendar) {
+                        this.updateCalendarDuration(this.serviceDuration);
                     }
+
+                    this.step = (this.serviceType === 'virtual') ? 3 : 2;
                 },
 
                 selectAddress(address) {
@@ -158,12 +161,31 @@
                 goBackFromCalendar() {
                     this.step = (this.serviceType === 'virtual') ? 1 : 2;
                 },
-
-                initCalendar() {
-                    // Esperamos un tick para que el DOM se renderice
+                updateCalendarDuration(minutes) {
+                    let durationString = this.formatDuration(minutes);
+                    
+                    this.calendar.setOption('slotDuration', durationString);
+                    this.calendar.setOption('snapDuration', durationString);
+                    this.calendar.render();
+                },
+                formatDuration(minutes) {
+                    // Convierte 45 a "00:45:00"
+                    let h = Math.floor(minutes / 60).toString().padStart(2, '0');
+                    let m = (minutes % 60).toString().padStart(2, '0');
+                    return `${h}:${m}:00`;
+                },
+                initCalendar(addressId) {
                     this.$nextTick(() => {
                         const calendarEl = document.getElementById('calendar-public');
-                        // Lógica para inicializar FullCalendar con la API...
+                        
+                        this.calendar = new FullCalendar.Calendar(calendarEl, {
+                            initialView: 'timeGridWeek',
+                            // Usamos la duración del servicio seleccionado aquí
+                            slotDuration: this.formatDuration(this.serviceDuration),
+                            events: `/api/availability/${addressId}`,
+                            // ... resto de la configuración
+                        });
+                        this.calendar.render();
                     });
                 }
             }

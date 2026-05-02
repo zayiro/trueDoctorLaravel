@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->text('name');
-            $table->text('nit');
+            $table->string('nit')->unique();
             $table->string('plan')->default('basico'); // basico o avanzado
             $table->string('phone')->nullable();
             $table->decimal('rating', 3, 2)->default(0);

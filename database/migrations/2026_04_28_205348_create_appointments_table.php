@@ -15,10 +15,17 @@ return new class extends Migration
             $table->id();
             $table->foreignId('patient_id')->constrained();
             $table->foreignId('doctor_id')->constrained();
-            $table->foreignId('address_id')->constrained(); // Dónde será la cita
-            $table->text('meeting_link')->nullable();
-            $table->dateTime('appointment_date');
+            $table->foreignId('service_id')->constrained();
+            // Hacemos que la dirección sea opcional (para citas virtuales)
+            $table->foreignId('address_id')->nullable()->constrained(); // Dónde será la cita
+            $table->date('date');
+            $table->time('start_time');
+            $table->time('end_time');
+            $table->integer('duration'); 
+            $table->decimal('price', 10, 2);
+            $table->text('meeting_link')->nullable();            
             $table->enum('status', ['pending', 'confirmed', 'cancelled', 'completed'])->default('pending');
+            $table->text('notes')->nullable();
             $table->timestamps();
         });
     }

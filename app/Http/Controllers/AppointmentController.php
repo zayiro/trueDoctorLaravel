@@ -26,7 +26,7 @@ class AppointmentController extends Controller
             'service_id' => $service->id,
             'date'       => $request->date,
             'start_time' => $request->start_time,
-            'status'     => 'confirmada',
+            'status'     => 'confirmed',
         ];
 
         // Lógica para el link automático

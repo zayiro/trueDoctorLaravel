@@ -15,6 +15,7 @@ class Doctor extends Model
         'bio',
         'rating',
         'reviews_count',
+        'identification',
         'plan'
     ];
 

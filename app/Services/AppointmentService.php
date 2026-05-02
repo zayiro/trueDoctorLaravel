@@ -61,15 +61,20 @@ class AppointmentService
         })->values();
     }
 
-    private function generateTimeSlots($start, $end, $minutes)
+    private function generateTimeSlots($startTime, $endTime, $serviceDuration)
     {
         $slots = [];
-        $startTime = Carbon::parse($start);
-        $endTime = Carbon::parse($end);
+        $start = Carbon::parse($startTime);
+        $end = Carbon::parse($endTime);
 
-        while ($startTime < $endTime) {
-            $slots[] = $startTime->format('H:i');
-            $startTime->addMinutes($minutes);
+        // El turno solo se crea si cabe antes de la hora de cierre
+        while ($start->copy()->addMinutes($serviceDuration) <= $end) {
+            $slots[] = [
+                'start' => $start->format('H:i'),
+                'end'   => $start->copy()->addMinutes($serviceDuration)->format('H:i'),
+            ];
+            // El siguiente turno empieza donde termina el anterior
+            $start->addMinutes($serviceDuration);
         }
         return $slots;
     }
@@ -83,5 +88,36 @@ class AppointmentService
         $endBlock = Carbon::parse($block->end_date . ' ' . ($block->end_time ?? '23:59:59'));
 
         return $slotDateTime->between($startBlock, $endBlock);
+    }
+
+    /*
+    /*Este servicio será el "cerebro" que valide los choques de horario.
+    */
+    public function isAvailable($doctorId, $date, $startTime, $durationMinutes)
+    {
+        $start = Carbon::parse($startTime);
+        $end = $start->copy()->addMinutes($durationMinutes);
+
+        // Buscamos citas que se traslapen
+        return !Appointment::where('doctor_id', $doctorId)
+            ->whereDate('date', $date)
+            ->where(function ($query) use ($start, $end) {
+                $query->where(function ($q) use ($start, $end) {
+                    // Caso 1: Una cita empieza mientras esta aún no termina
+                    $q->where('start_time', '<', $end->format('H:i:s'))
+                      ->where('start_time', '>=', $start->format('H:i:s'));
+                })
+                ->orWhere(function ($q) use ($start, $end) {
+                    // Caso 2: Una cita termina después de que esta empezó
+                    $q->where('end_time', '>', $start->format('H:i:s'))
+                      ->where('end_time', '<=', $end->format('H:i:s'));
+                })
+                ->orWhere(function ($q) use ($start, $end) {
+                    // Caso 3: Una cita existente envuelve completamente a la nueva
+                    $q->where('start_time', '<=', $start->format('H:i:s'))
+                      ->where('end_time', '>=', $end->format('H:i:s'));
+                });
+            })
+            ->exists();
     }
 }

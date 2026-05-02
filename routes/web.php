@@ -11,6 +11,7 @@ use App\Http\Controllers\RegisterClinicController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\PublicProfileController;
+use App\Http\Controllers\NotificationController;
 
 //Route::redirect('/', '/admin');
 
@@ -87,7 +88,6 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::put('/doctor/services/{service}', [ServiceController::class, 'update'])->name('doctor.services.update');
     Route::delete('/doctor/services/{service}', [ServiceController::class, 'destroy'])->name('doctor.services.destroy');
 
-
     // Gestión de Sedes
     Route::get('/doctor/addresses', [AddressController::class, 'index'])->name('doctor.addresses.index');
     Route::get('/doctor/addresses/create', [AddressController::class, 'create'])->name('doctor.addresses.create');
@@ -103,5 +103,21 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     // Guardar el horario
     Route::post('/doctor/schedules', [ScheduleController::class, 'store'])->name('doctor.schedules.store');
     Route::delete('/doctor/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('doctor.schedules.destroy');
+});
 
+Route::get('/appointment/patient-data', [PublicProfileController::class, 'patientStep'])->name('appointments.patient');
+Route::post('/appointment/process-patient', [PublicProfileController::class, 'processPatient'])->name('appointments.process_patient');
+
+Route::post('/appointment/confirm', [PublicProfileController::class, 'book'])
+    ->name('appointments.book')
+    ->middleware('auth'); // Solo pacientes logueados
+Route::get('/appointment/success/{appointment}', [PublicProfileController::class, 'success'])->name('appointments.success')->middleware('auth');
+
+Route::middleware(['auth'])->group(function () {
+    // Vista principal de todas las notificaciones
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+
+    // Acción para marcar una o todas como leídas
+    Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.readAll');
 });

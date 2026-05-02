@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');            
             $table->string('medical_license')->nullable();
+            $table->string('identification')->unique();
             $table->text('bio')->nullable();
             $table->string('phone')->nullable();
             $table->string('experience_years')->nullable();
