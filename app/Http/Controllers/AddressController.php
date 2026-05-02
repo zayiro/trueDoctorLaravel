@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Address;
+use App\Models\City;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -29,6 +30,7 @@ class AddressController extends Controller
 
     public function create()
     {
+        $cities = City::all();
         $doctor = Auth::user()->doctor;
 
         // 1. Validar si ya alcanzó el límite antes de procesar nada
@@ -39,7 +41,7 @@ class AddressController extends Controller
                 ->with('error', "Tu plan {$doctor->plan} solo permite {$limite} consultorios.");
         }
         
-        return view('doctor.addresses.create');
+        return view('doctor.addresses.create', compact('cities'));
     }
 
     /**
@@ -62,10 +64,14 @@ class AddressController extends Controller
             'name' => 'required|string|max:100',
             'address' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
+            'city_id'  => 'required|exists:cities,id',
         ]);
 
+        // Asignar el doctor_id automáticamente
+        $validated['doctor_id'] = auth()->user()->doctor->id;
+
         // 3. Crear el registro
-        Auth::user()->doctor->addresses()->create($validated);
+        Address::create($validated);
 
         return redirect()->route('doctor.addresses.index')
             ->with('success', 'Nuevo consultorio registrado correctamente.');

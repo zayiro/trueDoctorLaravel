@@ -16,9 +16,6 @@ $breadcrumbs = [
             <a href="{{ route('doctor.services.index') }}" class="text-blue-600 hover:underline text-sm">Volver al listado</a>
         </div>
 
-        p-layout>
-    <div class="max-w-4xl mx-auto py-10 px-4">
-        
         @if(!$hasAddresses)
             <!-- Alerta: No hay sedes -->
             <div class="mb-8 p-6 bg-amber-50 border-2 border-amber-200 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4">
@@ -105,7 +102,8 @@ $breadcrumbs = [
                      class="p-4 bg-purple-50 rounded-2xl border border-purple-100 flex items-center gap-3">
                     <span class="text-2xl">✨</span>
                     <p class="text-sm text-purple-800 font-medium">
-                        Este servicio se realizará por videollamada. No requiere vincularse a una dirección física.
+                        Este servicio se realizará por videollamada. No requiere vincularse a una dirección física.<br />
+                        El paciente recibira un link para unirse a la videollamada cuando confirme la reservación.
                     </p>
                 </div>
 
