@@ -124,3 +124,13 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.readAll');
 });
+
+// Rutas protegidas (dentro del grupo de auth)
+Route::middleware(['auth:sanctum', 'verified'])->group(function () {
+    Route::get('/campaigns', \App\Livewire\Campaigns\CampaignIndex::class)->name('campaigns.index');
+    Route::get('/campaigns/create', \App\Livewire\Campaigns\CreateCampaign::class)->name('campaigns.create');
+});
+
+use App\Livewire\PublicLanding;
+
+Route::get('/{doctor_slug}/{campaign_slug}.html', PublicLanding::class)->name('landing.public');

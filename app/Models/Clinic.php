@@ -57,5 +57,10 @@ class Clinic extends Model {
     {
         return $this->hasMany(Service::class);
     }
+
+    public function campaigns()
+    {
+        return $this->hasMany(Campaign::class);
+    }
 }
 

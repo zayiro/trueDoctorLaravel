@@ -39,6 +39,12 @@
         'href' => route('doctor.appointments.index'),
         'active' => false,
     ],
+    [
+        'name' => 'MKT',
+        'icon' => 'fa-solid fa-gauge',
+        'href' => route('campaigns.index'),
+        'active' => false,
+    ],
  ];
 @endphp
 
