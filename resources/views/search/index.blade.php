@@ -1,7 +1,7 @@
 <x-guest-layout>
     <div class="max-w-7xl mx-auto px-4 py-8 mt-5">
         <!-- Barra de Filtros -->
-        <form action="{{ route('search') }}" method="GET" class="bg-white p-4 rounded-xl shadow-md flex flex-wrap gap-4 mb-8">
+        <form action="{{ route('search') }}" method="GET" class="bg-white mt-8 p-4 rounded-xl shadow-md flex flex-wrap gap-4 mb-8">
             <div class="flex-1 min-w-[200px]">
                 <label class="block text-xs font-bold text-gray-400 uppercase">Especialidad</label>
                 <select name="specialty" class="w-full border-0 focus:ring-0 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 px-4">
@@ -47,11 +47,19 @@
                             
                             <!-- Foto y Perfil -->
                             <div class="flex-shrink-0 text-center">
+                                @if ($doctor->user->profile_photo_path)
                                 <img src="https://ui-avatars.com{{ urlencode($doctor->user->name) }}&background=E0F2FE&color=0369A1" 
                                     class="w-24 h-24 rounded-2xl mx-auto mb-3 object-cover">
                                 <span class="text-[10px] font-black uppercase px-2 py-1 bg-blue-50 text-blue-600 rounded-lg">
                                     {{ $doctor->plan }}
                                 </span>
+                                @else
+                                   <div class="relative w-24 h-24 flex items-end justify-center overflow-hidden bg-gray-100 rounded-full dark:bg-gray-600">
+                                        <svg class="w-24 h-24 text-gray-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://w3.org">
+                                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+                                        </svg>
+                                    </div>
+                                @endif
                             </div>
 
                             <!-- Información -->

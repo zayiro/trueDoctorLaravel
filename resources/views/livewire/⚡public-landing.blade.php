@@ -5,7 +5,7 @@
                 <h1 class="text-4xl font-bold mb-4">{{ $campaign->title }}</h1>
                 <p class="text-gray-600 mb-6">Promocionado por: {{ $doctor->name }}</p>
                 
-                <div class="prose max-w-none">
+                <div class="prose lg:prose-xl mx-auto mt-6">
                     {!! $campaign->content !!}
                 </div>
 

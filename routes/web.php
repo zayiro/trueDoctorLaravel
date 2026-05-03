@@ -13,6 +13,8 @@ use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\PublicProfileController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\DoctorAppointmentController;
+use App\Http\Controllers\ContactController;
+
 //Route::redirect('/', '/admin');
 
 //para que se muestre de una el view login
@@ -40,6 +42,9 @@ Route::middleware([
     })->name('dashboard');
 });
 
+Route::get('/contact', [ContactController::class, 'show'])->name('contact.show');
+Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
+
 Route::get('/register-options', function () {
     return view('auth.register-options');
 })->name('register.options');
@@ -57,13 +62,13 @@ Route::get('/register-clinic', function () {
 Route::post('/register-clinic', [RegisterClinicController::class, 'store'])->name('clinic.register.store');
 
 Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
-/*
+
 // Ruta para ver el perfil y disponibilidad
 Route::get('/doctor/{doctor:slug}', [PublicProfileController::class, 'show'])->name('doctor.public.profile');
 
 // Ruta API para que FullCalendar cargue los huecos libres
 Route::get('/api/doctor/{doctor}/availability', [PublicProfileController::class, 'getAvailability'])->name('api.doctor.availability');
-*/
+
 // En web.php
 Route::post('/upgrade-plan', function() {
     Auth::user()->doctor->update(['plan' => 'avanzado']);

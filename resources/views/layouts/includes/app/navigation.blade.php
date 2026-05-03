@@ -17,8 +17,8 @@
           </x-dropdown-link>
         </li>
         <li>
-          <x-dropdown-link href="{{ route('home') }}">
-            Contactenos
+          <x-dropdown-link href="{{ route('contact.show') }}">
+            Contáctenos
           </x-dropdown-link>
         </li>
         @auth
@@ -78,12 +78,16 @@
         @else
           @if (!Route::is('register.options'))
           <li>
-            <a href="{{ route('register.options') }}" class="block py-2 px-3 text-heading rounded hover:bg-neutral-tertiary md:hover:bg-transparent md:border-0 md:hover:text-fg-brand md:p-0 md:dark:hover:bg-transparent">Registrarse gratuitamente</a>
+            <x-dropdown-link href="{{ route('register.options') }}">
+              Registrarse gratuitamente
+            </x-dropdown-link>            
           </li>
           @endif
           @if (!Route::is('login'))
           <li>
-            <a href="{{ route('login') }}" class="block py-2 px-3 text-heading rounded hover:bg-neutral-tertiary md:hover:bg-transparent md:border-0 md:hover:text-fg-brand md:p-0 md:dark:hover:bg-transparent">Iniciar sesión</a>
+            <x-dropdown-link href="{{ route('login') }}">
+              {{ __('Login') }}
+            </x-dropdown-link>            
           </li>
           @endif
         @endauth          
