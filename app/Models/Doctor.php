@@ -19,6 +19,19 @@ class Doctor extends Model
         'plan'
     ];
 
+    //(Cuando no tenga sedes), el sistema cree una sede técnica.
+    public function createVirtualAddress()
+    {
+        return $this->addresses()->create([
+            'name'      => 'Atención Virtual / Telemedicina',
+            'address'   => 'Plataforma Online',
+            'type'      => 'virtual',
+            'phone'     => $this->phone ?? 'N/A', // Usa el del doctor si existe
+            'city_id'   => 2, // ID de una ciudad "Global" o la principal bogotá tabla cities
+            'status'    => true,
+        ]);
+    }
+
     // Relación con el usuario (para nombre y foto)
     public function user()
     {
@@ -45,6 +58,16 @@ class Doctor extends Model
             $name = $doctor->user ? $doctor->user->name : 'doctor';
             $doctor->slug = Str::slug($name) . '-' . Str::lower(Str::random(5));
         });
+
+        static::updated(function ($doctor) {
+            // Verificamos si el teléfono fue modificado
+            if ($doctor->wasChanged('phone')) {
+                // Buscamos la sede virtual por su nombre o dirección fija
+                $doctor->addresses()
+                    ->where('address', 'Plataforma Online')
+                    ->update(['phone' => $doctor->phone]);
+            }
+        });
     }
 
     // Relación con especialidad
@@ -53,7 +76,7 @@ class Doctor extends Model
         return $this->belongsToMany(Specialty::class, 'doctor_specialty')->withTimestamps();
     }
 
-    // Relación con sedes/consultorios
+    // También asegúrate de tener la relación con sedes:
     public function addresses()
     {
         return $this->hasMany(Address::class);
@@ -83,11 +106,6 @@ class Doctor extends Model
     public function getAverageRatingAttribute()
     {
         return round($this->reviews()->avg('rating'), 1) ?? 0;
-    }
-
-    public function services() 
-    {
-        return $this->hasMany(Service::class);
     }
 
     public function appointments()

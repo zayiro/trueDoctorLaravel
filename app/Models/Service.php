@@ -6,8 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Service extends Model
 {
+    protected $touches = ['addresses'];
+    
     protected $fillable = [
-        'doctor_id', 
         'name', 
         'price', 
         'type', 
@@ -17,6 +18,6 @@ class Service extends Model
 
     public function addresses() 
     {
-        return $this->belongsToMany(Address::class);
+        return $this->belongsToMany(Address::class, 'address_service');
     }
 }

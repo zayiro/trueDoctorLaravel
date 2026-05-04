@@ -20,13 +20,18 @@ class PublicProfileController extends Controller
 {
     public function show(Doctor $doctor)
     {
+        if (!$doctor) {
+            return redirect('/')
+                ->with('error', 'El perfil del doctor solicitado no existe.');
+        }
+
         $doctor->load([
             'specialties', 
             'services' => fn($q) => $q->where('active', true),
             'addresses' => fn($q) => $q->where('status', true)->with('city')
         ]);
 
-        return view('public.doctor-profile', compact('doctor'));
+        return view('public.public-profile', compact('doctor'));
     }
 
     public function getAvailability(Doctor $doctor, Request $request)
@@ -61,7 +66,6 @@ class PublicProfileController extends Controller
         ));
     }
 
-    //Al momento de procesar la reserva final (book), llamamos al servicio:
     public function book(Request $request, AppointmentService $appointmentService)
     {
         // Validar que los datos lleguen correctamente

@@ -19,7 +19,7 @@ $breadcrumbs = [
                 <div>
                     <!-- Nombre -->
                     <label for="name" class="block text-sm font-semibold text-gray-700 mb-1">Nombre</label>
-                    <input type="text" name="name" id="name"
+                    <input type="text" name="name" id="name" placeholder="Ej: Edificio de colores - Consultorio 112"
                         class="block w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200" 
                         required>                    
                 </div>

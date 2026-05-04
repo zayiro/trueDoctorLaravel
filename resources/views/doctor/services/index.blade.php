@@ -26,16 +26,9 @@ $breadcrumbs = [
         <div class="flex justify-between items-center mb-8">
             <a class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition flex items-center gap-2" href="{{ route('doctor.services.create') }}">
                 <i class="fa-regular fa-map-location"></i>
-                Nevo servicio
+                Nuevo servicio
             </a>
         </div>
-
-        <!-- Alertas de éxito/error -->
-        @if(session('success'))
-            <div class="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-2xl">
-                {{ session('success') }}
-            </div>
-        @endif
 
         <div class="bg-white shadow-xl rounded-3xl overflow-hidden border border-gray-100">
             <table class="w-full text-left border-collapse">
@@ -59,11 +52,11 @@ $breadcrumbs = [
                         <td class="px-6 py-4">
                             @if($service->type === 'virtual')
                                 <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-bold uppercase">
-                                    💻 Telemedicina
+                                    Telemedicina
                                 </span>
                             @else
                                 <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold uppercase">
-                                    🏥 Presencial
+                                    Presencial
                                 </span>
                             @endif
                         </td>
@@ -98,7 +91,12 @@ $breadcrumbs = [
                                 <a href="{{ route('doctor.services.edit', $service) }}" class="text-gray-400 hover:text-blue-600 transition">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                 </a>
-                                <form action="{{ route('doctor.services.toggle', $service->id) }}" method="POST">
+                                <form action="{{ route('doctor.services.destroy', $service) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar este servicio?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="p-2 text-gray-400 hover:text-gray-700 transition">Eliminar</button>                            
+                                </form>
+                                <form action="{{ route('doctor.services.toggle', $service) }}" method="POST">
                                     @csrf
                                     @method('PATCH')
                                     

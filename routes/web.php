@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\PublicLanding;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\AddressController;
@@ -63,12 +64,6 @@ Route::post('/register-clinic', [RegisterClinicController::class, 'store'])->nam
 
 Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
 
-// Ruta para ver el perfil y disponibilidad
-Route::get('/doctor/{doctor:slug}', [PublicProfileController::class, 'show'])->name('doctor.public.profile');
-
-// Ruta API para que FullCalendar cargue los huecos libres
-Route::get('/api/doctor/{doctor}/availability', [PublicProfileController::class, 'getAvailability'])->name('api.doctor.availability');
-
 // En web.php
 Route::post('/upgrade-plan', function() {
     Auth::user()->doctor->update(['plan' => 'avanzado']);
@@ -104,13 +99,14 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     
     // Ver el listado y formulario de horarios de una sede
     Route::get('/doctor/addresses/{address}/schedules', [ScheduleController::class, 'index'])->name('doctor.schedules.index');
+    Route::get('/doctor/addresses/{address}/schedules/edit', [ScheduleController::class, 'edit'])->name('doctor.schedules.edit');
+    Route::put('/doctor/addresses/{address}/schedules/update', [ScheduleController::class, 'update'])->name('doctor.schedules.update');
     
     // Guardar el horario
     Route::post('/doctor/schedules', [ScheduleController::class, 'store'])->name('doctor.schedules.store');
     Route::delete('/doctor/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('doctor.schedules.destroy');
-
     Route::get('/doctor/appointments', [DoctorAppointmentController::class, 'index'])->name('doctor.appointments.index');
-
+    Route::patch('/doctor/addresses/{address}/status', [AddressController::class, 'toggleStatus'])->name('doctor.addresses.status.toggle');
 });
 
 Route::get('/appointment/patient-data', [PublicProfileController::class, 'patientStep'])->name('appointments.patient');
@@ -136,6 +132,15 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('/campaigns/create', \App\Livewire\Campaigns\CreateCampaign::class)->name('campaigns.create');
 });
 
-use App\Livewire\PublicLanding;
 
 Route::get('/{doctor_slug}/{campaign_slug}.html', PublicLanding::class)->name('landing.public');
+
+// Ruta para ver el perfil y disponibilidad
+Route::get('/{doctor:slug}', [PublicProfileController::class, 'show'])->name('doctor.public.profile');
+
+// Ruta API para que FullCalendar cargue los huecos libres
+Route::get('/api/{doctor}/availability', [PublicProfileController::class, 'getAvailability'])
+    ->name('api.doctor.availability')
+    ->missing(function () {
+    return redirect()->route('home'); // Redirige al inicio si no existe
+});

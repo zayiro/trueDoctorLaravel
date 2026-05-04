@@ -14,11 +14,13 @@ return new class extends Migration
         Schema::create('addresses', function (Blueprint $table) {
             $table->id();
             $table->foreignId('doctor_id')->constrained()->onDelete('cascade');
-            $table->string('name'); // Ej: "Consultorio Centro", "Clínica Norte"
+            $table->string('name');
             $table->string('address');
-            $table->string('phone');
+            $table->string('type')->default('physical');
+            $table->string('phone')->nullable();
             $table->foreignId('city_id')->constrained()->onDelete('cascade');
             $table->boolean('status')->default(true);
+            $table->softDeletes();
             $table->timestamps();
         });
     }

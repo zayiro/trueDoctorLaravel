@@ -25,7 +25,23 @@ class AddressController extends Controller
             ->withCount('schedules')
             ->get();
 
+        //dd($addresses);
+
         return view('doctor.addresses.index', compact('addresses'));
+    }
+
+    public function toggleStatus(Address $address)
+    {
+        $this->authorizeOwner($address);
+
+        // Cambiamos el booleano al valor opuesto
+        $address->update([
+            'status' => !$address->status
+        ]);
+
+        $textoStatus = $address->status ? 'activada' : 'desactivada';
+
+        return back()->with('success', "La sede ha sido {$textoStatus} correctamente.");
     }
 
     public function create()
@@ -70,6 +86,9 @@ class AddressController extends Controller
         // Asignar el doctor_id automáticamente
         $validated['doctor_id'] = auth()->user()->doctor->id;
 
+        //asignamos el tipo physical porque ya existe una virtual y debe ser solo una las demas physical
+        $validated['type'] = 'physical';
+
         // 3. Crear el registro
         Address::create($validated);
 
@@ -81,7 +100,7 @@ class AddressController extends Controller
      * Actualiza los datos de una sede específica.
      */
     public function update(Request $request, Address $address)
-    {
+    {        
         // 1. Validar seguridad: ¿El consultorio es de este doctor?
         if ($address->doctor_id !== Auth::user()->doctor->id) {
             abort(403, 'No tienes permiso para editar este consultorio.');
@@ -92,6 +111,7 @@ class AddressController extends Controller
             'name' => 'required|string',
             'address' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
+            'city_id'  => 'required|exists:cities,id',
         ]);
 
         // 3. Actualizar
@@ -103,12 +123,14 @@ class AddressController extends Controller
 
     public function edit(Address $address)
     {
+        $cities = City::all();
+
         // Seguridad: verificar que el consultorio sea del doctor logueado
         if ($address->doctor_id !== Auth::user()->doctor->id) {
             abort(403);
         }
 
-        return view('doctor.addresses.edit', compact('address'));
+        return view('doctor.addresses.edit', compact('address', 'cities'));
     }
 
     /**
@@ -117,7 +139,19 @@ class AddressController extends Controller
     public function destroy(Address $address)
     {
         $this->authorizeOwner($address);
-        
+
+        // 1. Buscamos si existen citas confirmadas o pendientes para esta sede
+        $hasAppointments = $address->appointments()
+            ->whereIn('status', ['confirmed', 'pending'])
+            ->exists();
+
+        if ($hasAppointments) {
+            return back()->withErrors([
+                'error' => 'No puedes eliminar esta sede porque tiene citas agendadas. Debes cancelarlas o reprogramarlas primero.'
+            ]);
+        }
+
+        // 2. Si no hay citas, procedemos a eliminar                
         $address->delete();
 
         return back()->with('success', 'Sede eliminada correctamente.');
@@ -125,11 +159,20 @@ class AddressController extends Controller
 
     /**
      * Método privado para seguridad de registros.
-     */
+    */    
     private function authorizeOwner(Address $address)
     {
-        if ($address->doctor_id !== Auth::user()->doctor->id) {
-            abort(403, 'No tienes permiso para modificar esta sede.');
+        // Verificamos que la sede pertenezca al doctor que está logueado
+        if ($address->doctor_id !== auth()->user()->doctor->id) {
+            abort(403, 'No tienes permiso para eliminar esta sede.');
+        }
+
+        // Evitar borrar la sede virtual si tiene servicios virtuales activos
+        if ($address->address === 'Plataforma Online') {
+            $hasVirtualServices = $address->services()->where('type', 'virtual')->exists();
+            if ($hasVirtualServices) {
+                abort(403, 'No puedes eliminar la sede virtual mientras tengas servicios online activos.');
+            }
         }
     }
 

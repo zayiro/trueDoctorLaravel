@@ -9,8 +9,7 @@ use Illuminate\Http\Request;
 class ScheduleController extends Controller
 {
     public function index(Address $address)
-    {
-        // Seguridad: ¿Es del doctor logueado?
+    {        
         if ($address->doctor_id !== auth()->user()->doctor->id) {
             abort(403);
         }
@@ -18,6 +17,35 @@ class ScheduleController extends Controller
         $schedules = $address->schedules()->orderBy('day')->get();
 
         return view('doctor.schedules.index', compact('address', 'schedules'));
+    }
+
+    public function edit(Address $address)
+    {
+        // Cargamos los horarios de esta dirección específica
+        $schedules = $address->schedules()->orderBy('day_of_week')->get();
+        
+        return view('doctor.schedules.edit', compact('address', 'schedules'));
+    }
+
+    public function update(Request $request, Address $address)
+    {
+        $request->validate([
+            'schedules.*.start_time' => 'required',
+            'schedules.*.end_time' => 'required',
+        ]);
+
+        foreach ($request->schedules as $id => $data) {
+            Schedule::where('id', $id)
+                ->where('address_id', $address->id) // Validación de seguridad
+                ->update([
+                    'start_time' => $data['start_time'],
+                    'end_time'   => $data['end_time'],
+                    'is_active'  => isset($data['is_active']),
+                ]);
+        }
+
+        return redirect()->route('doctor.addresses.index')
+            ->with('success', 'Horarios de la sede actualizados.');
     }
 
     public function store(Request $request)

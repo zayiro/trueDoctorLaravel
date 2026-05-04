@@ -26,18 +26,21 @@ $breadcrumbs = [
                         </svg>
                     </div>
                     <div>
-                        <h4 class="font-bold text-amber-900">No tienes sedes físicas registradas</h4>
-                        <p class="text-sm text-amber-700">Para crear servicios presenciales, primero debes registrar un consultorio.</p>
+                        <h4 class="font-bold text-amber-900"><strong>¡Atención!</strong> No tienes sedes físicas registradas</h4>
+                        <p class="text-sm text-amber-700">Para ofrecer servicios presenciales, primero debes registrar un consultorio.</p>
+                        <p class="text-amber-900 mt-2">
+                            Si solo atiendes <strong>online</strong>: Crea un nuevo servicio y selecciona el tipo <span class="font-bold">"Virtual"</span>.
+                        </p>
                     </div>
                 </div>
                 <a href="{{ route('doctor.addresses.create') }}" class="whitespace-nowrap bg-amber-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-amber-700 transition">
-                    + Crear Sede ahora
+                    Registra un consultorio aquí
                 </a>
             </div>
-        @endif
+        @endif     
 
         <!-- Contenedor con Alpine.js -->
-        <div x-data="{ type: 'presencial' }" class="bg-white shadow-xl rounded-3xl overflow-hidden border border-gray-100">
+        <div x-data="{ type: 'physical' }" class="bg-white shadow-xl rounded-3xl overflow-hidden border border-gray-100">
             <form action="{{ route('doctor.services.store') }}" method="POST" class="p-8 space-y-6">
                 @csrf
 
@@ -71,38 +74,49 @@ $breadcrumbs = [
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-2">Modalidad</label>
                         <select name="type" x-model="type" class="w-full rounded-2xl border-gray-300 py-3">
-                            <option value="presencial">Presencial (En Sede)</option>
+                            @if($hasAddresses)
+                                <option value="physical" {{ old('type') == 'physical' ? 'selected' : '' }}>
+                                    Presencial (En Sede)
+                                </option>
+                            @endif
                             <option value="virtual">Virtual (Telemedicina)</option>
                         </select>
+                        @if(!$hasAddresses)
+                            <p class="text-xs text-amber-600 mt-2">
+                                ⚠️ Solo puedes crear servicios virtuales porque no tienes sedes físicas registradas.
+                            </p>
+                        @endif
                     </div>
                 </div>
 
                 <!-- Selección de Sedes (Dinámica) -->
-                <div x-show="type === 'presencial'" x-transition:enter="transition ease-out duration-300"
-                    class="p-6 bg-blue-50 rounded-3xl border border-blue-100">
-                    <label class="block text-sm font-bold text-blue-900 mb-4">¿En qué sedes ofreces este servicio?</label>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        @foreach($addresses as $address)
-                            <label class="flex items-center p-3 bg-white rounded-xl border border-blue-200 cursor-pointer hover:bg-blue-100 transition">
-                                <input type="checkbox" name="address_ids[]" value="{{ $address->id }}" class="rounded text-blue-600 focus:ring-blue-500">
-                                <div class="ml-3">
-                                    <span class="block text-sm font-bold text-gray-800">{{ $address->name }}</span>
-                                    <span class="block text-xs text-gray-500">{{ $address->address }}</span>
-                                </div>
-                            </label>
-                        @endforeach
+                @if($hasAddresses)
+                    <div x-show="type === 'physical'" x-transition:enter="transition ease-out duration-300"
+                        class="p-6 bg-blue-50 rounded-3xl border border-blue-100">
+                        <label class="block text-sm font-bold text-blue-900 mb-4">¿En qué sedes ofreces este servicio?</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            @foreach($addresses as $address)
+                                <label class="flex items-center p-3 bg-white rounded-xl border border-blue-200 cursor-pointer hover:bg-blue-100 transition">
+                                    <input type="checkbox" name="address_ids[]" value="{{ $address->id }}" class="rounded text-blue-600 focus:ring-blue-500">
+                                    <div class="ml-3">
+                                        <span class="block text-sm font-bold text-gray-800">{{ $address->name }}</span>
+                                        <span class="block text-xs text-gray-500">{{ $address->address }}</span>
+                                    </div>
+                                </label>
+                            @endforeach
+                        </div>
+                        @error('address_ids')
+                            <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
                     </div>
-                    @error('address_ids')
-                        <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
+                @endif
 
                 <div x-show="type === 'virtual'" 
                      x-transition:enter="transition ease-out duration-300"
                      class="p-4 bg-purple-50 rounded-2xl border border-purple-100 flex items-center gap-3">
                     <span class="text-2xl">✨</span>
                     <p class="text-sm text-purple-800 font-medium">
-                        Este servicio se realizará por videollamada. No requiere vincularse a una dirección física.<br />
+                        Este servicio se realizará por videollamada.<br />
                         El paciente recibira un link para unirse a la videollamada cuando confirme la reservación.
                     </p>
                 </div>

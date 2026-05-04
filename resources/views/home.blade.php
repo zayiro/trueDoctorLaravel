@@ -18,7 +18,7 @@
                     <div class="flex-1">
                         <label class="block text-[10px] font-black text-slate-400 uppercase ml-3 mb-1">¿Qué buscas?</label>
                         <select name="specialty" required class="w-full border-0 focus:ring-0 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 px-4">
-                            <option value="">Todas las especialidades</option>
+                            <option value="">Cúal especialidad buscas?</option>
                             @foreach($specialties as $specialty)
                                 <option value="{{ $specialty->slug }}">{{ $specialty->name }}</option>
                             @endforeach
@@ -28,7 +28,7 @@
                     <!-- Selector de Ciudad -->
                     <div class="flex-1 border-t md:border-t-0 md:border-l border-slate-100 md:pl-4">
                         <label class="block text-[10px] font-black text-slate-400 uppercase ml-3 mb-1">¿Dónde?</label>
-                        <select name="city" required class="w-full border-0 focus:ring-0 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 px-4">
+                        <select name="city" class="w-full border-0 focus:ring-0 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 px-4">
                             <option value="">Todas las ciudades</option>
                             @foreach($cities as $city)
                                 <option value="{{ $city->slug }}">{{ $city->name }}</option>

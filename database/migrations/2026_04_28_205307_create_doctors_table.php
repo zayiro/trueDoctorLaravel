@@ -24,6 +24,7 @@ return new class extends Migration
             $table->decimal('rating', 3, 2)->default(0);
             $table->integer('reviews_count')->default(0);
             $table->string('plan')->default('basico'); // basico o avanzado
+            $table->boolean('active')->default(true);
             $table->timestamps();
         });
     }

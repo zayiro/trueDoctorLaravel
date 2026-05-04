@@ -54,27 +54,6 @@ class DatabaseSeeder extends Seeder
             $specialties->where('name', 'Medicina General')->first()->id,
         ]);
 
-        $city = City::where('slug', 'bogota')->first();
-
-        $address = Address::create([
-            'doctor_id' => $doctor->id,
-            'name' => 'Consultorio Central',
-            'address' => 'Calle Falsa 123, Ciudad Médica',
-            'phone' => '3026433874',
-            'city_id' => $city->id,
-        ]);
-
-        // Crear horario de Lunes a Viernes para esta dirección
-        for ($i = 1; $i <= 5; $i++) {
-            Schedule::create([
-                'address_id' => $address->id,
-                'day' => $i,
-                'start_time' => '08:00:00',
-                'end_time' => '17:00:00',
-                'duration' => 30,
-            ]);
-        }
-
         // 3. Crear Paciente
         $patientUser = User::factory()->patient()->create([
             'name' => 'John Doe patient',

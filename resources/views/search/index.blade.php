@@ -5,7 +5,7 @@
             <div class="flex-1 min-w-[200px]">
                 <label class="block text-xs font-bold text-gray-400 uppercase">Especialidad</label>
                 <select name="specialty" class="w-full border-0 focus:ring-0 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 px-4">
-                    <option value="">Todas las especialidades</option>
+                    <option value="">Cúal especialidad buscas?</option>
                     @foreach($specialties as $s)
                         <option value="{{ $s->slug }}" {{ request('specialty') == $s->slug ? 'selected' : '' }}>
                             {{ $s->name }}
@@ -16,7 +16,7 @@
 
             <div class="flex-1 min-w-[200px] border-l pl-4">
                 <label class="block text-[10px] font-black text-slate-400 uppercase ml-3 mb-1">¿Dónde?</label>
-                <select name="city" required class="w-full border-0 focus:ring-0 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 px-4">
+                <select name="city" class="w-full border-0 focus:ring-0 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 px-4">
                     <option value="">Todas las ciudades</option>
                     @foreach($cities as $city)
                         <option value="{{ $city->slug }}" {{ request('city') == $city->slug ? 'selected' : '' }}>{{ $city->name }}</option>
@@ -90,15 +90,34 @@
                                 </div>
                                 
                                 <div class="space-y-3">
+                                    <div class="mt-3 font-bold">Consultorios</div>
                                     @foreach($doctor->addresses as $address)
                                         <div class="flex items-start gap-2 text-sm text-slate-600">
                                             <svg class="w-4 h-4 mt-0.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
-                                            <span>{{ $address->address }}, {{ $address->city->name }}</span>
+                                            <span>{{ $address->address }} {{ $address->address == 'Plataforma Online' ? '' : ',' . $address->city->name }}</span>
                                         </div>
                                     @endforeach
                                 </div>
-                            </div>
 
+                                <div class="space-y-3">
+                                    <div class="mt-3 font-bold">Servicios</div>
+                                    <div class="flex flex-wrap gap-2 mt-1">
+                                        @if($address->services)
+                                            @foreach($address->services->take(3) as $service)
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                                    {{ $service->name }}
+                                                </span>
+                                            @endforeach
+                                            @if($address->services->count() > 3)
+                                                <span class="text-xs text-gray-400 pt-0.5">+{{ $address->services->count() - 3 }} más</span>
+                                            @endif
+                                        @else
+                                            <span class="text-xs text-gray-400 italic">No tiene servicios registrados</span>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <!-- Acciones -->
                             <div class="flex flex-col justify-center gap-3 min-w-[180px]">
                                 <a href="{{ route('doctor.public.profile', $doctor) }}" 

@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::create('services', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('doctor_id')->constrained()->onDelete('cascade');
             $table->string('name'); // Ej: "Consulta de seguimiento"
             $table->decimal('price', 10, 2);
             $table->enum('type', ['presencial', 'virtual'])->default('presencial');

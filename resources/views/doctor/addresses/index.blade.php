@@ -35,11 +35,11 @@ $breadcrumbs = [
         <!-- Botón para abrir formulario/modal -->
         <a class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition flex items-center gap-2" href="{{ route('doctor.addresses.create') }}">
             <i class="fa-regular fa-map-location"></i>
-            Nevo consultorio
+            Nuevo consultorio
         </a>        
     </div>
     @else
-        <div class="text-sm text-amber-600 font-medium italic">
+        <div class="text-sm text-amber-600 font-medium italic mb-4">
             Límite alcanzado. ¡Mejora a Plan Avanzado!
         </div>
     @endif
@@ -56,24 +56,62 @@ $breadcrumbs = [
                     </div>
                     <div>
                         <h3 class="font-bold text-gray-900 text-lg">{{ $address->name }}</h3>
-                        <p class="text-gray-500">{{ $address->address }}, {{ $address->city->name }}</p>
+                        <p class="text-gray-500">{{ $address->address }} {{ $address->address === 'Plataforma Online' ? '' : ', ' . $address->city->name }}</p>
                         <p class="text-gray-500">{{ $address->phone }}</p>
                     </div>
                 </div>
                 <div class="flex gap-2">
-                    @if(!$address->status)
-                        <span class="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full font-bold">
-                            Inactivo por límite de plan
-                        </span>
-                    @else
-                        <a href="{{ route('doctor.schedules.index', $address->id) }}" class="p-2 text-gray-400 hover:text-gray-700 transition">
-                            Configurar horarios y duración
-                        </a>
+                     <a href="{{ route('doctor.schedules.index', $address->id) }}" class="p-2 text-gray-400 hover:text-gray-700 transition">
+                        <div>Configurar horarios y duración</div>
+                        <div>
+                            @if($address->schedules_count > 0)
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <svg class="-ml-0.5 mr-1.5 h-2 w-2 text-green-400" fill="currentColor" viewBox="0 0 8 8">
+                                        <circle cx="4" cy="4" r="3" />
+                                    </svg>
+                                    Configurado
+                                </span>
+                            @else
+                                <span class="inline-flex items-center rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    <svg class="-ml-0.5 mr-1.5 h-2 w-2 text-yellow-400" fill="currentColor" viewBox="0 0 8 8">
+                                        <circle cx="4" cy="4" r="3" />
+                                    </svg>
+                                    Pendiente
+                                </span>
+                            @endif
+                        </div>
+                    </a>
+                    
+                    @if ($address->address !== 'Plataforma Online')
                         <a class="p-2 text-gray-400 hover:text-gray-700 transition" href="{{ route('doctor.addresses.edit', $address->id) }}">Editar</a>
                         <form action="{{ route('doctor.addresses.destroy', $address->id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar este consultorio?');">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="p-2 text-gray-400 hover:text-gray-700 transition">Eliminar</button>                            
+                        </form>                    
+                        <form action="{{ route('doctor.addresses.status.toggle', $address) }}" method="POST" class="inline">
+                            @csrf
+                            @method('PATCH')
+                            
+                            <button type="submit" 
+                                class="inline-flex items-center px-3 py-1 mt-1 border text-sm font-medium rounded-full shadow-sm 
+                                {{ $address->status 
+                                    ? 'border-red-300 text-red-700 bg-white hover:bg-red-50' 
+                                    : 'border-green-300 text-green-700 bg-white hover:bg-green-50' 
+                                }}">
+                                
+                                @if($address->status)
+                                    <svg class="mr-2 h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Desactivar
+                                @else
+                                    <svg class="mr-2 h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Activar
+                                @endif
+                            </button>
                         </form>
                     @endif
                 </div>
