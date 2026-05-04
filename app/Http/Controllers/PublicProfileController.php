@@ -27,9 +27,15 @@ class PublicProfileController extends Controller
 
         $doctor->load([
             'specialties', 
-            'services' => fn($q) => $q->where('active', true),
-            'addresses' => fn($q) => $q->where('status', true)->with('city')
+            'addresses' => function($q) {
+                $q->where('status', true)
+                ->with(['city', 'services' => function($query) {
+                    $query->where('active', true);
+                }]);
+            }
         ]);
+
+        //dd($doctor);
 
         return view('public.public-profile', compact('doctor'));
     }

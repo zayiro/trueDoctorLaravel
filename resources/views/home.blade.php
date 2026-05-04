@@ -12,12 +12,12 @@
 
             <!-- Buscador Flotante -->
             <div class="max-w-4xl mx-auto">
-                <form action="{{ route('search') }}" method="GET" class="bg-white p-4 rounded-3xl shadow-2xl border border-slate-100 flex flex-col md:flex-row gap-4">
+                <form wire:submit.prevent="{{ route('search') }}" action="{{ route('search') }}" method="GET" class="bg-white p-4 rounded-3xl shadow-2xl border border-slate-100 flex flex-col md:flex-row gap-4">
                     
                     <!-- Selector de Especialidad -->
                     <div class="flex-1">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase ml-3 mb-1">¿Qué buscas?</label>
-                        <select name="specialty" required class="w-full border-0 focus:ring-0 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 px-4">
+                        <label for="specialty" class="block text-[10px] font-black text-slate-400 uppercase ml-3 mb-1">¿Qué buscas?</label>
+                        <select name="specialty" id="specialty" required class="w-full border-0 focus:ring-0 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 px-4">
                             <option value="">Cúal especialidad buscas?</option>
                             @foreach($specialties as $specialty)
                                 <option value="{{ $specialty->slug }}">{{ $specialty->name }}</option>
@@ -27,8 +27,8 @@
 
                     <!-- Selector de Ciudad -->
                     <div class="flex-1 border-t md:border-t-0 md:border-l border-slate-100 md:pl-4">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase ml-3 mb-1">¿Dónde?</label>
-                        <select name="city" class="w-full border-0 focus:ring-0 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 px-4">
+                        <label for="city" class="block text-[10px] font-black text-slate-400 uppercase ml-3 mb-1">¿Dónde?</label>
+                        <select name="city" id="city" class="w-full border-0 focus:ring-0 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 px-4">
                             <option value="">Todas las ciudades</option>
                             @foreach($cities as $city)
                                 <option value="{{ $city->slug }}">{{ $city->name }}</option>
@@ -37,10 +37,14 @@
                     </div>
 
                     <!-- Botón Buscar -->
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-black px-10 py-4 rounded-2xl transition shadow-lg shadow-blue-200 flex items-center justify-center gap-2">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-black px-10 py-4 rounded-2xl transition shadow-lg shadow-blue-200 flex items-center justify-center gap-2" wire:loading.attr="disabled">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         Buscar
                     </button>
+                    <!-- Spinner: solo visible cuando Livewire está procesando -->
+                    <div wire:loading>
+                        <i class="fa fa-spinner fa-spin"></i> Buscando...
+                    </div>
                 </form>
             </div>
         </div>

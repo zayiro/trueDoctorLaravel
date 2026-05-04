@@ -134,7 +134,6 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
 
 
 Route::get('/{doctor_slug}/{campaign_slug}.html', PublicLanding::class)->name('landing.public');
-
 // Ruta para ver el perfil y disponibilidad
 Route::get('/{doctor:slug}', [PublicProfileController::class, 'show'])->name('doctor.public.profile');
 
