@@ -4,39 +4,54 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Plan;
 
 class PlanController extends Controller
 {
     public function update(Request $request)
     {
-        $request->validate(['plan' => 'required|in:basico,avanzado']);
+        // 1. Validar que el valor enviado coincida con un plan real
+        $request->validate([
+            'plan' => 'required|exists:plans,plan'
+        ]);
+
         $doctor = auth()->user()->doctor;
+        
+        // 2. Buscar el nuevo plan por el campo 'plan'
+        $nuevoPlan = Plan::where('plan', $request->plan)->first();
 
-        // CASO 1: Lógica de Downgrade (Avanzado -> Basico)
-        if ($request->plan === 'basico' && $doctor->plan === 'avanzado') {
-            
-            $addresses = $doctor->addresses()->orderBy('created_at', 'asc')->get();
+        // 3. Ajustar estados de Sedes y Servicios según los límites
+        $addresses = $doctor->addresses()->orderBy('created_at', 'asc')->get();
 
-            if ($addresses->count() > 2) {
-                // 1. Activar los 2 primeros (por fecha de creación)
-                $doctor->addresses()
-                    ->whereIn('id', $addresses->take(2)->pluck('id'))
-                    ->update(['status' => true]);
+        foreach ($addresses as $index => $address) {
+            // ¿Esta sede está dentro del límite del nuevo plan?
+            $sedeActiva = ($index < $nuevoPlan->max_addresses);
+            $address->update(['status' => $sedeActiva]);
 
-                // 2. Inactivar el resto (del tercero en adelante)
-                $doctor->addresses()
-                    ->whereIn('id', $addresses->skip(2)->pluck('id'))
-                    ->update(['status' => false]);
+            // Si la sede queda activa, ajustamos sus servicios internos
+            if ($sedeActiva) {
+                $services = $address->services()->orderBy('created_at', 'asc')->get();
+                foreach ($services as $sIndex => $service) {
+                    $service->update([
+                        'active' => ($sIndex < $nuevoPlan->max_services_per_address)
+                    ]);
+                }
             }
         }
 
-        // CASO 2: SUBIR DE PLAN (Upgrade)
-        if ($request->plan === 'avanzado') {
-            $doctor->addresses()->update(['status' => true]);
-        }
+        // 4. Sincronizar la tabla de configuraciones
+        $doctor->settings()->updateOrCreate(
+            ['doctor_id' => $doctor->id],
+            [
+                'plan_id' => $nuevoPlan->id,
+                'max_addresses' => $nuevoPlan->max_addresses,
+                'max_services_per_address' => $nuevoPlan->max_services_per_address
+            ]
+        );
 
-        $doctor->update(['plan' => $request->plan]);
+        // 5. Actualizar el campo descriptivo en el modelo Doctor
+        $doctor->update(['plan' => $nuevoPlan->plan]);
 
-        return back()->with('success', 'Plan actualizado. Se han ajustado tus consultorios activos.');
+        return back()->with('success', "Plan {$nuevoPlan->name} actualizado con éxito.");
     }
 }

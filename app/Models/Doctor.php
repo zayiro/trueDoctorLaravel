@@ -15,8 +15,7 @@ class Doctor extends Model
         'bio',
         'rating',
         'reviews_count',
-        'identification',
-        'plan'
+        'identification'
     ];
 
     //(Cuando no tenga sedes), el sistema cree una sede técnica.
@@ -68,6 +67,11 @@ class Doctor extends Model
                     ->update(['phone' => $doctor->phone]);
             }
         });
+    }
+
+    public function settings()
+    {
+        return $this->hasOne(DoctorSetting::class);
     }
 
     // Relación con especialidad

@@ -3,15 +3,19 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Plan;
 
 class ProfileDoctorController extends Controller
 {
     public function edit()
     {
-        $user = auth()->user();
-        // Cargamos la relación del doctor o clínica
-        $doctor = $user->doctor; 
+        // Traemos todos los planes disponibles
+        $plans = Plan::orderBy('price', 'asc')->get();
         
-        return view('doctor.profile.edit', compact('user', 'doctor'));
+        // Obtenemos el doctor actual y sus configuraciones
+        $doctor = auth()->user()->doctor;
+        $doctor->load('settings.plan');
+        
+        return view('doctor.profile.edit', compact('doctor', 'plans'));
     }
 }

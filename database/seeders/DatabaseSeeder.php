@@ -4,11 +4,8 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use App\Models\Specialty;
-use App\Models\City;
 use App\Models\Doctor;
 use App\Models\Patient;
-use App\Models\Address;
-use App\Models\Schedule;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -24,6 +21,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            PlanSeeder::class,
             RoleSeeder::class,
             CitySeeder::class,
             SpecialtySeeder::class
@@ -44,9 +42,12 @@ class DatabaseSeeder extends Seeder
             'user_id' => $doctorUser->id,
             'phone' => '3026433877',
             'identification' => '16944752',
-            'plan' => 'basico',            
             'bio' => 'Experto en diagnósticos complejos y difíciles.',
             'slug' => Str::slug($doctorUser->name) . '-' . Str::lower(Str::random(5)),
+        ]);
+
+        $doctor->settings()->create([
+            'plan_id' => '1',
         ]);
 
         $doctor->specialties()->attach([

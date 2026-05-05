@@ -16,7 +16,6 @@ return new class extends Migration
             $table->foreignId('patient_id')->constrained();
             $table->foreignId('doctor_id')->constrained();
             $table->foreignId('service_id')->constrained();
-            // Hacemos que la dirección sea opcional (para citas virtuales)
             $table->foreignId('address_id')->nullable()->constrained(); // Dónde será la cita
             $table->date('date');
             $table->time('start_time');

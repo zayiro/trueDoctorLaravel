@@ -35,8 +35,8 @@ class PublicProfileController extends Controller
             }
         ]);
 
-        //dd($doctor);
-
+        session(['current_doctor_id' => $doctor->id]);   
+        
         return view('public.public-profile', compact('doctor'));
     }
 
@@ -132,55 +132,5 @@ class PublicProfileController extends Controller
 
         $appointment->load(['doctor.user', 'service', 'address.city']);
         return view('public.appointments.success', compact('appointment'));
-    }
-
-    public function processPatient(Request $request)
-    {
-        $rules = [
-            // Identificación: solo números, entre 7 y 10 dígitos (estándar cédula)
-            'identification' => 'required|numeric|digits_between:7,12|unique:patients,identification,' . (auth()->user()?->patient?->id ?? 'NULL'),
-            
-            // Teléfono: formato numérico de 10 dígitos (celular estándar)
-            'phone' => 'required|numeric|digits:10',
-            
-            'notes' => 'required|string|min:10|max:500',
-        ];
-
-        if (Auth::guest()) {
-            $rules['name'] = 'required|string|min:3|max:100';
-            $rules['email'] = 'required|email|unique:users,email';
-        }
-
-        $request->validate($rules, [
-            'identification.digits_between' => 'La identificación debe tener entre 7 y 12 números.',
-            'identification.numeric' => 'La identificación solo debe contener números.',
-            'phone.digits' => 'El número de teléfono debe tener exactamente 10 dígitos.',
-            'notes.min' => 'Por favor, describe un poco más el motivo de tu consulta.',
-        ]);
-        
-        if (Auth::guest()) {
-            // 1. Crear el Usuario
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->identification),
-            ]);
-            $user->assignRole('patient');
-
-            // 2. Crear el Perfil de Paciente vinculado
-            $user->patient()->create([
-                'identification' => $request->identification,
-                'phone' => $request->phone,
-            ]);
-
-            Auth::login($user);
-        }
-
-        return redirect()->route('appointments.preview', [
-            'service' => $request->service_id,
-            'address' => $request->address_id,
-            'datetime' => $request->datetime,
-            'notes' => $request->notes,
-        ]);
-    }
+    }    
 }

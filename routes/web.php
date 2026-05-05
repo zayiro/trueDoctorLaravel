@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Http\Request;
 use App\Livewire\PublicLanding;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SearchController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\PublicProfileController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\DoctorAppointmentController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\AppointmentController;
 
 //Route::redirect('/', '/admin');
 
@@ -65,21 +67,21 @@ Route::post('/register-clinic', [RegisterClinicController::class, 'store'])->nam
 Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
 
 // En web.php
+/*
 Route::post('/upgrade-plan', function() {
     Auth::user()->doctor->update(['plan' => 'avanzado']);
     return back()->with('success', '¡Ahora eres un Doctor Avanzado!');
-})->name('plan.upgrade');
+})->name('plan.upgrade');*/
 
 // Rutas Públicas (Pacientes)
 Route::get('/search', [SearchController::class, 'index'])->name('search');
 
 // Rutas Privadas (Doctores)
-Route::middleware(['auth', 'role:doctor'])->group(function () {
-    Route::post('/doctor/profile/plan', [PlanController::class, 'update'])->name('doctor.profile.plan.update');
-    
+Route::middleware(['auth', 'role:doctor'])->group(function () {    
     // Ver y editar el perfil
     Route::get('/doctor/profile', [ProfileDoctorController::class, 'edit'])->name('doctor.profile.edit');
-    
+    Route::post('/doctor/profile/plan', [PlanController::class, 'update'])->name('doctor.profile.plan.update');
+            
     //Gestion de servicios
     Route::get('/doctor/services', [ServiceController::class, 'index'])->name('doctor.services.index');
     Route::get('/doctor/services/create', [ServiceController::class, 'create'])->name('doctor.services.create');
@@ -109,9 +111,6 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::patch('/doctor/addresses/{address}/status', [AddressController::class, 'toggleStatus'])->name('doctor.addresses.status.toggle');
 });
 
-Route::get('/appointment/patient-data', [PublicProfileController::class, 'patientStep'])->name('appointments.patient');
-Route::post('/appointment/process-patient', [PublicProfileController::class, 'processPatient'])->name('appointments.process_patient');
-
 Route::post('/appointment/confirm', [PublicProfileController::class, 'book'])
     ->name('appointments.book')
     ->middleware('auth'); // Solo pacientes logueados
@@ -131,15 +130,76 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('/campaigns', \App\Livewire\Campaigns\CampaignIndex::class)->name('campaigns.index');
     Route::get('/campaigns/create', \App\Livewire\Campaigns\CreateCampaign::class)->name('campaigns.create');
 });
-
-
+/*
 Route::get('/{doctor_slug}/{campaign_slug}.html', PublicLanding::class)->name('landing.public');
 // Ruta para ver el perfil y disponibilidad
-Route::get('/{doctor:slug}', [PublicProfileController::class, 'show'])->name('doctor.public.profile');
+Route::get('/{doctor:slug}', [PublicProfileController::class, 'show'])->name('doctor.public.profile');*/
 
 // Ruta API para que FullCalendar cargue los huecos libres
 Route::get('/api/{doctor}/availability', [PublicProfileController::class, 'getAvailability'])
     ->name('api.doctor.availability')
     ->missing(function () {
     return redirect()->route('home'); // Redirige al inicio si no existe
+});
+
+Route::get('/api/get-slots', function (Request $request) {
+    // Validamos que lleguen los datos
+    if (!$request->address_id || !$request->date) {
+        return response()->json(['error' => 'Faltan datos'], 400);
+    }
+
+    // Lógica para buscar turnos ocupados y devolver los libres
+    // Ejemplo de respuesta manual:
+    return [
+        ["time" => "08:00", "available" => true],
+        ["time" => "08:20", "available" => true],
+        ["time" => "08:40", "available" => true],
+        ["time" => "09:00", "available" => true],
+        ["time" => "09:20", "available" => true],
+        ["time" => "09:40", "available" => true],
+        ["time" => "10:00", "available" => false],
+        ["time" => "10:20", "available" => false],
+        ["time" => "10:40", "available" => true],
+        ["time" => "12:00", "available" => true],
+        ["time" => "12:20", "available" => false],
+        ["time" => "12:40", "available" => true],
+        ["time" => "13:00", "available" => true],
+        ["time" => "13:20", "available" => true],
+        ["time" => "13:40", "available" => true],
+        ["time" => "14:00", "available" => true],
+        ["time" => "14:20", "available" => false],
+        ["time" => "14:40", "available" => true],
+        ["time" => "15:00", "available" => true],
+        ["time" => "15:20", "available" => true],
+        ["time" => "15:40", "available" => true],
+        ["time" => "16:00", "available" => true],
+        ["time" => "16:20", "available" => true],
+        ["time" => "16:40", "available" => true],
+        ["time" => "17:00", "available" => true],
+        ["time" => "17:20", "available" => true],
+        ["time" => "17:40", "available" => false],
+        ["time" => "18:00", "available" => true],
+        ["time" => "18:20", "available" => true],
+        ["time" => "18:40", "available" => false],
+        ["time" => "19:00", "available" => true],
+        ["time" => "19:20", "available" => true],
+        ["time" => "19:40", "available" => false],
+        ["time" => "20:00", "available" => true],
+        ["time" => "20:20", "available" => true],
+        ["time" => "20:40", "available" => false],
+        ["time" => "21:00", "available" => true],
+        ["time" => "21:20", "available" => false],
+        ["time" => "21:40", "available" => true],
+        ["time" => "22:00", "available" => true],
+    ];
+})->name('api.slots.index');
+
+//reservacion rutas
+Route::post('/appointments/step-two', [AppointmentController::class, 'storeStepTwo'])->name('appointments.step-two');
+Route::get('/appointments/patient', [AppointmentController::class, 'patient'])->name('appointments.patient');
+Route::post('/appointments/process-patient', [AppointmentController::class, 'processPatient'])->name('appointments.process-patient');
+Route::get('/appointments/preview/{id}', [AppointmentController::class, 'preview'])->name('appointments.preview');
+
+Route::middleware(['auth'])->group(function () {
+    Route::post('/appointments/{id}/confirm', [AppointmentController::class, 'finalConfirm'])->name('appointments.final-confirm');
 });
