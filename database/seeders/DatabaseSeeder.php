@@ -29,7 +29,7 @@ class DatabaseSeeder extends Seeder
 
         $specialties = Specialty::all();
 
-        // 1. Crear Doctor con Perfil, Dirección y Horario
+        // Crear Usuario
         $doctorUser = User::factory()->doctor()->create([
             'name' => 'Dr. Gregory House',
             'email' => 'doctor@ejemplo.com',
@@ -50,12 +50,15 @@ class DatabaseSeeder extends Seeder
             'plan_id' => '1',
         ]);
 
+        // Llamamos manualmente a la creación de la sede virtual DESPUÉS de tener plan
+        $doctor->createVirtualAddress(); 
+
         $doctor->specialties()->attach([
             $specialties->where('name', 'Psicólogia')->first()->id,
             $specialties->where('name', 'Medicina General')->first()->id,
         ]);
 
-        // 3. Crear Paciente
+        // Crear Paciente
         $patientUser = User::factory()->patient()->create([
             'name' => 'John Doe patient',
             'email' => 'paciente@ejemplo.com',
@@ -68,7 +71,7 @@ class DatabaseSeeder extends Seeder
             'phone' => '3001234567',
         ]);
 
-        // 4. Crear Administrador y Clínica
+        // Crear Administrador y Clínica
         User::factory()->admin()->create(['name' => 'Admistrador Ocampo', 'email' => 'administrador@ejemplo.com', 'password' => bcrypt('123456789')]);
         User::factory()->clinic()->create(['name' => 'Clínica Mayo', 'email' => 'clinica@ejemplo.com', 'password' => bcrypt('123456789')]);        
     }

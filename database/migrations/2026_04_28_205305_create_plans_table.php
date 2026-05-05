@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('name'); // Ejemplo: "Plan Premium"
             $table->string('plan'); // Ejemplo: "premium"
             $table->integer('max_addresses')->default(2);
-            $table->integer('max_services_per_address')->default(3);
+            $table->integer('max_services')->default(3);
             $table->decimal('price', 10, 2)->default(0);
             $table->timestamps();
         });

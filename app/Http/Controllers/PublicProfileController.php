@@ -19,10 +19,10 @@ use Carbon\Carbon;
 class PublicProfileController extends Controller
 {
     public function show(Doctor $doctor)
-    {
+    {        
         if (!$doctor) {
             return redirect('/')
-                ->with('error', 'El perfil del doctor solicitado no existe.');
+                ->with('error', 'El perfil solicitado no existe.');
         }
 
         $doctor->load([

@@ -4,15 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\Service;
+use App\Models\patient;
 use App\Services\AppointmentService;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\AppointmentConfirmed; // Debes crear este Mailable
+use App\Mail\AppointmentConfirmed;
 
 class AppointmentController extends Controller
 {
@@ -82,56 +83,6 @@ class AppointmentController extends Controller
         ];
     }
 
-    /*public function processPatient(Request $request)
-    {
-        $rules = [
-            // Identificación: solo números, entre 7 y 10 dígitos (estándar cédula)
-            'identification' => 'required|numeric|digits_between:7,12|unique:patients,identification,' . (auth()->user()?->patient?->id ?? 'NULL'),
-            
-            // Teléfono: formato numérico de 10 dígitos (celular estándar)
-            'phone' => 'required|numeric|digits:10',
-            
-            'notes' => 'required|string|min:10|max:500',
-        ];
-
-        if (Auth::guest()) {
-            $rules['name'] = 'required|string|min:3|max:100';
-            $rules['email'] = 'required|email|unique:users,email';
-        }
-
-        $request->validate($rules, [
-            'identification.digits_between' => 'La identificación debe tener entre 7 y 12 números.',
-            'identification.numeric' => 'La identificación solo debe contener números.',
-            'phone.digits' => 'El número de teléfono debe tener exactamente 10 dígitos.',
-            'notes.min' => 'Por favor, describe un poco más el motivo de tu consulta.',
-        ]);
-        
-        if (Auth::guest()) {
-            // 1. Crear el Usuario
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->identification),
-            ]);
-            $user->assignRole('patient');
-
-            // 2. Crear el Perfil de Paciente vinculado
-            $user->patient()->create([
-                'identification' => $request->identification,
-                'phone' => $request->phone,
-            ]);
-
-            Auth::login($user);
-        }
-
-        return redirect()->route('appointments.preview', [
-            'service' => $request->service_id,
-            'address' => $request->address_id,
-            'datetime' => $request->datetime,
-            'notes' => $request->notes,
-        ]);
-    }*/
-
     public function patient()
     {
         // Verificamos que existan datos en la sesión, si no, volvemos al inicio
@@ -146,108 +97,98 @@ class AppointmentController extends Controller
     {
         $bookingData = session('booking_data');
 
-        //dd($bookingData);
-
         if (!$bookingData) {
             return redirect()->route('search')->with('error', 'La sesión ha expirado.');
         }
 
+        // 1. Validación Dinámica
         $rules = [
-            // Identificación: solo números, entre 7 y 10 dígitos (estándar cédula)
-            'identification' => 'required|numeric|digits_between:7,12|unique:patients,identification,' . (auth()->user()?->patient?->id ?? 'NULL'),
-            
-            // Teléfono: formato numérico de 10 dígitos (celular estándar)
-            'phone' => 'required|numeric|digits:10',
-            
             'notes' => 'required|string|min:10|max:500',
         ];
 
         if (Auth::guest()) {
             $rules['name'] = 'required|string|min:3|max:100';
             $rules['email'] = 'required|email|unique:users,email';
-        }
-
-        $request->validate($rules, [
-            'identification.digits_between' => 'La identificación debe tener entre 7 y 12 números.',
-            'identification.numeric' => 'La identificación solo debe contener números.',
-            'phone.digits' => 'El número de teléfono debe tener exactamente 10 dígitos.',
-            'notes.min' => 'Por favor, describe un poco más el motivo de tu consulta.',
-        ]);
-        
-        if (!Auth::check()) {
-            $rules = array_merge($rules, [
-                'name' => 'required|string|max:255',
-                'email' => 'required|email|unique:users,email',
-                'identification' => 'required|string|unique:patients,identification',
-                'phone' => 'required|string',
-                'notes' => 'required|string|min:10|max:500',
-            ]);
+            $rules['identification'] = 'required|numeric|digits_between:7,12|unique:patients,identification';
+            $rules['phone'] = 'required|numeric|digits:10';
         }
 
         $request->validate($rules);
 
-        $datetime = $bookingData['date'] . " " . $bookingData['hour'];
+        return DB::transaction(function () use ($request, $bookingData) {
+            // 2. Manejo de Usuario y Perfil de Paciente
+            if (!Auth::check()) {
+                $user = User::create([
+                    'name' => $request->name,
+                    'email' => $request->email,
+                    'password' => Hash::make($request->identification),
+                ]);
+                $user->assignRole('patient');
 
-        // 2. Crear y Loguear Usuario si es Guest
-        if (!Auth::check()) {
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->identification),
+                $patient = Patient::create([
+                    'user_id' => $user->id,
+                    'identification' => $request->identification,
+                    'phone' => $request->phone,
+                ]);
+                Auth::login($user);
+            } else {
+                $patient = auth()->user()->patient;
+                
+                // Si el usuario logueado no tiene perfil de paciente, lo creamos
+                if (!$patient) {
+                    $patient = Patient::create([
+                        'user_id' => auth()->id(),
+                        'identification' => $request->identification ?? '0000' . Str::lower(Str::random(5)),
+                        'phone' => $request->phone ?? '0000000000',
+                    ]);
+                }
+            }
+
+            // 3. Preparar Datos de la Cita
+            $service = Service::findOrFail($bookingData['service_id']);
+            $startTime = \Carbon\Carbon::parse($bookingData['date'] . ' ' . $bookingData['hour']);
+            $endTime = (clone $startTime)->addMinutes($service->duration);
+
+            // 4. Crear la Cita (Usando $patient->id)
+            $appointment = Appointment::create([
+                'patient_id'   => $patient->id, // CLAVE: Usamos el ID del paciente, no del usuario
+                'doctor_id'    => $bookingData['doctor_id'],
+                'service_id'   => $bookingData['service_id'],
+                'address_id'   => $bookingData['address_id'],
+                'date'         => $bookingData['date'],
+                'start_time'   => $startTime->format('H:i:s'),
+                'end_time'     => $endTime->format('H:i:s'),
+                'duration'     => $service->duration,
+                'price'        => $service->price,
+                'meeting_link' => ($service->type === 'virtual') ? 'https://zoom.us' : null,            
+                'status'       => 'pending', 
+                'notes'        => $request->notes,
             ]);
-            Auth::login($user);
-        }
 
-        // 3. Crear la Cita
-        // 1. Buscamos el servicio para obtener precio y duración
-        $service = Service::findOrFail($bookingData['service_id']);
+            // 5. Limpieza de Sesión
+            session()->forget(['booking_data', 'current_doctor_id']);
 
-        // 2. Calculamos los tiempos usando Carbon
-        $startTime = \Carbon\Carbon::parse($bookingData['date'] . ' ' . $bookingData['hour']);
-        $endTime = (clone $startTime)->addMinutes($service->duration);
-
-        // 3. Creamos la cita con datos reales
-        $appointment = Appointment::create([
-            'patient_id'   => Auth::id(),
-            'doctor_id'    => $bookingData['doctor_id'],
-            'service_id'   => $bookingData['service_id'],
-            'address_id'   => $bookingData['address_id'],
-            'date'         => $bookingData['date'],
-            'start_time'   => $startTime->format('H:i:s'),
-            'end_time'     => $endTime->format('H:i:s'),
-            'duration'     => $service->duration,
-            'price'        => $service->price,
-            'meeting_link' => ($service->type === 'virtual') ? 'https://zoom.us' : null,            
-            'status'       => 'pending', 
-            'notes'        => $request->notes,
-        ]);
-
-        //dd($appointment);
-
-        // 4. Limpiar sesión y redirigir
-        session()->forget('booking_data');
-
-        // 5. Limpiar el doctor seleccionado
-        session()->forget('current_doctor_id');
-
-        return redirect()->route('appointments.preview', [
-            'id' => $appointment->id,
-            'service'  => $request->service_id,
-            'address'  => $request->address_id,
-            'datetime' => $datetime,
-            'endTime'  => $service->price,
-            'price'    => $endTime,
-            'duration' => $service->duration,
-            'notes'   => $request->notes,
-        ]);
+            // 6. Redirección limpia al Preview
+            return redirect()->route('appointments.preview', ['id' => $appointment->id])
+                            ->with('success', 'Cita agendada correctamente');
+        });
     }
 
     public function preview($id)
     {
-        // Buscamos la cita asegurándonos que pertenezca al usuario logueado
-        $appointment = Appointment::with(['service', 'address', 'doctor.user'])
-            ->where('user_id', Auth::id())
-            ->findOrFail($id);           
+        // 1. Obtenemos el perfil de paciente del usuario logueado
+        $patient = auth()->user()->patient;
+
+        if (!$patient) {
+            return redirect()->route('search')->with('error', 'Perfil de paciente no encontrado.');
+        }
+
+        // 2. Buscamos la cita usando el ID del PACIENTE
+        $appointment = Appointment::with(['service', 'address.city', 'doctor.user'])
+            ->where('patient_id', $patient->id) // <--- Cambiado de Auth::id() a $patient->id
+            ->findOrFail($id);  
+            
+            //dd($appointment);
 
         return view('appointments.preview', compact('appointment'));
     }

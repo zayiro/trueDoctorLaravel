@@ -130,10 +130,11 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('/campaigns', \App\Livewire\Campaigns\CampaignIndex::class)->name('campaigns.index');
     Route::get('/campaigns/create', \App\Livewire\Campaigns\CreateCampaign::class)->name('campaigns.create');
 });
-/*
+
 Route::get('/{doctor_slug}/{campaign_slug}.html', PublicLanding::class)->name('landing.public');
-// Ruta para ver el perfil y disponibilidad
-Route::get('/{doctor:slug}', [PublicProfileController::class, 'show'])->name('doctor.public.profile');*/
+
+// Ruta para ver el perfil del doctor en la busqueda -- esta es la ruta que causa error al entrar al dashboard logueado
+Route::get('/medical-partner/{doctor:slug}', [PublicProfileController::class, 'show'])->name('doctor.public.profile');
 
 // Ruta API para que FullCalendar cargue los huecos libres
 Route::get('/api/{doctor}/availability', [PublicProfileController::class, 'getAvailability'])
@@ -203,3 +204,8 @@ Route::get('/appointments/preview/{id}', [AppointmentController::class, 'preview
 Route::middleware(['auth'])->group(function () {
     Route::post('/appointments/{id}/confirm', [AppointmentController::class, 'finalConfirm'])->name('appointments.final-confirm');
 });
+
+// Vista de la tabla de precios
+Route::get('/plans/show', [PlanController::class, 'showPlans'])->name('plans.index');
+// Acción de seleccionar/suscribirse a un plan
+Route::post('/planes/{plan}/subscribe', [PlanController::class, 'subscribe'])->name('plans.subscribe');

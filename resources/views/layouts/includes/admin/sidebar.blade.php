@@ -10,7 +10,7 @@
         'active' => false,
     ],    
     [
-        'name' => 'Consultorios',
+        'name' => 'Sedes',
         'icon' => 'fa-solid fa-gauge',
         'href' => route('doctor.addresses.index'),
         'active' => false,

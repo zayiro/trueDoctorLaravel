@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Appointment extends Model
 {
@@ -20,9 +21,35 @@ class Appointment extends Model
         'meeting_link',
     ];
 
-    public function patient()
+    /**
+     * Relación con el Servicio
+     */
+    public function service(): BelongsTo
     {
-        // Indicamos que patient_id es la llave foránea que apunta a la tabla users
-        return $this->belongsTo(User::class, 'patient_id');
+        return $this->belongsTo(Service::class);
+    }
+
+    /**
+     * Relación con la Sede (Dirección)
+     */
+    public function address(): BelongsTo
+    {
+        return $this->belongsTo(Address::class);
+    }
+
+    /**
+     * Relación con el Doctor
+     */
+    public function doctor(): BelongsTo
+    {
+        return $this->belongsTo(Doctor::class);
+    }
+
+    /**
+     * Relación con el Paciente
+     */
+    public function patient(): BelongsTo
+    {
+        return $this->belongsTo(Patient::class);
     }
 }

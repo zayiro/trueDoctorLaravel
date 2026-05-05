@@ -12,6 +12,24 @@ $breadcrumbs = [
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">  
     <div class="mt-10 sm:mt-0">
+        @if (session('success'))
+            <div id="alert-success" class="flex items-center p-4 mb-4 text-green-800 rounded-2xl bg-green-50 border border-green-100 shadow-sm transition-opacity duration-500" role="alert">
+                <svg class="flex-shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://w3.org" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L8 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+                </svg>
+                <span class="sr-only">Éxito</span>
+                <div class="ms-3 text-sm font-medium">
+                    {{ session('success') }}
+                </div>
+                <button type="button" class="ms-auto -mx-1.5 -my-1.5 bg-green-50 text-green-500 rounded-lg focus:ring-2 focus:ring-green-400 p-1.5 hover:bg-green-200 inline-flex items-center justify-center h-8 w-8" onclick="document.getElementById('alert-success').remove()">
+                    <span class="sr-only">Cerrar</span>
+                    <svg class="w-3 h-3" aria-hidden="true" xmlns="http://w3.org" fill="none" viewBox="0 0 14 14">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                    </svg>
+                </button>
+            </div>
+        @endif
+        
         <div class="md:grid md:grid-cols-3 md:gap-6">
             <!-- Columna de Título -->
             <div class="md:col-span-1">
@@ -29,7 +47,7 @@ $breadcrumbs = [
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         
                         @foreach($plans as $plan)
-                            <form action="{{ route('doctor.profile.plan.update') }}" method="POST">
+                            <form action="{{ route('plans.subscribe', $plan) }}" method="POST">
                                 @csrf
                                 <input type="hidden" name="plan" value="{{ $plan->plan }}">
                                 

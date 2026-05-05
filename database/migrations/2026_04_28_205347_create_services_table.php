@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name'); // Ej: "Consulta de seguimiento"
             $table->decimal('price', 10, 2);
-            $table->enum('type', ['presencial', 'virtual'])->default('presencial');
+            $table->enum('type', ['physical', 'virtual'])->default('physical');
             $table->integer('duration'); // Duración en minutos específica del servicio
             $table->boolean('active')->default(true);
             $table->timestamps();

@@ -30,20 +30,30 @@ $breadcrumbs = [
         </div>
     @endif
 
-    @if(Auth::user()->doctor->canAddMoreAddresses())
+    {{-- Si el doctor puede agregar más, mostramos el botón --}}
+    @if($doctor->canAddMoreAddresses())
     <div class="flex justify-between items-center mb-8">            
         <!-- Botón para abrir formulario/modal -->
         <a class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition flex items-center gap-2" href="{{ route('doctor.addresses.create') }}">
             <i class="fa-regular fa-map-location"></i>
-            Nuevo consultorio
+            Nueva sede
         </a>        
     </div>
     @else
+        {{-- Si alcanzó el límite, mostramos un mensaje --}}    
         <div class="text-sm text-amber-600 font-medium italic mb-4">
-            Límite alcanzado. ¡Mejora a Plan Avanzado!
+            Has alcanzado el límite de <strong>{{ $doctor->plan->max_addresses }}</strong> sedes de tu {{ $doctor->plan->name }}.
+            <a href="{{ route('doctor.profile.edit') }}" class="underline">Mejora tu plan aquí</a>.
         </div>
     @endif
 
+    <div class="mb-3">
+        <p>
+            <strong>Uso del plan:</strong> 
+            {{ $doctor->addresses->count() }} de {{ $doctor->plan->max_addresses }} sedes creadas.
+        </p>
+    </div>
+    
     <!-- Lista de Sedes -->
     <div class="grid grid-cols-1 gap-4">
         @forelse($addresses as $address)            
@@ -56,13 +66,13 @@ $breadcrumbs = [
                     </div>
                     <div>
                         <h3 class="font-bold text-gray-900 text-lg">{{ $address->name }}</h3>
-                        <p class="text-gray-500">{{ $address->address }} {{ $address->address === 'Plataforma Online' ? '' : ', ' . $address->city->name }}</p>
+                        <p class="text-gray-500">{{ $address->address }} {{ $address->type === 'virtual' ? '' : ', ' . $address->city->name }}</p>
                         <p class="text-gray-500">{{ $address->phone }}</p>
                     </div>
                 </div>
                 <div class="flex gap-2">
                      <a href="{{ route('doctor.schedules.index', $address->id) }}" class="p-2 text-gray-400 hover:text-gray-700 transition">
-                        <div>Configurar horarios y duración</div>
+                        <div>Configurar horarios y duración ({{ $address->schedules_count }})</div>
                         <div>
                             @if($address->schedules_count > 0)
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -82,7 +92,7 @@ $breadcrumbs = [
                         </div>
                     </a>
                     
-                    @if ($address->address !== 'Plataforma Online')
+                    @if ($address->type !== 'virtual')
                         <a class="p-2 text-gray-400 hover:text-gray-700 transition" href="{{ route('doctor.addresses.edit', $address->id) }}">Editar</a>
                         <form action="{{ route('doctor.addresses.destroy', $address->id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar este consultorio?');">
                             @csrf

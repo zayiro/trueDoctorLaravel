@@ -26,15 +26,15 @@ $breadcrumbs = [
                         </svg>
                     </div>
                     <div>
-                        <h4 class="font-bold text-amber-900"><strong>¡Atención!</strong> No tienes sedes físicas registradas</h4>
-                        <p class="text-sm text-amber-700">Para ofrecer servicios presenciales, primero debes registrar un consultorio.</p>
+                        <h4 class="font-bold text-amber-900"><strong>¡Atención!</strong> No tienes una sede fisica registrada</h4>
+                        <p class="text-sm text-amber-700">Para ofrecer servicios presenciales, primero debes registrar una sede.</p>
                         <p class="text-amber-900 mt-2">
                             Si solo atiendes <strong>online</strong>: Crea un nuevo servicio y selecciona el tipo <span class="font-bold">"Virtual"</span>.
                         </p>
                     </div>
                 </div>
                 <a href="{{ route('doctor.addresses.create') }}" class="whitespace-nowrap bg-amber-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-amber-700 transition">
-                    Registra un consultorio aquí
+                    Registra una sede aquí
                 </a>
             </div>
         @endif     
@@ -96,13 +96,13 @@ $breadcrumbs = [
                         <label class="block text-sm font-bold text-blue-900 mb-4">¿En qué sedes ofreces este servicio?</label>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             @foreach($addresses as $address)
-                                <label class="flex items-center p-3 bg-white rounded-xl border border-blue-200 cursor-pointer hover:bg-blue-100 transition">
-                                    <input type="checkbox" name="address_ids[]" value="{{ $address->id }}" class="rounded text-blue-600 focus:ring-blue-500">
-                                    <div class="ml-3">
-                                        <span class="block text-sm font-bold text-gray-800">{{ $address->name }}</span>
-                                        <span class="block text-xs text-gray-500">{{ $address->address }}</span>
-                                    </div>
-                                </label>
+                            <label class="flex items-center p-3 bg-white rounded-xl border border-blue-200 cursor-pointer hover:bg-blue-100 transition">
+                                <input type="checkbox" name="address_ids[]" value="{{ $address->id }}" class="rounded text-blue-600 focus:ring-blue-500">
+                                <div class="ml-3">
+                                    <span class="block text-sm font-bold text-gray-800">{{ $address->name }}</span>
+                                    <span class="block text-xs text-gray-500">{{ $address->address }}, {{ $address->city->name }}</span>
+                                </div>
+                            </label>
                             @endforeach
                         </div>
                         @error('address_ids')

@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 class SearchController extends Controller
 {
     public function index(Request $request)
-    {
+    {        
         $specialties = Specialty::orderBy('name', 'asc')->get();
         $cities = City::orderBy('name', 'asc')->get();                        
         
@@ -47,14 +47,11 @@ class SearchController extends Controller
         // Mantener los filtros en los links de paginación
         $doctors->appends($request->all());
 
-        //dd($doctors->first()->addresses->first()->services);
-        //dd($doctors);
-
         return view('search.index', compact('doctors', 'specialties', 'cities'));
     }
 
     public function search(Request $request)
-    {
+    {                
         $request->validate([
             'specialty' => 'required',
         ], [

@@ -10,7 +10,7 @@ class Plan extends Model
         'name',
         'plan',
         'max_addresses',        
-        'max_services_per_address',
+        'max_services',
         'price'
     ];
 }

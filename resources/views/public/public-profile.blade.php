@@ -1,5 +1,5 @@
 <x-guest-layout>    
-    <div class="mt-5 bg-gray-50 min-h-screen py-10" x-data="bookingSystem({{ $doctor->id }})">
+    <div class="mt-5 bg-gray-50 min-h-screen py-10" x-data="bookingSystem({{ $doctor->id }})">    
         <!-- Overlay de Carga Global -->
         <div id="loading-overlay" 
             style="display:none;" 
@@ -127,7 +127,11 @@
                                             <button @click="step = 1; selectedDate = null; selectedSlot = null" class="text-sm font-bold text-blue-600 flex items-center">
                                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg> Volver a sede y servico
                                             </button>
-                                            <span class="text-xs font-black text-gray-400 uppercase" x-text="addressName"></span>
+                                            <div>
+                                                <div class="text-xs font-black text-gray-400 uppercase" x-text="addressName"></div>
+                                                <div class="text-xs text-end font-black text-gray-500" x-text="serviceName"></div>
+                                                <div class="text-xs text-end font-black text-gray-500" x-text="servicePrice"></div>
+                                            </div>
                                         </div>
 
                                         <!-- SECCIÓN DE FECHAS -->
@@ -221,6 +225,8 @@
                 selectedDate: null,
                 selectedSlot: null,
                 addressName: '',
+                serviceName: '',
+                servicePrice: '',
                 loadingSlots: false,
                 availableDays: [],
                 availableSlots: [],
@@ -250,9 +256,11 @@
                     }
                     this.availableDays = days;
                 },
-                selectService(id, name, sId, sName, sPrice) {
+                selectService(id, name, sId, sName, sPrice) {                    
                     this.selectedAddress = id;
                     this.addressName = name;
+                    this.serviceName = sName;
+                    this.servicePrice = sPrice;
                     this.selectedService = sId;
                     this.selectedServiceData = { name: sName, price: sPrice };
                     this.step = 2;

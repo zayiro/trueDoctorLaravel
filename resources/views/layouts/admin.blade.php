@@ -28,7 +28,7 @@
         <!-- Styles -->
         @livewireStyles
     </head>
-    <body class="font-sans antialiased bg-gray-50">        
+    <body class="font-sans antialiased" style="background-color: #FCFCFC;">        
         @include('layouts.includes.admin.navigation')
 
         @include('layouts.includes.admin.sidebar')

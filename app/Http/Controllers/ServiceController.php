@@ -10,63 +10,71 @@ class ServiceController extends Controller
 {
     public function index()
     {
-        $doctor = auth()->user()->doctor;
+        $doctor = auth()->user()->doctor()->with(['plan', 'addresses.services'])->first();
 
-        // Obtenemos todas las direcciones del doctor con sus servicios cargados
-        $addresses = $doctor->addresses()->with('services')->get();
+        if (!$doctor) {
+            return redirect()->back()->with('error', 'Perfil de doctor no encontrado.');
+        }
 
-        // Si lo que necesitas en la vista es una colección plana de servicios 
-        // pero que cada servicio sepa su sede:
-        $services = $addresses->flatMap(function ($address) {
+        // Obtenemos los servicios únicos para el conteo real frente al plan
+        $uniqueServicesCount = $doctor->addresses->flatMap->services->unique('id')->count();
+
+        // Aplanamos para la tabla (aquí sí se pueden repetir si quieres verlos por sede)
+        $services = $doctor->addresses->flatMap(function ($address) {
             return $address->services->map(function ($service) use ($address) {
-                // Opcional: añadimos la sede al objeto service para usarlo en la tabla
                 $service->address_name = $address->address_line; 
                 return $service;
             });
         });
 
-        return view('doctor.services.index', compact('services'));
+        //dd($services);
 
+        return view('doctor.services.index', compact('services', 'doctor', 'uniqueServicesCount'));
     }
 
     public function create()
     {
         $doctor = auth()->user()->doctor;
-        $addresses = $doctor->addresses()->where('status', true)->get();
 
-        // Contamos sedes que NO sean la virtual automática
-        // Usamos el nombre de tu campo 'address' que definimos como 'Plataforma Online'
-        $hasAddresses = $doctor->addresses()
-            ->where('address', '!=', 'Plataforma Online')
-            ->where('status', true) // Solo sedes activas
-            ->exists();
+        // Cargamos las sedes con su ciudad para tener el nombre disponible
+        $addresses = $doctor->addresses()
+            ->with('city') 
+            ->where('status', true)
+            ->where('type', 'physical')
+            ->get();
 
+        // Usamos la colección ya cargada para evitar más consultas a la BD
+        $hasAddresses = $addresses->where('type', 'physical')->isNotEmpty();
+
+        
+            
         return view('doctor.services.create', compact('addresses', 'hasAddresses'));
     }
-
 
     public function store(Request $request)
     {
         $doctor = auth()->user()->doctor;
+
+        if (!$doctor->canAddMoreServices()) {
+            return redirect()->back()->with('error', 'Has alcanzado el límite global de servicios.');
+        }
 
         $validated = $request->validate([
             'name'          => 'required|string|max:100',
             'price'         => 'required|numeric|min:0',
             'type'          => 'required|in:physical,virtual',
             'duration'      => 'required|integer',
-            // Validamos que los IDs de direcciones pertenezcan al doctor autenticado
             'address_ids'   => 'required_if:type,physical|array',
             'address_ids.*' => [
                 'exists:addresses,id',
                 function ($attribute, $value, $fail) use ($doctor) {
                     if (!$doctor->addresses()->where('id', $value)->exists()) {
-                        $fail('Una de las direcciones seleccionadas no es válida.');
+                        $fail('Dirección no válida.');
                     }
                 },
             ],
         ]);
 
-        // 1. Crear el servicio
         $service = Service::create([
             'name'     => $validated['name'],
             'price'    => $validated['price'],
@@ -74,21 +82,22 @@ class ServiceController extends Controller
             'type'     => $validated['type'],
         ]);
 
-        // 2. Asociar direcciones
         if ($validated['type'] === 'virtual') {
-            // Si es virtual y no hay sedes, creamos la virtual
-            if ($doctor->addresses()->count() === 0) {
-                $doctor->createVirtualAddress();
+            // Buscamos la sede virtual
+            $virtualAddress = $doctor->addresses()->where('type', 'virtual')->first();
+
+            // Si por alguna razón no existe, la creamos
+            if (!$virtualAddress) {
+                $virtualAddress = $doctor->createVirtualAddress();
             }
-            // Sincronizamos con TODAS las sedes del doctor
-            $service->addresses()->sync($doctor->addresses()->pluck('id'));
+
+            // ASOCIAR SOLO A LA SEDE VIRTUAL (Evita duplicados en el index)
+            $service->addresses()->sync([$virtualAddress->id]);
         } else {
-            // Sincronizamos solo con las sedes seleccionadas (ya validadas arriba)
             $service->addresses()->sync($validated['address_ids']);
         }
 
-        return redirect()->route('doctor.services.index')
-            ->with('success', '¡Servicio creado exitosamente!');
+        return redirect()->route('doctor.services.index')->with('success', '¡Servicio creado!');
     }
 
     public function edit(Service $service)

@@ -18,7 +18,7 @@ $breadcrumbs = [
                 
                 <div>
                     <!-- Nombre -->
-                    <label for="name" class="block text-sm font-semibold text-gray-700 mb-1">Nombre</label>
+                    <label for="name" class="block text-sm font-semibold text-gray-700 mb-1">Nombre de la sede</label>
                     <input type="text" name="name" id="name" placeholder="Ej: Edificio de colores - Consultorio 112"
                         class="block w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200" 
                         required>                    
@@ -63,7 +63,7 @@ $breadcrumbs = [
                     <div class="flex gap-4">
                         <button type="submit" 
                             class="w-2/3 flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-200">
-                            Nuevo consultorio
+                            Nueva sede
                         </button>
                         <a href="{{ route('doctor.addresses.index') }}" 
                             class="w-1/3 text-center px-4 py-3 border border-gray-300 font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition duration-200">

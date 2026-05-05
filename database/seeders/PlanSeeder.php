@@ -14,9 +14,9 @@ class PlanSeeder extends Seeder
     public function run(): void
     {
         $plans = [
-            ['name' => 'Plan Free', 'plan' => 'free', 'max_addresses' => 2, 'max_services_per_address' => 3, 'price' => 0],
-            ['name' => 'Plan Premium', 'plan' => 'premium', 'max_addresses' => 10, 'max_services_per_address' => 20, 'price' => 2400000],
-            ['name' => 'Plan Gold', 'plan' => 'gold', 'max_addresses' => 20, 'max_services_per_address' => 50, 'price' => 3500000]
+            ['name' => 'Plan Free', 'plan' => 'free', 'max_addresses' => 2, 'max_services' => 3, 'price' => 0],
+            ['name' => 'Plan Premium', 'plan' => 'premium', 'max_addresses' => 10, 'max_services' => 20, 'price' => 2400000],
+            ['name' => 'Plan Gold', 'plan' => 'gold', 'max_addresses' => 20, 'max_services' => 50, 'price' => 3500000]
         ];
 
         foreach ($plans as $plan) {
@@ -24,7 +24,7 @@ class PlanSeeder extends Seeder
                 'name'  => $plan['name'],
                 'plan' => $plan['plan'],
                 'max_addresses' => $plan['max_addresses'],
-                'max_services_per_address' => $plan['max_services_per_address'],
+                'max_services' => $plan['max_services'],
                 'price' => $plan['price']
             ]);
         }

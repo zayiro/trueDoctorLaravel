@@ -33,6 +33,17 @@
             </div>
         </form>
 
+        <div class="bg-teal-100 border-t-4 border-teal-500 rounded-b text-teal-900 px-4 py-3 shadow-md" role="alert">
+            <div class="flex">
+                <div class="py-1"><svg class="fill-current h-6 w-6 text-teal-500 mr-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M2.93 17.07A10 10 0 1 1 17.07 2.93 10 10 0 0 1 2.93 17.07zm12.73-1.41A8 8 0 1 0 4.34 4.34a8 8 0 0 0 11.32 11.32zM9 11V9h2v6H9v-4zm0-6h2v2H9V5z"/></svg></div>
+                <div>
+                <p class="font-bold">¿Donde?</p>
+                <p class="text-sm">Elige la ciudad en la que buscas al especialista</p>
+                </div>
+            </div>
+        </div>
+
+
         <!-- Listado de Resultados -->
         <div class="bg-slate-50 min-h-screen py-12">
             <div class="max-w-5xl mx-auto px-6">
@@ -97,15 +108,14 @@
                                 
                                 @if($doctor->addresses->count() > 0)
                                 <div>
-                                    <div class="mt-3 font-bold">Consultorios</div>
+                                    <div class="mt-3 font-bold">Sedes</div>
                                     @foreach($doctor->addresses as $address)
                                         <div class="flex items-start gap-2 text-sm text-slate-600 mt-1">
                                             <svg class="w-4 h-4 mt-0.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
                                             <span>{{ $address->address }} {{ $address->address == 'Plataforma Online' ? '' : ',' . $address->city->name }}</span>
                                         </div>
-                                        <div class="mt-3 font-bold">Servicios</div>
                                         @if($address->services->count() > 0)
-                                        <div class="flex flex-wrap gap-2 mt-1">
+                                        <div class="flex flex-wrap gap-2 mt-1 mb-4">
                                             @if($address->services)
                                                 @foreach($address->services->take(3) as $service)
                                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">

@@ -74,6 +74,19 @@ class Doctor extends Model
         return $this->hasOne(DoctorSetting::class);
     }
 
+    // Relación directa al Plan (Saltando por doctor_settings)
+    public function plan()
+    {
+        return $this->hasOneThrough(
+            Plan::class,
+            DoctorSetting::class,
+            'doctor_id', // FK en doctor_settings
+            'id',        // FK en plans
+            'id',        // Local key en doctors
+            'plan_id'    // Local key en doctor_settings
+        );
+    }
+
     // Relación con especialidad
     public function specialties()
     {
@@ -95,10 +108,39 @@ class Doctor extends Model
         }
     }
 
+    /**
+     * Valida si puede agregar más direcciones según su plan actual.
+     */
     public function canAddMoreAddresses(): bool
     {
-        $limite = ($this->plan === 'avanzado') ? 10 : 2; // 10 para avanzado, 2 para básico
-        return $this->addresses()->count() < $limite;
+        // 1. Obtenemos el límite desde el plan vinculado en settings
+        // Si no hay plan, asumimos 0 o un valor base.
+        $limit = $this->plan->max_addresses ?? 0;
+
+        // 2. Contamos sus direcciones actuales
+        $currentCount = $this->addresses()->count();
+
+        return $currentCount < $limit;
+    }
+
+    /**
+     * Relación: Obtiene todos los servicios a través de las direcciones.
+     */
+    public function services()
+    {
+        return $this->hasManyThrough(Service::class, Address::class);
+    }
+
+    public function canAddMoreServices(): bool
+    {
+        $limit = $this->plan->max_services ?? 0;
+
+        // Contamos servicios únicos asociados a las direcciones del doctor
+        $currentTotal = Service::whereHas('addresses', function($query) {
+            $query->where('doctor_id', $this->id);
+        })->count();
+
+        return $currentTotal < $limit;
     }
 
     public function reviews()

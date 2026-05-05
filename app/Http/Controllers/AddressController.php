@@ -16,18 +16,22 @@ class AddressController extends Controller
     {
         $user = Auth::user();
         
-        // Verificamos si existe la relación 'doctor'
-        if (!$user->doctor) {
+        // Cargamos al doctor con su plan (a través de settings) y sus direcciones
+        $doctor = $user->doctor()->with(['plan', 'addresses'])->first();
+
+        if (!$doctor) {
             return redirect()->back()->with('error', 'Perfil de doctor no encontrado.');
         }
         
-        $addresses = $user->doctor->addresses()
+        // Obtenemos las direcciones con el conteo de horarios
+        $addresses = $doctor->addresses()
             ->withCount('schedules')
             ->get();
 
-        //dd($addresses);
+            //dd($doctor);
 
-        return view('doctor.addresses.index', compact('addresses'));
+        // Pasamos también al doctor para usar el método canAddMoreAddresses() en Blade
+        return view('doctor.addresses.index', compact('addresses', 'doctor'));
     }
 
     public function toggleStatus(Address $address)
@@ -54,7 +58,7 @@ class AddressController extends Controller
         if (!$doctor->canAddMoreAddresses()) {
             $limite = ($doctor->plan === 'avanzado') ? 10 : 2;
             return redirect()->route('doctor.addresses.index')
-                ->with('error', "Tu plan {$doctor->plan} solo permite {$limite} consultorios.");
+                ->with('error', "Tu plan {$doctor->plan} solo permite {$limite} sedes.");
         }
         
         return view('doctor.addresses.create', compact('cities'));
@@ -72,7 +76,7 @@ class AddressController extends Controller
         if (!$doctor->canAddMoreAddresses()) {
             $limite = ($doctor->plan === 'avanzado') ? 10 : 2;
             return redirect()->route('doctor.addresses.index')
-                ->with('error', "Tu plan {$doctor->plan} solo permite {$limite} consultorios.");
+                ->with('error', "Tu plan {$doctor->plan} solo permite {$limite} sedes.");
         }
         
         // 2. Validar los datos del formulario
@@ -93,7 +97,7 @@ class AddressController extends Controller
         Address::create($validated);
 
         return redirect()->route('doctor.addresses.index')
-            ->with('success', 'Nuevo consultorio registrado correctamente.');
+            ->with('success', 'Nueva sede registrado correctamente.');
     }
 
     /**
@@ -101,9 +105,9 @@ class AddressController extends Controller
      */
     public function update(Request $request, Address $address)
     {        
-        // 1. Validar seguridad: ¿El consultorio es de este doctor?
+        // 1. Validar seguridad: ¿La sede es de este doctor?
         if ($address->doctor_id !== Auth::user()->doctor->id) {
-            abort(403, 'No tienes permiso para editar este consultorio.');
+            abort(403, 'No tienes permiso para editar esta sede.');
         }
 
         // 2. Validar datos
@@ -118,14 +122,14 @@ class AddressController extends Controller
         $address->update($validated);
 
         return redirect()->route('doctor.addresses.index')
-            ->with('success', 'Consultorio actualizado correctamente.');
+            ->with('success', 'Sede actualizada correctamente.');
     }
 
     public function edit(Address $address)
     {
         $cities = City::all();
 
-        // Seguridad: verificar que el consultorio sea del doctor logueado
+        // Seguridad: verificar que la sede sea del doctor logueado
         if ($address->doctor_id !== Auth::user()->doctor->id) {
             abort(403);
         }
