@@ -42,7 +42,6 @@ class RegisterDoctorController extends Controller
             // 3. Crear Perfil de Doctor asociado
             $doctor =   $user->doctor()->create([
                 'phone' => $request->phone,
-                'plan' => 'basico', // Plan inicial por defecto
             ]);
 
             $doctor->specialties()->attach($request->specialties);

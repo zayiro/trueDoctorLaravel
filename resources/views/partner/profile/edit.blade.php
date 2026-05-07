@@ -2,7 +2,7 @@
 $breadcrumbs = [
     [
         'name' => 'Doctor',
-        'href' => route('doctor.addresses.index'),
+        'href' => route('partner.addresses.index'),
     ],
     [
         'name' => 'Perfil',

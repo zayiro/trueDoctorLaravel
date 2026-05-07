@@ -31,7 +31,7 @@ class AddressController extends Controller
             //dd($doctor);
 
         // Pasamos también al doctor para usar el método canAddMoreAddresses() en Blade
-        return view('doctor.addresses.index', compact('addresses', 'doctor'));
+        return view('partner.addresses.index', compact('addresses', 'doctor'));
     }
 
     public function toggleStatus(Address $address)
@@ -57,15 +57,15 @@ class AddressController extends Controller
         // Verificar permiso según el plan
         if (!$doctor->canAddMoreAddresses()) {
             $limite = ($doctor->plan === 'avanzado') ? 10 : 2;
-            return redirect()->route('doctor.addresses.index')
+            return redirect()->route('partner.addresses.index')
                 ->with('error', "Tu plan {$doctor->plan} solo permite {$limite} sedes.");
         }
         
-        return view('doctor.addresses.create', compact('cities'));
+        return view('partner.addresses.create', compact('cities'));
     }
 
     /**
-     * Almacena una nueva sede vinculada al doctor.
+     * Almacena una nueva sede vinculada al partner.
      */
     public function store(Request $request)
     {
@@ -75,7 +75,7 @@ class AddressController extends Controller
         // Verificar permiso según el plan
         if (!$doctor->canAddMoreAddresses()) {
             $limite = ($doctor->plan === 'avanzado') ? 10 : 2;
-            return redirect()->route('doctor.addresses.index')
+            return redirect()->route('partner.addresses.index')
                 ->with('error', "Tu plan {$doctor->plan} solo permite {$limite} sedes.");
         }
         
@@ -96,7 +96,7 @@ class AddressController extends Controller
         // 3. Crear el registro
         Address::create($validated);
 
-        return redirect()->route('doctor.addresses.index')
+        return redirect()->route('partner.addresses.index')
             ->with('success', 'Nueva sede registrado correctamente.');
     }
 
@@ -121,7 +121,7 @@ class AddressController extends Controller
         // 3. Actualizar
         $address->update($validated);
 
-        return redirect()->route('doctor.addresses.index')
+        return redirect()->route('partner.addresses.index')
             ->with('success', 'Sede actualizada correctamente.');
     }
 
@@ -134,7 +134,7 @@ class AddressController extends Controller
             abort(403);
         }
 
-        return view('doctor.addresses.edit', compact('address', 'cities'));
+        return view('partner.addresses.edit', compact('address', 'cities'));
     }
 
     /**
@@ -147,12 +147,10 @@ class AddressController extends Controller
         // 1. Buscamos si existen citas confirmadas o pendientes para esta sede
         $hasAppointments = $address->appointments()
             ->whereIn('status', ['confirmed', 'pending'])
-            ->exists();
+            ->exists();            
 
         if ($hasAppointments) {
-            return back()->withErrors([
-                'error' => 'No puedes eliminar esta sede porque tiene citas agendadas. Debes cancelarlas o reprogramarlas primero.'
-            ]);
+            return back()->with('error', 'No puedes eliminar esta sede porque tiene citas agendadas. Debes cancelarlas o reprogramarlas primero.');
         }
 
         // 2. Si no hay citas, procedemos a eliminar                
@@ -165,14 +163,14 @@ class AddressController extends Controller
      * Método privado para seguridad de registros.
     */    
     private function authorizeOwner(Address $address)
-    {
+    {        
         // Verificamos que la sede pertenezca al doctor que está logueado
         if ($address->doctor_id !== auth()->user()->doctor->id) {
             abort(403, 'No tienes permiso para eliminar esta sede.');
         }
 
         // Evitar borrar la sede virtual si tiene servicios virtuales activos
-        if ($address->address === 'Plataforma Online') {
+        if ($address->type === 'virtual') {
             $hasVirtualServices = $address->services()->where('type', 'virtual')->exists();
             if ($hasVirtualServices) {
                 abort(403, 'No puedes eliminar la sede virtual mientras tengas servicios online activos.');

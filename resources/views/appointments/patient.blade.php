@@ -3,12 +3,30 @@
         <div class="bg-white rounded-3xl shadow-xl p-8 mt-5 border border-gray-100">
             <h2 class="text-2xl font-black text-gray-800 mb-6">Completa tus datos</h2>
 
-            @if (session('error'))
-                <div class="bg-amber-50 border-l-4 border-amber-500 p-4 mb-6 rounded-r-2xl shadow-sm flex items-center">
-                    <svg class="w-5 h-5 text-amber-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 102 0V6a1 1 0 00-1-1z"/>
+            @if(session('error'))
+                <div class="flex items-center p-4 mb-4 text-red-800 rounded-2xl bg-red-50 border border-red-100 shadow-sm" role="alert">
+                    <svg class="flex-shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://w3.org" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
                     </svg>
-                    <span class="text-sm font-bold text-amber-800">{{ session('error') }}</span>
+                    <div class="ms-3 text-sm font-bold">
+                        {{ session('error') }}
+                    </div>
+                </div>
+            @endif
+            
+            @if ($errors->any())
+                <div class="flex p-4 mb-4 text-amber-800 rounded-2xl bg-amber-50 border border-amber-100 shadow-sm" role="alert">
+                    <svg class="flex-shrink-0 w-4 h-4 mt-0.5" aria-hidden="true" xmlns="http://w3.org" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+                    </svg>
+                    <div class="ms-3">
+                        <span class="text-sm font-black uppercase tracking-wide">Por favor corrige lo siguiente:</span>
+                        <ul class="mt-1.5 list-disc list-inside text-xs font-medium">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
                 </div>
             @endif
 
@@ -27,7 +45,7 @@
                             </button>
                         </div>
 
-                        <input type="hidden" name="has_account" id="has_account" value="no">
+                        <input type="hidden" name="has_account" id="has_account" value="{{ old('has_account', 'no') }}">
 
                         {{-- SECCIÓN: REGISTRO (NUEVO) --}}
                         <div id="section-new" class="space-y-5">
@@ -35,22 +53,22 @@
                                 Crea tu perfil para gestionar esta y futuras citas.
                             </div>
                             <div>
-                                <label class="block text-sm font-bold text-gray-700 mb-1">Nombre completo</label>
-                                <input type="text" name="name" class="w-full rounded-xl border-gray-200 focus:ring-blue-500 input-new">
+                                <label for="name" class="block text-sm font-bold text-gray-700 mb-1">Nombre completo</label>
+                                <input type="text" name="name" id="name" value="{{ old('name') }}" autocomplete="name" class="w-full rounded-xl border-gray-200 focus:ring-blue-500 input-new">
                             </div>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label for="email" class="block text-sm font-bold text-gray-700 mb-1">Email</label>
-                                    <input type="email" name="email" id="email" class="w-full rounded-xl border-gray-200 focus:ring-blue-500 input-new">
+                                    <input type="email" name="email" id="email" value="{{ old('email') }}" autocomplete="email" class="w-full rounded-xl border-gray-200 focus:ring-blue-500 input-new">
                                 </div>
                                 <div>
                                     <label for="identification" class="block text-sm font-bold text-gray-700 mb-1">Identificación</label>
-                                    <input type="text" name="identification" id="identification" oninput="this.value = this.value.replace(/[^0-9]/g, '')" class="w-full rounded-xl border-gray-200 input-new">                                
+                                    <input type="text" name="identification" id="identification" value="{{ old('identification') }}" autocomplete="identification" oninput="this.value = this.value.replace(/[^0-9]/g, '')" class="w-full rounded-xl border-gray-200 input-new">                                
                                 </div>
                             </div>
                             <div>
                                 <label for="phone" class="block text-sm font-bold text-gray-700 mb-1">Teléfono móvil</label>
-                                <input type="tel" name="phone" id="phone" maxlength="10" oninput="this.value = this.value.replace(/[^0-9]/g, '')" class="w-full rounded-xl border-gray-200 input-new">                            
+                                <input type="tel" name="phone" id="phone" value="{{ old('phone') }}" autocomplete="tel" maxlength="10" oninput="this.value = this.value.replace(/[^0-9]/g, '')" class="w-full rounded-xl border-gray-200 input-new">                            
                             </div>
                         </div>
 
@@ -61,11 +79,11 @@
                             </div>
                             <div>
                                 <label for="login_email" class="block text-sm font-bold text-gray-700 mb-1">Email</label>
-                                <input type="email" name="login_email" id="login_email" class="w-full rounded-xl border-gray-200 focus:ring-blue-500 input-exist">
+                                <input type="email" name="login_email" id="login_email" value="{{ old('login_email') }}" autocomplete="email" class="w-full rounded-xl border-gray-200 focus:ring-blue-500 input-exist">
                             </div>
                             <div>
                                 <label for="login_password" class="block text-sm font-bold text-gray-700 mb-1">Contraseña</label>
-                                <input type="password" name="login_password" id="login_password" class="w-full rounded-xl border-gray-200 focus:ring-blue-500 input-exist">
+                                <input type="password" name="login_password" id="login_password" autocomplete="current-password" class="w-full rounded-xl border-gray-200 focus:ring-blue-500 input-exist">
                             </div>
                         </div>
                     @endguest
@@ -84,7 +102,7 @@
 
                     <div>
                         <label for="notes" class="block text-sm font-bold text-gray-700 mb-1">Motivo de la consulta</label>
-                        <textarea name="notes" id="notes" rows="4" required 
+                        <textarea name="notes" id="notes" autocomplete="notes" rows="4" required 
                             class="w-full rounded-xl border-gray-200 focus:ring-blue-500"
                             placeholder="Describe brevemente tus síntomas...">{{ old('notes', '') }}</textarea>
                     </div>
@@ -92,7 +110,7 @@
 
                 <div class="mt-8 flex items-center justify-between">
                     <a href="{{ url()->previous() }}" class="text-gray-500 font-bold hover:underline">Volver</a>
-                    <button type="submit" class="bg-blue-600 text-white px-10 py-4 rounded-2xl font-black shadow-lg hover:bg-blue-700 transition">
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                         Continuar
                     </button>
                 </div>
@@ -126,5 +144,13 @@
                 hasAcc.value = 'yes';
             }
         }
+
+        document.addEventListener('DOMContentLoaded', function() {            
+            const hasAccountOld = {{ old('has_account') ? 'true' : 'false' }};
+            if (hasAccountOld) {
+                const hasAcc = document.getElementById('has_account');            
+                toggleForm(hasAcc == 'yes' ? 'new' : 'exist');
+            }
+        });
     </script>
 </x-guest-layout>

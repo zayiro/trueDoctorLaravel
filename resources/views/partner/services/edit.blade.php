@@ -14,7 +14,7 @@ $breadcrumbs = [
     <div class="max-w-6xl mx-auto py-10 px-4">
         <div x-data="{ type: '{{ $service->type }}' }" class="bg-white shadow-xl rounded-3xl overflow-hidden border border-gray-100">
             
-            <form action="{{ route('doctor.services.update', $service->id) }}" method="POST" class="p-8 space-y-6">
+            <form action="{{ route('partner.services.update', $service->id) }}" method="POST" class="p-8 space-y-6">
                 @csrf
                 @method('PUT')
 
@@ -68,7 +68,7 @@ $breadcrumbs = [
                     <button type="submit" class="flex-1 bg-blue-600 text-white font-black py-4 rounded-2xl shadow-lg">
                         ACTUALIZAR SERVICIO
                     </button>
-                    <a href="{{ route('doctor.services.index') }}" class="px-8 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold">
+                    <a href="{{ route('partner.services.index') }}" class="px-8 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold">
                         Cancelar
                     </a>
                 </div>

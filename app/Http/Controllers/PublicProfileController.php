@@ -18,14 +18,10 @@ use Carbon\Carbon;
 
 class PublicProfileController extends Controller
 {
-    public function show(Doctor $doctor)
-    {        
-        if (!$doctor) {
-            return redirect('/')
-                ->with('error', 'El perfil solicitado no existe.');
-        }
-
-        $doctor->load([
+    public function show(Doctor $partner)
+    {
+        $partner->load([
+            'user',
             'specialties', 
             'addresses' => function($q) {
                 $q->where('status', true)
@@ -35,10 +31,11 @@ class PublicProfileController extends Controller
             }
         ]);
 
-        session(['current_doctor_id' => $doctor->id]);   
+        session(['current_doctor_id' => $partner->id]);   
         
-        return view('public.public-profile', compact('doctor'));
+        return view('public.public-profile', ['doctor' => $partner]);
     }
+
 
     public function getAvailability(Doctor $doctor, Request $request)
     {

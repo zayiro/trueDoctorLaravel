@@ -30,7 +30,7 @@ $breadcrumbs = [
                 <div class="bg-white p-6 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 sticky top-28">
                     <h4 class="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Nueva Franja</h4>
                     
-                    <form action="{{ route('doctor.schedules.store') }}" method="POST" class="space-y-5">
+                    <form action="{{ route('partner.schedules.store') }}" method="POST" class="space-y-5">
                         @csrf
                         <input type="hidden" name="address_id" value="{{ $address->id }}">
                         

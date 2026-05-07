@@ -16,6 +16,6 @@ class ProfileDoctorController extends Controller
         $doctor = auth()->user()->doctor;
         $doctor->load('settings.plan');
         
-        return view('doctor.profile.edit', compact('doctor', 'plans'));
+        return view('partner.profile.edit', compact('doctor', 'plans'));
     }
 }

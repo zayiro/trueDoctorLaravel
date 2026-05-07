@@ -29,7 +29,7 @@ class ServiceController extends Controller
 
         //dd($services);
 
-        return view('doctor.services.index', compact('services', 'doctor', 'uniqueServicesCount'));
+        return view('partner.services.index', compact('services', 'doctor', 'uniqueServicesCount'));
     }
 
     public function create()
@@ -48,7 +48,7 @@ class ServiceController extends Controller
 
         
             
-        return view('doctor.services.create', compact('addresses', 'hasAddresses'));
+        return view('partner.services.create', compact('addresses', 'hasAddresses'));
     }
 
     public function store(Request $request)
@@ -97,7 +97,7 @@ class ServiceController extends Controller
             $service->addresses()->sync($validated['address_ids']);
         }
 
-        return redirect()->route('doctor.services.index')->with('success', '¡Servicio creado!');
+        return redirect()->route('partner.services.index')->with('success', '¡Servicio creado!');
     }
 
     public function edit(Service $service)
@@ -119,7 +119,7 @@ class ServiceController extends Controller
         // Obtener los IDs de las sedes que ya tienen este servicio asignado
         $selectedAddressIds = $service->addresses()->pluck('addresses.id')->toArray();
 
-        return view('doctor.services.edit', compact('service', 'addresses', 'selectedAddressIds'));
+        return view('partner.services.edit', compact('service', 'addresses', 'selectedAddressIds'));
     }
 
     public function update(Request $request, Service $service)
@@ -166,23 +166,26 @@ class ServiceController extends Controller
     
     public function destroy(Service $service)
     {
-        // 1. Verificamos si existe alguna sede del doctor vinculada a este servicio
+        $partner = auth()->user()->doctor->id;
+        // 1. Verificamos si existe alguna sede del partner vinculada a este servicio
         $isOwner = $service->addresses()
-            ->where('doctor_id', auth()->user()->doctor->id)
+            ->where('addresses.doctor_id', $partner) // Especificas la tabla para evitar ambigüedad
             ->exists();
 
         if (!$isOwner) {
-            abort(403, 'Acción no autorizada. Este servicio no le pertenece.');
+            return back()->with('error', 'No tienes permiso para eliminar este servicio.');
         }
 
-        // 2. Eliminar las relaciones en la tabla pivote (address_service)
-        $service->addresses()->detach();
+        // 2. Verificamos integridad (Regla de negocio)
+        // Asumiendo que tienes la relación 'appointments' definida en el modelo Service
+        if ($service->appointments()->exists()) {
+            return back()->with('warning', 'El servicio no puede eliminarse porque tiene citas registradas.');
+        }
 
-        // 3. Eliminar el servicio
+        // 3. Ejecutamos eliminación
         $service->delete();
 
-    return redirect()->route('doctor.services.index')
-        ->with('success', 'Servicio eliminado correctamente.');
+        return redirect()->route('partner.services.index')->with('success', 'Servicio eliminado correctamente.');
     }
 
     /**

@@ -53,10 +53,10 @@ Route::get('/register-options', function () {
 })->name('register.options');
 
 // Ruta para mostrar el formulario (GET)
-Route::get('/register-doctor', [RegisterDoctorController::class, 'register'])->name('doctor.register');
+Route::get('/register-partner', [RegisterDoctorController::class, 'register'])->name('partner.register');
 
 // Ruta para procesar el registro (POST) - La que definimos antes
-Route::post('/register-doctor', [RegisterDoctorController::class, 'store'])->name('doctor.register.store');
+Route::post('/register-partner', [RegisterDoctorController::class, 'store'])->name('partner.register.store');
 
 Route::get('/register-clinic', function () {
     return view('auth.register-clinic');
@@ -76,45 +76,40 @@ Route::post('/upgrade-plan', function() {
 // Rutas Públicas (Pacientes)
 Route::get('/search', [SearchController::class, 'index'])->name('search');
 
-// Rutas Privadas (Doctores)
+// Rutas Privadas (medical partner)
 Route::middleware(['auth', 'role:doctor'])->group(function () {    
     // Ver y editar el perfil
-    Route::get('/doctor/profile', [ProfileDoctorController::class, 'edit'])->name('doctor.profile.edit');
-    Route::post('/doctor/profile/plan', [PlanController::class, 'update'])->name('doctor.profile.plan.update');
+    Route::get('/partner/profile', [ProfileDoctorController::class, 'edit'])->name('partner.profile.edit');
+    Route::post('/partner/profile/plan', [PlanController::class, 'update'])->name('partner.profile.plan.update');
             
     //Gestion de servicios
-    Route::get('/doctor/services', [ServiceController::class, 'index'])->name('doctor.services.index');
-    Route::get('/doctor/services/create', [ServiceController::class, 'create'])->name('doctor.services.create');
-    Route::post('/doctor/services', [ServiceController::class, 'store'])->name('doctor.services.store');
-    Route::get('/doctor/services/{service}/edit', [ServiceController::class, 'edit'])->name('doctor.services.edit');
-    Route::put('/doctor/services/{service}', [ServiceController::class, 'update'])->name('doctor.services.update');
-    Route::delete('/doctor/services/{service}', [ServiceController::class, 'destroy'])->name('doctor.services.destroy');
+    Route::get('/partner/services', [ServiceController::class, 'index'])->name('partner.services.index');
+    Route::get('/partner/services/create', [ServiceController::class, 'create'])->name('partner.services.create');
+    Route::post('/partner/services', [ServiceController::class, 'store'])->name('partner.services.store');
+    Route::get('/partner/services/{service}/edit', [ServiceController::class, 'edit'])->name('partner.services.edit');
+    Route::put('/partner/services/{service}', [ServiceController::class, 'update'])->name('partner.services.update');
+    Route::delete('/partner/services/{service}', [ServiceController::class, 'destroy'])->name('partner.services.destroy');
 
     // Gestión de Sedes
-    Route::get('/doctor/addresses', [AddressController::class, 'index'])->name('doctor.addresses.index');
-    Route::get('/doctor/addresses/create', [AddressController::class, 'create'])->name('doctor.addresses.create');
-    Route::post('/doctor/addresses', [AddressController::class, 'store'])->name('doctor.addresses.store');
-    Route::put('/doctor/addresses/{address}', [AddressController::class, 'update'])->name('doctor.addresses.update');
-    Route::delete('/doctor/addresses/{address}', [AddressController::class, 'destroy'])->name('doctor.addresses.destroy');
-    Route::get('/doctor/addresses/{address}/edit', [AddressController::class, 'edit'])->name('doctor.addresses.edit');
-    Route::patch('/doctor/services/{service}/toggle', [ServiceController::class, 'toggleStatus'])->name('doctor.services.toggle');
+    Route::get('/partner/addresses', [AddressController::class, 'index'])->name('partner.addresses.index');
+    Route::get('/partner/addresses/create', [AddressController::class, 'create'])->name('partner.addresses.create');
+    Route::post('/partner/addresses', [AddressController::class, 'store'])->name('partner.addresses.store');
+    Route::put('/partner/addresses/{address}', [AddressController::class, 'update'])->name('partner.addresses.update');
+    Route::delete('/partner/addresses/{address}', [AddressController::class, 'destroy'])->name('partner.addresses.destroy');
+    Route::get('/partner/addresses/{address}/edit', [AddressController::class, 'edit'])->name('partner.addresses.edit');
+    Route::patch('/partner/services/{service}/toggle', [ServiceController::class, 'toggleStatus'])->name('partner.services.toggle');
     
     // Ver el listado y formulario de horarios de una sede
-    Route::get('/doctor/addresses/{address}/schedules', [ScheduleController::class, 'index'])->name('doctor.schedules.index');
-    Route::get('/doctor/addresses/{address}/schedules/edit', [ScheduleController::class, 'edit'])->name('doctor.schedules.edit');
-    Route::put('/doctor/addresses/{address}/schedules/update', [ScheduleController::class, 'update'])->name('doctor.schedules.update');
+    Route::get('/partner/addresses/{address}/schedules', [ScheduleController::class, 'index'])->name('partner.schedules.index');
+    Route::get('/partner/addresses/{address}/schedules/edit', [ScheduleController::class, 'edit'])->name('partner.schedules.edit');
+    Route::put('/partner/addresses/{address}/schedules/update', [ScheduleController::class, 'update'])->name('partner.schedules.update');
     
     // Guardar el horario
-    Route::post('/doctor/schedules', [ScheduleController::class, 'store'])->name('doctor.schedules.store');
-    Route::delete('/doctor/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('doctor.schedules.destroy');
-    Route::get('/doctor/appointments', [DoctorAppointmentController::class, 'index'])->name('doctor.appointments.index');
-    Route::patch('/doctor/addresses/{address}/status', [AddressController::class, 'toggleStatus'])->name('doctor.addresses.status.toggle');
+    Route::post('/partner/schedules', [ScheduleController::class, 'store'])->name('partner.schedules.store');
+    Route::delete('/partner/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('partner.schedules.destroy');
+    Route::get('/partner/appointments', [DoctorAppointmentController::class, 'index'])->name('partner.appointments.index');
+    Route::patch('/partner/addresses/{address}/status', [AddressController::class, 'toggleStatus'])->name('partner.addresses.status.toggle');
 });
-
-Route::post('/appointment/confirm', [PublicProfileController::class, 'book'])
-    ->name('appointments.book')
-    ->middleware('auth'); // Solo pacientes logueados
-Route::get('/appointment/success/{appointment}', [PublicProfileController::class, 'success'])->name('appointments.success')->middleware('auth');
 
 Route::middleware(['auth'])->group(function () {
     // Vista principal de todas las notificaciones
@@ -131,14 +126,14 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('/campaigns/create', \App\Livewire\Campaigns\CreateCampaign::class)->name('campaigns.create');
 });
 
-Route::get('/{doctor_slug}/{campaign_slug}.html', PublicLanding::class)->name('landing.public');
+Route::get('/{partner_slug}/{campaign_slug}.html', PublicLanding::class)->name('landing.public');
 
 // Ruta para ver el perfil del doctor en la busqueda -- esta es la ruta que causa error al entrar al dashboard logueado
-Route::get('/medical-partner/{doctor:slug}', [PublicProfileController::class, 'show'])->name('doctor.public.profile');
+Route::get('/medical-partner/{partner:slug}', [PublicProfileController::class, 'show'])->name('partner.public.profile');
 
 // Ruta API para que FullCalendar cargue los huecos libres
-Route::get('/api/{doctor}/availability', [PublicProfileController::class, 'getAvailability'])
-    ->name('api.doctor.availability')
+Route::get('/api/{partner}/availability', [PublicProfileController::class, 'getAvailability'])
+    ->name('api.partner.availability')
     ->missing(function () {
     return redirect()->route('home'); // Redirige al inicio si no existe
 });
@@ -195,15 +190,17 @@ Route::get('/api/get-slots', function (Request $request) {
     ];
 })->name('api.slots.index');
 
-//reservacion rutas
+//pasos de la reservacion
+Route::middleware(['auth'])->group(function () {    
+    // Esta es la que pones en el FORMULARIO
+    Route::get('/appointments/confirm/{id}', [AppointmentController::class, 'confirm'])->name('appointments.confirm');    
+});
+
 Route::post('/appointments/step-two', [AppointmentController::class, 'storeStepTwo'])->name('appointments.step-two');
 Route::get('/appointments/patient', [AppointmentController::class, 'patient'])->name('appointments.patient');
 Route::post('/appointments/process-patient', [AppointmentController::class, 'processPatient'])->name('appointments.process-patient');
 Route::get('/appointments/preview/{id}', [AppointmentController::class, 'preview'])->name('appointments.preview');
-
-Route::middleware(['auth'])->group(function () {
-    Route::post('/appointments/{id}/confirm', [AppointmentController::class, 'finalConfirm'])->name('appointments.final-confirm');
-});
+Route::get('/appointments/success/{id}', [AppointmentController::class, 'success'])->name('appointments.success');
 
 // Vista de la tabla de precios
 Route::get('/plans/show', [PlanController::class, 'showPlans'])->name('plans.index');

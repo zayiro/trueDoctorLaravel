@@ -13,7 +13,7 @@ $breadcrumbs = [
 <x-admin-layout :breadcrumbs="$breadcrumbs">
     <div class="max-w-6xl mx-auto py-10 px-4">
         <div class="mb-6 flex items-center justify-between">
-            <a href="{{ route('doctor.services.index') }}" class="text-blue-600 hover:underline text-sm">Volver al listado</a>
+            <a href="{{ route('partner.services.index') }}" class="text-blue-600 hover:underline text-sm">Volver al listado</a>
         </div>
 
         @if(!$hasAddresses)
@@ -33,7 +33,7 @@ $breadcrumbs = [
                         </p>
                     </div>
                 </div>
-                <a href="{{ route('doctor.addresses.create') }}" class="whitespace-nowrap bg-amber-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-amber-700 transition">
+                <a href="{{ route('partner.addresses.create') }}" class="whitespace-nowrap bg-amber-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-amber-700 transition">
                     Registra una sede aquí
                 </a>
             </div>
@@ -41,7 +41,7 @@ $breadcrumbs = [
 
         <!-- Contenedor con Alpine.js -->
         <div x-data="{ type: 'physical' }" class="bg-white shadow-xl rounded-3xl overflow-hidden border border-gray-100">
-            <form action="{{ route('doctor.services.store') }}" method="POST" class="p-8 space-y-6">
+            <form action="{{ route('partner.services.store') }}" method="POST" class="p-8 space-y-6">
                 @csrf
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">

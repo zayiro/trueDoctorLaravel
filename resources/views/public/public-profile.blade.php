@@ -99,7 +99,7 @@
                                             </div>
 
                                             <div class="grid grid-cols-1 gap-3">
-                                                @foreach($address->services as $service)
+                                                @forelse($address->services as $service)
                                                 <button class="w-full text-left p-4 bg-white rounded-xl border border-gray-200 hover:border-blue-500 hover:shadow-md transition group"
                                                     @click="selectService({{ $address->id }}, '{{ $address->name }}', {{ $service->id }}, '{{ $service->name }}', '{{ number_format($service->price, 0) }}')">
                                                     <div class="flex justify-between items-center">
@@ -110,7 +110,11 @@
                                                         <span class="font-black text-blue-600">${{ number_format($service->price, 0) }}</span>
                                                     </div>
                                                 </button>
-                                                @endforeach
+                                                @empty
+                                                    <p class="text-amber-600 text-sm italic">
+                                                        Esta sede no tiene servicios disponibles para agendar en este momento.
+                                                    </p>
+                                                @endforelse
                                             </div>
                                         </div>
                                         @endforeach

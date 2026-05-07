@@ -33,7 +33,7 @@ $breadcrumbs = [
         {{-- Si el doctor puede agregar más, mostramos el botón --}}
         @if($doctor->canAddMoreServices())
         <div class="flex justify-between items-center mb-8">
-            <a class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition flex items-center gap-2" href="{{ route('doctor.services.create') }}">
+            <a class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition flex items-center gap-2" href="{{ route('partner.services.create') }}">
                 <i class="fa-regular fa-map-location"></i>
                 Nuevo servicio
             </a>
@@ -42,7 +42,7 @@ $breadcrumbs = [
             {{-- Si alcanzó el límite, mostramos un mensaje --}}    
             <div class="text-sm text-amber-600 font-medium italic mb-4">
                 Has alcanzado el límite de <strong>{{ $doctor->plan->max_services }}</strong> servicios de tu {{ $doctor->plan->name }}.
-                <a href="{{ route('doctor.profile.edit') }}" class="underline">Mejora tu plan aquí</a>.
+                <a href="{{ route('partner.profile.edit') }}" class="underline">Mejora tu plan aquí</a>.
             </div>
         @endif
 
@@ -116,15 +116,15 @@ $breadcrumbs = [
                         <td class="px-6 py-4">
                             @if (!$isOverLimit)
                             <div class="flex items-center space-x-3">
-                                <a href="{{ route('doctor.services.edit', $service) }}" class="text-gray-400 hover:text-blue-600 transition">
+                                <a href="{{ route('partner.services.edit', $service) }}" class="text-gray-400 hover:text-blue-600 transition">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                 </a>
-                                <form action="{{ route('doctor.services.destroy', $service) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar este servicio?');">
+                                <form action="{{ route('partner.services.destroy', $service) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar este servicio?');">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="p-2 text-gray-400 hover:text-gray-700 transition">Eliminar</button>                            
                                 </form>
-                                <form action="{{ route('doctor.services.toggle', $service) }}" method="POST">
+                                <form action="{{ route('partner.services.toggle', $service) }}" method="POST">
                                     @csrf
                                     @method('PATCH')
                                     

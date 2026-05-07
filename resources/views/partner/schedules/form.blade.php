@@ -1,4 +1,4 @@
-<!-- resources/views/doctor/schedules/form.blade.php -->
+<!-- resources/views/partner/schedules/form.blade.php -->
 <div class="max-w-4xl mx-auto p-6 bg-white shadow-lg rounded-xl">
     <div class="mb-6 flex justify-between items-center border-b pb-4">
         <div>
@@ -10,7 +10,7 @@
         </button>
     </div>
 
-    <form action="{{ route('doctor.schedules.store') }}" method="POST">
+    <form action="{{ route('partner.schedules.store') }}" method="POST">
         @csrf
         <input type="hidden" name="address_id" value="{{ $address->id }}">
 

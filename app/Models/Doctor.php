@@ -156,7 +156,15 @@ class Doctor extends Model
 
     public function appointments()
     {
-        return $this->hasMany(Appointment::class);
+        // Citas a través de las sedes (addresses)
+        return $this->hasManyThrough(
+            Appointment::class, 
+            Address::class,
+            'doctor_id',  // FK en tabla addresses
+            'address_id', // FK en tabla appointments
+            'id',         // Local key en tabla doctors
+            'id'          // Local key en tabla addresses
+        );
     }
 
     public function campaigns()

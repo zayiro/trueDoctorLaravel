@@ -30,11 +30,17 @@ $breadcrumbs = [
         </div>
     @endif
 
+    @if (session('error'))
+        <div style="background-color: #fee2e2; color: #b91c1c; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; border: 1px solid #f87171;">
+            {{ session('error') }}
+        </div>
+    @endif
+
     {{-- Si el doctor puede agregar más, mostramos el botón --}}
     @if($doctor->canAddMoreAddresses())
     <div class="flex justify-between items-center mb-8">            
         <!-- Botón para abrir formulario/modal -->
-        <a class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition flex items-center gap-2" href="{{ route('doctor.addresses.create') }}">
+        <a class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition flex items-center gap-2" href="{{ route('partner.addresses.create') }}">
             <i class="fa-regular fa-map-location"></i>
             Nueva sede
         </a>        
@@ -43,7 +49,7 @@ $breadcrumbs = [
         {{-- Si alcanzó el límite, mostramos un mensaje --}}    
         <div class="text-sm text-amber-600 font-medium italic mb-4">
             Has alcanzado el límite de <strong>{{ $doctor->plan->max_addresses }}</strong> sedes de tu {{ $doctor->plan->name }}.
-            <a href="{{ route('doctor.profile.edit') }}" class="underline">Mejora tu plan aquí</a>.
+            <a href="{{ route('partner.profile.edit') }}" class="underline">Mejora tu plan aquí</a>.
         </div>
     @endif
 
@@ -71,7 +77,7 @@ $breadcrumbs = [
                     </div>
                 </div>
                 <div class="flex gap-2">
-                     <a href="{{ route('doctor.schedules.index', $address->id) }}" class="p-2 text-gray-400 hover:text-gray-700 transition">
+                     <a href="{{ route('partner.schedules.index', $address->id) }}" class="p-2 text-gray-400 hover:text-gray-700 transition">
                         <div>Configurar horarios y duración ({{ $address->schedules_count }})</div>
                         <div>
                             @if($address->schedules_count > 0)
@@ -93,13 +99,13 @@ $breadcrumbs = [
                     </a>
                     
                     @if ($address->type !== 'virtual')
-                        <a class="p-2 text-gray-400 hover:text-gray-700 transition" href="{{ route('doctor.addresses.edit', $address->id) }}">Editar</a>
-                        <form action="{{ route('doctor.addresses.destroy', $address->id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar este consultorio?');">
+                        <a class="p-2 text-gray-400 hover:text-gray-700 transition" href="{{ route('partner.addresses.edit', $address->id) }}">Editar</a>
+                        <form action="{{ route('partner.addresses.destroy', $address) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar este consultorio?');">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="p-2 text-gray-400 hover:text-gray-700 transition">Eliminar</button>                            
                         </form>                    
-                        <form action="{{ route('doctor.addresses.status.toggle', $address) }}" method="POST" class="inline">
+                        <form action="{{ route('partner.addresses.status.toggle', $address) }}" method="POST" class="inline">
                             @csrf
                             @method('PATCH')
                             

@@ -16,7 +16,7 @@ class ScheduleController extends Controller
 
         $schedules = $address->schedules()->orderBy('day')->get();
 
-        return view('doctor.schedules.index', compact('address', 'schedules'));
+        return view('partner.schedules.index', compact('address', 'schedules'));
     }
 
     public function edit(Address $address)
@@ -24,7 +24,7 @@ class ScheduleController extends Controller
         // Cargamos los horarios de esta dirección específica
         $schedules = $address->schedules()->orderBy('day_of_week')->get();
         
-        return view('doctor.schedules.edit', compact('address', 'schedules'));
+        return view('partner.schedules.edit', compact('address', 'schedules'));
     }
 
     public function update(Request $request, Address $address)

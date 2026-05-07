@@ -6,19 +6,19 @@
     [
         'name' => 'Plan',
         'icon' => 'fa-solid fa-gauge',
-        'href' => route('doctor.profile.edit'),
+        'href' => route('partner.profile.edit'),
         'active' => false,
     ],    
     [
         'name' => 'Sedes',
         'icon' => 'fa-solid fa-gauge',
-        'href' => route('doctor.addresses.index'),
+        'href' => route('partner.addresses.index'),
         'active' => false,
     ],
     [
         'name' => 'Servicios',
         'icon' => 'fa-solid fa-gauge',
-        'href' => route('doctor.services.index'),
+        'href' => route('partner.services.index'),
         'active' => false,
     ],
     [
@@ -36,7 +36,7 @@
     [
         'name' => 'Agenda',
         'icon' => 'fa-solid fa-gauge',
-        'href' => route('doctor.appointments.index'),
+        'href' => route('partner.appointments.index'),
         'active' => false,
     ],
     [
