@@ -23,14 +23,15 @@ class PartnerPatientController extends Controller
         });
 
         // 2. Aplicar Restricción según Plan
-        if ($plan->can_search_patients) {
-            // Plan PRO: Puede buscar por nombre o documento
-            if ($querySearch) {
-                $query->where(function ($q) use ($querySearch) {
-                    $q->where('name', 'LIKE', "%{$querySearch}%")
-                      ->orWhere('documento', 'LIKE', "%{$querySearch}%");
-                });
-            }
+        if ($plan->can_search_patients && $querySearch) {
+            $query->where(function ($q) use ($querySearch) {
+                // Buscamos el nombre en la tabla USERS vinculada
+                $q->whereHas('user', function ($qu) use ($querySearch) {
+                    $qu->where('name', 'LIKE', "%{$querySearch}%");
+                })
+                // Buscamos el documento en la tabla PATIENTS (asegúrate de que el campo sea 'identification' o 'documento')
+                ->orWhere('identification', 'LIKE', "%{$querySearch}%");
+            });
         } else {
             // Plan FREE: Forzamos que solo vea pacientes que tengan cita HOY
             $query->whereHas('appointments', function ($q) use ($doctor) {

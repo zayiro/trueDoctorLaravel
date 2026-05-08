@@ -26,6 +26,11 @@ class PlanSeeder extends Seeder
                 'slug' => $plan['slug'],
                 'max_addresses' => $plan['max_addresses'],
                 'max_services' => $plan['max_services'],
+                'max_appointments_per_year' => $plan['max_appointments_per_year'],
+                'can_search_patients' => $plan['can_search_patients'],
+                'max_patients_list' => $plan['max_patients_list'],
+                'can_export_history' => $plan['can_export_history'],
+                'has_telemedicine' => $plan['has_telemedicine'],
                 'price' => $plan['price']
             ]);
         }

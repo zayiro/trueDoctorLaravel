@@ -24,11 +24,15 @@ $breadcrumbs = [
         @if($plan->can_search_patients)
             {{-- BUSCADOR ACTIVO PARA PREMIUM/GOLD --}}
             <form action="{{ route('partner.patients.index') }}" method="GET" class="mb-8">
-                <div class="relative">
-                    <input type="text" name="query" value="{{ request('query') }}" 
-                        placeholder="Buscar por nombre, apellidos o documento..."
-                        class="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-blue-500">
-                    <span class="absolute left-3 top-2.5 text-gray-400">🔍</span>
+                <div class="flex gap-2">
+                    <div class="flex w-full">
+                        <input type="text" name="query" value="{{ request('query') }}" 
+                            placeholder="Buscar por nombre, apellidos o documento..."
+                            class="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-blue-500">                        
+                    </div>
+                    <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+                        Buscar
+                    </button>
                 </div>
             </form>
         @else
@@ -63,7 +67,7 @@ $breadcrumbs = [
                     @empty
                         <tr>
                             <td colspan="3" class="px-6 py-10 text-center text-gray-500">
-                                No se encontraron pacientes para mostrar.
+                                No se encontrarón pacientes para mostrar.
                             </td>
                         </tr>
                     @endforelse

@@ -47,7 +47,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $doctor->settings()->create([
-            'plan_id' => '1',
+            'plan_id' => '2', //premium
         ]);
 
         // Llamamos manualmente a la creación de la sede virtual DESPUÉS de tener plan
