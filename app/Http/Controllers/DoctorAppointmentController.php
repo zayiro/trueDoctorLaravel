@@ -21,7 +21,7 @@ class DoctorAppointmentController extends Controller
             ->whereDate('date', $date)
             ->orderBy('start_time')
             ->get()
-            ->groupBy('address_id'); // Agrupa la colección resultante     
+            ->groupBy('address_id');
 
         return view('partner.appointments.index', compact('appointments', 'date'));
     }

@@ -1,0 +1,8 @@
+[
+  { "department_id": "05", "department_name": "Antioquia", "city_id": "05001", "city_name": "Medellín" },
+  { "department_id": "05", "department_name": "Antioquia", "city_id": "05045", "city_name": "Apartadó" },
+  { "department_id": "08", "department_name": "Atlántico", "city_id": "08001", "city_name": "Barranquilla" },
+  { "department_id": "11", "department_name": "Bogotá D.C.", "city_id": "11001", "city_name": "Bogotá" },
+  { "department_id": "76", "department_name": "Valle del Cauca", "city_id": "76001", "city_name": "Cali" },
+  { "department_id": "76", "department_name": "Valle del Cauca", "city_id": "76520", "city_name": "Palmira" }
+]

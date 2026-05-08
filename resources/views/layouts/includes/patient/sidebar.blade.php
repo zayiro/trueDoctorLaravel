@@ -4,27 +4,9 @@
         'header' => 'Administrar página',        
     ],
     [
-        'name' => 'Plan',
+        'name' => 'Dashboard',
         'icon' => 'fa-solid fa-gauge',
-        'href' => route('partner.profile.edit'),
-        'active' => false,
-    ],    
-    [
-        'name' => 'Sedes',
-        'icon' => 'fa-solid fa-gauge',
-        'href' => route('partner.addresses.index'),
-        'active' => false,
-    ],
-    [
-        'name' => 'Servicios',
-        'icon' => 'fa-solid fa-gauge',
-        'href' => route('partner.services.index'),
-        'active' => false,
-    ],
-    [
-        'name' => 'Indisponibilidades',
-        'icon' => 'fa-solid fa-gauge',
-        'href' => '#',
+        'href' => route('admin.dashboard'),
         'active' => false,
     ],
     [
@@ -34,21 +16,33 @@
         'active' => false,
     ],
     [
-        'name' => 'Agenda',
+        'name' => 'Mis citas',
         'icon' => 'fa-solid fa-gauge',
         'href' => route('partner.appointments.index'),
         'active' => false,
     ],
     [
-        'name' => 'Directorio de Pacientes',
+        'name' => 'Historial Médico',
         'icon' => 'fa-solid fa-gauge',
-        'href' => route('partner.patients.index'),
+        'href' => route('partner.appointments.index'),
         'active' => false,
     ],
     [
-        'name' => 'MKT',
+        'name' => 'Mis Recetas',
         'icon' => 'fa-solid fa-gauge',
-        'href' => route('campaigns.index'),
+        'href' => route('partner.appointments.index'),
+        'active' => false,
+    ],
+    [
+        'name' => 'Medicación',
+        'icon' => 'fa-solid fa-gauge',
+        'href' => route('partner.appointments.index'),
+        'active' => false,
+    ],
+    [
+        'name' => 'Pagos y Facturación',
+        'icon' => 'fa-solid fa-gauge',
+        'href' => route('partner.appointments.index'),
         'active' => false,
     ],
  ];

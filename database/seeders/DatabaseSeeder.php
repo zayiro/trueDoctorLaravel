@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             PlanSeeder::class,
             RoleSeeder::class,
-            CitySeeder::class,
+            DivipolaSeeder::class,
             SpecialtySeeder::class
         ]);
 
@@ -67,7 +67,7 @@ class DatabaseSeeder extends Seeder
         
         Patient::create([
             'user_id' => $patientUser->id,
-            'identification' => '1067123456',
+            'identification' => '100000789',
             'phone' => '3001234567',
         ]);
 

@@ -28,11 +28,14 @@
         <!-- Styles -->
         @livewireStyles
     </head>
-    <body class="font-sans antialiased" style="background-color: #FCFCFC;">        
-        @include('layouts.includes.admin.navigation')
-
-        @include('layouts.includes.admin.sidebar')
-
+    <body class="font-sans antialiased" style="background-color: #FCFCFC;">       
+        @if(auth()->user()->role == 'doctor')
+            @include('layouts.includes.admin.navigation')
+            @include('layouts.includes.admin.sidebar')
+        @else
+            @include('layouts.includes.patient.navigation')
+            @include('layouts.includes.patient.sidebar')
+        @endif
         <div class="p-4 sm:ml-64">
             <div class="mt-14 flex items-center">
 

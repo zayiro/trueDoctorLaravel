@@ -11,13 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('cities', function (Blueprint $table) {
-            $table->string('id', 10)->primary();
+        Schema::create('departments', function (Blueprint $table) {
+            $table->string('id', 5)->primary(); // Código DIVIPOLA (Ej: 05)
             $table->string('name');
-            $table->string('department_id', 5);
-            $table->foreign('department_id')->references('id')->on('departments');        
-            $table->string('slug')->unique();           
-            $table->boolean('state')->default(true); 
             $table->timestamps();
         });
     }
@@ -27,6 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('cities');
+        Schema::dropIfExists('departments');
     }
 };

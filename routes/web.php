@@ -17,6 +17,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\DoctorAppointmentController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\PartnerPatientController;
 
 //Route::redirect('/', '/admin');
 
@@ -109,6 +110,11 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::delete('/partner/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('partner.schedules.destroy');
     Route::get('/partner/appointments', [DoctorAppointmentController::class, 'index'])->name('partner.appointments.index');
     Route::patch('/partner/addresses/{address}/status', [AddressController::class, 'toggleStatus'])->name('partner.addresses.status.toggle');
+
+    //buscador de pacientes
+    Route::get('/partner/patients', [PartnerPatientController::class, 'index'])->name('partner.patients.index');
+    //vista detallada del paciente
+    Route::get('partner/patients/{id}', [PartnerPatientController::class, 'show'])->name('partner.patients.show');
 });
 
 Route::middleware(['auth'])->group(function () {

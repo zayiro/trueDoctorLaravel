@@ -5,11 +5,16 @@ $breadcrumbs = [
         'href' => route('admin.dashboard'),
     ],
     [
-        'name' => 'Pruebas',
+        'name' => auth()->user()->role == 'doctor' ? 'Partner' : 'Paciente',
     ]
 ];
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-    Hola mundo desde el View admin dashboard
+    @if(auth()->user()->role == 'doctor')
+        @include('admin.dashboard-partner')
+    @else
+        @include('admin.dashboard-patient')
+    @endif
+    
 </x-admin-layout>

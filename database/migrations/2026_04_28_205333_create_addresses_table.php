@@ -18,7 +18,8 @@ return new class extends Migration
             $table->string('address');
             $table->string('type')->default('physical');
             $table->string('phone')->nullable();
-            $table->foreignId('city_id')->constrained()->onDelete('cascade');
+            $table->string('city_id', 5);
+            $table->foreign('city_id')->references('id')->on('cities')->onDelete('cascade');
             $table->boolean('status')->default(true);
             $table->softDeletes();
             $table->timestamps();

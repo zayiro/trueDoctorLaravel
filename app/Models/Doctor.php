@@ -26,7 +26,7 @@ class Doctor extends Model
             'address'   => 'Plataforma Online',
             'type'      => 'virtual',
             'phone'     => $this->phone ?? 'N/A', // Usa el del doctor si existe
-            'city_id'   => 2, // ID de una ciudad "Global" o la principal bogotá tabla cities
+            'city_id'   => '11001',
             'status'    => true,
         ]);
     }
@@ -71,7 +71,7 @@ class Doctor extends Model
 
     public function settings()
     {
-        return $this->hasOne(DoctorSetting::class);
+        return $this->hasOne(DoctorSetting::class, 'doctor_id');
     }
 
     // Relación directa al Plan (Saltando por doctor_settings)
@@ -171,5 +171,13 @@ class Doctor extends Model
     {
         return $this->hasMany(Campaign::class);
     }
-}
 
+    // Método útil: $user->canDo('can_search_patients')
+    public function canDo($feature)
+    {
+        // Accedemos al plan a través de settings
+        $plan = $this->settings?->plan;
+        
+        return $plan ? (bool) $plan->$feature : false;
+    }
+}

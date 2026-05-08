@@ -203,6 +203,13 @@ class AppointmentController extends Controller
             ->where('patient_id', auth()->user()->patient->id) // Crucial: solo sus citas
             ->with(['service', 'doctor.user', 'address'])
             ->first();
+
+        $user = auth()->user();
+        // Validación: ¿El usuario es el mismo doctor de la cita?
+        if ($user->doctor && $user->doctor->id === $appointment->doctor_id) {
+            return redirect()->route('search')
+                ->with('error', 'No puedes agendar una cita contigo mismo.');
+        }
             
         try {
             DB::beginTransaction();
