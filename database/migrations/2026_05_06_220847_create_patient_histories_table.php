@@ -17,6 +17,7 @@ return new class extends Migration
             $table->foreignId('doctor_id')->constrained()->onDelete('cascade'); // Quién escribe la nota
             $table->foreignId('appointment_id')->nullable()->constrained()->onDelete('set null'); // Opcional: ligar a una cita
             $table->string('reason_for_consultation'); // Motivo de la consulta
+            $table->enum('entry_type', ['consultation', 'follow_up', 'emergency', 'note']); // Así sabrás si la nota fue por una consulta formal o solo una anotación de seguimiento.
             $table->text('symptoms')->nullable();
             $table->text('diagnosis'); // Diagnóstico médico
             $table->text('treatment_plan')->nullable(); // Plan a seguir

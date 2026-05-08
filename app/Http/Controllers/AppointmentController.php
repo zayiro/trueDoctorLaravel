@@ -115,7 +115,7 @@ class AppointmentController extends Controller
             }
         }
         
-        $request->validate($rules);
+        $request->validate($rules);        
                                         
         return DB::transaction(function () use ($request, $bookingData) {
             $hasAccount = $request->has_account == 'yes' ? true : false;
@@ -166,9 +166,9 @@ class AppointmentController extends Controller
                 'price'        => $service->price,
                 'meeting_link' => ($service->type === 'virtual') ? 'https://zoom.us' : null,            
                 'status'       => 'pending', 
-                'notes'        => $request->notes,
+                'notes'        => $request->notes
             ]);
-
+            
             session()->forget(['booking_data', 'current_doctor_id']);
 
             return redirect()->route('appointments.preview', ['id' => $appointment->id])->with('success', 'Cita agendada correctamente');       

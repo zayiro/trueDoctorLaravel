@@ -22,13 +22,34 @@
         'active' => false,
     ],
     [
+        'name' => 'Pagos y Facturación',
+        'icon' => 'fa-solid fa-gauge',
+        'href' => route('partner.appointments.index'),
+        'active' => false,
+    ],
+    [
+        'header' => 'Antecedentes Médicos',        
+    ],
+    [
         'name' => 'Historial Médico',
         'icon' => 'fa-solid fa-gauge',
         'href' => route('partner.appointments.index'),
         'active' => false,
     ],
     [
-        'name' => 'Mis Recetas',
+        'name' => 'Alergias',
+        'icon' => 'fa-solid fa-gauge',
+        'href' => route('patient.allergies.index'),
+        'active' => false,
+    ],
+    [
+        'name' => 'Cirugias',
+        'icon' => 'fa-solid fa-gauge',
+        'href' => route('partner.appointments.index'),
+        'active' => false,
+    ],
+    [
+        'name' => 'Historial Familiar',
         'icon' => 'fa-solid fa-gauge',
         'href' => route('partner.appointments.index'),
         'active' => false,
@@ -38,13 +59,7 @@
         'icon' => 'fa-solid fa-gauge',
         'href' => route('partner.appointments.index'),
         'active' => false,
-    ],
-    [
-        'name' => 'Pagos y Facturación',
-        'icon' => 'fa-solid fa-gauge',
-        'href' => route('partner.appointments.index'),
-        'active' => false,
-    ],
+    ],    
  ];
 @endphp
 

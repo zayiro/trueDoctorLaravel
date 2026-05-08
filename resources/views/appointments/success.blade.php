@@ -36,7 +36,7 @@
                         <div>
                             <p class="text-xs font-bold text-blue-600 uppercase tracking-widest">Modalidad</p>
                             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold {{ $appointment->service->type === 'virtual' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">
-                                {{ ucfirst($appointment->service->type) }}
+                                {{ $appointment->service->type === 'physical' ? 'Presencial' : 'Virtual' }}
                             </span>
                         </div>
                         <div>

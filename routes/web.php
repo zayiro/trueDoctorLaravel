@@ -18,6 +18,7 @@ use App\Http\Controllers\DoctorAppointmentController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\PartnerPatientController;
+use App\Http\Controllers\PatientController;
 
 //Route::redirect('/', '/admin');
 
@@ -211,4 +212,11 @@ Route::get('/appointments/success/{id}', [AppointmentController::class, 'success
 // Vista de la tabla de precios
 Route::get('/plans/show', [PlanController::class, 'showPlans'])->name('plans.index');
 // Acción de seleccionar/suscribirse a un plan
-Route::post('/planes/{plan}/subscribe', [PlanController::class, 'subscribe'])->name('plans.subscribe');
+Route::post('/plans/{plan}/subscribe', [PlanController::class, 'subscribe'])->name('plans.subscribe');
+
+Route::middleware(['auth'])->group(function () {    
+    Route::get('patient/allergies', [PatientController::class, 'index'])->name('patient.allergies.index');    
+    Route::post('patient/{id}/allergies', [PatientController::class, 'store'])->name('patient.allergies.store');
+    Route::delete('patient/allergies/{id}', [PatientController::class, 'destroy'])->name('patient.allergies.destroy');
+
+});

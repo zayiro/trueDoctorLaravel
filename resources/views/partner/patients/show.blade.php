@@ -49,8 +49,8 @@ $breadcrumbs = [
                     <li class="flex justify-between"><span class="text-gray-400">Peso:</span> <span class="font-bold text-gray-700">69 Kg</span></li>
                     <li class="flex justify-between"><span class="text-gray-400">Seguro médico:</span> <span class="font-bold text-gray-700">Eps sanitas</span></li>
                     <li>
-                        @if(auth()->user()->canDo('can_export_history'))
-                            <button>Descargar Historia Clínica PDF</button>
+                        @if($plan->can_export_history)                            
+                            <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 inset-ring inset-ring-blue-700/10 underline">Descargar Historia Clínica PDF</span>
                         @endif
                     </li>
                 </ul>
@@ -63,8 +63,9 @@ $breadcrumbs = [
                     @forelse($patient->appointments as $history)
                         <div class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition">
                             <div>
-                                <p class="text-sm font-bold text-gray-800">{{ $history->service->name }}</p>
-                                <p class="text-[10px] text-gray-400">{{ $history->start_time }}</p>
+                                <p class="font-bold text-gray-800">{{ $history->service->name }}</p>
+                                <p class="text-sm text-gray-400">{{ $history->notes }}</p>
+                                <p class="text-sm text-gray-500">{{ \Carbon\Carbon::parse($history->date)->translatedFormat('d \d\e F, Y') }} a las {{ $history->start_time }}</p>
                             </div>
                             <span class="text-xs font-bold text-blue-600">{{ $history->status }}</span>
                         </div>
@@ -72,6 +73,45 @@ $breadcrumbs = [
                         <p class="text-sm text-gray-400 italic">No hay registros previos.</p>
                     @endforelse
                 </div>
+            </div>
+        </div>
+
+        <!-- Bloque Antecedentes Médicos -->
+        <div class="md:col-span-2 bg-white rounded-3xl p-6 shadow-sm border border-gray-100 mt-4">
+            <h3 class="text-gray-900 font-bold border-b pb-2 mb-3">Allergias</h3>
+            
+            <div class="space-y-3 text-sm">
+                @foreach($patient->allergies as $allergy)
+                    <div class="p-3 mb-2 rounded-lg border @if($allergy->severity == 'severe') bg-red-50 border-red-200 @else bg-gray-50 border-gray-200 @endif">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-gray-800">{{ $allergy->name }}</span>
+                            <span class="text-xs uppercase px-2 py-1 rounded-full @if($allergy->severity == 'severe') bg-red-200 text-red-800 @else bg-gray-200 text-gray-700 @endif">
+                                {{ $allergy->severity }}
+                            </span>
+                        </div>
+                        <p class="text-xs text-gray-600 mt-1 italic">{{ $allergy->reaction }}</p>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        <div class="md:col-span-2 bg-white rounded-3xl p-6 shadow-sm border border-gray-100 mt-4">
+            <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Nota de Evolución Actual</h3>
+            <div class="space-y-4">
+                <form action="#" method="POST">
+                    @csrf
+                    <input type="hidden" name="patient_id" value="{{ $patient->id }}">
+                    
+                    <!-- Si entramos desde una cita, capturamos el ID. Si no, será null -->
+                    <input type="hidden" name="appointment_id" value="{{ $appointment->id ?? '' }}">
+    
+                    <!-- Aquí incluyes tus campos de diagnóstico, tratamiento, etc. -->
+                    @include('partner.patients.partials.history-form')
+
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded mt-3">
+                        Guardar Nota
+                    </button>
+                </form>
             </div>
         </div>
     </div>

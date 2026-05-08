@@ -58,8 +58,8 @@ $breadcrumbs = [
                 <tbody class="divide-y divide-gray-200">
                     @forelse($patients as $patient)
                         <tr>
-                            <td class="px-6 py-4 whitespace-nowrap">{{ $patient->name }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">{{ $patient->appointments->last()?->fecha->format('d/m/Y') ?? 'Sin citas' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">{{ $patient->user->name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">{{ $patient->appointments->last()?->date ?? 'Sin citas' }}</td>
                             <td class="px-6 py-4">
                                 <a href="{{ route('partner.patients.show', $patient) }}" class="text-blue-600 hover:text-blue-900">Ver Ficha</a>
                             </td>

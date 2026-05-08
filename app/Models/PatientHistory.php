@@ -11,6 +11,7 @@ class PatientHistory extends Model
         'doctor_id', 
         'appointment_id', 
         'reason_for_consultation', 
+        'entry_type',
         'symptoms', 
         'diagnosis', 
         'treatment_plan'

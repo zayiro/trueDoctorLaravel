@@ -41,9 +41,11 @@ class PartnerPatientController extends Controller
         }
 
         // 3. Ejecutar con paginación y límite del plan
-        $patients = $query->with('appointments') // Eager loading para evitar el problema N+1
+        $patients = $query->with(['user', 'appointments']) // Eager loading para evitar el problema N+1
             ->limit($plan->max_patients_list)
             ->paginate(15);
+
+            
 
         return view('partner.patients.index', compact('patients', 'plan'));
     }
@@ -58,9 +60,10 @@ class PartnerPatientController extends Controller
         return view('partner.patients.show', compact('patient'));
     }*/
 
-    public function show($id)
+    public function show(Request $request, $id)
     {    
         $doctor = auth()->user();
+        $plan = auth()->user()->doctor->settings->plan;
 
         // 1. Cargamos al paciente con sus relaciones
         // Incluimos citas ordenadas para ver el historial clínico correctamente
@@ -73,19 +76,15 @@ class PartnerPatientController extends Controller
 
         // 2. SEGURIDAD: Verificar que el paciente tiene relación con este doctor
         // Evita que un doctor vea datos de pacientes ajenos cambiando el ID en la URL
-        $tieneAcceso = $patient->appointments()->where('doctor_id', $doctor->id)->exists();
+        $hasAccess = $patient->appointments()->where('doctor_id', $doctor->id)->exists();
 
-        if (!$tieneAcceso) {
+        if (!$hasAccess) {
             abort(403, 'No tienes permiso para acceder a la ficha de este paciente.');
-        }
-
-        // 3. LÓGICA DE PLAN: ¿Puede ver el historial completo?
-        // Si es Plan Free, podrías filtrar para que solo vea la cita de hoy
-        if (!$doctor->canDo('can_export_history')) {
-            // Opcional: Podrías pasar una variable para limitar qué se muestra en el Blade
-            $limitado = true;
-        }
-
-        return view('partner.patients.show', compact('patient', 'doctor'));
+        }    
+        
+        // Capturamos el ID de la cita si viene en la URL
+        $appointmentId = $request->query('appointment_id');
+        
+        return view('partner.patients.show', compact('patient', 'doctor', 'plan', 'appointmentId'));
     }
 }

@@ -54,6 +54,14 @@ $breadcrumbs = [
                                     <!-- ... (thead igual que antes) ... -->
                                     <tbody class="divide-y divide-gray-50">
                                         @foreach($group as $app)
+                                            @php
+                                                $ahora = now();
+                                                // Creamos un objeto Carbon combinando fecha y hora de la cita
+                                                $appointmentStart = \Carbon\Carbon::parse($app->date . ' ' . $app->start_time);
+                                                // Definimos un margen (ejemplo: permitir iniciar 15 minutos antes)
+                                                $canStart = $ahora->greaterThanOrEqualTo($appointmentStart->subMinutes(15));
+                                            @endphp
+
                                             <tr class="hover:bg-blue-50/30 transition">
                                                 <td class="px-6 py-4">
                                                     <span class="font-black text-gray-800">{{ \Carbon\Carbon::parse($app->start_time)->format('g:i A') }}</span>
@@ -94,6 +102,19 @@ $breadcrumbs = [
                                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                                                             </a>
                                                         @endif
+
+                                                        @if($canStart)
+                                                            <a href="{{ route('partner.patients.show', ['id' => $app->patient->id, 'appointment_id' => $app->id]) }}" 
+                                                                target="_blank" 
+                                                                class="group flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 transition-colors font-medium">
+                                                                <span>Iniciar consulta</span>                                                            
+                                                            </a>
+                                                        @else
+                                                            <span class="text-gray-400 cursor-not-allowed pt-1">
+                                                                Próximamente
+                                                            </span>
+                                                        @endif
+                                                        
                                                         <button type="button" 
                                                                 onclick="showMotive('{{ addslashes($app->notes) }}')" 
                                                                 class="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors">
