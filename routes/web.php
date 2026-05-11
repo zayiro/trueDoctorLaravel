@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\City;
 use Illuminate\Http\Request;
 use App\Livewire\PublicLanding;
 use Illuminate\Support\Facades\Route;
@@ -214,9 +215,41 @@ Route::get('/plans/show', [PlanController::class, 'showPlans'])->name('plans.ind
 // Acción de seleccionar/suscribirse a un plan
 Route::post('/plans/{plan}/subscribe', [PlanController::class, 'subscribe'])->name('plans.subscribe');
 
-Route::middleware(['auth'])->group(function () {    
-    Route::get('patient/allergies', [PatientController::class, 'index'])->name('patient.allergies.index');    
-    Route::post('patient/{id}/allergies', [PatientController::class, 'store'])->name('patient.allergies.store');
-    Route::delete('patient/allergies/{id}', [PatientController::class, 'destroy'])->name('patient.allergies.destroy');
+// routes/api.php o routes/web.php
+Route::get('/api/departments/{department}/cities', function ($deptId) {
+    return City::where('department_id', $deptId)
+        ->where('state', true)
+        ->orderBy('name')
+        ->get(['id', 'name']);
+});
 
+
+Route::middleware(['auth'])->group(function () {        
+    Route::get('/patient/patient-identification', [PatientController::class, 'index'])->name('patient.patient-identification.index');
+    Route::put('/patient/patient-identification/{patient}', [PatientController::class, 'update'])->name('patient.patient-identification.update');
+
+
+    Route::get('/patient/appointments', [PatientController::class, 'appointments'])->name('patient.appointments.index');
+    Route::get('/patient/allergies', [PatientController::class, 'indexAllergy'])->name('patient.allergies.index');
+    Route::get('/patient/history', [PatientController::class, 'history'])->name('patient.history.index');
+    Route::get('/patient/surgeries', [PatientController::class, 'surgeries'])->name('patient.surgeries.index');
+    Route::post('/patient/surgeries', [PatientController::class, 'storeSurgery'])->name('patient.surgeries.store');
+    Route::get('/patient/surgeries/{surgery}/edit', [PatientController::class, 'editSurgery'])->name('patient.surgeries.edit');
+    Route::put('/patient/surgeries/{surgery}', [PatientController::class, 'updateSurgery'])->name('patient.surgeries.update');
+    Route::delete('/patient/surgeries/{surgery}', [PatientController::class, 'destroySurgery'])->name('patient.surgeries.destroy');
+    Route::post('/patient/{id}/allergies', [PatientController::class, 'storeAllergy'])->name('patient.allergies.store');
+    Route::delete('/patient/allergies/{allergy}', [PatientController::class, 'destroyAllergy'])->name('patient.allergies.destroy');
+    Route::get('/patient/family-history', [PatientController::class, 'indexFamilyHistory'])->name('patient.family-history.index');
+    Route::post('/patient/family-history', [PatientController::class, 'storeFamilyHistory'])->name('patient.family-history.store');
+    Route::delete('/patient/allergies/{id}', [PatientController::class, 'destroyFamilyHistory'])->name('patient.family-history.destroy');
+
+    Route::get('/patient/medications', [PatientController::class, 'indexMedication'])->name('patient.medications.index');
+    Route::delete('/patient/medications/{medication}', [PatientController::class, 'destroyMedication'])->name('patient.medications.destroy');
+
+    // Para CREAR: No necesita ID de medicamento
+    Route::post('/patient/medications', [PatientController::class, 'storeMedication'])->name('patient.medications.store');
+
+    // Para ACTUALIZAR: Sí necesita el ID
+    Route::put('/patient/medications/{medication}', [PatientController::class, 'updateMedication'])->name('patient.medications.update');
+    Route::patch('/patient/medications/{medication}/toggle', [PatientController::class, 'toggleStatusMedication'])->name('patient.medications.toggle');
 });

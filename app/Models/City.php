@@ -16,7 +16,7 @@ class City extends Model
     // Relación: Un municipio pertenece a un departamento
     public function department()
     {
-        return $this->belongsTo(Department::class, 'department_id');
+        return $this->belongsTo(Department::class, 'department_id', 'id');
     }
 
     // Relación: Un municipio puede tener muchos pacientes residentes

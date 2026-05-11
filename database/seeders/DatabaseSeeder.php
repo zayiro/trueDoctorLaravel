@@ -24,7 +24,8 @@ class DatabaseSeeder extends Seeder
             PlanSeeder::class,
             RoleSeeder::class,
             DivipolaSeeder::class,
-            SpecialtySeeder::class
+            SpecialtySeeder::class,
+            InsuranceSeeder::class,
         ]);
 
         $specialties = Specialty::all();

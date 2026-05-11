@@ -17,6 +17,6 @@ class Department extends Model
     // Relación: Un departamento tiene muchos municipios
     public function cities()
     {
-        return $this->hasMany(City::class, 'department_id');
+        return $this->hasMany(City::class, 'department_id', 'id');
     }
 }

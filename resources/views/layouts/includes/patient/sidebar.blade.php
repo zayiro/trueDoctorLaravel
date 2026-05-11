@@ -18,7 +18,7 @@
     [
         'name' => 'Mis citas',
         'icon' => 'fa-solid fa-gauge',
-        'href' => route('partner.appointments.index'),
+        'href' => route('patient.appointments.index'),
         'active' => false,
     ],
     [
@@ -31,9 +31,15 @@
         'header' => 'Antecedentes Médicos',        
     ],
     [
+        'name' => 'Ficha de identificación',
+        'icon' => 'fa-solid fa-gauge',
+        'href' => route('patient.patient-identification.index'),
+        'active' => false,
+    ],
+    [
         'name' => 'Historial Médico',
         'icon' => 'fa-solid fa-gauge',
-        'href' => route('partner.appointments.index'),
+        'href' => route('patient.history.index'),
         'active' => false,
     ],
     [
@@ -43,21 +49,21 @@
         'active' => false,
     ],
     [
-        'name' => 'Cirugias',
+        'name' => 'Reporte Quirúrgico',
         'icon' => 'fa-solid fa-gauge',
-        'href' => route('partner.appointments.index'),
+        'href' => route('patient.surgeries.index'),
         'active' => false,
     ],
     [
         'name' => 'Historial Familiar',
         'icon' => 'fa-solid fa-gauge',
-        'href' => route('partner.appointments.index'),
+        'href' => route('patient.family-history.index'),
         'active' => false,
     ],
     [
         'name' => 'Medicación',
         'icon' => 'fa-solid fa-gauge',
-        'href' => route('partner.appointments.index'),
+        'href' => route('patient.medications.index'),
         'active' => false,
     ],    
  ];

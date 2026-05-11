@@ -16,7 +16,7 @@ class PatientHistory extends Model
         'diagnosis', 
         'treatment_plan'
     ];
-
+    
     public function patient() {
         return $this->belongsTo(Patient::class);
     }

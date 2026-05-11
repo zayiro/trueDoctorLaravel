@@ -37,6 +37,17 @@ $breadcrumbs = [
     @endif
 
     <div class="mb-1">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Mis alergias</h1>
+                <p class="text-sm text-gray-500">Registro de reacciones del sistema inmunitario.</p>                
+            </div>   
+        </div>
+
+        <div class="text-sm text-gray-500 mt-3 mb-8">
+            Las alergias son reacciones del sistema inmunitario ante sustancias generalmente inofensivas (alérgenos) como polen, polvo, alimentos o veneno de insectos. Cuando una persona sensible entra en contacto con ellos, el cuerpo libera histaminas, provocando síntomas como congestión, picazón, erupciones cutáneas o dificultades respiratorias.
+        </div>
+
         <div class="md:col-span-2 bg-white rounded-3xl p-6 shadow-sm border border-gray-100 mt-4">            
             <form action="{{ route('patient.allergies.store', $patient->id) }}" method="POST" class="space-y-4">
                 @csrf
@@ -136,11 +147,15 @@ $breadcrumbs = [
                     @endif
                     
                     <div class="mt-3 text-end">
-                        <form action="{{ route('patient.allergies.destroy', $allergy->id) }}" method="POST">
+                        <form action="{{ route('patient.allergies.destroy', $allergy) }}" method="POST">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" onclick="return confirm('¿Eliminar esta alergia?')">
-                                <p class="text-red-600 dark:text-red-400 text-sm underline">Eliminar</p>
+                            <button type="submit" 
+                                    onclick="return confirm('¿Estás seguro de que deseas eliminar esta reporte? Esta acción no se puede deshacer.')"
+                                    class="p-2 text-red-600 hover:text-red-800 font-bold text-sm items-center">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>                                    
                             </button>
                         </form>
                     </div>
