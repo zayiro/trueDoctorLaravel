@@ -4,25 +4,34 @@ namespace App\Http\Controllers;
 
 use App\Models\Address;
 use App\Models\Schedule;
+use App\Models\Unavailability;
 use Illuminate\Http\Request;
 
 class ScheduleController extends Controller
-{
+{    
     public function index(Address $address)
-    {        
+    {
+        $doctor = auth()->user()->doctor;
+
         if ($address->doctor_id !== auth()->user()->doctor->id) {
             abort(403);
         }
+        
+        $schedules = Schedule::where('address_id', $address->id)->orderBy('day')->get();
+        
+        // Obtenemos las ausencias futuras para mostrar en la lista
+        $unavailabilities = Unavailability::where('doctor_id', $doctor->id)
+            ->where('end_date', '>=', now()->toDateString())
+            ->orderBy('start_date', 'asc')
+            ->get();
 
-        $schedules = $address->schedules()->orderBy('day')->get();
-
-        return view('partner.schedules.index', compact('address', 'schedules'));
+        return view('partner.schedules.index', compact('address', 'schedules', 'unavailabilities'));
     }
 
     public function edit(Address $address)
     {
         // Cargamos los horarios de esta dirección específica
-        $schedules = $address->schedules()->orderBy('day_of_week')->get();
+        $schedules = $address->schedules()->orderBy('day')->get();
         
         return view('partner.schedules.edit', compact('address', 'schedules'));
     }
@@ -55,8 +64,7 @@ class ScheduleController extends Controller
             'day' => 'required|integer|between:0,6',
             'repeat_days' => 'nullable|array',
             'start_time' => 'required',
-            'end_time' => 'required|after:start_time',
-            'duration' => 'required|integer',
+            'end_time' => 'required|after:start_time',           
         ]);
 
         $daysToRegister = collect($request->input('repeat_days', []))
@@ -76,7 +84,6 @@ class ScheduleController extends Controller
                 'day' => $day,
                 'start_time' => $request->start_time,
                 'end_time' => $request->end_time,
-                'duration' => $request->duration,
             ]);
         }
 

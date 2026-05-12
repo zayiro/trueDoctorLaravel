@@ -17,7 +17,6 @@ return new class extends Migration
             $table->unsignedTinyInteger('day'); // 1=Lunes, 7=Domingo
             $table->time('start_time');
             $table->time('end_time');
-            $table->integer('duration')->default(20);
             $table->timestamps();
         });
     }

@@ -1,9 +1,14 @@
 <?php
 
 use App\Models\City;
+use App\Models\Schedule;
+use App\Models\Appointment;
+use Carbon\Carbon;
+
 use Illuminate\Http\Request;
 use App\Livewire\PublicLanding;
 use Illuminate\Support\Facades\Route;
+
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\AddressController;
 use App\Http\Controllers\ScheduleController;
@@ -20,6 +25,7 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\PartnerPatientController;
 use App\Http\Controllers\PatientController;
+use App\Http\Controllers\UnavailabilityController;
 
 //Route::redirect('/', '/admin');
 
@@ -113,10 +119,24 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::get('/partner/appointments', [DoctorAppointmentController::class, 'index'])->name('partner.appointments.index');
     Route::patch('/partner/addresses/{address}/status', [AddressController::class, 'toggleStatus'])->name('partner.addresses.status.toggle');
 
+    Route::post('/partner/unavailabilities', [UnavailabilityController::class, 'store'])->name('partner.unavailabilities.store');
+    Route::delete('/partner/unavailabilities/{unavailability}', [UnavailabilityController::class, 'destroy'])->name('partner.unavailabilities.destroy');
+
+
     //buscador de pacientes
     Route::get('/partner/patients', [PartnerPatientController::class, 'index'])->name('partner.patients.index');
     //vista detallada del paciente
     Route::get('partner/patients/{id}', [PartnerPatientController::class, 'show'])->name('partner.patients.show');
+
+    // Vista para seleccionar el nuevo horario
+    Route::get('/partner/appointments/{appointment}/reschedule', [AppointmentController::class, 'rescheduleView'])
+        ->name('partner.appointments.reschedule');
+
+    // Acción para procesar el cambio
+    Route::put('/partner/appointments/{appointment}/reschedule/process', [AppointmentController::class, 'rescheduleProcess'])->name('partner.appointments.reschedule.process');
+
+    // Ruta para cancelar la cita (la que está causando el error)
+    Route::delete('/partner/appointments/{appointment}', [AppointmentController::class, 'destroy'])->name('partner.appointments.destroy');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -147,55 +167,85 @@ Route::get('/api/{partner}/availability', [PublicProfileController::class, 'getA
 });
 
 Route::get('/api/get-slots', function (Request $request) {
-    // Validamos que lleguen los datos
-    if (!$request->address_id || !$request->date) {
+    if (!$request->date) {
         return response()->json(['error' => 'Faltan datos'], 400);
     }
 
-    // Lógica para buscar turnos ocupados y devolver los libres
-    // Ejemplo de respuesta manual:
-    return [
-        ["time" => "08:00", "available" => true],
-        ["time" => "08:20", "available" => true],
-        ["time" => "08:40", "available" => true],
-        ["time" => "09:00", "available" => true],
-        ["time" => "09:20", "available" => true],
-        ["time" => "09:40", "available" => true],
-        ["time" => "10:00", "available" => false],
-        ["time" => "10:20", "available" => false],
-        ["time" => "10:40", "available" => true],
-        ["time" => "12:00", "available" => true],
-        ["time" => "12:20", "available" => false],
-        ["time" => "12:40", "available" => true],
-        ["time" => "13:00", "available" => true],
-        ["time" => "13:20", "available" => true],
-        ["time" => "13:40", "available" => true],
-        ["time" => "14:00", "available" => true],
-        ["time" => "14:20", "available" => false],
-        ["time" => "14:40", "available" => true],
-        ["time" => "15:00", "available" => true],
-        ["time" => "15:20", "available" => true],
-        ["time" => "15:40", "available" => true],
-        ["time" => "16:00", "available" => true],
-        ["time" => "16:20", "available" => true],
-        ["time" => "16:40", "available" => true],
-        ["time" => "17:00", "available" => true],
-        ["time" => "17:20", "available" => true],
-        ["time" => "17:40", "available" => false],
-        ["time" => "18:00", "available" => true],
-        ["time" => "18:20", "available" => true],
-        ["time" => "18:40", "available" => false],
-        ["time" => "19:00", "available" => true],
-        ["time" => "19:20", "available" => true],
-        ["time" => "19:40", "available" => false],
-        ["time" => "20:00", "available" => true],
-        ["time" => "20:20", "available" => true],
-        ["time" => "20:40", "available" => false],
-        ["time" => "21:00", "available" => true],
-        ["time" => "21:20", "available" => false],
-        ["time" => "21:40", "available" => true],
-        ["time" => "22:00", "available" => true],
-    ];
+    $fechaConsultada = Carbon::parse($request->date);
+    $diaSemana = $fechaConsultada->dayOfWeek; 
+    $ahora = Carbon::now();
+    $isVirtual = $request->input('is_virtual') === 'true';
+
+    // 👇 1. VALIDAR AUSENCIAS (UNAVAILABILITIES)
+    // Buscamos si la fecha cae dentro de un periodo bloqueado
+    $isUnavailable = \App\Models\Unavailability::where('doctor_id', auth()->user()->doctor->id)
+        ->whereDate('start_date', '<=', $fechaConsultada)
+        ->whereDate('end_date', '>=', $fechaConsultada)
+        ->where(function($q) use ($request, $isVirtual) {
+            // Si es virtual, solo bloqueamos si la ausencia es global (address_id null)
+            // Si es presencial, bloqueamos si es global O si es para esa sede específica
+            if ($isVirtual) {
+                $q->whereNull('address_id');
+            } else {
+                $q->whereNull('address_id')
+                  ->orWhere('address_id', $request->address_id);
+            }
+        })
+        ->exists();
+
+    if ($isUnavailable) {
+        return response()->json([]); // Bloqueo total: el doctor no está disponible
+    }
+
+    // 2. Obtener disponibilidad del Schedule (Igual que antes)
+    if ($isVirtual) {
+        $schedule = Schedule::where('day', $diaSemana)
+            ->selectRaw('MIN(start_time) as start_time, MAX(end_time) as end_time')
+            ->first();
+    } else {
+        $schedule = Schedule::where('address_id', $request->address_id)
+            ->where('day', $diaSemana)
+            ->first();
+    }
+
+    if (!$schedule || !$schedule->start_time) return response()->json([]); 
+
+    $duracion = (int) $request->input('duration', 20); 
+
+    // 3. Obtener ocupación (Igual que antes)
+    $citasOcupadas = Appointment::where('date', $request->date)
+        ->whereIn('status', ['confirmed', 'pending'])
+        ->when(!$isVirtual, function($query) use ($request) {
+            return $query->where('address_id', $request->address_id);
+        })
+        ->when($request->exclude_id, function($query) use ($request) {
+            return $query->where('id', '!=', $request->exclude_id);
+        })
+        ->pluck('start_time')
+        ->map(fn($time) => Carbon::parse($time)->format('H:i'))
+        ->toArray();
+
+    // 4. Generación de Slots (Igual que antes)
+    $slots = [];
+    $inicio = Carbon::parse($schedule->start_time);
+    $fin = Carbon::parse($schedule->end_time);
+
+    while ($inicio->copy()->addMinutes($duracion) <= $fin) {
+        $horaSlot = $inicio->format('H:i');
+        $objHoraSlot = Carbon::parse($request->date . ' ' . $horaSlot);
+
+        $estaOcupado = in_array($horaSlot, $citasOcupadas);
+        $esPasado = $fechaConsultada->isToday() && $objHoraSlot->lt($ahora);
+
+        $slots[] = [
+            "time" => $horaSlot,
+            "available" => !$estaOcupado && !$esPasado
+        ];
+
+        $inicio->addMinutes($duracion); 
+    }
+
+    return response()->json($slots);
 })->name('api.slots.index');
 
 //pasos de la reservacion
@@ -227,8 +277,6 @@ Route::get('/api/departments/{department}/cities', function ($deptId) {
 Route::middleware(['auth'])->group(function () {        
     Route::get('/patient/patient-identification', [PatientController::class, 'index'])->name('patient.patient-identification.index');
     Route::put('/patient/patient-identification/{patient}', [PatientController::class, 'update'])->name('patient.patient-identification.update');
-
-
     Route::get('/patient/appointments', [PatientController::class, 'appointments'])->name('patient.appointments.index');
     Route::get('/patient/allergies', [PatientController::class, 'indexAllergy'])->name('patient.allergies.index');
     Route::get('/patient/history', [PatientController::class, 'history'])->name('patient.history.index');
@@ -246,10 +294,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/patient/medications', [PatientController::class, 'indexMedication'])->name('patient.medications.index');
     Route::delete('/patient/medications/{medication}', [PatientController::class, 'destroyMedication'])->name('patient.medications.destroy');
 
-    // Para CREAR: No necesita ID de medicamento
     Route::post('/patient/medications', [PatientController::class, 'storeMedication'])->name('patient.medications.store');
-
-    // Para ACTUALIZAR: Sí necesita el ID
     Route::put('/patient/medications/{medication}', [PatientController::class, 'updateMedication'])->name('patient.medications.update');
     Route::patch('/patient/medications/{medication}/toggle', [PatientController::class, 'toggleStatusMedication'])->name('patient.medications.toggle');
 });

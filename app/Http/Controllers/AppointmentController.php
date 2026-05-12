@@ -255,4 +255,82 @@ class AppointmentController extends Controller
 
         return view('appointments.success', compact('appointment'));
     }
+
+    public function rescheduleView(Appointment $appointment)
+    {
+        // Validar que el doctor sea el dueño de la cita
+        if ($appointment->doctor_id !== auth()->user()->doctor->id) {
+            abort(403);
+        }
+
+        // Obtenemos la fecha del request o por defecto la de la cita
+        $date = request('date', $appointment->date);
+        
+        // Usamos tu servicio para obtener slots disponibles para esa fecha
+        // Asumo que tu servicio tiene un método similar a getAvailableSlots
+        $availableSlots = $this->appointmentService->getAvailableSlots(
+            $appointment->doctor_id, 
+            $date, 
+            $appointment->service_id
+        );
+
+        return view('partner.appointments.reschedule', compact('appointment', 'availableSlots', 'date'));
+    }
+
+    public function rescheduleProcess(Request $request, Appointment $appointment)
+    {
+        $request->validate([
+            'date' => 'required|date',
+            'hour' => 'required',
+        ]);
+
+        $newStart = Carbon::parse($request->date . ' ' . $request->hour);
+        $newEnd = $newStart->copy()->addMinutes($appointment->duration);
+
+        // Solo validamos traslado si la cita es PRESENCIAL
+        if ($appointment->service->type !== 'virtual') {
+            
+            // 1. Buscar la cita inmediatamente anterior ese día
+            $prevApp = Appointment::where('doctor_id', $appointment->doctor_id)
+                ->where('date', $request->date)
+                ->where('id', '!=', $appointment->id)
+                ->where('end_time', '<=', $newStart->format('H:i:s'))
+                ->orderBy('end_time', 'desc')
+                ->first();
+
+            // 2. Si hay una cita antes en OTRA sede, validar margen de 30 min (ajustable)
+            if ($prevApp && $prevApp->address_id !== $appointment->address_id) {
+                $prevEnd = Carbon::parse($prevApp->date . ' ' . $prevApp->end_time);
+                if ($newStart->diffInMinutes($prevEnd) < 30) {
+                    return back()->with('error', 'Conflicto de traslado: Necesitas al menos 30 min para llegar desde ' . $prevApp->address->name);
+                }
+            }
+
+            // 3. Buscar la cita inmediatamente después
+            $nextApp = Appointment::where('doctor_id', $appointment->doctor_id)
+                ->where('date', $request->date)
+                ->where('id', '!=', $appointment->id)
+                ->where('start_time', '>=', $newEnd->format('H:i:s'))
+                ->orderBy('start_time', 'asc')
+                ->first();
+
+            if ($nextApp && $nextApp->address_id !== $appointment->address_id) {
+                $nextStart = Carbon::parse($nextApp->date . ' ' . $nextApp->start_time);
+                if ($nextStart->diffInMinutes($newEnd) < 30) {
+                    return back()->with('error', 'Conflicto de traslado: La siguiente cita en ' . $nextApp->address->name . ' empieza muy pronto.');
+                }
+            }
+        }
+
+        // Si pasa las validaciones, actualizamos
+        $appointment->update([
+            'date'       => $request->date,
+            'start_time' => $newStart->format('H:i:s'),
+            'end_time'   => $newEnd->format('H:i:s'),
+            'status'     => 'confirmed'
+        ]);
+
+        return redirect()->route('partner.appointments.index', ['date' => $appointment->date])
+            ->with('success', 'Cita reagendada correctamente.');
+    }
 }
