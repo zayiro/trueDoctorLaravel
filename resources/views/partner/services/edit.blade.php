@@ -34,7 +34,7 @@ $breadcrumbs = [
                             @php 
                                 $currentDuration = old('duration', $service->addresses->first()?->pivot->duration);
                             @endphp
-                            @foreach([15, 30, 45, 60] as $t)
+                            @foreach([15, 20, 30, 45, 60] as $t)
                                 <option value="{{ $t }}" {{ $currentDuration == $t ? 'selected' : '' }}>{{ $t }} min</option>
                             @endforeach
                         </select>

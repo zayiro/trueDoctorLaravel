@@ -77,8 +77,20 @@ $breadcrumbs = [
                         <!-- Lado Izquierdo: Fecha y Hora -->
                         <div class="flex items-center gap-4 min-w-[150px]">
                             <div class="bg-blue-50 text-blue-700 rounded-lg p-3 text-center flex-shrink-0">
-                                <span class="block text-xs uppercase font-bold">{{ \Carbon\Carbon::parse($appointment->date)->translatedFormat('M') }}</span>
-                                <span class="block text-xl font-black">{{ \Carbon\Carbon::parse($appointment->date)->format('d') }}</span>
+                                <!-- Nombre del día (ej: MIÉRCOLES / JUEVES) -->
+                                <span class="block text-xs uppercase font-bold text-gray-500">
+                                    {{ \Carbon\Carbon::parse($appointment->date)->translatedFormat('l') }}
+                                </span>
+
+                                <!-- Número del día (ej: 13 / 14) -->
+                                <span class="block text-xl font-black text-gray-800 leading-none my-0.5">
+                                    {{ \Carbon\Carbon::parse($appointment->date)->format('d') }}
+                                </span>
+
+                                <!-- Nombre del mes (ej: MAYO / JUNIO) -->
+                                <span class="block text-xs uppercase font-bold text-blue-600">
+                                    {{ \Carbon\Carbon::parse($appointment->date)->translatedFormat('F') }}
+                                </span>
                             </div>
                             <div>
                                 <p class="text-sm font-bold text-gray-900">{{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }}</p>

@@ -63,7 +63,7 @@
                     @if($allServices->isEmpty())
                         <div class="bg-amber-50 border-2 border-amber-100 rounded-3xl p-8 text-center shadow-sm">
                             <h3 class="text-xl font-bold text-amber-900 mb-2">No hay servicios disponibles</h3>
-                            <p class="text-amber-800 mb-6">El profesional no tiene horarios o servicios configurados actualmente.</p>
+                            <p class="text-amber-800 mb-6">Nuestro profesional no tiene horarios o servicios configurados actualmente.</p>
                             <a href="{{ route('search') }}" class="inline-flex items-center px-6 py-3 bg-amber-600 text-white font-bold rounded-2xl">Buscar otro especialista</a>
                         </div>
                     @else
@@ -88,33 +88,54 @@
                                         
                                         @foreach($doctor->addresses as $address)
                                         <div class="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                                            <!-- Cabecera de la Sede -->
                                             <div class="flex items-center gap-3 mb-4">
                                                 <div class="bg-blue-100 p-2 rounded-lg text-blue-600">
-                                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+                                                    @if($address->type === 'virtual')
+                                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                                    @else
+                                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+                                                    @endif
                                                 </div>
                                                 <div>
                                                     <h4 class="font-bold text-gray-800">{{ $address->name }}</h4>
-                                                    <p class="text-sm text-gray-500">{{ $address->address }} {{ $address->type !== "virtual" ? "," . $address->city->name : '' }}</p>
+                                                    <p class="text-sm text-gray-500">{{ $address->address }} {{ $address->type !== "virtual" ? ", " . $address->city->name : '' }}</p>
                                                 </div>
                                             </div>
 
+                                            <!-- Listado de Servicios Disponibles en ESTA Sede -->
                                             <div class="grid grid-cols-1 gap-3">
-                                                @forelse($address->services as $service)
-                                                <button class="w-full text-left p-4 bg-white rounded-xl border border-gray-200 hover:border-blue-500 hover:shadow-md transition group"
-                                                    @click="selectService({{ $address->id }}, '{{ $address->name }}', {{ $service->id }}, '{{ $service->name }}', '{{ number_format($service->price, 0) }}')">
-                                                    <div class="flex justify-between items-center">
-                                                        <div>
-                                                            <span class="block font-bold text-gray-700 group-hover:text-blue-600">{{ $service->name }}</span>
-                                                            <span class="text-xs text-gray-400">{{ $service->duration }} min | {{ $address->type }}</span>
-                                                        </div>
-                                                        <span class="font-black text-blue-600">${{ number_format($service->price, 0) }}</span>
+                                                @foreach($address->services as $service)
+                                                <button type="button" 
+                                                    {{-- Pasamos el precio y duración específicos del pivot al sistema x-data / JS --}}
+                                                    @click="
+                                                        selectedAddress = {{ $address->id }};
+                                                        selectedService = {{ $service->id }};
+                                                        addressName = '{{ $address->name }}';
+                                                        currentDuration = {{ $service->pivot->duration }};
+                                                        serviceName = '{{ $service->name }}';
+                                                        servicePrice = '${{ number_format($service->pivot->price, 2) }}';
+                                                        step = 2;
+                                                        $wire.selectService({{ $address->id }}, {{ $service->id }}) {{-- Si usas Livewire --}}
+                                                    "
+                                                    class="w-full text-left p-4 bg-white hover:bg-blue-50/50 rounded-xl border border-gray-200 hover:border-blue-300 transition flex items-center justify-between group">
+                                                    
+                                                    <div>
+                                                        <span class="font-bold text-gray-800 block group-hover:text-blue-700 transition">{{ $service->name }}</span>
+                                                        <!-- DURACIÓN DESDE EL PIVOT -->
+                                                        <span class="text-xs text-gray-400 font-medium flex items-center gap-1 mt-0.5">
+                                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                            {{ $service->pivot->duration }} minutos
+                                                        </span>
+                                                    </div>
+
+                                                    <!-- PRECIO DESDE EL PIVOT -->
+                                                    <div class="text-right">
+                                                        <span class="block font-black text-green-600 text-lg">${{ number_format($service->pivot->price, 2) }}</span>
+                                                        <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Seleccionar</span>
                                                     </div>
                                                 </button>
-                                                @empty
-                                                    <p class="text-amber-600 text-sm italic">
-                                                        Esta sede no tiene servicios disponibles para agendar en este momento.
-                                                    </p>
-                                                @endforelse
+                                                @endforeach
                                             </div>
                                         </div>
                                         @endforeach
@@ -122,7 +143,7 @@
                                 </template>
 
                                 <!-- PASO 2: HORARIO (CALENDARIO) -->
-                                <!-- Aquí va tu componente de Calendario / Horas -->
+                                <!-- Aquí va componente de Calendario / Horas -->
                                 <template x-if="step === 2">
                                     <div class="space-y-6">
                                         <h3 class="text-xl font-black text-gray-800 text-left">Elige el mejor momento</h3>
@@ -132,7 +153,7 @@
                                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg> Volver a sede y servico
                                             </button>
                                             <div>
-                                                <div class="text-xs font-black text-gray-400 uppercase" x-text="addressName"></div>
+                                                <div class="text-xs text-end font-black text-gray-400 uppercase" x-text="addressName"></div>
                                                 <div class="text-xs text-end font-black text-gray-500" x-text="serviceName"></div>
                                                 <div class="text-xs text-end font-black text-gray-500" x-text="servicePrice"></div>
                                             </div>
@@ -146,9 +167,13 @@
                                                 <div class="flex overflow-x-auto gap-3 pb-4 no-scrollbar">
                                                     <template x-for="day in availableDays" :key="day.date">
                                                         <button @click="selectedDate = day.date; getSlots()" 
-                                                            class="flex-shrink-0 w-16 h-20 rounded-2xl border-2 bg-white text-gray-500 border-gray-100 hover:border-blue-300 flex flex-col items-center justify-center transition-all">
-                                                            <span class="text-[10px] uppercase font-black" x-text="day.dayName"></span>
-                                                            <span class="text-xl font-black" x-text="day.dayNumber"></span>
+                                                            class="flex-shrink-0 w-16 h-20 rounded-2xl border-2 bg-white text-gray-500 border-gray-100 hover:border-blue-300 flex flex-col items-center justify-center transition-all">                                                            
+                                                            <!-- Nombre del día (ej: LUN) -->
+                                                            <span class="text-sm uppercase font-black tracking-wider opacity-70" x-text="day.dayName"></span>                                                            
+                                                            <!-- Número del día (ej: 28) -->
+                                                            <span class="text-xl font-black leading-none my-0.5" x-text="day.dayNumber"></span>                                                            
+                                                            <!-- NUEVO: Nombre del mes (ej: MAY / JUN) -->
+                                                            <span class="text-sm uppercase font-black text-blue-600 tracking-tight" x-text="day.monthName"></span>
                                                         </button>
                                                     </template>
                                                 </div>
@@ -158,7 +183,7 @@
                                             <div x-show="selectedDate" x-transition class="bg-gray-50 rounded-2xl p-4 flex items-center justify-between border border-gray-100">
                                                 <div class="flex items-center gap-4 mt-1">
                                                     <div class="bg-blue-600 text-white w-12 h-12 p-2 rounded-xl flex flex-col items-center justify-center shadow-md">
-                                                        <span class="text-[6px] uppercase font-bold" x-text="formatDate(selectedDate).dayName"></span>
+                                                        <span class="text-[9px] uppercase font-bold" x-text="formatDate(selectedDate).dayName"></span>
                                                         <span class="font-black leading-none" x-text="formatDate(selectedDate).dayNumber"></span>
                                                     </div>
                                                     <div>
@@ -198,7 +223,7 @@
                                                     <button @click="selectedSlot = slot.time"
                                                         :class="selectedSlot === slot.time ? 'bg-green-500 text-white border-green-500' : 'bg-white text-gray-700 border-gray-100 hover:bg-blue-50'"
                                                         class="py-3 rounded-xl font-bold text-sm transition border-2">
-                                                        <span x-text="slot.time"></span>
+                                                        <span x-text="formatTime12(slot.time)"></span>
                                                     </button>
                                                 </template>
                                             </div>
@@ -206,13 +231,12 @@
                                             <div class="mt-8" x-show="selectedSlot">
                                                 <button type="button" @click="confirmBooking()" 
                                                     class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-blue-200 hover:bg-blue-700 transition">
-                                                    Confirmar cita para las <span x-text="selectedSlot"></span>
+                                                    Confirmar cita para las <span x-text="formatTime12(selectedSlot)"></span>
                                                 </button>
                                             </div>
                                         </div>
                                     </div>
                                 </template>
-
                             </div>
                         </div>
                     @endif
@@ -241,8 +265,9 @@
                     // Usamos la fecha actual como base
                     const today = new Date();
                     const days = [];
+                    let maxDaysToShow = 30; // Mostrar 30 días a futuro
                     
-                    for (let i = 0; i < 14; i++) {
+                    for (let i = 0; i < maxDaysToShow; i++) {
                         const date = new Date();
                         date.setDate(today.getDate() + i);
                         
@@ -255,7 +280,9 @@
                         days.push({
                             date: dateString,
                             dayName: date.toLocaleDateString('es-ES', { weekday: 'short' }),
-                            dayNumber: date.getDate()
+                            dayNumber: date.getDate(),
+                            // Mes abreviado (ej: "may", "jun") sin punto final
+                            monthName: date.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '')
                         });
                     }
                     this.availableDays = days;
@@ -295,8 +322,15 @@
                     this.errorMessage = null;
                     this.availableSlots = [];
                     this.selectedSlot = null; // Resetear hora al cambiar día
-                    console.log(this.selectedAddress+" : "+this.selectedDate);
-                    fetch(`/api/get-slots?address_id=${this.selectedAddress}&date=${this.selectedDate}`)
+
+                    // 1. Determinar si el servicio actual es virtual evaluando la variable global 'type' de tu vista
+                    const isVirtualService = this.type === 'virtual' ? 'true' : 'false';
+                    
+                    // 2. Obtener la duración específica recuperada en el paso anterior (por defecto 20)
+                    const serviceDuration = this.serviceDuration || 20;
+                    
+                    // 3. Inyectar todos los nuevos parámetros requeridos por la ruta API de Laravel
+                    fetch(`/api/get-slots?address_id=${this.selectedAddress}&date=${this.selectedDate}&is_virtual=${isVirtualService}&duration=${serviceDuration}`)
                     .then(res => {
                         if (!res.ok) throw new Error('Error en el servidor');
                         return res.json();
@@ -353,6 +387,20 @@
                         // Mostrar error de validación o del servidor
                         this.errorMessage = error.message || 'Error al procesar la reserva.';
                         console.error('Error en storeStepTwo:', error);
+                    });
+                },
+                formatTime12(timeStr) {
+                    if (!timeStr) return '';
+                    // timeStr viene como "13:20"
+                    const [hours, minutes] = timeStr.split(':');
+                    const date = new Date();
+                    date.setHours(parseInt(hours), parseInt(minutes), 0);
+                    
+                    // Retorna el formato "1:20 p. m." o "01:20 PM" según la configuración local
+                    return date.toLocaleTimeString('es-ES', { 
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+                        hour12: true 
                     });
                 }
             }

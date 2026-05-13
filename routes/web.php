@@ -3,6 +3,7 @@
 use App\Models\City;
 use App\Models\Schedule;
 use App\Models\Appointment;
+use App\Models\Address;
 use Carbon\Carbon;
 
 use Illuminate\Http\Request;
@@ -177,14 +178,18 @@ Route::get('/api/get-slots', function (Request $request) {
     $ahora = Carbon::now();
     $isVirtual = $request->input('is_virtual') === 'true';
 
-    // 👇 1. VALIDAR AUSENCIAS (UNAVAILABILITIES)
-    // Buscamos si la fecha cae dentro de un periodo bloqueado
-    $isUnavailable = \App\Models\Unavailability::where('doctor_id', auth()->user()->doctor->id)
+    // NUEVO SEGURO: Obtener el doctor_id directamente de la dirección sin requerir auth()
+    $address = Address::find($request->address_id);
+    if (!$address) {
+        return response()->json(['error' => 'Dirección no encontrada'], 404);
+    }
+    $doctorId = $address->doctor_id;
+
+    // 👇 1. VALIDAR AUSENCIAS (UNAVAILABILITIES) utilizando la variable segura $doctorId
+    $isUnavailable = \App\Models\Unavailability::where('doctor_id', $doctorId)
         ->whereDate('start_date', '<=', $fechaConsultada)
         ->whereDate('end_date', '>=', $fechaConsultada)
         ->where(function($q) use ($request, $isVirtual) {
-            // Si es virtual, solo bloqueamos si la ausencia es global (address_id null)
-            // Si es presencial, bloqueamos si es global O si es para esa sede específica
             if ($isVirtual) {
                 $q->whereNull('address_id');
             } else {

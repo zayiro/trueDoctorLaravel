@@ -151,9 +151,25 @@ class AppointmentController extends Controller
                 ]);
             }
 
-            $service = Service::findOrFail($bookingData['service_id']);
+            // 👇 NUEVA LÓGICA: Obtener precio y duración específicos de la tabla intermedia (Pivot)
+            $address = \App\Models\Address::with(['services' => function($q) use ($bookingData) {
+                $q->where('services.id', $bookingData['service_id']);
+            }])->find($bookingData['address_id']);
+
+            $serviceSpecific = $address?->services->first();
+
+            // Validación de seguridad por si el servicio fue removido de la sede durante el proceso
+            if (!$serviceSpecific || !$serviceSpecific->pivot) {
+                return redirect()->route('search')->with('error', 'El servicio seleccionado ya no está disponible en esta sede.');
+            }
+
+            // Rescatamos los valores reales de la tabla pivot
+            $duration = (int) $serviceSpecific->pivot->duration;
+            $price = $serviceSpecific->pivot->price;
+
             $startTime = Carbon::parse($bookingData['date'] . ' ' . $bookingData['hour']);
             
+            // Crear la cita utilizando las variables específicas calculadas
             $appointment = Appointment::create([
                 'patient_id'   => $patient->id,
                 'doctor_id'    => $bookingData['doctor_id'],
@@ -161,10 +177,10 @@ class AppointmentController extends Controller
                 'address_id'   => $bookingData['address_id'],
                 'date'         => $bookingData['date'],
                 'start_time'   => $startTime->format('H:i:s'),
-                'end_time'     => $startTime->copy()->addMinutes($service->duration)->format('H:i:s'),
-                'duration'     => $service->duration,
-                'price'        => $service->price,
-                'meeting_link' => ($service->type === 'virtual') ? 'https://zoom.us' : null,            
+                'end_time'     => $startTime->copy()->addMinutes($duration)->format('H:i:s'), // Usa la duración del pivot
+                'duration'     => $duration, // Cambiado de $service->duration a $duration
+                'price'        => $price,    // Cambiado de $service->price a $price
+                'meeting_link' => ($serviceSpecific->type === 'virtual') ? 'https://zoom.us' : null,            
                 'status'       => 'pending', 
                 'notes'        => $request->notes
             ]);
@@ -177,15 +193,14 @@ class AppointmentController extends Controller
 
     public function preview($id)
     {
-        // 1. Obtenemos el perfil de paciente del usuario logueado
         $patient = auth()->user()->patient;
 
         if (!$patient) {
             return redirect()->route('search')->with('error', 'Perfil de paciente no encontrado.');
         }
 
-        // 2. Buscamos la cita usando el ID del PACIENTE
-        $appointment = Appointment::with(['service', 'address.city', 'doctor.user'])
+        // Buscamos la cita asegurando que pertenezca al paciente logueado
+        $appointment = Appointment::with(['service', 'address.city', 'doctor.user', 'doctor.settings'])
             ->where('patient_id', $patient->id)
             ->findOrFail($id);  
             
