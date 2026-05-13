@@ -41,7 +41,7 @@ class Address extends Model
         // Asegúrate de que el nombre del modelo sea 'Schedule'
     }
 
-    public function services()
+    /*public function services()
     {
         return $this->belongsToMany(
             Service::class,     // Modelo de destino
@@ -49,7 +49,13 @@ class Address extends Model
             'address_id',       // Llave foránea en pivote que apunta a Address
             'service_id'        // Llave foránea en pivote que apunta a Service
         )->withTimestamps();
+    }*/
+
+    public function services() 
+    {
+        return $this->belongsToMany(Service::class)->withPivot('price', 'duration')->withTimestamps();
     }
+
 
     public function appointments()
     {

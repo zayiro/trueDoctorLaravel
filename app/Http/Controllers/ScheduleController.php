@@ -64,20 +64,34 @@ class ScheduleController extends Controller
             'day' => 'required|integer|between:0,6',
             'repeat_days' => 'nullable|array',
             'start_time' => 'required',
-            'end_time' => 'required|after:start_time',           
+            'end_time' => 'required|after:start_time',
         ]);
 
+        // Combinamos los días
         $daysToRegister = collect($request->input('repeat_days', []))
             ->push($request->day)
             ->unique();
 
-        // 📍 AQUÍ VA LA LÓGICA DE BORRADO
-        // Esto evita que si ya había un horario el lunes, se duplique con el nuevo
-        Schedule::where('address_id', $request->address_id)
-                ->whereIn('day', $daysToRegister)
-                ->delete();
+        // 🔍 1. VALIDACIÓN PREVIA (Fuera del bucle)
+        // Buscamos si alguno de los días seleccionados tiene conflicto
+        foreach ($daysToRegister as $day) {
+            $overlap = Schedule::where('address_id', $request->address_id)
+                ->where('day', $day)
+                ->where(function ($query) use ($request) {
+                    $query->where(function ($q) use ($request) {
+                        // Choca el inicio
+                        $q->where('start_time', '<', $request->end_time)
+                        ->where('end_time', '>', $request->start_time);
+                    });
+                })->exists();
 
-        // Luego procedes a crear los nuevos
+            if ($overlap) {
+                $nombresDias = [0=>'Dom', 1=>'Lun', 2=>'Mar', 3=>'Mie', 4=>'Jue', 5=>'Vie', 6=>'Sab'];
+                return back()->with('error', "Conflicto: El horario para el día {$nombresDias[$day]} ya está ocupado en ese rango.")->withInput();
+            }
+        }
+
+        // 💾 2. GUARDADO (Solo si no hubo errores arriba)
         foreach ($daysToRegister as $day) {
             Schedule::create([
                 'address_id' => $request->address_id,
@@ -87,9 +101,9 @@ class ScheduleController extends Controller
             ]);
         }
 
-        return back()->with('success', '¡Horarios actualizados correctamente!');
+        return back()->with('success', '¡Horarios agregados correctamente!');
     }
-
+    
     public function destroy(Schedule $schedule)
     {
         // Seguridad: verificar que el horario pertenece a una sede del doctor logueado
@@ -97,8 +111,31 @@ class ScheduleController extends Controller
             abort(403);
         }
 
+        // 1. Buscamos si hay citas agendadas en esta franja horaria
+        // Filtramos por sede, día de la semana y que la hora esté dentro del rango
+        $conflicts = \App\Models\Appointment::where('address_id', $schedule->address_id)
+            ->where('doctor_id', auth()->user()->doctor->id)
+            ->whereRaw('DAYOFWEEK(date) = ?', [$schedule->day + 1]) // +1 porque MySQL usa 1=Dom
+            ->where('date', '>=', now()->toDateString())
+            ->whereIn('status', ['confirmed', 'pending'])
+            ->where(function($query) use ($schedule) {
+                $query->whereTime('start_time', '>=', $schedule->start_time)
+                    ->whereTime('start_time', '<', $schedule->end_time);
+            })
+            ->with('patient.user')
+            ->get();
+
+        // 2. Si hay conflictos, enviamos la lista a la vista y no borramos
+        if ($conflicts->count() > 0) {
+            return back()->with([
+                'schedule_conflicts' => $conflicts,
+                'error' => 'No puedes eliminar este horario porque hay citas agendadas.'
+            ]);
+        }
+
         $schedule->delete();
 
-        return back()->with('success', 'Franja horaria eliminada.');
+        return back()->with('success', 'Franja de horario eliminada correctamente.');
     }
+
 }

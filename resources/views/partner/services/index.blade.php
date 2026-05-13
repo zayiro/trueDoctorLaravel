@@ -69,10 +69,12 @@ $breadcrumbs = [
                 <tbody class="divide-y divide-gray-50">
                     @forelse($services as $service)
                     @php
-                        // Es un excedente si su posición es >= al límite
+                        // Evaluamos el excedente sobre el servicio unificado
                         $isOverLimit = ($loop->index >= $doctor->plan->max_services);
+                        // Tomamos la primera dirección para mostrar una duración de referencia en la tabla
+                        $firstAddress = $service->addresses->first();
                     @endphp
-                    <tr class="hover:bg-gray-50 transition">
+                    <tr class="hover:bg-gray-50 transition {{ $isOverLimit ? 'opacity-60 bg-gray-50' : '' }}">
                         <td class="px-6 py-4">
                             <span class="font-bold text-gray-800 block">{{ $service->name }}</span>
                         </td>
@@ -88,10 +90,24 @@ $breadcrumbs = [
                             @endif
                         </td>
                         <td class="px-6 py-4 text-gray-600 font-medium">
-                            {{ $service->duration }} min
+                            <!-- Leer duración desde el pivot de referencia -->
+                            {{ $firstAddress?->pivot->duration ?? 0 }} min
                         </td>
                         <td class="px-6 py-4">
-                            <span class="text-green-600 font-black">${{ number_format($service->price, 2) }}</span>
+                            @if($service->type === 'virtual')
+                                <!-- Precio virtual único -->
+                                <span class="text-green-600 font-black">${{ number_format($firstAddress?->pivot->price ?? 0, 2) }}</span>
+                            @else
+                                <!-- Si hay múltiples sedes con precios variables, listamos los precios por sede -->
+                                <div class="flex flex-col gap-1">
+                                    @foreach($service->addresses as $address)
+                                        <span class="text-xs text-gray-600">
+                                            <strong class="text-green-600">${{ number_format($address->pivot->price, 2) }}</strong> 
+                                            <span class="text-gray-400">({{ $address->name }})</span>
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @endif
                         </td>
                         <td class="px-6 py-4">
                             @if($service->type === 'virtual')
@@ -122,40 +138,16 @@ $breadcrumbs = [
                                 <form action="{{ route('partner.services.destroy', $service) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar este servicio?');">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="p-2 text-gray-400 hover:text-gray-700 transition">Eliminar</button>                            
+                                    <button type="submit" class="p-2 text-gray-400 hover:text-red-600 transition">Eliminar</button>                            
                                 </form>
-                                <form action="{{ route('partner.services.toggle', $service) }}" method="POST">
-                                    @csrf
-                                    @method('PATCH')
-                                    
-                                    @if($service->active)
-                                        <button type="submit" class="flex items-center text-amber-600 hover:text-amber-800 transition text-xs font-bold">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                            </svg>
-                                            Desactivar
-                                        </button>
-                                    @else
-                                        <button type="submit" class="flex items-center text-green-600 hover:text-green-800 transition text-xs font-bold">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            Reactivar
-                                        </button>
-                                    @endif
-                                </form>
-                            </div>
-                            @else
-                            <div class="text-center space-x-3">
-                                <small class="text-danger">Fuera de cupo del plan</small>
                             </div>
                             @endif
-                        </td>                        
+                        </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="px-6 py-10 text-center text-gray-400 italic">
-                            No has creado servicios todavía.
+                        <td colspan="7" class="px-6 py-8 text-center text-gray-400 italic">
+                            No tienes servicios configurados.
                         </td>
                     </tr>
                     @endforelse

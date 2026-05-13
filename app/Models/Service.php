@@ -16,8 +16,17 @@ class Service extends Model
         'active'
     ];
 
-    public function addresses() 
+    public function addresses()
     {
-        return $this->belongsToMany(Address::class, 'address_service');
+        return $this->belongsToMany(Address::class)->withPivot('price', 'duration')->withTimestamps();
+    }
+
+
+        /**
+     * Un servicio tiene muchas citas
+     */
+    public function appointments()
+    {
+        return $this->hasMany(Appointment::class);
     }
 }

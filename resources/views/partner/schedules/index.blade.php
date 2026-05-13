@@ -7,10 +7,39 @@ $colorState = $address->city->state ? 'green' : 'red';
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-    <div class="max-w-7xl mx-auto sm:px-6">
+    <div class="max-w-7xl mx-auto">
         
         <!-- SECCIÓN DE ALERTAS -->
         <div class="space-y-4 mb-8">
+            @if(session('schedule_conflicts'))
+                <div class="mb-8 p-6 bg-red-50 border-2 border-red-200 rounded-[2.5rem] shadow-xl shadow-red-100 animate-pulse">
+                    <div class="flex items-center gap-3 mb-4 text-red-700">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <h4 class="font-black uppercase tracking-widest text-lg">Bloqueo de Seguridad</h4>
+                    </div>
+                    
+                    <p class="text-sm text-red-600 mb-4 font-bold">No se puede eliminar el horario. Los siguientes pacientes quedarían sin atención:</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+                        @foreach(session('schedule_conflicts') as $app)
+                            <div class="flex justify-between items-center text-xs bg-white p-3 rounded-xl border border-red-100 shadow-sm">
+                                <span class="font-bold text-red-800">{{ $app->patient->user->name }}</span>
+                                <span class="text-red-500 font-black">{{ \Carbon\Carbon::parse($app->date)->format('d/m/Y') }} — {{ \Carbon\Carbon::parse($app->start_time)->format('g:i A') }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="flex gap-4">
+                        <a href="{{ route('partner.appointments.index') }}" class="flex-1 bg-red-600 text-white py-3 rounded-2xl font-black text-xs uppercase tracking-widest text-center hover:bg-red-700 transition-all">
+                            Ir a Reagendar Pacientes
+                        </a>
+                        <button onclick="this.parentElement.parentElement.remove()" class="px-6 py-3 text-red-400 font-bold text-xs uppercase">
+                            Cerrar Aviso
+                        </button>
+                    </div>
+                </div>
+            @endif
+
             @if (session('success'))
                 <div class="flex items-center p-4 text-emerald-800 rounded-3xl bg-emerald-50 border border-emerald-100 shadow-sm animate-fade-in-down">
                     <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
@@ -56,8 +85,9 @@ $colorState = $address->city->state ? 'green' : 'red';
                 <span class="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-2 block">Sede Seleccionada</span>
                 <h3 class="text-3xl font-black text-slate-900 tracking-tight">{{ $address->address }}</h3>
                 <p class="text-slate-500 flex items-center gap-2 mt-1 font-medium">
+                    
                     <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
-                    {{ $address->city->name }} 
+                    {{ $address->type === 'virtual' ? 'Atención Virtual' : $address->city->name }}
                     <span class="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-tighter {{ $colorState === 'green' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700' }}">
                         {{ $colorState === 'green' ? 'Sede Activa' : 'Inactiva' }}
                     </span>
@@ -69,10 +99,10 @@ $colorState = $address->city->state ? 'green' : 'red';
             </a>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-3">
             <!-- COLUMNA IZQUIERDA: FORMULARIO HORARIOS -->
             <div class="lg:col-span-1">
-                <div class="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-50 sticky top-24">
+                <div class="bg-white p-4 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-50 sticky top-24">
                     <div class="flex items-center gap-3 mb-8">
                         <div class="bg-indigo-500 p-2 rounded-xl shadow-lg shadow-indigo-200">
                             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -137,7 +167,7 @@ $colorState = $address->city->state ? 'green' : 'red';
             <!-- COLUMNA DERECHA: CALENDARIO -->
             <div class="lg:col-span-3 space-y-8">
                 <div class="bg-white rounded-[3rem] shadow-xl shadow-slate-200/50 border border-slate-50 overflow-hidden">
-                    <div class="p-8 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center">
+                    <div class="p-4 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center">
                         <div>
                             <h4 class="text-lg font-black text-slate-800 tracking-tight">Vista Semanal</h4>
                             <p class="text-xs text-slate-500 font-medium mt-1 uppercase tracking-widest">Franjas de disponibilidad activa</p>
@@ -147,7 +177,7 @@ $colorState = $address->city->state ? 'green' : 'red';
                             <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest tracking-tighter">Disponible</span>
                         </div>
                     </div>
-                    <div class="p-8">
+                    <div class="p-4">
                         <div id="calendar-schedules"></div>
                     </div>
                 </div>
@@ -219,6 +249,10 @@ $colorState = $address->city->state ? 'green' : 'red';
                 </div>
             </div>
         </div>
+        <form id="delete-schedule-form" action="" method="POST" class="hidden">
+            @csrf
+            @method('DELETE')
+        </form>
     </div>
 
     <script>
@@ -235,6 +269,8 @@ $colorState = $address->city->state ? 'green' : 'red';
 
         document.addEventListener('DOMContentLoaded', function() {                        
             const calendarEl = document.getElementById('calendar-schedules');
+            const deleteForm = document.getElementById('delete-schedule-form');
+
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'timeGridWeek',
                 headerToolbar: false,
@@ -246,19 +282,95 @@ $colorState = $address->city->state ? 'green' : 'red';
                 firstDay: 1,
                 height: 'auto',
                 events: [
+                    // --- 1. BLOQUES DE HORARIO NORMAL (Índigo) ---
                     @foreach($schedules as $sch)
                     {
+                        id: '{{ $sch->id }}',
                         daysOfWeek: [{{ $sch->day }}],
                         startTime: '{{ \Carbon\Carbon::parse($sch->start_time)->format('H:i:s') }}',
                         endTime: '{{ \Carbon\Carbon::parse($sch->end_time)->format('H:i:s') }}',
+                        title: 'Horario: {{ \Carbon\Carbon::parse($sch->start_time)->format('g:i A') }} - {{ \Carbon\Carbon::parse($sch->end_time)->format('g:i A') }}\nSede: {{ $address->address }}', // <-- Este es el Tooltip
                         display: 'block',
                         backgroundColor: '#6366f1',
                         borderColor: '#4f46e5',
+                        zIndex: 1,
+                        extendedProps: { type: 'schedule' }
+                    },
+                    @endforeach
+
+                    // --- 2. BLOQUES DE AUSENCIA (Rojo/Gris con Texto) ---
+                    @foreach($unavailabilities as $un)
+                    {
+                        id: 'un_{{ $un->id }}',
+                        @php
+                            $start = \Carbon\Carbon::parse($un->start_date);
+                            $end = \Carbon\Carbon::parse($un->end_date);
+                            $days = [];
+                            for($date = $start->copy(); $date->lte($end); $date->addDay()) {
+                                $days[] = $date->dayOfWeek;
+                            }
+                        @endphp
+                        daysOfWeek: [{{ implode(',', array_unique($days)) }}],
+                        startTime: '00:00:00',
+                        endTime: '23:59:59',
+                        title: '{{ $un->reason ?? 'AUSENTE' }}',
+                        display: 'block',
+                        backgroundColor: '#fee2e2', // bg-red-100 para que sea más sólido
+                        borderColor: '#ef4444',
+                        textColor: '#b91c1c',
+                        zIndex: 999999, // <--- Forzamos que esté arriba de los horarios normales
+                        extendedProps: { 
+                            type: 'unavailability',
+                            reason: '{{ $un->reason ?? 'No disponible' }}'
+                        }
                     },
                     @endforeach
                 ],
+                // Lógica para borrar al hacer clic
+                eventClick: function(info) {
+                    if (confirm("¿Deseas eliminar esta franja de horario?")) {
+                        // Construimos la ruta dinámicamente
+                        const scheduleId = info.event.id;
+                        const url = "{{ route('partner.schedules.destroy', ':id') }}".replace(':id', scheduleId);
+                        
+                        deleteForm.action = url;
+                        deleteForm.submit();
+                    }
+                },
                 eventContent: function(arg) {
-                    return { html: `<div class="p-2 overflow-hidden"><p class="text-[9px] font-black uppercase text-white/70">Activo</p><p class="text-[11px] font-bold text-white leading-tight">Disponible</p></div>` };
+                    if (arg.event.extendedProps.type === 'unavailability') {
+                        return { 
+                            html: `
+                                <div class="p-2 h-full flex flex-col justify-center items-center border-l-4 border-red-500 bg-red-50/50">
+                                    <svg class="w-4 h-4 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                                    <p class="text-[10px] font-black uppercase tracking-tighter text-red-700">AUSENTE</p>
+                                    <p class="text-[9px] font-bold text-red-500 uppercase text-center leading-none mt-1">${arg.event.title}</p>
+                                </div>` 
+                        };
+                    }
+
+                    // Calculamos el rango para mostrarlo dentro del bloque también
+                    let start = arg.event.startTime ? arg.event.startTime : ''; 
+                    return { 
+                        html: `
+                            <div class="p-2 overflow-hidden" title="${arg.event.title}">
+                                <div class="flex items-center justify-between">
+                                    <p class="text-[9px] font-black uppercase text-white/70 tracking-widest">Disponible</p>
+                                    <svg class="w-3 h-3 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </div>
+                                <p class="text-[11px] font-bold text-white leading-tight mt-1">
+                                    ${arg.timeText}
+                                </p>
+                            </div>` 
+                    };
+                },
+                eventDidMount: function(info) {
+                    if (info.event.extendedProps.type === 'unavailability') {
+                        // Forzamos que se ponga por encima de todo
+                        info.el.style.zIndex = "999999";
+                        // Le damos una sombra para que parezca que flota sobre lo azul
+                        info.el.style.boxShadow = "0 10px 15px -3px rgba(220, 38, 38, 0.3)";
+                    }
                 }
             });
             calendar.render();
@@ -272,6 +384,75 @@ $colorState = $address->city->state ? 'green' : 'red';
             color: white !important;
             border-color: #4338ca !important;
             box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+        }
+     
+        /* Aseguramos que la franja de ausencia sea opaca y tape lo de abajo */
+        .fc-timegrid-event {
+            z-index: 1; /* Horarios normales */
+        }
+
+        .fc-timegrid-event:hover {
+            background-color: #4338ca !important;
+            transform: translateY(-2px) scale(1.01);
+            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.4) !important;
+        }
+
+        /* Estilo específico para el bloque de AUSENTE */
+        .fc-event-main:has(p:contains("AUSENTE")), 
+        .fc-timegrid-event[style*="background-color: rgb(254, 226, 226)"] { 
+            z-index: 999999 !important;
+            opacity: 0.95 !important; /* Casi sólido para que no se mezcle con el azul */
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2) !important;
+        }
+
+        /* Si usas los extendedProps que pusimos antes, esta es la mejor forma: */
+        .fc-event-main-frame {
+            height: 100%;
+        }
+
+        /* Opcional: Cambia el cursor para indicar que es eliminable */
+        .fc-event-main:after {
+            content: '✕';
+            position: absolute;
+            top: 3px;
+            right: 8px;
+            font-size: 10px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .fc-timegrid-event:hover .fc-event-main:after {
+            opacity: 0.5;
+            color: white;
+        }
+
+        /* Estilo para el sombreado de fondo (Ausencias) */
+        .fc-bg-event {
+            opacity: 1 !important;
+            background-image: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 10px,
+                rgba(239, 68, 68, 0.05) 10px,
+                rgba(239, 68, 68, 0.05) 20px
+            ) !important;
+            border-left: 4px solid #ef4444 !important;
+        }
+
+        /* Estilo para que la ausencia se vea como una advertencia */
+        .fc-v-event { /* Eventos verticales */
+            border-radius: 1rem !important;
+        }
+        
+        /* Cuando es una ausencia, le damos un estilo rayado sutil */
+        [data-type="unavailability"] {
+            background-image: repeating-linear-gradient(
+                -45deg,
+                rgba(239, 68, 68, 0.05),
+                rgba(239, 68, 68, 0.05) 5px,
+                transparent 5px,
+                transparent 10px
+            );
         }
     </style>
 </x-admin-layout>

@@ -116,6 +116,7 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     // Guardar el horario
     Route::post('/partner/schedules', [ScheduleController::class, 'store'])->name('partner.schedules.store');
     Route::delete('/partner/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('partner.schedules.destroy');
+
     Route::get('/partner/appointments', [DoctorAppointmentController::class, 'index'])->name('partner.appointments.index');
     Route::patch('/partner/addresses/{address}/status', [AddressController::class, 'toggleStatus'])->name('partner.addresses.status.toggle');
 

@@ -13,10 +13,8 @@ return new class extends Migration
     {
         Schema::create('services', function (Blueprint $table) {
             $table->id();
-            $table->string('name'); // Ej: "Consulta de seguimiento"
-            $table->decimal('price', 10, 2);
+            $table->string('name');            
             $table->enum('type', ['physical', 'virtual'])->default('physical');
-            $table->integer('duration'); // Duración en minutos específica del servicio
             $table->boolean('active')->default(true);
             $table->timestamps();
         });
