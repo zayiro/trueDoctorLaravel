@@ -12,7 +12,7 @@
             <span class="text-base font-black text-gray-900 leading-tight">
                 {{ \Carbon\Carbon::parse($app->start_time)->format('g:i A') }}
             </span>
-            <p class="text-[10px] text-indigo-600 font-bold uppercase">{{ \Carbon\Carbon::parse($app->date)->translatedFormat('d M, Y') }}</p>
+            <p class="text-[10px] text-indigo-600 font-bold uppercase">{{ \Carbon\Carbon::parse($app->date)->translatedFormat('D d M') }}</p>
             <span class="inline-flex items-center text-[11px] font-medium text-gray-400 mt-1">
                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 {{ $app->duration }} min

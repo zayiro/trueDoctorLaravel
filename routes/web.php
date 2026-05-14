@@ -27,6 +27,7 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\PartnerPatientController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\UnavailabilityController;
+use App\Http\Controllers\MedicalExpertiseController;
 
 //Route::redirect('/', '/admin');
 
@@ -85,6 +86,8 @@ Route::post('/upgrade-plan', function() {
 
 // Rutas Públicas (Pacientes)
 Route::get('/search', [SearchController::class, 'index'])->name('search');
+// Asegúrate de colocarla con método GET para que la paginación funcione correctamente
+Route::get('/search-by-symptom', [SearchController::class, 'searchBySymptom'])->name('partner.search.symptom');
 
 // Rutas Privadas (medical partner)
 Route::middleware(['auth', 'role:doctor'])->group(function () {    
@@ -139,6 +142,22 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
 
     // Ruta para cancelar la cita (la que está causando el error)
     Route::delete('/partner/appointments/{appointment}', [AppointmentController::class, 'destroy'])->name('partner.appointments.destroy');
+
+    // Listado principal (Index)
+    Route::get('/partner/expertises', [MedicalExpertiseController::class, 'index'])->name('partner.expertises.index');
+
+    // Procesar el guardado del formulario (Store)
+    Route::post('/partner/expertises', [MedicalExpertiseController::class, 'store'])->name('partner.expertises.store');
+
+    // Formulario de edición (Edit)
+    Route::get('/partner/expertises/{expertise}/edit', [MedicalExpertiseController::class, 'edit'])->name('partner.expertises.edit');
+
+    // Procesar la actualización (Update)
+    Route::put('/partner/expertises/{expertise}', [MedicalExpertiseController::class, 'update'])->name('partner.expertises.update');
+
+    // Eliminar un registro (Destroy)
+    Route::delete('/partner/expertises/{expertise}', [MedicalExpertiseController::class, 'destroy'])->name('partner.expertises.destroy');
+
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -278,7 +297,6 @@ Route::get('/api/departments/{department}/cities', function ($deptId) {
         ->orderBy('name')
         ->get(['id', 'name']);
 });
-
 
 Route::middleware(['auth'])->group(function () {        
     Route::get('/patient/patient-identification', [PatientController::class, 'index'])->name('patient.patient-identification.index');

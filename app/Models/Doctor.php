@@ -180,4 +180,9 @@ class Doctor extends Model
         
         return $plan ? (bool) $plan->$feature : false;
     }
+
+    public function expertises() 
+    {
+        return $this->hasMany(MedicalExpertise::class);
+    }
 }

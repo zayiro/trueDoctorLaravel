@@ -52,7 +52,7 @@ $breadcrumbs = [
                 
                 <section>
                     <!-- Header de Sede -->
-                    <div class="flex items-center justify-between bg-gray-900 px-6 py-4 rounded-t-3xl shadow-lg">
+                    <div class="flex items-center justify-between bg-gray-900 px-6 py-4 rounded-t-3xl shadow-lg text-white">
                         <div class="flex items-center gap-3">
                             <span class="font-bold tracking-wide uppercase text-sm">
                                 📍 {{ $group->first()->address->name ?? 'Sede no definida' }}
@@ -68,13 +68,13 @@ $breadcrumbs = [
                         <!-- Desktop Table -->
                         <div class="hidden md:block overflow-x-auto">
                             <table class="w-full text-left">
-                                <thead class="bg-gray-50 border-b border-gray-100">
+                                <thead class="bg-gray-50 border-b border-gray-400">
                                     <tr>
-                                        <th class="px-6 py-4 text-xs font-bold uppercase text-gray-400">Hora</th>
-                                        <th class="px-6 py-4 text-xs font-bold uppercase text-gray-400">Paciente</th>
-                                        <th class="px-6 py-4 text-xs font-bold uppercase text-gray-400">Servicio</th>
-                                        <th class="px-6 py-4 text-xs font-bold uppercase text-gray-400">Estado</th>
-                                        <th class="px-6 py-4 text-xs font-bold uppercase text-gray-400 text-right">Acciones</th>
+                                        <th class="px-6 py-4 text-xs font-bold uppercase text-gray-600">Hora</th>
+                                        <th class="px-6 py-4 text-xs font-bold uppercase text-gray-600">Paciente</th>
+                                        <th class="px-6 py-4 text-xs font-bold uppercase text-gray-600">Servicio</th>
+                                        <th class="px-6 py-4 text-xs font-bold uppercase text-gray-600">Estado</th>
+                                        <th class="px-6 py-4 text-xs font-bold uppercase text-gray-600 text-right">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100">

@@ -51,6 +51,12 @@
         'href' => route('campaigns.index'),
         'active' => false,
     ],
+    [
+        'name' => 'Conocimientos Médicos',
+        'icon' => 'fa-solid fa-gauge',
+        'href' => route('partner.expertises.index'),
+        'active' => false,
+    ],
  ];
 @endphp
 
