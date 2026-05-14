@@ -100,18 +100,16 @@ class SearchController extends Controller
 
     public function searchBySymptom(Request $request)
     {        
-        // Validamos que el usuario haya escrito algo en el buscador del menubar
-        $queryStr = $request->input('search');
+        // Capturamos el parámetro real de la URL
+        $queryStr = $request->input('symptom');
 
         if (empty($queryStr)) {
-            return redirect()->route('medicos.index'); // Redirecciona al index limpio si está vacío
+            return redirect()->route('search.index'); 
         }
 
-        // Cargamos los catálogos necesarios para los filtros laterales de la vista
         $specialties = Specialty::orderBy('name', 'asc')->get();
         $cities = City::orderBy('name', 'asc')->get();                        
         
-        // Ejecutamos la consulta con la misma estructura que tu index
         $doctors = Doctor::with([
             'user',
             'specialties',
@@ -119,20 +117,34 @@ class SearchController extends Controller
             'addresses',
             'addresses.city'
         ])
-        // Filtro crítico: Buscamos en la relación de enfermedades/síntomas
+        // Filtro crítico adaptado contra fallos de palabras cortas
         ->whereHas('expertises', function ($query) use ($queryStr) {
-            $query->whereFullText(['disease_name', 'symptoms_keywords'], $queryStr);
-            
-            // Alternativa tradicional por si no usas índices FullText:
-            // $query->where('disease_name', 'LIKE', "%{$queryStr}%")
-            //       ->orWhere('symptoms_keywords', 'LIKE', "%{$queryStr}%");
+            if (strlen($queryStr) >= 4) {
+                // Optimizado para frases largas usando FullText (Rápido)
+                $query->whereFullText(['disease_name', 'symptoms_keywords'], $queryStr);
+            } else {
+                // Respaldo para palabras cortas como "tos", "ojo", "pie" (Seguro)
+                $query->where('disease_name', 'LIKE', "%{$queryStr}%")
+                    ->orWhere('symptoms_keywords', 'LIKE', "%{$queryStr}%");
+            }
+        })
+        // 💡 MEJORA EXTRA: Si el usuario usa los filtros laterales estando en esta vista, la consulta los respeta
+        ->when($request->filled('specialty'), function ($query) use ($request) {
+            $query->whereHas('specialties', function ($q) use ($request) {
+                $q->where('slug', $request->specialty);
+            });
+        })
+        ->when($request->filled('city'), function ($query) use ($request) {
+            $query->whereHas('addresses.city', function ($q) use ($request) {
+                $q->where('slug', $request->city);
+            });
         })
         ->paginate(10);
 
-        // Mantener el término de búsqueda en los enlaces de la paginación (Páginas 2, 3, etc.)
-        $doctors->appends(['search' => $queryStr]);
+        // Mantenemos vivos todos los parámetros en los links de paginación (Siguiente, Anterior)
+        $doctors->appends($request->all());
 
-        // Retornamos la misma vista para que reutilices toda tu interfaz visual de resultados
         return view('search.index', compact('doctors', 'specialties', 'cities'));
     }
+
 }

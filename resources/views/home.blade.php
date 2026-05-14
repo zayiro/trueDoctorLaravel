@@ -70,12 +70,12 @@
 
             <!-- Buscador Flotante -->
             <div class="max-w-4xl mx-auto mb-4">
-                <form wire:submit.prevent="{{ route('partner.search.symptom') }}" action="{{ route('search') }}" method="GET" class="bg-white p-4 rounded-3xl shadow-2xl border border-slate-100 flex flex-col md:flex-row gap-4">
+                <form wire:submit.prevent="{{ route('partner.search.symptom') }}" action="{{ route('partner.search.symptom') }}" method="GET" class="bg-white p-4 rounded-3xl shadow-2xl border border-slate-100 flex flex-col md:flex-row gap-4">
                     
                     <!-- Selector de Especialidad -->
                     <div class="flex-1">
                         <label for="symptom" class="block text-[10px] font-black text-slate-400 uppercase ml-3 mb-1">¿Qué sintomas tienes?</label>
-                        <input type="search" name="symptom" id="symptom" required class="w-full border-0 focus:ring-0 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 px-4" placeholder="Describe tu síntoma, dolor o enfermedad">
+                        <input type="search" name="symptom" id="symptom" value="{{ request('symptom') }}" required class="w-full border-0 focus:ring-0 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 px-4" placeholder="Describe tu síntoma, dolor o enfermedad">
                     </div>
 
                     <!-- Botón Buscar -->

@@ -44,9 +44,7 @@ class PartnerPatientController extends Controller
         $patients = $query->with(['user', 'appointments']) // Eager loading para evitar el problema N+1
             ->limit($plan->max_patients_list)
             ->paginate(15);
-
-            
-
+        
         return view('partner.patients.index', compact('patients', 'plan'));
     }
 
@@ -67,7 +65,7 @@ class PartnerPatientController extends Controller
 
         // 1. Cargamos al paciente con sus relaciones
         // Incluimos citas ordenadas para ver el historial clínico correctamente
-        $patient = Patient::with(['user', 'appointments' => function($query) use ($doctor) {
+        $patient = Patient::with(['user', 'familyHistories', 'city', 'department', 'appointments' => function($query) use ($doctor) {
             $query->where('doctor_id', $doctor->id)
                 ->orderBy('date', 'desc');
         }, 'appointments.service'])
@@ -84,6 +82,10 @@ class PartnerPatientController extends Controller
         
         // Capturamos el ID de la cita si viene en la URL
         $appointmentId = $request->query('appointment_id');
+
+        //dd($patient->surgeries);
+
+        //dd("Paciente: {$patient->user->name}, Doctor: {$doctor->name}, Plan: {$plan->name}, Cita ID: {$appointmentId}");
         
         return view('partner.patients.show', compact('patient', 'doctor', 'plan', 'appointmentId'));
     }

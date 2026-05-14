@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Models;
+use Carbon\Carbon;
 
 use Illuminate\Database\Eloquent\Model;
 
@@ -31,6 +32,17 @@ class Patient extends Model
         'emergency_contact_relationship',
     ];
 
+    // 1. Asegúrate de que Laravel trate el campo como una fecha
+    protected $casts = [
+        'birth_date' => 'date',
+    ];
+
+    // 2. Crea un atributo virtual (Accessor)
+    public function getAgeAttribute()
+    {
+        return $this->birth_date->age;
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id'); 
@@ -44,14 +56,6 @@ class Patient extends Model
     public function insurance()
     {
         return $this->belongsTo(Insurance::class);
-    }
-
-    /**
-     * Calcula la edad exacta del paciente.
-     */
-    public function getAgeAttribute()
-    {
-        return $this->birth_date ? Carbon::parse($this->birth_date)->age : 'N/A';
     }
 
     /**
@@ -131,5 +135,21 @@ class Patient extends Model
     protected function setHeightAttribute($value)
     {
         $this->attributes['height'] = $value > 10 ? $value / 100 : $value;
+    }
+
+    /**
+     * Obtener el departamento del paciente.
+     */
+    public function department()
+    {
+        return $this->belongsTo(Department::class, 'department_id');
+    }
+
+    /**
+     * Obtener la ciudad del paciente.
+     */
+    public function city()
+    {
+        return $this->belongsTo(City::class, 'city_id');
     }
 }
