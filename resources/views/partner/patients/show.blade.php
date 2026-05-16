@@ -49,7 +49,7 @@ $breadcrumbs = [
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             <!-- Información Básica -->
             <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
-                <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Datos Clínicos</h3>
+                <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Datos del Paciente</h3>
                 <ul class="space-y-3 text-sm">
                     <li class="flex justify-between"><span class="text-gray-400">Localización:</span> <span class="font-bold text-gray-700">{{ $patient->city->name && $patient->department->name ? $patient->city->name . ', ' . $patient->department->name : 'No especificado' }}</span></li>
                     <li class="flex justify-between"><span class="text-gray-400">Genero:</span> <span class="font-bold text-gray-700">{{ $gender }}</span></li>
@@ -71,8 +71,10 @@ $breadcrumbs = [
                     <li class="flex justify-between"><span class="text-gray-400">Teléfono:</span> <span class="font-bold text-gray-700">{{ $patient->emergency_contact_phone ?? 'No especificado' }}</span></li>
                     <li class="flex justify-between"><span class="text-gray-400">Relación:</span> <span class="font-bold text-gray-700">{{ $patient->emergency_contact_relationship ?? 'No especificado' }}</span></li>
                     <li>
-                        @if($plan->can_export_history)                            
-                            <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 inset-ring inset-ring-blue-700/10 underline">Descargar Historia Clínica PDF</span>
+                        @if($plan->can_export_history)
+                        <a href="{{ route('patient.pdf.clinical-history', $patient) }}" class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 inset-ring inset-ring-blue-700/10 underline">
+                            Descargar Historia Clínica PDF
+                        </a>
                         @endif
                     </li>
                 </ul>
@@ -176,9 +178,7 @@ $breadcrumbs = [
                     @empty
                         <p class="text-sm text-gray-400 italic">No hay antecedentes familiares registrados.</p>
                     @endforelse
-                </div>
-                
-                
+                </div>                                
             </div>            
         </div>    
         

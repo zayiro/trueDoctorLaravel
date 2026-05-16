@@ -29,8 +29,45 @@ class DoctorAppointmentController extends Controller
             $query->whereDate('date', $date);
         }
 
-        $appointments = $query->get()->groupBy('address_id');
-
+        $appointments = $query->get()->groupBy('address_id');     
+                
         return view('partner.appointments.index', compact('appointments', 'date', 'showAll'));
+    }
+
+    public function complete(Appointment $appointment)
+    {        
+        if ($appointment->doctor_id !== auth()->id()) {
+            abort(403, 'No tienes permiso para editar esta cita.');
+        }
+     
+        $appointment->update([
+            'status' => 'completed'
+        ]);
+
+        return back()->with('success', 'La cita ha sido marcada como completada.');
+    }
+
+    public function cancel(Appointment $appointment)
+    {        
+        if ($appointment->doctor_id !== auth()->id()) {
+            abort(403, 'No tienes permiso para cancelar esta cita.');
+        }
+     
+        $appointment->update([
+            'status' => 'cancelled'
+        ]);
+
+        return back()->with('success', 'La cita ha sido marcada como cancelada.');
+    }
+
+    public function destroy(Appointment $appointment)
+    {
+        if ($appointment->doctor_id !== auth()->id()) {
+            abort(403, 'No tienes permiso para eliminar esta cita.');
+        }
+
+        $appointment->delete();
+
+        return back()->with('success', 'La cita ha sido eliminada exitosamente.');
     }
 }

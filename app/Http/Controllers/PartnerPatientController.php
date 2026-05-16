@@ -82,11 +82,7 @@ class PartnerPatientController extends Controller
         
         // Capturamos el ID de la cita si viene en la URL
         $appointmentId = $request->query('appointment_id');
-
-        //dd($patient->surgeries);
-
-        //dd("Paciente: {$patient->user->name}, Doctor: {$doctor->name}, Plan: {$plan->name}, Cita ID: {$appointmentId}");
         
         return view('partner.patients.show', compact('patient', 'doctor', 'plan', 'appointmentId'));
-    }
+    }    
 }

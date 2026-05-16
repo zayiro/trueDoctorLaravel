@@ -13,11 +13,14 @@ return new class extends Migration
     {
         Schema::create('schedules', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('address_id')->constrained()->onDelete('cascade'); // Clave a addresses
+            $table->foreignId('address_id')->constrained()->onDelete('cascade');
             $table->unsignedTinyInteger('day'); // 1=Lunes, 7=Domingo
             $table->time('start_time');
             $table->time('end_time');
             $table->timestamps();
+
+            // Índice compuesto para buscar el horario de una sucursal en un día específico
+            $table->index(['address_id', 'day']);
         });
     }
 

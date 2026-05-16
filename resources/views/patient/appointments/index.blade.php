@@ -8,6 +8,8 @@ $breadcrumbs = [
         'name' => 'Mis citas',
     ]
 ];
+
+$now = now();
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
@@ -70,6 +72,15 @@ $breadcrumbs = [
                     case 'completed': $status = 'Completada';
                     break;
                 }
+
+                // 1. Creamos el objeto Carbon con fecha y hora de inicio
+                $start = \Carbon\Carbon::parse($appointment->date . ' ' . $appointment->start_time);
+                
+                // 2. Calculamos el final de la cita sumando la duración
+                $end = $start->copy()->addMinutes($appointment->duration);
+                
+                // 3. Validamos si "AHORA" es menor al momento en que termina la cita
+                $showLink = now()->lessThan($end);                    
                 @endphp
                 <li class="bg-white border border-gray-200 rounded-lg shadow-sm hover:border-blue-300 transition-colors">
                     <div class="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -124,12 +135,32 @@ $breadcrumbs = [
                                 {{ $appointment->status === 'completed' ? 'bg-blue-100 text-blue-800' : '' }}">
                                 {{ ucfirst($status) }}
                             </span>
-                            
-                            @if($appointment->status === 'confirmed' && $appointment->meeting_link)
-                                <a href="{{ $appointment->meeting_link }}" class="text-sm font-semibold text-indigo-600 hover:text-indigo-900">
-                                    Entrar a cita →
-                                </a>
+
+                            @if($showLink)
+                                @if($appointment->status === 'confirmed' && $appointment->meeting_link)    
+                                    <a href="{{ $appointment->meeting_link }}" class="text-sm font-semibold text-indigo-600 hover:text-indigo-900">
+                                        @if(now()->between($start, $end))
+                                            ENTRAR AHORA (Cita en curso)
+                                        @else
+                                            Entrar a cita
+                                        @endif
+                                    </a>                                
+                                @endif    
                             @endif
+
+                            @if($now->isBefore($start))
+                                {{-- ESTADO 2: Cita en el futuro --}}
+                                <div class="alert alert-info">
+                                    Faltan {{ $now->diffForHumans($start, [
+                                        'syntax' => 1, // Solo la parte más significativa
+                                        'parts' => 2
+                                    ]) }}
+                                </div>
+                            @else
+                                {{-- ESTADO 3: Cita en el pasado (después de la duración) --}}
+                                <span class="badge badge-danger">Cita finalizada</span>
+                                <p><small>Terminó el {{ $end->format('d/m/Y H:i') }}</small></p>
+                            @endif                                      
                         </div>
                     </div>
                 </li>

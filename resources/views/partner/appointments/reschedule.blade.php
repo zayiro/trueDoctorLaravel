@@ -44,7 +44,7 @@ $breadcrumbs = [
                     
                     <!-- 1. Selección de Fecha -->
                     <div class="mb-10">
-                        <label for="datePicker" class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4">1. Elige la nueva fecha</label>
+                        <label for="datePicker" class="block text-xs font-black text-gray-400 uppercase tracking-widest mt-4 mb-4">1. Elige la nueva fecha</label>
                         <input type="date" name="date" id="datePicker" value="{{ $appointment->date }}"
                             class="w-full bg-gray-50 border-none rounded-2xl p-5 text-lg font-bold focus:ring-2 focus:ring-indigo-500 transition-all shadow-inner">
                     </div>

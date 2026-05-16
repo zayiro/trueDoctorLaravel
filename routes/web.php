@@ -3,6 +3,7 @@
 use App\Models\City;
 use App\Models\Schedule;
 use App\Models\Appointment;
+use App\models\Unavailability;
 use App\Models\Address;
 use Carbon\Carbon;
 
@@ -122,6 +123,10 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::delete('/partner/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('partner.schedules.destroy');
 
     Route::get('/partner/appointments', [DoctorAppointmentController::class, 'index'])->name('partner.appointments.index');
+    Route::patch('/partner/appointments/{appointment}/complete', [DoctorAppointmentController::class, 'complete'])->name('partner.appointments.complete');
+    Route::patch('/partner/appointments/{appointment}/cancel', [DoctorAppointmentController::class, 'cancel'])->name('partner.appointments.cancel');
+    Route::delete('/partner/appointments/{appointment}', [DoctorAppointmentController::class, 'destroy'])->name('partner.appointments.destroy');
+
     Route::patch('/partner/addresses/{address}/status', [AddressController::class, 'toggleStatus'])->name('partner.addresses.status.toggle');
 
     Route::post('/partner/unavailabilities', [UnavailabilityController::class, 'store'])->name('partner.unavailabilities.store');
@@ -134,9 +139,8 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::get('partner/patients/{id}', [PartnerPatientController::class, 'show'])->name('partner.patients.show');
 
     // Vista para seleccionar el nuevo horario
-    Route::get('/partner/appointments/{appointment}/reschedule', [AppointmentController::class, 'rescheduleView'])
-        ->name('partner.appointments.reschedule');
-
+    Route::get('/partner/appointments/{appointment}/reschedule', [AppointmentController::class, 'rescheduleView'])->name('partner.appointments.reschedule');
+    
     // Acción para procesar el cambio
     Route::put('/partner/appointments/{appointment}/reschedule/process', [AppointmentController::class, 'rescheduleProcess'])->name('partner.appointments.reschedule.process');
 
@@ -156,8 +160,7 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::put('/partner/expertises/{expertise}', [MedicalExpertiseController::class, 'update'])->name('partner.expertises.update');
 
     // Eliminar un registro (Destroy)
-    Route::delete('/partner/expertises/{expertise}', [MedicalExpertiseController::class, 'destroy'])->name('partner.expertises.destroy');
-
+    Route::delete('/partner/expertises/{expertise}', [MedicalExpertiseController::class, 'destroy'])->name('partner.expertises.destroy');    
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -205,7 +208,7 @@ Route::get('/api/get-slots', function (Request $request) {
     $doctorId = $address->doctor_id;
 
     // 👇 1. VALIDAR AUSENCIAS (UNAVAILABILITIES) utilizando la variable segura $doctorId
-    $isUnavailable = \App\Models\Unavailability::where('doctor_id', $doctorId)
+    $isUnavailable = Unavailability::where('doctor_id', $doctorId)
         ->whereDate('start_date', '<=', $fechaConsultada)
         ->whereDate('end_date', '>=', $fechaConsultada)
         ->where(function($q) use ($request, $isVirtual) {
@@ -321,4 +324,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/patient/medications', [PatientController::class, 'storeMedication'])->name('patient.medications.store');
     Route::put('/patient/medications/{medication}', [PatientController::class, 'updateMedication'])->name('patient.medications.update');
     Route::patch('/patient/medications/{medication}/toggle', [PatientController::class, 'toggleStatusMedication'])->name('patient.medications.toggle');
+    Route::get('/patient/pdf/clinical-history/{patient}', [PatientController::class, 'downloadClinicalHistory'])->name('patient.pdf.clinical-history');
+
 });

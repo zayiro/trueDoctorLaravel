@@ -1,4 +1,6 @@
 @php
+$patient = auth()->user()->patient;
+
  $links = [
     [
         'header' => 'Administrar página',        
@@ -64,6 +66,12 @@
         'name' => 'Medicación',
         'icon' => 'fa-solid fa-gauge',
         'href' => route('patient.medications.index'),
+        'active' => false,
+    ],   
+    [
+        'name' => 'Descargar Historia Clínica',
+        'icon' => 'fa-solid fa-gauge',
+        'href' => route('patient.pdf.clinical-history', $patient),
         'active' => false,
     ],    
  ];

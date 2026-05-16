@@ -7,7 +7,30 @@ $breadcrumbs = [
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
     <div class="py-8">
-        
+        @if (session('success'))
+            <div id="alert-success" class="flex items-center p-4 mb-4 text-green-800 rounded-2xl bg-green-50 border border-green-100 shadow-sm transition-opacity duration-500" role="alert">
+                <svg class="flex-shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://w3.org" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L8 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+                </svg>
+                <span class="sr-only">Éxito</span>
+                <div class="ms-3 text-sm font-medium">
+                    {{ session('success') }}
+                </div>
+                <button type="button" class="ms-auto -mx-1.5 -my-1.5 bg-green-50 text-green-500 rounded-lg focus:ring-2 focus:ring-green-400 p-1.5 hover:bg-green-200 inline-flex items-center justify-center h-8 w-8" onclick="document.getElementById('alert-success').remove()">
+                    <span class="sr-only">Cerrar</span>
+                    <svg class="w-3 h-3" aria-hidden="true" xmlns="http://w3.org" fill="none" viewBox="0 0 14 14">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                    </svg>
+                </button>
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div style="background-color: #fee2e2; color: #b91c1c; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; border: 1px solid #f87171;">
+                {{ session('error') }}
+            </div>
+        @endif
+
         <!-- Header -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
             <div>
@@ -137,124 +160,138 @@ $breadcrumbs = [
         </div>
     </div>
 
-    <!-- Dropdown Menú Global -->
-    <div id="appointmentDropdown" class="hidden fixed z-[10000] w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden transform transition-all scale-95 opacity-0">
-        <div class="py-2">
-            <a id="dropReschedule" href="#" 
-                class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                </svg>
-                Reagendar Cita
-            </a>
+        @if ($appointments->count() > 0)
+            <!-- Dropdown Menú Global -->    
+            <div id="appointmentDropdown" class="hidden fixed z-[10000] w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden transform transition-all scale-95 opacity-0">
+                <div class="py-2">
+                    <a href="#" id="dropReminder" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                        Recordatorio SMS
+                    </a>
 
-            <a href="#" id="dropReminder" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                Recordatorio SMS
-            </a>
-            <hr class="border-gray-50 my-1">
-            <form id="dropCancelForm" action="" method="POST" onsubmit="return confirm('¿Estás seguro de cancelar esta cita?')">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                    Cancelar Cita
-                </button>
-            </form>
-        </div>
-    </div>
+                    <a id="dropReschedule" href="{{ route('partner.appointments.reschedule', ['appointment' => $app]) }}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                        Reagendar Cita
+                    </a>                
+                    
+                    <form id="formComplete" action="{{ route('partner.appointments.complete', ['appointment' => $app]) }}" method="POST" onsubmit="return confirm('¿Estás seguro de completar esta cita?')">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Cita completada
+                        </button>
+                    </form>
 
-    <script>
-        let currentAppointmentId = null;
+                    <form id="formCancel" action="{{ route('partner.appointments.cancel', ['appointment' => $app]) }}" method="POST" onsubmit="return confirm('¿Estás seguro de cancelar esta cita?')">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Cancelar Cita
+                        </button>
+                    </form>
 
-        function openNoteModal(noteText) {
-            const modal = document.getElementById('noteModal');
-            const content = document.getElementById('modalNoteContent');
+                    <form id="formDelete" action="{{ route('partner.appointments.destroy', ['appointment' => $app]) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar esta cita?')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            Eliminar Cita
+                        </button>
+                    </form>
+                </div>
+            </div>
             
-            // Insertar el texto (manejando nulos)
-            content.innerText = noteText || 'No hay notas registradas para esta cita.';
+            <script>
+                let currentAppointmentId = null;
+
+                function openNoteModal(noteText) {
+                    const modal = document.getElementById('noteModal');
+                    const content = document.getElementById('modalNoteContent');
+                    
+                    // Insertar el texto (manejando nulos)
+                    content.innerText = noteText || 'No hay notas registradas para esta cita.';
+                    
+                    // Mostrar el modal quitando la clase hidden
+                    modal.classList.remove('hidden');
+                    
+                    // Bloquear el scroll del cuerpo
+                    document.body.style.overflow = 'hidden';
+                }
+
+                function closeNoteModal() {
+                    const modal = document.getElementById('noteModal');
+                    
+                    // Ocultar el modal añadiendo la clase hidden
+                    modal.classList.add('hidden');
+                    
+                    // Restaurar el scroll
+                    document.body.style.overflow = 'auto';
+                }
+
+                // Cerrar si se hace click fuera del contenido (en el overlay)
+                window.onclick = function(event) {
+                    const modal = document.getElementById('noteModal');
+                    if (event.target == modal) {
+                        closeNoteModal();
+                    }
+                }
             
-            // Mostrar el modal quitando la clase hidden
-            modal.classList.remove('hidden');
-            
-            // Bloquear el scroll del cuerpo
-            document.body.style.overflow = 'hidden';
-        }
+                function toggleDropdown(event, appointmentId) {
+                    event.stopPropagation();
+                    const dropdown = document.getElementById('appointmentDropdown');
+                    const trigger = event.currentTarget;
+                    const rect = trigger.getBoundingClientRect();
 
-        function closeNoteModal() {
-            const modal = document.getElementById('noteModal');
-            
-            // Ocultar el modal añadiendo la clase hidden
-            modal.classList.add('hidden');
-            
-            // Restaurar el scroll
-            document.body.style.overflow = 'auto';
-        }
+                    // Lógica de posicionamiento
+                    dropdown.style.top = `${rect.bottom + window.scrollY + 5}px`;
+                    dropdown.style.left = `${rect.right - 192}px`;
 
-        // Cerrar si se hace click fuera del contenido (en el overlay)
-        window.onclick = function(event) {
-            const modal = document.getElementById('noteModal');
-            if (event.target == modal) {
-                closeNoteModal();
-            }
-        }
-    
-        function toggleDropdown(event, appointmentId) {
-            event.stopPropagation();
-            const dropdown = document.getElementById('appointmentDropdown');
-            const trigger = event.currentTarget;
-            const rect = trigger.getBoundingClientRect();
+                    dropdown.classList.remove('hidden');
+                    setTimeout(() => {
+                        dropdown.classList.remove('scale-95', 'opacity-0');
+                        dropdown.classList.add('scale-100', 'opacity-100');
+                    }, 10);
+                }
 
-            // 1. Construir la URL de Reagendar usando la ruta de Laravel
-            // Reemplazamos un placeholder ':id' por el ID real de la cita
-            let rescheduleUrl = "{{ route('partner.appointments.reschedule', ':id') }}";
-            document.getElementById('dropReschedule').href = rescheduleUrl.replace(':id', appointmentId);
+                function openRescheduleModal() {
+                    hideDropdown(); // Cerramos el menú pequeño
+                    const modal = document.getElementById('recheduleModal');
+                    const form = document.getElementById('rescheduleForm');
+                    
+                    // Seteamos la URL del controlador
+                    form.action = `/partner/appointments/${currentAppointmentId}/reschedule`;
+                    
+                    modal.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                }
 
-            // 2. Construir la URL de Cancelar (Eliminar)
-            let deleteUrl = "{{ route('partner.appointments.destroy', ':id') }}";
-            document.getElementById('dropCancelForm').action = deleteUrl.replace(':id', appointmentId);
+                function closeRescheduleModal() {
+                    document.getElementById('recheduleModal').classList.add('hidden');
+                    document.body.style.overflow = 'auto';
+                }
 
-            // Lógica de posicionamiento
-            dropdown.style.top = `${rect.bottom + window.scrollY + 5}px`;
-            dropdown.style.left = `${rect.right - 192}px`;
+                function hideDropdown() {
+                    const dropdown = document.getElementById('appointmentDropdown');
+                    dropdown.classList.remove('scale-100', 'opacity-100');
+                    dropdown.classList.add('scale-95', 'opacity-0');
+                    setTimeout(() => dropdown.classList.add('hidden'), 150);
+                }
 
-            dropdown.classList.remove('hidden');
-            setTimeout(() => {
-                dropdown.classList.remove('scale-95', 'opacity-0');
-                dropdown.classList.add('scale-100', 'opacity-100');
-            }, 10);
-        }
-
-        function openRescheduleModal() {
-            hideDropdown(); // Cerramos el menú pequeño
-            const modal = document.getElementById('recheduleModal');
-            const form = document.getElementById('rescheduleForm');
-            
-            // Seteamos la URL del controlador
-            form.action = `/partner/appointments/${currentAppointmentId}/reschedule`;
-            
-            modal.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeRescheduleModal() {
-            document.getElementById('recheduleModal').classList.add('hidden');
-            document.body.style.overflow = 'auto';
-        }
-
-        function hideDropdown() {
-            const dropdown = document.getElementById('appointmentDropdown');
-            dropdown.classList.remove('scale-100', 'opacity-100');
-            dropdown.classList.add('scale-95', 'opacity-0');
-            setTimeout(() => dropdown.classList.add('hidden'), 150);
-        }
-
-        // Cerrar al hacer clic en cualquier otro lado
-        window.addEventListener('click', function(e) {
-            if (!document.getElementById('appointmentDropdown').contains(e.target)) {
-                hideDropdown();
-            }
-        });
-    </script>
+                // Cerrar al hacer clic en cualquier otro lado
+                window.addEventListener('click', function(e) {
+                    if (!document.getElementById('appointmentDropdown').contains(e.target)) {
+                        hideDropdown();
+                    }
+                });
+            </script>
+        @endif
 </x-admin-layout>
 

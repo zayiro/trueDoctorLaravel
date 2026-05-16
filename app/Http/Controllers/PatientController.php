@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use App\Models\Patient;
 use App\Models\PatientAllergy;
@@ -10,9 +11,12 @@ use App\Models\PatientFamilyHistory;
 use App\Models\PatientMedication;
 use App\Models\Insurance;
 use App\Models\Department;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class PatientController extends Controller
 {
+    use AuthorizesRequests;
+
     public function limpiarAcentos($texto) 
     {
         $remplazos = [
@@ -33,7 +37,7 @@ class PatientController extends Controller
         // Asegúrate de tener el modelo Insurance creado
         $insurances = Insurance::all(); 
 
-        $departments = Department::orderBy('name')->get();
+        $departments = Department::orderBy('name')->get();        
 
         return view('patient.patient-identification.index', compact('patient', 'insurances', 'departments'));
     }
@@ -397,5 +401,24 @@ class PatientController extends Controller
         $medication->update($validated);
 
         return back()->with('success', 'Medicamento actualizado con éxito.');
+    }
+
+    public function downloadClinicalHistory(Patient $patient)
+    {
+        // Esto lanza un error 403 (No autorizado) si no cumple la Policy
+        $this->authorize('view', $patient);    
+        
+        // 1. Cargamos al paciente con sus relaciones
+        // Incluimos citas ordenadas para ver el historial clínico correctamente
+        $patient = Patient::with(['user', 'familyHistories', 'allergies', 'surgeries', 'medications', 'appointments', 'histories', 'city', 'department'])
+        ->where('id', $patient->id)
+        ->firstOrFail();
+        
+        //dd($patient);
+
+        $numero = random_int(100000, 999999);
+
+        $pdf = Pdf::loadView('patient.pdf.clinical-history', compact('patient'));
+        return $pdf->download('clinical-history-' . $numero . '.pdf');
     }
 }
