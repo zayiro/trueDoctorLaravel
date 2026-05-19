@@ -45,7 +45,6 @@ $breadcrumbs = [
             </div>
             
             <div class="flex items-center gap-3">
-                <!-- Botón Ver Todo / Volver a Hoy -->
                 @if(!$showAll)
                     <a href="{{ route('partner.appointments.index', ['all' => 1]) }}" 
                     class="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest bg-gray-100 text-gray-500 hover:bg-gray-200 transition-all border border-gray-200">
@@ -58,7 +57,6 @@ $breadcrumbs = [
                     </a>
                 @endif
 
-                <!-- Formulario Filtro -->
                 <form action="{{ route('partner.appointments.index') }}" method="GET" class="flex items-center gap-2 bg-white p-2 rounded-2xl shadow-sm border border-gray-100">
                     <input type="date" name="date" value="{{ $date ?? now()->toDateString() }}" onchange="this.form.submit()" 
                         class="border-none focus:ring-0 text-sm font-semibold text-gray-700 bg-transparent cursor-pointer">
@@ -74,11 +72,10 @@ $breadcrumbs = [
                 @php $groupCount = $group->count(); @endphp
                 
                 <section>
-                    <!-- Header de Sede -->
                     <div class="flex items-center justify-between bg-gray-900 px-6 py-4 rounded-t-3xl shadow-lg text-white">
                         <div class="flex items-center gap-3">
                             <span class="font-bold tracking-wide uppercase text-sm">
-                                📍 {{ $group->first()->address->name ?? 'Sede no definida' }}
+                                📍 {{ $group->first()->address->name ?? 'Consulta Virtual' }}
                             </span>
                         </div>
                         <span class="bg-indigo-500 text-white text-[10px] px-3 py-1 rounded-full font-black">
@@ -86,7 +83,6 @@ $breadcrumbs = [
                         </span>
                     </div>
 
-                    <!-- Contenedor de Citas -->
                     <div class="bg-white shadow-xl rounded-b-3xl overflow-hidden border-x border-b border-gray-100">
                         <!-- Desktop Table -->
                         <div class="hidden md:block overflow-x-auto">
@@ -117,181 +113,40 @@ $breadcrumbs = [
                     </div>
                 </section>
             @empty
-                <!-- Vista Vacía -->
                 <div class="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-gray-200">
                     <p class="text-gray-500 font-medium">No hay citas para esta fecha.</p>
                 </div>
             @endforelse
         </div>
     </div>
+
     <!-- Modal de Notas -->
     <div id="noteModal" class="fixed inset-0 hidden" style="z-index: 9999;" role="dialog" aria-modal="true">
-        <!-- Overlay Oscuro con Blur -->
         <div class="fixed inset-0 bg-gray-900/80 backdrop-blur-md transition-opacity"></div>
-
-        <!-- Contenedor de Posicionamiento -->
         <div class="fixed inset-0 flex items-center justify-center p-4">
-            <div class="bg-white w-1/2 rounded-[2.5rem] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.5)] transform transition-all overflow-hidden border border-gray-100 relative">
-                
-                <!-- Decoración Superior -->
+            <div class="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl transform transition-all overflow-hidden border border-gray-100 relative">
                 <div class="h-2 w-full bg-amber-400"></div>
-
                 <div class="px-8 pt-10 pb-6 text-center">
-                    <div class="mx-auto w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mb-6">
-                        <svg class="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                        </svg>
+                    <div class="mx-auto w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500 mb-4">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
                     </div>
-                    
-                    <h3 class="text-2xl font-black text-gray-900 mb-2">Notas del Paciente</h3>
-                    <div id="modalNoteContent" class="bg-gray-50 p-6 rounded-3xl border border-gray-100 text-sm text-gray-700 leading-relaxed min-h-[140px] max-h-[50vh] overflow-y-auto text-left shadow-inner">
-                        <!-- Contenido -->
-                    </div>
+                    <h3 class="text-xl font-black text-gray-900 mb-2">Notas de la Consulta</h3>
+                    <p id="modalNoteText" class="text-gray-600 text-sm leading-relaxed text-left bg-gray-50 p-4 rounded-2xl border border-gray-100 max-h-60 overflow-y-auto"></p>
                 </div>
-
-                <!-- Footer con Botón Gigante para Móvil -->
-                <div class="px-8 pb-8 mb-4">
-                    
-                    <button onclick="closeNoteModal()" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                        Cerrar
-                    </button>
+                <div class="bg-gray-50 px-8 py-4 flex justify-end">
+                    <button type="button" onclick="closeNoteModal()" class="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-bold text-sm transition-colors">Cerrar</button>
                 </div>
             </div>
         </div>
     </div>
 
-        @if ($appointments->count() > 0)
-            <!-- Dropdown Menú Global -->    
-            <div id="appointmentDropdown" class="hidden fixed z-[10000] w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden transform transition-all scale-95 opacity-0">
-                <div class="py-2">
-                    <a href="#" id="dropReminder" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                        Recordatorio SMS
-                    </a>
-
-                    <a id="dropReschedule" href="{{ route('partner.appointments.reschedule', ['appointment' => $app]) }}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                        </svg>
-                        Reagendar Cita
-                    </a>                
-                    
-                    <form id="formComplete" action="{{ route('partner.appointments.complete', ['appointment' => $app]) }}" method="POST" onsubmit="return confirm('¿Estás seguro de completar esta cita?')">
-                        @csrf
-                        @method('PATCH')
-                        <button type="submit" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                            Cita completada
-                        </button>
-                    </form>
-
-                    <form id="formCancel" action="{{ route('partner.appointments.cancel', ['appointment' => $app]) }}" method="POST" onsubmit="return confirm('¿Estás seguro de cancelar esta cita?')">
-                        @csrf
-                        @method('PATCH')
-                        <button type="submit" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                            Cancelar Cita
-                        </button>
-                    </form>
-
-                    <form id="formDelete" action="{{ route('partner.appointments.destroy', ['appointment' => $app]) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar esta cita?')">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                            Eliminar Cita
-                        </button>
-                    </form>
-                </div>
-            </div>
-            
-            <script>
-                let currentAppointmentId = null;
-
-                function openNoteModal(noteText) {
-                    const modal = document.getElementById('noteModal');
-                    const content = document.getElementById('modalNoteContent');
-                    
-                    // Insertar el texto (manejando nulos)
-                    content.innerText = noteText || 'No hay notas registradas para esta cita.';
-                    
-                    // Mostrar el modal quitando la clase hidden
-                    modal.classList.remove('hidden');
-                    
-                    // Bloquear el scroll del cuerpo
-                    document.body.style.overflow = 'hidden';
-                }
-
-                function closeNoteModal() {
-                    const modal = document.getElementById('noteModal');
-                    
-                    // Ocultar el modal añadiendo la clase hidden
-                    modal.classList.add('hidden');
-                    
-                    // Restaurar el scroll
-                    document.body.style.overflow = 'auto';
-                }
-
-                // Cerrar si se hace click fuera del contenido (en el overlay)
-                window.onclick = function(event) {
-                    const modal = document.getElementById('noteModal');
-                    if (event.target == modal) {
-                        closeNoteModal();
-                    }
-                }
-            
-                function toggleDropdown(event, appointmentId) {
-                    event.stopPropagation();
-                    const dropdown = document.getElementById('appointmentDropdown');
-                    const trigger = event.currentTarget;
-                    const rect = trigger.getBoundingClientRect();
-
-                    // Lógica de posicionamiento
-                    dropdown.style.top = `${rect.bottom + window.scrollY + 5}px`;
-                    dropdown.style.left = `${rect.right - 192}px`;
-
-                    dropdown.classList.remove('hidden');
-                    setTimeout(() => {
-                        dropdown.classList.remove('scale-95', 'opacity-0');
-                        dropdown.classList.add('scale-100', 'opacity-100');
-                    }, 10);
-                }
-
-                function openRescheduleModal() {
-                    hideDropdown(); // Cerramos el menú pequeño
-                    const modal = document.getElementById('recheduleModal');
-                    const form = document.getElementById('rescheduleForm');
-                    
-                    // Seteamos la URL del controlador
-                    form.action = `/partner/appointments/${currentAppointmentId}/reschedule`;
-                    
-                    modal.classList.remove('hidden');
-                    document.body.style.overflow = 'hidden';
-                }
-
-                function closeRescheduleModal() {
-                    document.getElementById('recheduleModal').classList.add('hidden');
-                    document.body.style.overflow = 'auto';
-                }
-
-                function hideDropdown() {
-                    const dropdown = document.getElementById('appointmentDropdown');
-                    dropdown.classList.remove('scale-100', 'opacity-100');
-                    dropdown.classList.add('scale-95', 'opacity-0');
-                    setTimeout(() => dropdown.classList.add('hidden'), 150);
-                }
-
-                // Cerrar al hacer clic en cualquier otro lado
-                window.addEventListener('click', function(e) {
-                    if (!document.getElementById('appointmentDropdown').contains(e.target)) {
-                        hideDropdown();
-                    }
-                });
-            </script>
-        @endif
+    <script>
+        function openNoteModal(notes) {
+            document.getElementById('modalNoteText').innerText = notes || 'No hay notas para esta cita.';
+            document.getElementById('noteModal').classList.remove('hidden');
+        }
+        function closeNoteModal() {
+            document.getElementById('noteModal').classList.add('hidden');
+        }
+    </script>
 </x-admin-layout>
-

@@ -193,4 +193,31 @@ class AppointmentController extends Controller
 
         return $slots;
     }
+
+        /**
+     * PUT /api/appointments/{id}/cancel
+     * Cancela una cita desde una aplicación externa validando las reglas de tiempo.
+     */
+    public function cancel($id)
+    {
+        // 1. Ejecutar la validación matemática del servicio centralizado
+        $checkStatus = $this->appointmentService->checkIfCanModify($id);
+
+        if (!$checkStatus['allowed']) {
+            return response()->json([
+                'error' => $checkStatus['message']
+            ], 422); // Error de regla de negocio
+        }
+
+        // 2. Buscar la cita y actualizar su estado a cancelado
+        $appointment = Appointment::findOrFail($id);
+        $appointment->update([
+            'status' => 'cancelled'
+        ]);
+
+        return response()->json([
+            'message' => 'Appointment cancelled successfully.',
+            'data'    => $appointment
+        ], 200);
+    }
 }

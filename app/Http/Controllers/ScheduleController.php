@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Address;
 use App\Models\Schedule;
 use App\Models\Unavailability;
+use App\Models\Appointment;
 use Illuminate\Http\Request;
 
 class ScheduleController extends Controller
@@ -113,7 +114,7 @@ class ScheduleController extends Controller
 
         // 1. Buscamos si hay citas agendadas en esta franja horaria
         // Filtramos por sede, día de la semana y que la hora esté dentro del rango
-        $conflicts = \App\Models\Appointment::where('address_id', $schedule->address_id)
+        $conflicts = Appointment::where('address_id', $schedule->address_id)
             ->where('doctor_id', auth()->user()->doctor->id)
             ->whereRaw('DAYOFWEEK(date) = ?', [$schedule->day + 1]) // +1 porque MySQL usa 1=Dom
             ->where('date', '>=', now()->toDateString())

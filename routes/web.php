@@ -3,7 +3,7 @@
 use App\Models\City;
 use App\Models\Schedule;
 use App\Models\Appointment;
-use App\models\Unavailability;
+use App\Models\Unavailability;
 use App\Models\Address;
 use Carbon\Carbon;
 
@@ -29,6 +29,7 @@ use App\Http\Controllers\PartnerPatientController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\UnavailabilityController;
 use App\Http\Controllers\MedicalExpertiseController;
+use App\Http\Controllers\DoctorSettingController;
 
 //Route::redirect('/', '/admin');
 
@@ -57,8 +58,12 @@ Route::middleware([
     })->name('dashboard');
 });
 
-Route::get('/contact', [ContactController::class, 'show'])->name('contact.show');
+Route::get('/contact', [ContactController::class, 'showContact'])->name('contact.show');
 Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
+
+Route::get('/terms', [ContactController::class, 'showTerms'])->name('terms.show');
+Route::get('/privacy', [ContactController::class, 'showPrivacy'])->name('privacy.show');
+Route::get('/support', [ContactController::class, 'showSupport'])->name('support.show');
 
 Route::get('/register-options', function () {
     return view('auth.register-options');
@@ -92,9 +97,13 @@ Route::get('/search-by-symptom', [SearchController::class, 'searchBySymptom'])->
 
 // Rutas Privadas (medical partner)
 Route::middleware(['auth', 'role:doctor'])->group(function () {    
+    Route::get('/partner/settings', [DoctorSettingController::class, 'edit'])->name('partner.settings.edit');
+    Route::put('/partner/settings', [DoctorSettingController::class, 'update'])->name('partner.settings.update');
+
     // Ver y editar el perfil
     Route::get('/partner/profile', [ProfileDoctorController::class, 'edit'])->name('partner.profile.edit');
-    Route::post('/partner/profile/plan', [PlanController::class, 'update'])->name('partner.profile.plan.update');
+    Route::put('/partner/profile', [ProfileDoctorController::class, 'update'])->name('partner.profile.update');
+    Route::post('/partner/profile/plan', [PlanController::class, 'update'])->name('partner.profile.plan.update');    
             
     //Gestion de servicios
     Route::get('/partner/services', [ServiceController::class, 'index'])->name('partner.services.index');
@@ -161,6 +170,8 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
 
     // Eliminar un registro (Destroy)
     Route::delete('/partner/expertises/{expertise}', [MedicalExpertiseController::class, 'destroy'])->name('partner.expertises.destroy');    
+
+    Route::post('/partner/appointments/{id}/generate-zoom', [AppointmentController::class, 'generateZoomLink'])->name('partner.appointments.generate_zoom');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -301,7 +312,7 @@ Route::get('/api/departments/{department}/cities', function ($deptId) {
         ->get(['id', 'name']);
 });
 
-Route::middleware(['auth'])->group(function () {        
+Route::middleware(['auth', 'role:patient'])->group(function () {        
     Route::get('/patient/patient-identification', [PatientController::class, 'index'])->name('patient.patient-identification.index');
     Route::put('/patient/patient-identification/{patient}', [PatientController::class, 'update'])->name('patient.patient-identification.update');
     Route::get('/patient/appointments', [PatientController::class, 'appointments'])->name('patient.appointments.index');
@@ -326,4 +337,9 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/patient/medications/{medication}/toggle', [PatientController::class, 'toggleStatusMedication'])->name('patient.medications.toggle');
     Route::get('/patient/pdf/clinical-history/{patient}', [PatientController::class, 'downloadClinicalHistory'])->name('patient.pdf.clinical-history');
 
+    // Ruta para que el paciente ejecute la cancelación desde la web
+    Route::post('/patient/appointments/{id}/cancel', [AppointmentController::class, 'cancelWeb'])->name('patient.appointments.cancel');
+
+    // Ruta de la sala de espera para el paciente
+    Route::get('/patient/meet/{room_code}', [AppointmentController::class, 'waitingRoom'])->name('patient.appointments.waiting_room');
 });

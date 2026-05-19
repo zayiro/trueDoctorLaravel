@@ -32,7 +32,8 @@ class PublicProfileController extends Controller
         ]);
 
         session(['current_doctor_id' => $partner->id]);
-                
+        
+        //dd($partner);
         return view('public.public-profile', ['doctor' => $partner]);
     }
 

@@ -13,11 +13,18 @@ class Doctor extends Model
         'medical_license',
         'phone',
         'experience_years',
-        'language',
+        'languages',
         'bio',
         'rating',
         'reviews_count',
-        'identification'
+        'identification',
+        'gender',
+        'active'
+    ];
+
+    protected $casts = [
+        'languages' => 'json', 
+        'active' => 'boolean',
     ];
 
     // (Cuando no tenga sedes), el sistema cree una sede técnica.

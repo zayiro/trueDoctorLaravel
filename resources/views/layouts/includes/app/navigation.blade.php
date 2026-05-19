@@ -17,11 +17,6 @@
           </x-dropdown-link>
         </li>
         <li>
-          <x-dropdown-link href="{{ route('contact.show') }}">
-            Contáctenos
-          </x-dropdown-link>
-        </li>
-        <li>
           <x-dropdown-link href="{{ route('plans.index') }}">
             Planes
           </x-dropdown-link>

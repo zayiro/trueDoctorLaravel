@@ -411,13 +411,16 @@ $colorState = $address->city->state ? 'green' : 'red';
         }
 
         /* Opcional: Cambia el cursor para indicar que es eliminable */
-        .fc-event-main:after {
-            content: '✕';
+        .fc-event-main:after {            
+            content: '✕';            
             position: absolute;
-            top: 3px;
-            right: 8px;
-            font-size: 10px;
+            top: -8px;
+            right: -4px;
+            font-size: 13px;
             opacity: 0;
+            background-color: red;
+            padding: 5px 6px;
+            border-radius: 6px;
             transition: opacity 0.2s;
         }
 

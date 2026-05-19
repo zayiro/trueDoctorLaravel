@@ -18,9 +18,19 @@ class Appointment extends Model
         'duration',
         'price',
         'status',
-        'meeting_link',
+        'meeting_link',     // Enlace para el paciente (o fallback interno)
+        'zoom_meeting_id',  // ID identificador de Zoom (Nuevo)
+        'zoom_start_url',   // Enlace de inicio para el Doctor (Nuevo)
         'notes',
     ];
+
+    /**
+     * Determina si la cita actual cuenta con una videollamada de Zoom activa
+     */
+    public function hasZoom(): bool
+    {
+        return !is_null($this->zoom_meeting_id);
+    }
 
     /**
      * Relación con el Servicio

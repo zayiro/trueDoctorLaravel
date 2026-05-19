@@ -10,9 +10,24 @@ use Illuminate\Support\Facades\Config;
 
 class ContactController extends Controller
 {
-    public function show()
+    public function showContact()
     {
         return view('contact');
+    }
+
+    public function showTerms()
+    {
+        return view('terms');
+    }
+
+    public function showPrivacy()
+    {
+        return view('privacy');
+    }
+
+    public function showSupport()
+    {
+        return view('support');
     }
 
     public function submit(Request $request)

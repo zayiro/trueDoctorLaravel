@@ -4,11 +4,11 @@
         'header' => 'Administrar página',        
     ],
     [
-        'name' => 'Plan',
+        'name' => 'Datos del perfil',
         'icon' => 'fa-solid fa-gauge',
         'href' => route('partner.profile.edit'),
         'active' => false,
-    ],    
+    ], 
     [
         'name' => 'Sedes',
         'icon' => 'fa-solid fa-gauge',
@@ -55,6 +55,12 @@
         'name' => 'Conocimientos Médicos',
         'icon' => 'fa-solid fa-gauge',
         'href' => route('partner.expertises.index'),
+        'active' => false,
+    ],
+    [
+        'name' => 'Configuración',
+        'icon' => 'fa-solid fa-gauge',
+        'href' => route('partner.settings.edit'),
         'active' => false,
     ],
  ];

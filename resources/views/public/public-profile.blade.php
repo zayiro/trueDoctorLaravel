@@ -1,5 +1,5 @@
 <x-guest-layout>    
-    <div class="mt-5 bg-gray-50 min-h-screen py-10" x-data="bookingSystem({{ $doctor->id }})">    
+    <div class="mt-5 bg-gray-100 min-h-screen py-12" x-data="bookingSystem({{ $doctor->id }}, {{ $doctor->settings->max_advance_days ?? 30 }})">    
         <!-- Overlay de Carga Global -->
         <div id="loading-overlay" 
             style="display:none;" 
@@ -18,7 +18,7 @@
         </div>
 
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 
                 <!-- COLUMNA IZQUIERDA: Info del Doctor -->
                 <div class="lg:col-span-1">
@@ -29,13 +29,32 @@
                             <p class="text-blue-600 font-bold">{{ $doctor->specialties->first()->name ?? 'Especialista' }}</p>
                             <div class="flex justify-center mt-2">
                                 @include('partials.stars', ['rating' => $doctor->rating])
+
                             </div>
                         </div>
-                        <div class="bg-gray-50 rounded-2xl p-5 mt-4 border border-gray-100">
-                            <div class="mt-8 space-y-1">
+                        <div class="mt-4 p-3 text-sm text-gray-700 bg-blue-50 rounded-lg text-center">
+                            Programe una charla presencial o virtual en minutos con <span>{{ $doctor->user->name }}</span> en el horario que mejor le convenga.
+                        </div>
+                        <div class="bg-gray-50 rounded-2xl p-4 mt-4 border border-gray-100">
+                            <div class="space-y-1">
                                 <h4 class="font-bold text-gray-700">Sobre el doctor</h4>
                                 <div class="text-sm text-gray-600 leading-relaxed">{{ $doctor->bio ?? 'N/A' }}</div>
                             </div>
+                            <div class="mt-3 space-y-1">
+                                <h4 class="font-bold text-gray-700">Especialidades</h4>
+                                <div class="text-sm text-gray-600 leading-relaxed">    
+                                    @php
+                                        // Transformamos la colección de especialidades del modelo a un arreglo plano de nombres legibles
+                                        $doctorSpecialties = $doctor->specialties->isNotEmpty() 
+                                            ? $doctor->specialties->pluck('name')->toArray() 
+                                            : [];
+                                    @endphp
+
+                                    {{-- Unimos las especialidades con comas de forma limpia o mostramos N/A si está vacío --}}
+                                    {{ !empty($doctorSpecialties) ? implode(', ', $doctorSpecialties) : 'N/A' }}                                
+                                </div>
+                            </div>
+                            
                             <div class="mt-3 space-y-1">
                                 <h4 class="font-bold text-gray-700">Licencia médica</h4>
                                 <div class="text-sm text-gray-600 leading-relaxed">{{ $doctor->medical_license ?? 'N/A' }}</div>
@@ -46,12 +65,52 @@
                             </div>
                             <div class="mt-3 space-y-1">
                                 <h4 class="font-bold text-gray-700">Idiomas</h4>
-                                <div class="text-sm text-gray-600 leading-relaxed">{{ $doctor->language ?? 'N/A' }}</div>
+                                <div class="text-sm text-gray-600 leading-relaxed">    
+                                    @php
+                                        // Creamos un diccionario para transformar los códigos ('es', 'en') en nombres bonitos
+                                        $langNames = ['es' => 'Español', 'en' => 'Inglés', 'pt' => 'Portugués', 'fr' => 'Francés', 'de' => 'Alemán'];
+                                        
+                                        // Convertimos el arreglo de códigos a un arreglo de nombres legibles
+                                        $doctorLanguages = is_array($doctor->languages) 
+                                            ? array_map(fn($code) => $langNames[$code] ?? strtoupper($code), $doctor->languages) 
+                                            : [];
+                                    @endphp
+
+                                    {{-- Unimos los idiomas con comas de forma limpia o mostramos N/A si está vacío --}}
+                                    {{ !empty($doctorLanguages) ? implode(', ', $doctorLanguages) : 'N/A' }}                                
+                                </div>
                             </div>
+
+                            <div class="mt-3 space-y-2">
+                                <h4 class="font-bold text-gray-700">Enfermedades y síntomas que trata</h4>                                
+                                <div class="text-sm text-gray-600 leading-relaxed space-y-3">    
+                                    @forelse($doctor->expertises as $expertise)
+                                        <div class="border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                                            <!-- Nombre de la enfermedad (Título) -->
+                                            <p class="font-bold text-gray-800 text-xs uppercase tracking-wide">
+                                                🩺 {{ $expertise->disease_name }}
+                                            </p>
+                                            
+                                            <!-- Palabras clave de síntomas (Descripción debajo) -->
+                                            @if(!empty($expertise->symptoms_keywords))
+                                                <p class="text-xs text-gray-500 mt-0.5 pl-5">
+                                                    <span class="font-medium text-gray-400">Síntomas:</span> 
+                                                    {{ implode(', ', array_map('trim', explode(',', $expertise->symptoms_keywords))) }}
+                                                </p>
+                                            @endif
+                                        </div>
+                                    @empty
+                                        <!-- Mensaje de respaldo si no hay datos configurados -->
+                                        <p class="text-gray-400 text-xs italic">N/A</p>
+                                    @endforelse
+                                </div>
+                            </div>
+                            <!--
                             <div class="mt-3 space-y-1">
                                 <h4 class="font-bold text-gray-700">Con nosotros desde</h4>
                                 <div class="text-sm text-gray-600 leading-relaxed">{{ $doctor->created_at->diffInYears(now()) < 1 ? '1 año' : $doctor->created_at->diffForHumans() }}</div>
                             </div>
+                        -->
                         </div>
                     </div>
                 </div>
@@ -67,12 +126,7 @@
                             <a href="{{ route('search') }}" class="inline-flex items-center px-6 py-3 bg-amber-600 text-white font-bold rounded-2xl">Buscar otro especialista</a>
                         </div>
                     @else
-                        <div x-data="{ 
-                            step: 1, 
-                            selectedAddress: null,
-                            selectedService: null,
-                            addressName: ''
-                        }" class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+                        <div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
 
                             <!-- Indicador de Pasos Simplificado -->
                             <div class="bg-gray-50 px-8 py-4 flex justify-start gap-8 border-b border-gray-100 text-xs font-bold uppercase tracking-widest">
@@ -80,14 +134,14 @@
                                 <span :class="step === 2 ? 'text-blue-600' : 'text-gray-400'">2. Horario</span>
                             </div>
 
-                            <div class="p-8">
+                            <div class="p-4">
                                 <!-- PASO 1: SELECCIÓN DE SEDE Y SERVICIO -->
                                 <template x-if="step === 1">
                                     <div class="space-y-8">
                                         <h3 class="text-xl font-black text-gray-800">Selecciona dónde y qué necesitas</h3>
                                         
                                         @foreach($doctor->addresses as $address)
-                                        <div class="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                                        <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100">
                                             <!-- Cabecera de la Sede -->
                                             <div class="flex items-center gap-3 mb-4">
                                                 <div class="bg-blue-100 p-2 rounded-lg text-blue-600">
@@ -220,9 +274,15 @@
 
                                             <div x-show="!loadingSlots" class="grid grid-cols-3 sm:grid-cols-4 gap-3">
                                                 <template x-for="slot in availableSlots" :key="slot.time">
-                                                    <button @click="selectedSlot = slot.time"
-                                                        :class="selectedSlot === slot.time ? 'bg-green-500 text-white border-green-500' : 'bg-white text-gray-700 border-gray-100 hover:bg-blue-50'"
-                                                        class="py-3 rounded-xl font-bold text-sm transition border-2">
+                                                    <button type="button"
+                                                        @click="if (slot.available) selectedSlot = slot.time"                                                        
+                                                        :disabled="!slot.available"                                                        
+                                                        :class="{
+                                                            'bg-green-500 text-white border-green-500 font-semibold shadow-md': selectedSlot === slot.time,
+                                                            'bg-gray-100 text-gray-800 hover:bg-gray-200 cursor-pointer': selectedSlot !== slot.time && slot.available,
+                                                            'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50 ': !slot.available
+                                                        }"
+                                                        class="p-3 text-center rounded-lg transition-all font-medium">
                                                         <span x-text="formatTime12(slot.time)"></span>
                                                     </button>
                                                 </template>
@@ -245,7 +305,7 @@
         </div>
     </div>
     <script>
-        function bookingSystem(doctorId) {
+        function bookingSystem(doctorId, maxAdvanceDays = 30) {
             return {
                 step: 1,
                 selectedAddress: null,
@@ -257,21 +317,18 @@
                 servicePrice: '',
                 loadingSlots: false,
                 availableDays: [],
-                availableSlots: [],
+                availableSlots: [], // Guardará los objetos: { time: '08:00', available: true }
                 selectedServiceData: { name: '', price: '' },
                 errorMessage: null,
 
                 init() {
-                    // Usamos la fecha actual como base
                     const today = new Date();
                     const days = [];
-                    let maxDaysToShow = 30; // Mostrar 30 días a futuro
                     
-                    for (let i = 0; i < maxDaysToShow; i++) {
+                    for (let i = 0; i < maxAdvanceDays; i++) {
                         const date = new Date();
                         date.setDate(today.getDate() + i);
                         
-                        // Formato ISO local para evitar desfases (YYYY-MM-DD)
                         const year = date.getFullYear();
                         const month = String(date.getMonth() + 1).padStart(2, '0');
                         const day = String(date.getDate()).padStart(2, '0');
@@ -281,12 +338,12 @@
                             date: dateString,
                             dayName: date.toLocaleDateString('es-ES', { weekday: 'short' }),
                             dayNumber: date.getDate(),
-                            // Mes abreviado (ej: "may", "jun") sin punto final
                             monthName: date.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '')
                         });
                     }
                     this.availableDays = days;
                 },
+                
                 selectService(id, name, sId, sName, sPrice) {                    
                     this.selectedAddress = id;
                     this.addressName = name;
@@ -299,11 +356,11 @@
                     this.isLoading = true;
                     this.showHourText = true;
 
-                    // Simular carga (ej. llamada a API de horarios)
                     setTimeout(() => { 
                         this.isLoading = false; 
                     }, 800);
                 },
+
                 formatDate(dateStr) {
                     if(!dateStr) return {};
                     const date = new Date(dateStr + "T00:00:00");
@@ -317,27 +374,31 @@
                         })
                     };
                 },
+
+                /**
+                 * CORREGIDO: Adaptado al nuevo formato del API y simplificado
+                 */
                 getSlots() {
                     this.loadingSlots = true;
                     this.errorMessage = null;
                     this.availableSlots = [];
                     this.selectedSlot = null; // Resetear hora al cambiar día
 
-                    // 1. Determinar si el servicio actual es virtual evaluando la variable global 'type' de tu vista
-                    const isVirtualService = this.type === 'virtual' ? 'true' : 'false';
-                    
-                    // 2. Obtener la duración específica recuperada en el paso anterior (por defecto 20)
-                    const serviceDuration = this.serviceDuration || 20;
-                    
-                    // 3. Inyectar todos los nuevos parámetros requeridos por la ruta API de Laravel
-                    fetch(`/api/get-slots?address_id=${this.selectedAddress}&date=${this.selectedDate}&is_virtual=${isVirtualService}&duration=${serviceDuration}`)
+                    // Consumimos la nueva API limpia. El backend resolverá si es virtual internamente.
+                    fetch(`/api/get-slots?address_id=${this.selectedAddress}&date=${this.selectedDate}`)
                     .then(res => {
-                        if (!res.ok) throw new Error('Error en el servidor');
+                        if (!res.ok) throw new Error('Error en el servidor al recuperar horarios');
                         return res.json();
                     })
                     .then(data => {
+                        console.log(data);
+                        // data ahora es un array de objetos: [{time: "08:00", available: true}]
                         this.availableSlots = data;
-                        if (data.length === 0) {
+                        
+                        // Evaluamos si existen slots habilitados para el usuario
+                        const tieneSlotsDisponibles = data.some(slot => slot.available === true);
+
+                        if (data.length === 0 || !tieneSlotsDisponibles) {
                             this.errorMessage = "No hay horarios disponibles para este día.";
                         }
                         this.loadingSlots = false;
@@ -347,21 +408,21 @@
                         this.loadingSlots = false;
                     });
                 },
+
                 confirmBooking() {
                     this.loadingSubmit = true;
                     const loader = document.getElementById('loading-overlay');
                     if (loader) loader.style.display = 'flex';
 
-                    // Datos consolidados del flujo Sede -> Horario
                     const formData = {
                         doctor_id: {{ $doctor->id }},
                         address_id: this.selectedAddress,
                         service_id: this.selectedService,
                         date: this.selectedDate,
-                        hour: this.selectedSlot,
+                        hour: this.selectedSlot, // Enviará el valor plano (ej: "08:00")
                     };
 
-                    fetch("{{ route('appointments.step-two') }}", { // Usamos el nombre de la ruta
+                    fetch("{{ route('appointments.step-two') }}", {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -375,28 +436,24 @@
                         return res.json();
                     })
                     .then(data => {
-                        console.log(data);
                         if (data.status) {
-                            // Redirección directa al panel del paciente
                             window.location.href = "{{ route('appointments.patient') }}";
                         }
                     })
                     .catch(error => {
                         if (loader) loader.style.display = 'none';
                         this.loadingSubmit = false;
-                        // Mostrar error de validación o del servidor
                         this.errorMessage = error.message || 'Error al procesar la reserva.';
                         console.error('Error en storeStepTwo:', error);
                     });
                 },
+
                 formatTime12(timeStr) {
                     if (!timeStr) return '';
-                    // timeStr viene como "13:20"
                     const [hours, minutes] = timeStr.split(':');
                     const date = new Date();
                     date.setHours(parseInt(hours), parseInt(minutes), 0);
                     
-                    // Retorna el formato "1:20 p. m." o "01:20 PM" según la configuración local
                     return date.toLocaleTimeString('es-ES', { 
                         hour: '2-digit', 
                         minute: '2-digit', 

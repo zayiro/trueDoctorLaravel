@@ -1,18 +1,46 @@
 <x-guest-layout>
+    @php
+        // Evaluamos si la cita entró en estado pendiente o confirmada
+        $isPending = $appointment->status === 'pending';
+    @endphp
+
     <div class="max-w-3xl mx-auto py-12 px-4 text-center">
-        <!-- Icono de Éxito Animado -->
+        <!-- 1. ICONO, TITULO Y SUBTITULO CONDICIONALES -->
         <div class="mt-6 mb-8">
-            <div class="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-green-100 shadow-lg shadow-green-200">
-                <svg class="h-12 w-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                </svg>
-            </div>
-            <h2 class="mt-6 text-4xl font-black text-gray-900">¡Cita Confirmada!</h2>
-            <p class="text-gray-500 mt-2 text-lg">Tu reserva se ha realizado con éxito.</p>
+            @if($isPending)
+                <!-- Icono de Espera Animado (Amarillo) -->
+                <div class="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-yellow-100 shadow-lg shadow-yellow-200 animate-pulse">
+                    <svg class="h-12 w-12 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <h2 class="mt-6 text-4xl font-black text-gray-900">Reserva Solicitada</h2>
+                <p class="text-gray-500 mt-2 text-lg">Tu cita está en espera de aprobación por el especialista.</p>
+            @else
+                <!-- Icono de Éxito Original (Verde) -->
+                <div class="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-green-100 shadow-lg shadow-green-200">
+                    <svg class="h-12 w-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <h2 class="mt-6 text-4xl font-black text-gray-900">¡Cita Confirmada!</h2>
+                <p class="text-gray-500 mt-2 text-lg">Tu reserva se ha realizado con éxito.</p>
+            @endif
         </div>
 
         <!-- Card de Detalles -->
         <div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden text-left mb-8">
+            
+            <!-- 👇 BANNER INFORMATIVO COMPLEMENTARIO SI ESTÁ PENDIENTE -->
+            @if($isPending)
+                <div class="bg-yellow-50/60 border-b border-yellow-100 px-8 py-4 flex items-start gap-3">
+                    <span class="text-base mt-0.5">⏳</span>
+                    <p class="text-xs text-yellow-800 leading-relaxed font-medium">
+                        <strong>Revisión de Agenda Activa:</strong> Este especialista valida manualmente sus horarios. Te enviaremos un correo electrónico automático tan pronto como el doctor confirme o modifique tu espacio de atención.
+                    </p>
+                </div>
+            @endif
+
             <div class="p-8">
                 <div class="flex flex-col md:flex-row justify-between gap-6">
                     <!-- Info Doctor/Servicio -->
@@ -28,7 +56,6 @@
                                 {{ ucfirst(\Carbon\Carbon::parse($appointment->date)->isoFormat('dddd, D [de] MMMM [de] YYYY') ) }}
                             </p>
                             <p class="text-gray-800 font-medium">{{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }}</p>
-                            <!-- Tiempo restante dinámico (ej: "en 5 días") -->
                             <p class="text-xs text-blue-600 font-black block mt-1 bg-blue-50 px-2 py-0.5 rounded-md inline-block">
                                 {{ \Carbon\Carbon::parse($appointment->date)->diffForHumans(null, false, false, 2) }}
                             </p>
@@ -46,8 +73,14 @@
                         <div>
                             <p class="text-xs font-bold text-blue-600 uppercase tracking-widest">Ubicación</p>
                             @if($appointment->service->type === 'virtual')
-                                <p class="text-sm text-gray-800 font-medium">Enlace de video generado</p>
-                                <p class="text-xs text-gray-500 italic">Recibirás el link por WhatsApp</p>
+                                <!-- 👇 AJUSTE VIRTUAL PENDIENTE VS CONFIRMADO -->
+                                @if($isPending)
+                                    <p class="text-sm text-gray-800 font-medium">Link de telemedicina en espera</p>
+                                    <p class="text-xs text-gray-500 italic">Se generará una vez sea aprobada por el médico</p>
+                                @else
+                                    <p class="text-sm text-gray-800 font-medium">Enlace de video generado</p>
+                                    <p class="text-xs text-gray-500 italic">Recibirás el link por WhatsApp</p>
+                                @endif
                             @else
                                 <p class="text-sm text-gray-800 font-medium">{{ $appointment->address->name }}</p>
                                 <p class="text-xs text-gray-500">{{ $appointment->address->address }}, {{ $appointment->address->city->name }}</p>
@@ -56,8 +89,8 @@
                     </div>
                 </div>
 
-                <!-- Sección de Acciones Virtuales -->
-                @if($appointment->meeting_link)
+                <!-- Sección de Acciones Virtuales Oculta si está pendiente -->
+                @if(!$isPending && $appointment->meeting_link)
                     <div class="my-3 text-blue-900">¡Recuerda conectarte 15 minutos antes del inicio de la videollamada para validar que el audio y video funcionen correctamente!</div>
                     <div class="mt-8 p-4 bg-purple-50 rounded-2xl border border-purple-100 flex items-center justify-between">
                         <p class="text-sm text-purple-800 font-medium">Tu link de telemedicina está listo:</p>
@@ -73,38 +106,34 @@
                 Ir a mis citas
             </a>
             
-            <!-- Botón de WhatsApp automático -->
+            <!-- Botón de WhatsApp dinámico según el estado -->
             @php
-                $mensaje = urlencode("Hola, acabo de agendar una cita con el doctor {$appointment->doctor->user->name} para el día " . \Carbon\Carbon::parse($appointment->date)->format('d/m/Y') . " a las " . \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') . ".");
-                $waUrl = "https://wa.me{$appointment->doctor->phone}?text={$mensaje}";
-            @endphp
-
-            @php
-                // 1. Limpiar el teléfono del doctor (quitar espacios, guiones o símbolos "+")
                 $phoneClean = preg_replace('/[^0-9]/', '', $appointment->doctor->phone);
-
-                // 2. Formatear los datos para el mensaje de texto
                 $dateText = \Carbon\Carbon::parse($appointment->date)->isoFormat('dddd, D [de] MMMM [de] YYYY');
                 $timeText = \Carbon\Carbon::parse($appointment->start_time)->format('g:i A');
-                $priceText = number_format($appointment->price, 2);
 
-                // 3. Crear el cuerpo del mensaje profesional (Usando \Illuminate\Support\Str::ucfirst)
+                // Cambiamos el texto de la cabecera según el estado real
+                $statusHeader = $isPending ? "SOLICITUD DE CITA EN ESPERA DE APROBACIÓN" : "NUEVA CITA MÉDICA CONFIRMADA";
+
                 $message = "Hola Doctor(a) " . $appointment->doctor->user->name . ",\n\n"
-                        . "Nueva cita médica registrada a través de la plataforma:\n\n"
+                        . "====== " . $statusHeader . " ======\n\n"
                         . "Paciente: " . $appointment->patient->user->name . "\n"
                         . "Servicio: " . $appointment->service->name . "\n"
                         . "Fecha: " . \Illuminate\Support\Str::ucfirst($dateText) . "\n"
                         . "Hora: " . $timeText . "\n"
                         . "Modalidad: " . ($appointment->service->type === 'virtual' ? 'Virtual (Telemedicina)' : 'Presencial en ' . $appointment->address->name) . "\n\n"
-                        . "Por favor, ingrese a su panel de administración para gestionar la reservación.";
+                        . ($isPending ? "Por favor, ingrese a su panel de administración para APROBAR o RECHAZAR esta reservación." : "La cita ha quedado debidamente agendada en el sistema.");
 
-                // 4. Codificar el texto para que sea una URL válida
                 $whatsappUrl = "https://wa.me/+57{$phoneClean}?text=" . urlencode($message);                
             @endphp
             
             <a href="{{ $whatsappUrl }}" target="_blank" class="px-8 py-4 bg-green-500 text-white font-bold rounded-2xl hover:bg-green-600 shadow-lg shadow-green-200 transition flex items-center justify-center gap-2">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
-                Notificar al Doctor
+                <!-- Icono SVG de WhatsApp -->
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096.585 5.648 2.118 3.553 1.533 4.169 1.591 4.914 1.591.745 0 2.406-.867 2.747-1.673.34-.806.34-1.491.242-1.638-.099-.148-.348-.222-.645-.371z"/>
+                    <path d="M12.004 2c-5.51 0-9.99 4.49-9.99 9.99 0 2.01.59 3.93 1.72 5.56L2 22l4.63-1.22c1.55.93 3.32 1.41 5.14 1.41 5.51 0 9.99-4.49 9.99-9.99S17.514 2 12.004 2zm0 18.28c-1.64 0-3.25-.44-4.66-1.27l-.33-.2-.28.07-2.75.72.74-2.69-.21-.34c-.92-1.47-1.4-3.17-1.4-4.93 0-4.94 4.02-8.96 8.96-8.96 4.94 0 8.96 4.02 8.96 8.96s-4.02 8.96-8.96 8.96z"/>
+                </svg>
+                <span>{{ $isPending ? 'Notificar solicitud por WhatsApp' : 'Notificar confirmación por WhatsApp' }}</span>
             </a>
         </div>
     </div>

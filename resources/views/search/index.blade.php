@@ -1,3 +1,7 @@
+@php
+$thereAreServices = 1;
+@endphp
+
 <x-guest-layout>
     <div class="max-w-7xl mx-auto px-4 py-8 mt-5">
         <!-- Barra de Filtros -->
@@ -47,7 +51,7 @@
 
         <!-- Listado de Resultados -->
         <div class="bg-slate-50 min-h-screen py-12">
-            <div class="max-w-5xl mx-auto px-6">
+            <div class="max-w-7xl mx-auto px-6">
                 
                 <h2 class="text-2xl font-black text-slate-800 mb-8">                    
                     @if($doctors->total() === 1)
@@ -132,6 +136,7 @@
                                             @endif
                                         </div>
                                         @else
+                                        @php $thereAreServices = 0; @endphp
                                         <span>No hay servicios configurados</span>
                                         @endif
                                     @endforeach
@@ -141,12 +146,12 @@
                             
                             <!-- Acciones -->                            
                             <div class="flex flex-col justify-center gap-3 min-w-[180px]">
-                                @if($doctor->addresses->count() > 0)
+                                @if($doctor->addresses->count() > 0 && $thereAreServices)
                                 <a href="{{ route('partner.public.profile', $doctor) }}" 
                                 class="bg-blue-500 hover:bg-blue-700 text-white text-center py-2 px-4 rounded">
                                     Ver disponibilidad
                                 </a>
-                                <p class="text-[10px] text-center text-slate-400 font-medium">Citas a través de TrueDoctor</p>
+                                <p class="text-[10px] text-center text-slate-400 font-medium">Citas a través de {{ config('app.name', 'Reservaciones en línea') }}</p>
                                 @else
                                 <span class="px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold text-center rounded-lg uppercase tracking-wide border border-amber-100">
                                     Datos por configurar

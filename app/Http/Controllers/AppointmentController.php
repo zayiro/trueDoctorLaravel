@@ -2,11 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Address;
 use App\Models\Appointment;
 use App\Models\Service;
 use App\Models\patient;
+use App\Models\Doctor;
 use App\Services\AppointmentService;
+use App\Services\ZoomService;
 use App\Models\User;
+use App\Events\AppointmentCancelled;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
@@ -19,11 +24,13 @@ use Carbon\Carbon;
 class AppointmentController extends Controller
 {
     protected $appointmentService;
+    protected $zoomService;
 
     // Inyectamos el servicio en el constructor
-    public function __construct(AppointmentService $service)
+    public function __construct(AppointmentService $service, ZoomService $zoomService)
     {
         $this->appointmentService = $service;
+        $this->zoomService = $zoomService;
     }
 
     public function store(Request $request)
@@ -151,43 +158,102 @@ class AppointmentController extends Controller
                 ]);
             }
 
-            // 👇 NUEVA LÓGICA: Obtener precio y duración específicos de la tabla intermedia (Pivot)
-            $address = \App\Models\Address::with(['services' => function($q) use ($bookingData) {
+            // Obtener precio y duración específicos de la tabla intermedia (Pivot)
+            $address = Address::with(['services' => function($q) use ($bookingData) {
                 $q->where('services.id', $bookingData['service_id']);
             }])->find($bookingData['address_id']);
 
             $serviceSpecific = $address?->services->first();
 
-            // Validación de seguridad por si el servicio fue removido de la sede durante el proceso
             if (!$serviceSpecific || !$serviceSpecific->pivot) {
                 return redirect()->route('search')->with('error', 'El servicio seleccionado ya no está disponible en esta sede.');
             }
 
-            // Rescatamos los valores reales de la tabla pivot
             $duration = (int) $serviceSpecific->pivot->duration;
             $price = $serviceSpecific->pivot->price;
 
             $startTime = Carbon::parse($bookingData['date'] . ' ' . $bookingData['hour']);
+
+            // Asegurar disponibilidad real en el último milisegundo
+            $isAvailable = $this->appointmentService->isAvailable(
+                $bookingData['doctor_id'],
+                $bookingData['date'],
+                $startTime->format('H:i:s'),
+                $duration
+            );
+
+            if (!$isAvailable) {
+                return redirect()->route('search')->with('error', 'Lo sentimos, ese horario acaba de ser reservado por otro paciente. Por favor selecciona otra hora.');
+            }
             
-            // Crear la cita utilizando las variables específicas calculadas
+            // Obtener la configuración del doctor            
+            $doctor = Doctor::with(['settings', 'user'])->findOrFail($bookingData['doctor_id']);
+            
+            // Evaluamos si el doctor requiere aprobación manual.
+            $requiresApproval = $doctor->settings && $doctor->settings->requires_approval;
+            $acceptsPayments = $doctor->settings && $doctor->settings->accepts_online_payments;
+
+            if ($acceptsPayments) {
+                $requiresApproval = false; 
+            }
+
+            $status = $requiresApproval ? 'pending' : 'confirmed';
+
+            // Variables de control para videoconferencia
+            $meetingLink = null;
+            $zoomMeetingId = null;
+            $zoomStartUrl = null;
+
+            // 👇 INTEGRACIÓN DE VIDEO-CONFERENCIA DE ZOOM CORREGIDA
+            if ($serviceSpecific->type === 'virtual') {
+                $platform = $doctor->settings->virtual_meeting_platform ?? 'internal';
+
+                if ($platform === 'zoom') {
+                    $startDateTimeISO = $startTime->format('Y-m-d\TH:i:s');
+                    $topicName = "Consulta 1-on-1: " . $serviceSpecific->name . " - Paciente: " . $patient->user->name;
+
+                    // El servicio ahora retorna un array asociativo con la información de Zoom
+                    $zoomResponse = $this->zoomService->createMeeting($topicName, $startDateTimeISO, $duration);
+
+                    if ($zoomResponse) {
+                        $meetingLink = $zoomResponse['url_paciente']; // Enlace para el paciente
+                        $zoomMeetingId = $zoomResponse['meeting_id'];  // ID de la reunión
+                        $zoomStartUrl = $zoomResponse['url_doctor'];   // Enlace anfitrión para el Doctor
+                    }
+                }
+
+                // Seguro de respaldo (Fallback): Si falla la API de Zoom o prefiere la plataforma interna
+                if (!$meetingLink) {
+                    $roomCode = 'room-' . Str::lower(Str::random(4)) . '-' . time();                    
+                    $meetingLink = route('patient.appointments.waiting_room', ['room_code' => $roomCode]);
+                }
+            }
+
+            // Crear la cita utilizando el estado dinámico y los enlaces calculados
             $appointment = Appointment::create([
-                'patient_id'   => $patient->id,
-                'doctor_id'    => $bookingData['doctor_id'],
-                'service_id'   => $bookingData['service_id'],
-                'address_id'   => $bookingData['address_id'],
-                'date'         => $bookingData['date'],
-                'start_time'   => $startTime->format('H:i:s'),
-                'end_time'     => $startTime->copy()->addMinutes($duration)->format('H:i:s'), // Usa la duración del pivot
-                'duration'     => $duration, // Cambiado de $service->duration a $duration
-                'price'        => $price,    // Cambiado de $service->price a $price
-                'meeting_link' => ($serviceSpecific->type === 'virtual') ? 'https://zoom.us' : null,            
-                'status'       => 'pending', 
-                'notes'        => $request->notes
+                'patient_id'      => $patient->id,
+                'doctor_id'       => $bookingData['doctor_id'],
+                'service_id'      => $bookingData['service_id'],
+                'address_id'      => $serviceSpecific->type === 'virtual' ? null : $bookingData['address_id'], 
+                'date'            => $bookingData['date'],
+                'start_time'      => $startTime->format('H:i:s'),
+                'end_time'        => $startTime->copy()->addMinutes($duration)->format('H:i:s'), 
+                'duration'        => $duration, 
+                'price'           => $price,    
+                'meeting_link'    => $meetingLink,      // Se almacena el enlace de invitado
+                'zoom_meeting_id' => $zoomMeetingId,    // ID de Zoom
+                'zoom_start_url'  => $zoomStartUrl,     // Enlace exclusivo para el médico
+                'status'          => $status, 
+                'notes'           => $request->notes
             ]);
             
             session()->forget(['booking_data', 'current_doctor_id']);
 
-            return redirect()->route('appointments.preview', ['id' => $appointment->id])->with('success', 'Cita agendada correctamente');       
+            $message = $status === 'pending' 
+                ? 'Tu solicitud de cita ha sido enviada. El doctor debe aprobarla.' 
+                : 'Cita agendada y confirmada correctamente.';
+
+            return redirect()->route('appointments.preview', ['id' => $appointment->id])->with('success', $message);       
         });
     }
 
@@ -347,5 +413,132 @@ class AppointmentController extends Controller
 
         return redirect()->route('partner.appointments.index', ['date' => $appointment->date])
             ->with('success', 'Cita reagendada correctamente.');
+    }
+
+    /**
+     * POST o PUT /appointments/{id}/cancel
+     * Cancela la cita desde la interfaz web del paciente.
+     */
+    public function cancelWeb($id)
+    {
+        // 1. Validar reglas de tiempo con el servicio
+        $checkStatus = $this->appointmentService->checkIfCanModify($id);
+
+        if (!$checkStatus['allowed']) {
+            return back()->with('error', $checkStatus['message']);
+        }
+
+        // 2. Buscar la cita asegurando que pertenezca al paciente autenticado
+        $patient = auth()->user()->patient;
+        if (!$patient) {
+            return back()->with('error', 'Perfil de paciente no encontrado.');
+        }
+        
+        $appointment = Appointment::where('patient_id', $patient->id)->findOrFail($id);
+
+        // 3. Ejecutar la cancelación en base de datos y plataformas externas
+        // Guardamos el resultado de la transacción en una variable para usarla después
+        $cancelledAppointment = DB::transaction(function () use ($appointment) {
+            
+            // CONFIGURACIÓN DE ZOOM: Si la cita tiene un ID de reunión válido se da de baja
+            if ($appointment->zoom_meeting_id) {
+                try {
+                    // Instanciamos de forma dinámica el servicio de Zoom
+                    $zoomService = app(ZoomService::class);
+                    
+                    // Ejecutamos la baja en los servidores de Zoom
+                    $zoomService->deleteMeeting($appointment->zoom_meeting_id);
+                    
+                    Log::info("Reunión de Zoom {$appointment->zoom_meeting_id} eliminada correctamente por el paciente ID: " . auth()->id());
+                } catch (\Exception $e) {
+                    // El fallo de Zoom no debe truncar la cancelación local, se registra en logs
+                    Log::error("Error no crítico al intentar borrar cita en Zoom: " . $e->getMessage());
+                }
+            }
+
+            // Cancelar la cita localmente
+            $appointment->update([
+                'status' => 'cancelled'
+            ]);
+
+            return $appointment;
+        });
+
+        // 4. 👇 SE DISPARA EL ENVIÓ DEL CORREO FUERA DE LA TRANSACCIÓN (Estructura corregida)
+        // Pasamos la variable legítima que retornó la transacción
+        event(new AppointmentCancelled($cancelledAppointment));
+
+        // 5. Redirección final con mensaje de éxito
+        return redirect()->route('patient.appointments.index')
+            ->with('success', 'Tu cita ha sido cancelada correctamente y el doctor ha sido notificado.');
+    }
+
+    /**
+     * POST /partner/appointments/{id}/generate-zoom
+     * Permite al médico regenerar o crear el enlace de Zoom si el fallback automático se activó.
+     */
+    public function generateZoomLink($id)
+    {
+        // 1. Buscar la cita con sus relaciones necesarias (Doctor y Paciente)
+        $appointment = Appointment::with(['doctor.user', 'patient.user', 'service'])->findOrFail($id);
+
+        // Candado de seguridad: Verificar que la cita sea virtual y no tenga ya un ID de Zoom
+        if ($appointment->service->type !== 'virtual') {
+            return back()->with('error', 'Este servicio no es de modalidad virtual.');
+        }
+
+        if ($appointment->zoom_meeting_id) {
+            return back()->with('error', 'Esta cita ya cuenta con un enlace de Zoom asignado.');
+        }
+
+        // 2. Preparar los datos para la API de Zoom
+        $zoomService = app(ZoomService::class);
+        $startDateTimeISO = \Carbon\Carbon::parse($appointment->date . ' ' . $appointment->start_time)->format('Y-m-d\TH:i:s');
+        $topicName = "Consulta 1-on-1: " . $appointment->service->name . " - Paciente: " . $appointment->patient->user->name;
+
+        // 3. Llamar a la API de Zoom
+        $zoomResponse = $zoomService->createMeeting($topicName, $startDateTimeISO, $appointment->duration);
+
+        if (!$zoomResponse) {
+            return back()->with('error', 'La API de Zoom sigue sin responder. Por favor, verifica tus credenciales o vuelve a intentarlo en unos minutos.');
+        }
+
+        // 4. Actualizar la cita sustituyendo el link fallback por los accesos reales de Zoom
+        $appointment->update([
+            'meeting_link'    => $zoomResponse['url_paciente'], // Sustituye el fallback por el del paciente
+            'zoom_meeting_id' => $zoomResponse['meeting_id'],
+            'zoom_start_url'  => $zoomResponse['url_doctor'],   // Enlace de inicio para el médico
+        ]);
+
+        return back()->with('success', '¡Enlace de Zoom generado con éxito! El paciente ya puede visualizarlo desde su panel.');
+    }
+
+    /**
+     * GET /patient/meet/{room_code}
+     * Muestra la sala de espera local al paciente si Zoom no se generó a tiempo.
+     */
+    public function waitingRoom($roomCode)
+    {
+        // Reconstruimos la URL completa para buscarla en la base de datos
+        $fullUrl = url("/patient/meet/{$roomCode}");
+
+        // Buscamos la cita que tenga asignado este enlace de respaldo
+        $appointment = Appointment::with(['doctor.user', 'service'])
+            ->where('meeting_link', $fullUrl)
+            ->firstOrFail();
+
+        $startTime = Carbon::parse($appointment->date . ' ' . $appointment->start_time);
+        $endTime = $startTime->copy()->addMinutes($appointment->duration);
+        
+        // El botón se habilitará 15 minutos antes de la hora de la cita
+        $activationTime = $startTime->copy()->subMinutes(15);
+        $isAvailable = now()->between($activationTime, $endTime);
+
+        return view('patient.appointments.waiting_room', [
+            'appointment' => $appointment,
+            'startTime'   => $startTime,
+            'isAvailable' => $isAvailable,
+            'roomCode'    => $roomCode
+        ]);
     }
 }

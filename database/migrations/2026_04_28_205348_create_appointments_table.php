@@ -22,7 +22,12 @@ return new class extends Migration
             $table->time('end_time');
             $table->integer('duration'); 
             $table->decimal('price', 10, 2);
-            $table->text('meeting_link')->nullable();            
+            
+            // Links de Video-conferencia
+            $table->text('meeting_link')->nullable()->comment('Enlace genérico o exclusivo para el Paciente');            
+            $table->string('zoom_meeting_id')->nullable()->comment('ID numérico de la reunión en Zoom');
+            $table->text('zoom_start_url')->nullable()->comment('Enlace exclusivo para que el Doctor inicie como Anfitrión');
+
             $table->enum('status', ['pending', 'confirmed', 'cancelled', 'completed'])->default('pending');
             $table->text('notes')->nullable();
             $table->timestamps();
