@@ -19,6 +19,9 @@ class Doctor extends Model
         'reviews_count',
         'identification',
         'gender',
+        'validation_status',
+        'identity_card_path',
+        'professional_card_path',
         'active'
     ];
 

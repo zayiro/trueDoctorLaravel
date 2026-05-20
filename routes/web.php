@@ -30,6 +30,8 @@ use App\Http\Controllers\PatientController;
 use App\Http\Controllers\UnavailabilityController;
 use App\Http\Controllers\MedicalExpertiseController;
 use App\Http\Controllers\DoctorSettingController;
+use App\Http\Controllers\VerificationController;
+use App\Http\Controllers\ValidationController;
 
 //Route::redirect('/', '/admin');
 
@@ -57,6 +59,21 @@ Route::middleware([
         return view('dashboard');
     })->name('dashboard');
 });
+
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    // Lista de médicos pendientes
+    Route::get('/administrator/validation', [ValidationController::class, 'index'])
+         ->name('administrator.validation.index');
+         
+    // Acciones de aprobación/rechazo
+    Route::post('/administrator/{doctor}/validate', [ValidationController::class, 'update'])
+         ->name('administrator.validation.update');
+
+    // Ruta segura para ver los documentos protegidos
+    Route::get('/administrator/{doctor}/document/{type}', [ValidationController::class, 'viewDocument'])
+         ->name('administrator.document.view');
+});
+
 
 Route::get('/contact', [ContactController::class, 'showContact'])->name('contact.show');
 Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
@@ -218,7 +235,7 @@ Route::get('/api/get-slots', function (Request $request) {
     }
     $doctorId = $address->doctor_id;
 
-    // 👇 1. VALIDAR AUSENCIAS (UNAVAILABILITIES) utilizando la variable segura $doctorId
+    // 1. VALIDAR AUSENCIAS (UNAVAILABILITIES) utilizando la variable segura $doctorId
     $isUnavailable = Unavailability::where('doctor_id', $doctorId)
         ->whereDate('start_date', '<=', $fechaConsultada)
         ->whereDate('end_date', '>=', $fechaConsultada)
@@ -291,6 +308,9 @@ Route::get('/api/get-slots', function (Request $request) {
 Route::middleware(['auth'])->group(function () {    
     // Esta es la que pones en el FORMULARIO
     Route::get('/appointments/confirm/{id}', [AppointmentController::class, 'confirm'])->name('appointments.confirm');    
+
+    // Ruta para procesar el formulario de documentos
+    Route::post('/partner/verify-documents', [VerificationController::class, 'store'])->name('partner.verify.store');
 });
 
 Route::post('/appointments/step-two', [AppointmentController::class, 'storeStepTwo'])->name('appointments.step-two');

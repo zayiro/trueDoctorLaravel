@@ -45,10 +45,11 @@ class DatabaseSeeder extends Seeder
             'identification' => '16944752',
             'bio' => 'Experto en diagnósticos complejos y difíciles.',
             'slug' => Str::slug($doctorUser->name) . '-' . Str::lower(Str::random(5)),
+            'validation_status' => 'missing',
         ]);
 
         $doctor->settings()->create([
-            'plan_id' => '2', //premium
+            'plan_id' => '1', //premium
         ]);
 
         // Llamamos manualmente a la creación de la sede virtual DESPUÉS de tener plan

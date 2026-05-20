@@ -10,77 +10,12 @@
             'active' => false,
         ],
         [
-            'name' => 'Datos del perfil ',
+            'name' => 'Aprovación de documentos',
             'icon' => 'fa-solid fa-gauge',
-            'href' => route('partner.profile.edit'),
-            'active' => false,
-        ], 
-        [
-            'name' => 'Sedes',
-            'icon' => 'fa-solid fa-gauge',
-            'href' => route('partner.addresses.index'),
-            'active' => false,
-        ],
-        [
-            'name' => 'Servicios',
-            'icon' => 'fa-solid fa-gauge',
-            'href' => route('partner.services.index'),
-            'active' => false,
-        ],
-        [
-            'name' => 'Indisponibilidades',
-            'icon' => 'fa-solid fa-gauge',
-            'href' => '#',
-            'active' => false,
-        ],
-        [
-            'name' => 'Notificaciones',
-            'icon' => 'fa-solid fa-gauge',
-            'href' => route('notifications.index'),
-            'active' => false,
-        ],
-        [
-            'name' => 'Agenda',
-            'icon' => 'fa-solid fa-gauge',
-            'href' => route('partner.appointments.index'),
-            'active' => false,
-        ],
-        [
-            'name' => 'Directorio de Pacientes',
-            'icon' => 'fa-solid fa-gauge',
-            'href' => route('partner.patients.index'),
-            'active' => false,
-        ],
-        [
-            'name' => 'MKT',
-            'icon' => 'fa-solid fa-gauge',
-            'href' => route('campaigns.index'),
-            'active' => false,
-        ],
-        [
-            'name' => 'Conocimientos Médicos',
-            'icon' => 'fa-solid fa-gauge',
-            'href' => route('partner.expertises.index'),
-            'active' => false,
-        ],
-        [
-            'name' => 'Configuración',
-            'icon' => 'fa-solid fa-gauge',
-            'href' => route('partner.settings.edit'),
+            'href' => route('administrator.validation.index'),
             'active' => false,
         ],
     ];
-
-    $validation = auth()->user()->doctor->validation_status;
-
-    if ($validation != 'approved')
-    {
-        $links = [
-            [
-                'header' => 'Validando documentos...',        
-            ],
-        ];
-    }
 @endphp
 
 <aside id="top-bar-sidebar" class="fixed top-0 left-0 z-40 w-64 h-full transition-transform -translate-x-full sm:translate-x-0" aria-label="Sidebar">

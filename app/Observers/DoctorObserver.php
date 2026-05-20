@@ -22,7 +22,7 @@ class DoctorObserver
             'plan_id' => $defaultPlan->id ?? null,
             'accepts_online_payments' => false,
             'currency' => 'COP',
-            'min_notice_hours' => 24,
+            'min_notice_hours' => 2,
             'max_advance_days' => 30,
             'requires_approval' => false,
             'email_notifications' => true,

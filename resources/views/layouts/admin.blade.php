@@ -32,10 +32,14 @@
         @if(auth()->user()->role == 'doctor')
             @include('layouts.includes.admin.navigation')
             @include('layouts.includes.admin.sidebar')
+        @elseif(auth()->user()->role == 'admin')
+            @include('layouts.includes.administrator.navigation')
+            @include('layouts.includes.administrator.sidebar')
         @else
             @include('layouts.includes.patient.navigation')
             @include('layouts.includes.patient.sidebar')
         @endif
+
         <div class="p-4 sm:ml-64">
             <div class="mt-14 flex items-center">
 

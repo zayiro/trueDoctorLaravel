@@ -23,7 +23,10 @@ return new class extends Migration
             $table->string('experience_years')->nullable();            
             $table->json('languages')->nullable()->default('["es"]');
             $table->decimal('rating', 3, 2)->default(0);
-            $table->integer('reviews_count')->default(0);
+            $table->integer('reviews_count')->default(0);            
+            $table->string('validation_status')->default('missing')->comment('Estados: missing, pending_validation, approved, rejected');
+            $table->string('identity_card_path')->nullable();
+            $table->string('professional_card_path')->nullable();
             $table->boolean('active')->default(true);
             $table->timestamps();
         });
