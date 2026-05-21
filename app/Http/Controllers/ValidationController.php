@@ -7,6 +7,8 @@ use App\Models\Doctor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
+use App\Mail\ValidationStatusNotification;
+use Illuminate\Support\Facades\Mail;
 
 class ValidationController extends Controller
 {
@@ -59,6 +61,7 @@ class ValidationController extends Controller
         }
 
         // NOTA: Aquí podrías disparar un Evento/Mail para notificar al médico automáticamente.
+        Mail::to($doctor->user->email)->send(new ValidationStatusNotification($doctor->user, $status));
 
         return redirect()->back()->with('success', $msg);
     }

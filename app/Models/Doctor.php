@@ -57,8 +57,19 @@ class Doctor extends Model
     protected static function booted()
     {
         static::creating(function ($doctor) {
-            $name = $doctor->user ? $doctor->user->name : 'doctor';
-            $doctor->slug = Str::slug($name) . '-' . Str::lower(Str::random(5));
+            $name = 'doctor';
+            
+            if ($doctor->user) {
+                $name = $doctor->user->name;
+            } elseif ($doctor->user_id) {
+                $name = User::find($doctor->user_id)?->name ?? 'doctor';
+            }
+
+            // Limpiamos la identificación por si tiene espacios o puntos
+            $cleanId = Str::slug($doctor->identification);
+
+            // El slug quedará hermoso: 'dr-juan-perez-10203040'
+            $doctor->slug = Str::slug($name) . '-' . $cleanId;
         });
 
         static::updated(function ($doctor) {

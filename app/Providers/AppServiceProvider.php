@@ -4,8 +4,13 @@ namespace App\Providers;
 
 use App\Models\Doctor;
 use App\Observers\DoctorObserver;
+
+use App\Models\User;
+use App\Observers\UserObserver;
+
 use App\Models\Address;
 use App\Observers\AddressObserver;
+
 use Illuminate\Support\ServiceProvider;
 use App\Events\AppointmentCancelled;
 use App\Listeners\SendCancellationEmail;
@@ -31,8 +36,10 @@ class AppServiceProvider extends ServiceProvider
             SendCancellationEmail::class
         );
 
+        User::observe(UserObserver::class);
         // Laravel escucha a el modelo Address.
-        // cada vez que el doctor abra una nueva sede física, sus servicios virtuales (que ya existen) se habilitarán allí al instante sin que tenga que editar nada.
+        // cada vez que el doctor abra una nueva sede física, sus servicios virtuales (que ya existen) 
+        // se habilitarán allí al instante sin que tenga que editar nada.
         Address::observe(AddressObserver::class);
         // Vinculamos el modelo con su observador
         Doctor::observe(DoctorObserver::class);

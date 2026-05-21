@@ -32,7 +32,9 @@
             </div>
             <h2 class="text-xl font-bold text-slate-900 mb-2">Para activar tu cuenta debemos validar tu documentación</h2>
             <p class="text-sm text-slate-600 max-w-md mx-auto">
-                En <span class="font-semibold text-blue-600">OpenDoctor</span> garantizamos la seguridad de los pacientes. Tu perfil no será público hasta que verifiquemos tu identidad profesional.
+                En <span class="text-lg font-black text-slate-900 tracking-tight">
+                            Open<span class="text-indigo-600">Doctor</span>
+                        </span> garantizamos la seguridad de los pacientes. Tu perfil no será público hasta que verifiquemos tu identidad profesional.
             </p>
 
             @if($status === 'rejected')
@@ -49,7 +51,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
                 <!-- SOLUCIÓN: Campo 1 con selectores directos inmunes a Livewire -->
-                <div class="space-y-2" x-data="{ 
+                <div class="space-y-2 mb-3" x-data="{ 
                     fileName: '', 
                     isDragOver: false,
                     updateFile(files) {
@@ -99,7 +101,7 @@
                 </div>
 
                 <!-- SOLUCIÓN: Campo 2 con selectores directos inmunes a Livewire -->
-                <div class="space-y-2" x-data="{ 
+                <div class="space-y-2 mb-3" x-data="{ 
                     fileName: '', 
                     isDragOver: false,
                     updateFile(files) {

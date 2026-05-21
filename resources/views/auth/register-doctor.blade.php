@@ -7,31 +7,86 @@
 
         <div>
             <h2 class="text-2xl font-black text-gray-800 mb-6">Registro de Doctores</h2>
-            
-            <form action="{{ route('doctor.register.store') }}" method="POST" class="space-y-4">
+            <x-validation-errors class="mb-4" />
+
+            @if (session('error'))
+                <div class="mb-4 font-medium text-sm text-red-600">
+                    {{ session('error') }}
+                </div>
+            @endif
+            <form action="{{ route('partner.register.store') }}" method="POST" class="space-y-4">
                 @csrf
                 
                 <div>
                     <x-label for="name" value="{{ __('Name') }}" />
-                    <x-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name')" required autofocus autocomplete="name" />
+                    <x-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name')" required autofocus autocomplete="nombre del especialista" />
                 </div>
 
                 <div class="mt-4">
                     <x-label for="email" value="{{ __('Email') }}" />
-                    <x-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autocomplete="username" />
+                    <x-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autocomplete="doctor@example.com" />
                 </div>
 
                 <div class="mt-4">
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Especialidades (Puedes elegir varias)</label>
-                    <select name="specialties[]" multiple class="w-full rounded-xl border-slate-200 focus:ring-blue-500 p-3 border select2">
-                        @foreach($specialties as $specialty)
-                            <option value="{{ $specialty->id }}">{{ $specialty->name }}</option>
-                        @endforeach
+                    <x-label for="identification" value="{{ __('Número de identificación') }}" />
+                    <x-input id="identification" class="block mt-1 w-full" type="text" name="identification" :value="old('identification')" required autocomplete="169447522" />
+                </div>
+
+                <div class="mt-4">
+                    <x-label for="medical_license" value="{{ __('Tarjeta profesional') }}" />
+                    <x-input id="medical_license" class="block mt-1 w-full" type="text" name="medical_license" :value="old('medical_license')" required autocomplete="Licencia medica" />
+                </div>
+                
+                <div class="mt-4 relative" x-data="specialtiesSelect()" @click.away="open = false">
+
+                    <!-- SELECT INTERNO OCULTO PARA COMUNICARSE CON EL CONTROLADOR DE LARAVEL -->
+                    <select name="specialties[]" multiple class="hidden">
+                        <template x-for="id in selected" :key="id">
+                            <option :value="id" selected></option>
+                        </template>
                     </select>
-                </div>
+                    
+                    <x-label for="med-search" value="{{ __('Especialidades (Puedes elegir una o varias)') }}" />
+                    <!-- CONTENEDOR VISUAL INTERACTIVO -->
+                    <div class="w-full min-h-[50px] flex flex-wrap gap-2 items-center rounded-xl border border-slate-200 p-2 bg-white focus-within:ring-2 focus-within:ring-blue-500 cursor-text"
+                        @click="document.getElementById('med-search').focus(); open = true">
+                        
+                        <!-- Muestra las especialidades elegidas en forma de etiquetas -->
+                        <template x-for="item in selectedLabels()" :key="item.id">
+                            <span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-sm px-3 py-1 rounded-full font-medium border border-blue-100">
+                                <span x-text="item.name"></span>
+                                <button type="button" @click.stop="toggle(item.id)" class="text-blue-500 hover:text-blue-800 font-bold ml-1">&times;</button>
+                            </span>
+                        </template>
+
+                        <!-- Buscador integrado -->
+                        <input x-ref.searchInput
+                            id="med-search"
+                            type="text" 
+                            x-model="search" 
+                            @focus="open = true"
+                            placeholder="Buscar especialidades..." 
+                            class="flex-1 min-w-[150px] outline-none border-none p-1 text-sm text-slate-700 focus:ring-0">
+                    </div>
+
+                    <!-- DESPLEGABLE CON LAS OPCIONES DISPONIBLES FILTRADAS -->
+                    <div x-show="open && filteredOptions().length > 0" 
+                        x-transition
+                        class="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto"
+                        style="display: none;">
+                        
+                        <template x-for="option in filteredOptions()" :key="option.id">
+                            <div @click="toggle(option.id); search = ''; document.getElementById('med-search').focus();"
+                                class="px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors"
+                                x-text="option.name">
+                            </div>
+                        </template>
+                    </div>
+                </div>                
 
                 <div class="mt-4">
-                    <label class="block font-medium text-sm text-slate-500 ml-1">Teléfono de Contacto</label>
+                    
+                    <x-label for="phone" value="{{ __('Número celular (Ej.: 3026433874)') }}" />
                     <div class="relative mt-1">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,5 +118,33 @@
                 </div>
             </form>
         </div>
+        <script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('specialtiesSelect', () => ({
+            open: false,
+            search: '',
+            selected: {{ json_encode(old('specialties', [])) }},
+            options: @json($specialties->map(fn($s) => ['id' => $s->id, 'name' => $s->name])),
+            
+            toggle(id) {
+                id = parseInt(id);
+                if (this.selected.includes(id)) {
+                    this.selected = this.selected.filter(item => item !== id);
+                } else {
+                    this.selected.push(id);
+                }
+            },
+            filteredOptions() {
+                return this.options.filter(option => 
+                    option.name.toLowerCase().includes(this.search.toLowerCase()) && 
+                    !this.selected.includes(option.id)
+                );
+            },
+            selectedLabels() {
+                return this.options.filter(option => this.selected.includes(option.id));
+            }
+        }));
+    });
+</script>
     </x-authentication-card>
 </x-guest-layout>

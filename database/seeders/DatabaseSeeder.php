@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\User;
 use App\Models\Specialty;
 use App\Models\Doctor;
-use App\Models\Patient;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -26,11 +25,10 @@ class DatabaseSeeder extends Seeder
             DivipolaSeeder::class,
             SpecialtySeeder::class,
             InsuranceSeeder::class,
-        ]);
-
-        $specialties = Specialty::all();
+        ]);        
 
         // Crear Usuario
+        /*
         $doctorUser = User::factory()->doctor()->create([
             'name' => 'Dr. Gregory House',
             'email' => 'doctor@ejemplo.com',
@@ -55,12 +53,16 @@ class DatabaseSeeder extends Seeder
         // Llamamos manualmente a la creación de la sede virtual DESPUÉS de tener plan
         $doctor->createVirtualAddress(); 
 
+        $specialties = Specialty::all();
+        
         $doctor->specialties()->attach([
             $specialties->where('name', 'Psicólogia')->first()->id,
             $specialties->where('name', 'Medicina General')->first()->id,
         ]);
+        */
 
         // Crear Paciente
+        /*
         $patientUser = User::factory()->patient()->create([
             'name' => 'John Doe patient',
             'email' => 'paciente@ejemplo.com',
@@ -72,9 +74,6 @@ class DatabaseSeeder extends Seeder
             'identification' => '100000789',
             'phone' => '3001234567',
         ]);
-
-        // Crear Administrador y Clínica
-        User::factory()->admin()->create(['name' => 'Admistrador Ocampo', 'email' => 'administrador@ejemplo.com', 'password' => bcrypt('123456789')]);
-        User::factory()->clinic()->create(['name' => 'Clínica Mayo', 'email' => 'clinica@ejemplo.com', 'password' => bcrypt('123456789')]);        
+        */
     }
 }

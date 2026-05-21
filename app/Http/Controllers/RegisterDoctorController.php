@@ -22,8 +22,11 @@ class RegisterDoctorController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
+            'identification' => 'required|string|max:30|unique:doctors,identification',
+            'phone' => 'required|string|max:20', // <-- ¡FALTA AGREGAR ESTO!
+            'medical_license' => 'nullable|string|max:50',
             'password' => 'required|min:8|confirmed',
-            'specialties' => 'required|array|min:1', // Debe ser un array
+            'specialties' => 'required|array|min:1',
             'specialties.*' => 'exists:specialties,id',
         ]);
 
@@ -34,19 +37,20 @@ class RegisterDoctorController extends Controller
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
+                'role' => 'doctor',
             ]);
 
-            // 2. Asignar Rol de Spatie
-            $user->assignRole('doctor');
-
-            // 3. Crear Perfil de Doctor asociado
-            $doctor =   $user->doctor()->create([
+            // 2. Crear Perfil de Doctor asociado
+            $doctor = $user->doctor()->create([
+                'medical_license' => $request->medical_license,
+                'identification' => $request->identification,
                 'phone' => $request->phone,
             ]);
 
+            // 3. Guardar en la tabla pivote doctor_specialty
             $doctor->specialties()->attach($request->specialties);
         });
 
-        return redirect()->route('login')->with('success', 'Registro exitoso. Ya puedes iniciar sesión.');
+        return redirect()->route('login')->with('success', 'Registro exitoso. Tu perfil médico está en proceso de validación.');
     }
 }
