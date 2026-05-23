@@ -75,7 +75,7 @@
                     <!-- Selector de Especialidad -->
                     <div class="flex-1">
                         <label for="symptom" class="block text-[10px] font-black text-slate-700 uppercase ml-3 mb-1">¿Qué sintomas tienes?</label>
-                        <input type="search" name="symptom" id="symptom" value="{{ request('symptom') }}" placeholder="Ej: Siento que la habitación me da vueltas al acostarme..." required minlength="3" class="w-full border-0 focus:ring-0 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 px-4" placeholder="Me duele mucho la cabeza y veo borroso">                        
+                        <input type="search" name="symptom" id="symptom" value="{{ request('symptom') }}" placeholder="Ej: Siento que la habitación me da vueltas al acostarme..." required minlength="3" class="w-full border-0 focus:ring-0 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 px-4 placeholder-black-900" placeholder="Me duele mucho la cabeza y veo borroso">                        
                     </div>
 
                     <!-- Botón Buscar -->
