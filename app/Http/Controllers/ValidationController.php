@@ -56,6 +56,9 @@ class ValidationController extends Controller
                 'validation_status' => 'approved',
                 'active' => true // Ya aparece en las búsquedas
             ]);
+
+            //crea la sede virtual por defecto en la cuenta del doctor
+            $doctor->createVirtualAddress();
             
             $msg = "¡Médico aprobado con éxito! Su perfil ya es público.";
         }

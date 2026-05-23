@@ -149,7 +149,7 @@
             </div>
 
             <!-- Botón de Envío -->
-            <button type="submit" class="w-full py-4 px-4 inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-xl border border-transparent bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition shadow-sm">
+            <button type="submit" class="w-full py-4 px-4 inline-flex justify-center items-center gap-x-2 text-lg font-semibold rounded-xl border border-transparent bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition shadow-sm">
                 Enviar Documentación para Revisión
             </button>
 

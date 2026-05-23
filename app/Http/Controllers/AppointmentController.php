@@ -98,7 +98,16 @@ class AppointmentController extends Controller
             return redirect()->route('search');
         }
 
-        return view('appointments.patient');
+        $doctorId = session('current_doctor_id');
+        $userId = auth()->user()->id;
+
+        //si el usuario que esta reservando es el mismo doctor o clinica no deja avanzar en el proceso
+        $isSelfBooking = false;
+        if ($doctorId === $userId) {
+            $isSelfBooking = true;
+        }
+        
+        return view('appointments.patient', compact('isSelfBooking'));
     }
 
     public function processPatient(Request $request)

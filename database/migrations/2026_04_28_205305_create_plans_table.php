@@ -21,6 +21,8 @@ return new class extends Migration
             $table->integer('max_appointments_per_year')->default(50);
             // Booleano para permitir o no el buscador
             $table->boolean('can_search_patients')->default(false);
+            //ver el boton de contactar por whatsapp
+            $table->boolean('can_see_whatsapp_contact_button')->default(false);
             // Límite de pacientes visualizables (ej: 20 para Free, 10000 para Gold)
             $table->integer('max_patients_list')->default(20);
             $table->boolean('can_export_history')->default(false); // Descargar PDFs

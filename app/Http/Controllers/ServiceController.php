@@ -105,13 +105,13 @@ class ServiceController extends Controller
                             ?? $doctor->createVirtualAddress();
             
             $syncData[$virtualAddress->id] = [
-                'price'    => $validated['price_virtual'],
+                'price'    => round($validated['price_virtual'], 2),
                 'duration' => $validated['duration'],
             ];
         } else {
             foreach ($validated['address_ids'] as $addressId) {
                 $syncData[$addressId] = [
-                    'price'    => $validated['prices'][$addressId], // Precio específico de esta sede
+                    'price'    => round($validated['prices'][$addressId], 2),
                     'duration' => $validated['duration'],
                 ];
             }
@@ -154,7 +154,7 @@ class ServiceController extends Controller
                     }
                 },
             ],
-            'prices'        => 'required_if:type,physical|array',
+            'prices' => 'required_if:type,physical|array',
         ];
 
         // Si es el método store, incluye la validación del nombre y tipo (catálogo global)

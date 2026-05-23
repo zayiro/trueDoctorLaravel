@@ -14,9 +14,9 @@ class PlanSeeder extends Seeder
     public function run(): void
     {
         $plans = [
-            ['name' => 'Plan Free', 'plan' => 'free', 'slug' => 'free', 'max_addresses' => 2, 'max_services' => 3, 'max_appointments_per_year' => 50, 'can_search_patients' => false, 'max_patients_list' => 20, 'can_export_history' => false, 'has_telemedicine' => true, 'price' => 0],
-            ['name' => 'Plan Premium', 'plan' => 'premium', 'slug' => 'premium', 'max_addresses' => 10, 'max_services' => 20, 'max_appointments_per_year' => 500, 'can_search_patients' => true, 'max_patients_list' => 200, 'can_export_history' => true, 'has_telemedicine' => true, 'price' => 2400000],
-            ['name' => 'Plan Gold', 'plan' => 'gold', 'slug' => 'gold', 'max_addresses' => 20, 'max_services' => 50, 'max_appointments_per_year' => 9999, 'can_search_patients' => true, 'max_patients_list' => 10000, 'can_export_history' => true, 'has_telemedicine' => true, 'price' => 3500000]
+            ['name' => 'Plan Free', 'plan' => 'free', 'slug' => 'free', 'max_addresses' => 2, 'max_services' => 3, 'max_appointments_per_year' => 50, 'can_search_patients' => false, 'can_see_whatsapp_contact_button' => false, 'max_patients_list' => 20, 'can_export_history' => false, 'has_telemedicine' => true, 'price' => 0],
+            ['name' => 'Plan Premium', 'plan' => 'premium', 'slug' => 'premium', 'max_addresses' => 10, 'max_services' => 20, 'max_appointments_per_year' => 500, 'can_search_patients' => true, 'can_see_whatsapp_contact_button' => true, 'max_patients_list' => 200, 'can_export_history' => true, 'has_telemedicine' => true, 'price' => 2400000],
+            ['name' => 'Plan Gold', 'plan' => 'gold', 'slug' => 'gold', 'max_addresses' => 20, 'max_services' => 50, 'max_appointments_per_year' => 9999, 'can_search_patients' => true, 'can_see_whatsapp_contact_button' => true, 'max_patients_list' => 10000, 'can_export_history' => true, 'has_telemedicine' => true, 'price' => 3500000]
         ];
 
         foreach ($plans as $plan) {
@@ -28,6 +28,7 @@ class PlanSeeder extends Seeder
                 'max_services' => $plan['max_services'],
                 'max_appointments_per_year' => $plan['max_appointments_per_year'],
                 'can_search_patients' => $plan['can_search_patients'],
+                'can_see_whatsapp_contact_button' => $plan['can_see_whatsapp_contact_button'],
                 'max_patients_list' => $plan['max_patients_list'],
                 'can_export_history' => $plan['can_export_history'],
                 'has_telemedicine' => $plan['has_telemedicine'],

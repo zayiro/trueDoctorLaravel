@@ -53,7 +53,7 @@ class Address extends Model
 
     public function services() 
     {
-        return $this->belongsToMany(Service::class)->withPivot('price', 'duration')->withTimestamps();
+        return $this->belongsToMany(Service::class, 'address_service')->withPivot('price', 'duration')->withTimestamps();
     }
 
 

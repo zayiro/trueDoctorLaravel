@@ -58,7 +58,7 @@ class AddressController extends Controller
         if (!$doctor->canAddMoreAddresses()) {
             $limite = ($doctor->plan === 'avanzado') ? 10 : 2;
             return redirect()->route('partner.addresses.index')
-                ->with('error', "Tu plan {$doctor->plan} solo permite {$limite} sedes.");
+                ->with('error', "Tu plan {$doctor->plan->name} solo permite {$limite} sedes.");
         }
         
         return view('partner.addresses.create', compact('cities'));
@@ -76,7 +76,7 @@ class AddressController extends Controller
         if (!$doctor->canAddMoreAddresses()) {
             $limite = ($doctor->plan === 'avanzado') ? 10 : 2;
             return redirect()->route('partner.addresses.index')
-                ->with('error', "Tu plan {$doctor->plan} solo permite {$limite} sedes.");
+                ->with('error', "Tu plan {$doctor->plan->name} solo permite {$limite} sedes.");
         }
         
         // 2. Validar los datos del formulario

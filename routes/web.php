@@ -349,7 +349,6 @@ Route::get('/api/departments/{department}/cities', function ($deptId) {
 Route::get('/sitemap.xml', [SearchController::class, 'generateSitemap'])->name('seo.sitemap');
 Route::redirect('/dashboard', '/admin', 301);
 
-
 //Páginas de Síntomas Indexables Automáticas
 
 // LA RUTA SEO DINÁMICA: Google y los usuarios entrarán aquí

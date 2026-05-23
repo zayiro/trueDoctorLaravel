@@ -18,7 +18,7 @@ class Service extends Model
 
     public function addresses()
     {
-        return $this->belongsToMany(Address::class)->withPivot('price', 'duration')->withTimestamps();
+        return $this->belongsToMany(Address::class, 'address_service')->withPivot('price', 'duration')->withTimestamps();
     }
 
 

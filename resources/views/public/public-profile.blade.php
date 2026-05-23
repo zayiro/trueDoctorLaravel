@@ -59,7 +59,8 @@
                     <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-4 sticky top-10">
                         <div class="text-center">
                             <img src="{{ $doctor->user->profile_photo_url }}" class="w-32 h-32 rounded-full mx-auto border-4 border-blue-50">
-                            <h1 class="text-2xl font-black text-gray-800 mt-4">{{ $doctor->user->name }}</h1>
+                            <div class="font-black text-gray-800 mt-4">{{ $doctor->gender === 'female' ? 'Doctora ' : 'Doctor' }}</div>
+                            <h1 class="text-2xl font-black text-gray-800">{{ ucfirst($doctor->user->name) }}</h1>
                             <p class="text-blue-600 font-bold">{{ $doctor->specialties->first()->name ?? 'Especialista' }}</p>
                             <div class="flex justify-center mt-2">
                                 @include('partials.stars', ['rating' => $doctor->rating])
@@ -67,7 +68,7 @@
                             </div>
                         </div>
                         <div class="mt-4 p-3 text-sm text-gray-700 bg-blue-50 rounded-lg text-center">
-                            Programe una charla presencial o virtual en minutos con <span>{{ $doctor->user->name }}</span> en el horario que mejor le convenga.
+                            Programe una charla presencial o virtual en minutos con <span>{{ $doctor->gender === 'female' ? 'la doctora ' . $doctor->user->name : 'el doctor ' . $doctor->user->name }}</span> en el horario que mejor le convenga.
                         </div>
                         <div class="bg-gray-50 rounded-2xl p-4 mt-4 border border-gray-100">
                             <div class="space-y-1">
@@ -135,10 +136,33 @@
                                         </div>
                                     @empty
                                         <!-- Mensaje de respaldo si no hay datos configurados -->
-                                        <p class="text-gray-400 text-xs italic">N/A</p>
+                                        <p class="text-gray-400 text-xs italic">No espeficado</p>
                                     @endforelse
                                 </div>
                             </div>
+
+                            @if ($doctor->plan->can_see_whatsapp_contact_button)
+                            <div class="mt-3 space-y-2">
+                                <!-- Botón de WhatsApp dinámico según el estado -->
+                                @php
+                                    $phoneClean = preg_replace('/[^0-9]/', '', $doctor->phone);
+                                    $message = $doctor->gender === 'female' ? 'Hola Dra ' . $doctor->user->name : 'Hola Dr ' . $doctor->user->name . ":\n\n";
+                                    $message .= "Vi su perfil profesional en OpenDoctor.online y me interesa agendar una consulta médica con usted.";
+                                    $message .= " Quedo atento a su disponibilidad y horarios. Muchas gracias.";
+                                    $whatsappUrl = "https://wa.me/+57{$phoneClean}?text=" . urlencode($message);
+                                @endphp
+                                
+                                <a href="{{ $whatsappUrl }}" target="_blank" class="px-8 py-4 bg-green-500 text-white font-bold rounded-2xl hover:bg-green-600 shadow-lg shadow-green-200 transition flex items-center justify-center gap-2">
+                                    <!-- Icono SVG de WhatsApp -->
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096.585 5.648 2.118 3.553 1.533 4.169 1.591 4.914 1.591.745 0 2.406-.867 2.747-1.673.34-.806.34-1.491.242-1.638-.099-.148-.348-.222-.645-.371z"/>
+                                        <path d="M12.004 2c-5.51 0-9.99 4.49-9.99 9.99 0 2.01.59 3.93 1.72 5.56L2 22l4.63-1.22c1.55.93 3.32 1.41 5.14 1.41 5.51 0 9.99-4.49 9.99-9.99S17.514 2 12.004 2zm0 18.28c-1.64 0-3.25-.44-4.66-1.27l-.33-.2-.28.07-2.75.72.74-2.69-.21-.34c-.92-1.47-1.4-3.17-1.4-4.93 0-4.94 4.02-8.96 8.96-8.96 4.94 0 8.96 4.02 8.96 8.96s-4.02 8.96-8.96 8.96z"/>
+                                    </svg>
+                                    <span>Contactar por WhatsApp</span>
+                                </a>
+                            </div>
+                            @endif
+
                             <!--
                             <div class="mt-3 space-y-1">
                                 <h4 class="font-bold text-gray-700">Con nosotros desde</h4>
