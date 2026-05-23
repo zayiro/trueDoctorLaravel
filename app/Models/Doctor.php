@@ -149,8 +149,7 @@ class Doctor extends Model
         return round($this->reviews()->avg('rating'), 1) ?? 0;
     }
 
-    /**
-     * CORRECCIÓN CRÍTICA: Relación directa a citas.
+    /**     
      * Al usar hasMany, incluimos tanto citas presenciales como virtuales (address_id = null)
      */
     public function appointments(): HasMany

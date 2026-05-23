@@ -27,6 +27,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'api/zoom-notification', // Excluir la URL exacta del CSRF
         ]);
+        $middleware->web(append: [
+            \App\Http\Middleware\SeoOptimizationMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

@@ -8,9 +8,15 @@
                     <path stroke="currentColor" stroke-linecap="round" stroke-width="2" d="M5 7h14M5 12h14M5 17h10"/>
                 </svg>
             </button>
-            <a href="/" class="flex ms-2 md:me-24">
-                <img src="https://flowbite.com/docs/images/logo.svg" class="h-6 me-3" alt="FlowBite Logo" />
-                <span class="self-center text-lg font-semibold whitespace-nowrap dark:text-white">Flowbite</span>
+            <a href="https://opendoctor.online" class="flex ms-2 md:me-24">
+                <img src="{{ asset('images/logoOpenDoctor.jpg') }}" class="size-8 rounded-full object-cover" alt="OpenDoctor Reservaciones Médicas" />
+                <span class="self-center text-xl text-heading font-semibold whitespace-nowrap">
+                    <div class="flex items-center gap-2 ml-2">
+                        <span class="text-lg font-black text-slate-900 tracking-tight">
+                            Open<span class="text-indigo-600">Doctor</span>
+                        </span>
+                    </div>
+                </span>
             </a>
         </div>
         <div class="flex items-center">
@@ -39,6 +45,10 @@
                         <div class="block px-4 py-2 text-xs text-gray-400">
                             {{ __('Manage Account') }}
                         </div>
+
+                        <x-dropdown-link href="{{ route('admin.dashboard') }}">
+                            {{ __('Dashboard') }}
+                        </x-dropdown-link>
 
                         <x-dropdown-link href="{{ route('profile.show') }}">
                             {{ __('Profile') }}

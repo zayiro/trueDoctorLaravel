@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Mail\WelcomePatientMail;
 use App\Mail\WelcomeDoctorMail;
 use App\Mail\WelcomeClinicMail;
+use App\Mail\WelcomeAdminMail;
 use Illuminate\Support\Facades\Mail;
 
 class UserObserver

@@ -10,7 +10,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ContactNotification extends Mailable implements ShouldQueue
+class ContactNotification extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -28,15 +28,12 @@ class ContactNotification extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Nuevo mensaje: ' . ($this->contactMessage->subject ?? 'Consulta General'),
-            replyTo: [
-                $this->contactMessage->email, // Permite que al darle "Responder" le escribas al cliente
-            ],
+            subject: 'Contactenos: ' . ($this->contactMessage->subject ?? 'Formulario de contactenos'),            
         );
     }
 
     /**
-     * Define el "Contenido" del correo (La Vista)
+     * Get the message content definition.
      */
     public function content(): Content
     {
@@ -46,7 +43,9 @@ class ContactNotification extends Mailable implements ShouldQueue
     }
 
     /**
-     * Define adjuntos si los hubiera
+     * Get the attachments for the message.
+     *
+     * @return array<int, Attachment>
      */
     public function attachments(): array
     {

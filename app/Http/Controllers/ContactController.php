@@ -6,7 +6,6 @@ use App\Models\ContactMessage;
 use App\Mail\ContactNotification;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Config;
 
 class ContactController extends Controller
 {
@@ -32,22 +31,24 @@ class ContactController extends Controller
 
     public function submit(Request $request)
     {
+        // 1. Validamos los datos reales que vienen de la vista
         $validated = $request->validate([
-            'name'    => 'required|min:3',
+            'name'    => 'required|string|min:3',
             'email'   => 'required|email',
-            'subject' => 'nullable|min:5',
-            'message' => 'required|min:10',
+            'message' => 'required|string|min:10',
         ]);
 
-        // 1. Guardado en Base de Datos
+        // 2. Inyectamos un asunto por defecto de forma segura en el backend
+        $validated['subject'] = $request->input('subject', 'Nuevo mensaje de contacto - SaaS');
+
+        // 3. Guardado en la Base de Datos
         $contactRecord = ContactMessage::create($validated);
 
-        // 2. Envío de Correo
-        //Mail::to(env('MAIL_FROM_ADDRESS'))->queue(new ContactNotification($contactRecord));
-
+        // 4. CORREGIDO: Usamos send() en lugar de queue() para el envío inmediato en tiempo real
         $destinatario = config('mail.from.address', 'ocampotecnologo@gmail.com'); 
-        Mail::to($destinatario)->queue(new ContactNotification($contactRecord));               
+        Mail::to($destinatario)->send(new ContactNotification($contactRecord));               
 
+        // 5. Redirección con mensaje de éxito de Bootstrap/Tailwind
         return back()->with('success', '¡Gracias! El mensaje se envió correctamente.');
-    }
+    }    
 }

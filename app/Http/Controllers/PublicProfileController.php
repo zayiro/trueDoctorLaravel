@@ -7,13 +7,10 @@ use App\Mail\AppointmentConfirmed;
 
 use App\Notifications\NewAppointmentNotification;
 
-use App\Models\User;
 use App\Models\Doctor;
 use App\Models\Service;
 use App\Models\Address;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 class PublicProfileController extends Controller
@@ -32,9 +29,12 @@ class PublicProfileController extends Controller
         ]);
 
         session(['current_doctor_id' => $partner->id]);
+                
+        $seoTitle = "Dr(a). " . ucfirst($partner->user->name) . ' | Orientación Médica';
+        $seoDescription = $partner->bio ?? 'Especialista certificado de OpenDoctor, reserva tu cita en línea';
+        $metaRobots = "index, follow";
         
-        //dd($partner);
-        return view('public.public-profile', ['doctor' => $partner]);
+        return view('public.public-profile', ['doctor' => $partner, 'seoTitle' => $seoTitle, 'seoDescription' => $seoDescription, 'metaRobots' => $metaRobots]);
     }
 
 

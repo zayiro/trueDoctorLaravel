@@ -1,4 +1,7 @@
 <x-admin-layout>
+    @php
+    print_r(auth()->user()->role);
+    @endphp
     @if(auth()->user()->role == 'doctor')
         @include('admin.dashboard-partner')
     @elseif (auth()->user()->role == 'admin')

@@ -68,10 +68,10 @@ $thereAreServices = 1;
                             <!-- Foto y Perfil -->
                             <div class="flex-shrink-0 text-center">
                                 @if ($doctor->user->profile_photo_path)
-                                <img src="https://ui-avatars.com{{ urlencode($doctor->user->name) }}&background=E0F2FE&color=0369A1" 
+                                <img src="{{ asset('storage/' . $doctor->user->profile_photo_path) }}" 
                                     class="w-24 h-24 rounded-2xl mx-auto mb-3 object-cover">
                                 <span class="text-[10px] font-black uppercase px-2 py-1 bg-blue-50 text-blue-600 rounded-lg">
-                                    {{ $doctor->plan }}
+                                    {{ $doctor->plan->name }}
                                 </span>
                                 @else
                                    <div class="relative w-24 h-24 flex items-end justify-center overflow-hidden bg-gray-100 rounded-full dark:bg-gray-600">
@@ -84,7 +84,7 @@ $thereAreServices = 1;
 
                             <!-- Información -->
                             <div class="flex-1">
-                                <h3 class="text-xl font-bold text-slate-900 mb-1">{{ $doctor->user->name }}</h3>   
+                                <h3 class="text-xl font-bold text-slate-900 mb-1">{{ ucfirst($doctor->user->name) }}</h3>   
                                 @if($doctor->specialties->count() > 0)                             
                                 <div class="flex flex-wrap gap-2 mb-4">
                                     @foreach($doctor->specialties as $spec)

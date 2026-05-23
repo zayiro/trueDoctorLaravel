@@ -22,9 +22,12 @@ class ValidationStatusNotification extends Mailable
     {
         $this->user = $user;
         $this->status = $status; // 'approved' o 'rejected'
-        
-        // Enlace directo a tu WhatsApp de soporte
-        $this->whatsappLink = "https://wa.me" . urlencode("Hola Soporte de OpenDoctor, mi cuenta de médico está en estado: " . $status);
+
+        $supportNumber = config('app.support_whatsapp');
+
+        $validationMessage = "Hola Soporte de OpenDoctor, mi cuenta de médico está en estado: " . $status;
+
+        $this->whatsappLink = "https://wa.me/+" . $supportNumber . "?text=" . urlencode($validationMessage);        
     }
 
     public function envelope(): Envelope

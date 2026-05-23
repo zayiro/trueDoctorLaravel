@@ -1,2 +1,26 @@
 User-agent: *
-Disallow:
+
+# 1. PERMITIR el rastreo del SEO Programático de síntomas
+Allow: /
+Allow: /sintomas/
+Allow: /search
+Allow: /search-symptom
+Allow: /doctor/
+
+# 2. BLOQUEAR zonas privadas, paneles e infraestructura de Laravel
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /livewire/
+Disallow: /login
+Disallow: /register
+Disallow: /password/
+Disallow: /oauth/
+
+# 3. BLOQUEAR parámetros de búsqueda interna (Evita bucles de contenido duplicado)
+Disallow: /*?*search=
+Disallow: /*?*query=
+Disallow: /*?*filter=
+
+# 4. ENLACE AL SITEMAP (Indispensable para que Google descubra los síntomas rápido)
+Sitemap: https://opendoctor.online

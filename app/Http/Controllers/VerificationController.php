@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 class VerificationController extends Controller
 {
     public function store(Request $request)
-    {
+    {        
         // 1. Validaciones de archivos
         $request->validate([
             'identity_card' => ['required', 'file', 'mimes:jpeg,png,jpg,pdf', 'max:4096'],

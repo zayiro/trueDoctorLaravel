@@ -4,8 +4,8 @@
         <x-slot name="logo">
             <x-authentication-card-logo />
         </x-slot>
-
-        <div>
+        
+        <div x-data="{ showPass: false, showConfirm: false }">
             <h2 class="text-2xl font-black text-gray-800 mb-6">Registro de Doctores</h2>
             <x-validation-errors class="mb-4" />
 
@@ -37,9 +37,8 @@
                     <x-input id="medical_license" class="block mt-1 w-full" type="text" name="medical_license" :value="old('medical_license')" required autocomplete="Licencia medica" />
                 </div>
                 
+                <!-- SELECTOR DE ESPECIALIDADES CON ALPINE -->
                 <div class="mt-4 relative" x-data="specialtiesSelect()" @click.away="open = false">
-
-                    <!-- SELECT INTERNO OCULTO PARA COMUNICARSE CON EL CONTROLADOR DE LARAVEL -->
                     <select name="specialties[]" multiple class="hidden">
                         <template x-for="id in selected" :key="id">
                             <option :value="id" selected></option>
@@ -47,11 +46,9 @@
                     </select>
                     
                     <x-label for="med-search" value="{{ __('Especialidades (Puedes elegir una o varias)') }}" />
-                    <!-- CONTENEDOR VISUAL INTERACTIVO -->
                     <div class="w-full min-h-[50px] flex flex-wrap gap-2 items-center rounded-xl border border-slate-200 p-2 bg-white focus-within:ring-2 focus-within:ring-blue-500 cursor-text"
                         @click="document.getElementById('med-search').focus(); open = true">
                         
-                        <!-- Muestra las especialidades elegidas en forma de etiquetas -->
                         <template x-for="item in selectedLabels()" :key="item.id">
                             <span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-sm px-3 py-1 rounded-full font-medium border border-blue-100">
                                 <span x-text="item.name"></span>
@@ -59,7 +56,6 @@
                             </span>
                         </template>
 
-                        <!-- Buscador integrado -->
                         <input x-ref.searchInput
                             id="med-search"
                             type="text" 
@@ -69,7 +65,6 @@
                             class="flex-1 min-w-[150px] outline-none border-none p-1 text-sm text-slate-700 focus:ring-0">
                     </div>
 
-                    <!-- DESPLEGABLE CON LAS OPCIONES DISPONIBLES FILTRADAS -->
                     <div x-show="open && filteredOptions().length > 0" 
                         x-transition
                         class="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto"
@@ -84,8 +79,8 @@
                     </div>
                 </div>                
 
+                <!-- CAMPO CELULAR BLINDADO A 10 NÚMEROS -->
                 <div class="mt-4">
-                    
                     <x-label for="phone" value="{{ __('Número celular (Ej.: 3026433874)') }}" />
                     <div class="relative mt-1">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -93,18 +88,66 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
                             </svg>
                         </div>
-                        <x-input id="phone" class="block mt-1 w-full pl-10" type="tel" name="phone" :value="old('phone')" required autofocus autocomplete="phone" />
+                        <x-input 
+                            id="phone" 
+                            class="block mt-1 w-full pl-10" 
+                            type="tel" 
+                            name="phone" 
+                            :value="old('phone')" 
+                            required 
+                            maxlength="10"
+                            pattern="[0-9]{10}"
+                            placeholder="3026433874" 
+                        />
                     </div>
                 </div>
 
-                <div>
+                <!-- CAMPO PASSWORD CON OJO INTERACTIVO -->
+                <div class="mt-4">
                     <x-label for="password" value="{{ __('Password') }}" />
-                    <x-input id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="new-password" />
+                    <div class="relative mt-1 rounded-md shadow-sm">
+                        <x-input 
+                            id="password" 
+                            class="block w-full pr-10" 
+                            ::type="showPass ? 'text' : 'password'" 
+                            name="password" 
+                            required 
+                            autocomplete="new-password" 
+                        />
+                        <button type="button" @click="showPass = !showPass" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none">
+                            <svg x-show="showPass" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            <svg x-show="!showPass" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" x-cloak>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.025 10.025 0 014.132-5.411m0 0L4 3m1.37 1.37L21 21m-2.13-2.13l-1.37-1.37M9.88 9.88a3 3 0 104.24 4.24m-1.07-4.24L12 12" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
-                <div>
+                <!-- CAMPO CONFIRM PASSWORD CON OJO INTERACTIVO -->
+                <div class="mt-4">
                     <x-label for="password_confirmation" value="{{ __('Confirm Password') }}" />
-                    <x-input id="password_confirmation" class="block mt-1 w-full" type="password" name="password_confirmation" required autocomplete="new-password" />
+                    <div class="relative mt-1 rounded-md shadow-sm">
+                        <x-input 
+                            id="password_confirmation" 
+                            class="block w-full pr-10" 
+                            ::type="showConfirm ? 'text' : 'password'" 
+                            name="password_confirmation" 
+                            required 
+                            autocomplete="new-password" 
+                        />
+                        <button type="button" @click="showConfirm = !showConfirm" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none">
+                            <svg x-show="showConfirm" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            <svg x-show="!showConfirm" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" x-cloak>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.025 10.025 0 014.132-5.411m0 0L4 3m1.37 1.37L21 21m-2.13-2.13l-1.37-1.37M9.88 9.88a3 3 0 104.24 4.24m-1.07-4.24L12 12" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="flex items-center justify-end mt-4">
@@ -118,33 +161,34 @@
                 </div>
             </form>
         </div>
-        <script>
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('specialtiesSelect', () => ({
-            open: false,
-            search: '',
-            selected: {{ json_encode(old('specialties', [])) }},
-            options: @json($specialties->map(fn($s) => ['id' => $s->id, 'name' => $s->name])),
-            
-            toggle(id) {
-                id = parseInt(id);
-                if (this.selected.includes(id)) {
-                    this.selected = this.selected.filter(item => item !== id);
-                } else {
-                    this.selected.push(id);
-                }
-            },
-            filteredOptions() {
-                return this.options.filter(option => 
-                    option.name.toLowerCase().includes(this.search.toLowerCase()) && 
-                    !this.selected.includes(option.id)
-                );
-            },
-            selectedLabels() {
-                return this.options.filter(option => this.selected.includes(option.id));
-            }
-        }));
-    });
-</script>
     </x-authentication-card>
 </x-guest-layout>
+
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('specialtiesSelect', () => ({
+        open: false,
+        search: '',
+        selected: {{ json_encode(old('specialties', [])) }},
+        options: @json($specialties->map(fn($s) => ['id' => $s->id, 'name' => $s->name])),
+        
+        toggle(id) {
+            id = parseInt(id);
+            if (this.selected.includes(id)) {
+                this.selected = this.selected.filter(item => item !== id);
+            } else {
+                this.selected.push(id);
+            }
+        },
+        filteredOptions() {
+            return this.options.filter(option => 
+                option.name.toLowerCase().includes(this.search.toLowerCase()) && 
+                !this.selected.includes(option.id)
+            );
+        },
+        selectedLabels() {
+            return this.options.filter(option => this.selected.includes(option.id));
+        }
+    }));
+});
+</script>

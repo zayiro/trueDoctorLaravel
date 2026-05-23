@@ -10,9 +10,21 @@
             'active' => false,
         ],
         [
-            'name' => 'Aprovación de documentos',
+            'name' => 'Aprovaciones',
             'icon' => 'fa-solid fa-gauge',
             'href' => route('administrator.validation.index'),
+            'active' => false,
+        ],
+        [
+            'name' => 'Limpiar cache',
+            'icon' => 'fa-solid fa-gauge',
+            'href' => route('administrator.clearcache.index'),
+            'active' => false,
+        ],
+        [
+            'name' => 'Generar siteMap',
+            'icon' => 'fa-solid fa-gauge',
+            'href' => route('seo.sitemap'),
             'active' => false,
         ],
     ];

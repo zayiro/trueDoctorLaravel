@@ -1,6 +1,6 @@
 <x-guest-layout>
     <div class="max-w-2xl mx-auto py-12 px-4">
-        <div class="bg-white rounded-3xl shadow-xl p-8 mt-5 border border-gray-100">
+        <div class="bg-white rounded-3xl shadow-xl p-8 mt-5 mb-8 border border-gray-100">
             <h2 class="text-2xl font-black text-gray-800 mb-6">Completa tus datos</h2>
 
             @if(session('error'))

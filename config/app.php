@@ -123,4 +123,15 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Información de Soporte Técnico (Personalizado para OpenDoctor)
+    |--------------------------------------------------------------------------
+
+    |
+    | Aquí registramos las variables comerciales de contacto directo de la 
+    | plataforma para ser consumidas de forma segura en Mailables y controladores.
+    |
+    */
+    'support_whatsapp' => env('SUPPORT_WHATSAPP_NUMBER', '573026433874'),
 ];

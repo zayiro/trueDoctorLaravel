@@ -17,6 +17,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
         "livewire/livewire": "^4.2",
+        "openai-php/laravel": "^0.19.1",
         "power-components/livewire-powergrid": "^6.9",
         "spatie/laravel-permission": "^7.4",
         "wireui/wireui": "^2.6"

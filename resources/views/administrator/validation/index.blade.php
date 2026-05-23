@@ -61,11 +61,18 @@ $breadcrumbs = [
                                 
                                 <!-- Columna 2: Identificación Legal -->
                                 <td class="p-4">
+                                    @if($doctor->identification)
                                     <div class="inline-flex items-center text-xs font-mono bg-slate-100 text-slate-700 px-2 py-1 rounded mb-1.5 border border-slate-200">
-                                        ID: {{ $doctor->identification }}
+                                        Identificación: <strong class="text-slate-700">{{ $doctor->identification }}</strong>
                                     </div>
+                                    @else
+                                        <span class="text-xs text-amber-600 block italic">Identificación no registrada</span>
+                                    @endif
+
                                     @if($doctor->medical_license)
-                                        <span class="text-xs text-slate-500 block">Reg. Médico: <strong class="text-slate-700">{{ $doctor->medical_license }}</strong></span>
+                                        <div class="inline-flex items-center text-xs font-mono bg-slate-100 text-slate-700 px-2 py-1 rounded mb-1.5 border border-slate-200 mt-2">
+                                            Registro Médico: <strong class="text-slate-700">{{ $doctor->medical_license }}</strong>
+                                        </div>
                                     @else
                                         <span class="text-xs text-amber-600 block italic">Licencia no registrada</span>
                                     @endif
@@ -73,29 +80,37 @@ $breadcrumbs = [
 
                                 <!-- Columna 3: Descarga Segura de Archivos -->
                                 <td class="p-4">
-                                    <div class="flex flex-col gap-y-2">
-                                        <!-- Cédula -->
-                                        <a href="{{ route('administrator.document.view', ['doctor' => $doctor, 'type' => 'cedula']) }}" 
-                                        target="_blank" 
-                                        class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline group w-fit">
-                                            <span class="mr-1.5">🪪</span> Ver Cédula de Identidad
-                                            <svg class="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                                        </a>
+                                    <div class="flex flex-col gap-y-2">                                        
+                                        @if ($doctor->identity_card_path)
+                                            <!-- Cédula -->
+                                            <a href="{{ route('administrator.document.view', ['doctor' => $doctor, 'type' => 'cedula']) }}" 
+                                            target="_blank" 
+                                            class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline group w-fit">
+                                                <span class="mr-1.5">📜</span> Ver Identificación
+                                                <svg class="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                            </a>
+                                        @else
+                                            <span class="text-sm text-red-500">No se ha subido el documento</span>
+                                        @endif
                                         
-                                        <!-- Tarjeta Profesional -->
-                                        <a href="{{ route('administrator.document.view', ['doctor' => $doctor, 'type' => 'tarjeta']) }}" 
-                                        target="_blank" 
-                                        class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline group w-fit">
-                                            <span class="mr-1.5">📜</span> Ver Tarjeta Profesional
-                                            <svg class="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                                        </a>
+                                        @if ($doctor->professional_card_path)
+                                            <!-- Tarjeta Profesional -->
+                                            <a href="{{ route('administrator.document.view', ['doctor' => $doctor, 'type' => 'tarjeta']) }}" 
+                                            target="_blank" 
+                                            class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline group w-fit">
+                                                <span class="mr-1.5">📜</span> Ver Tarjeta Profesional
+                                                <svg class="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                            </a>
+                                        @else
+                                            <span class="text-sm text-red-500">No se ha subido el documento</span>
+                                        @endif                                    
                                     </div>
                                 </td>
 
                                 <!-- Columna 4: Botones de Aprobación / Rechazo -->
                                 <td class="p-4 text-right align-middle">
                                     <div class="inline-flex items-center justify-end gap-x-2">
-                                        
+                                        @if ($doctor->identity_card_path && $doctor->professional_card_path)
                                         <!-- Formulario para Aprobar Médico -->
                                         <form action="{{ route('administrator.validation.update', $doctor) }}" method="POST">
                                             @csrf
@@ -114,7 +129,7 @@ $breadcrumbs = [
                                                 Rechazar
                                             </button>
                                         </form>
-
+                                        @endif
                                     </div>
                                 </td>
 
@@ -122,7 +137,7 @@ $breadcrumbs = [
                         @empty
                             <!-- Estado vacío si no hay registros pendientes -->
                             <tr>
-                                <td colspan="4" class="p-12 text-center">
+                                <td colspan="4" class="p-12 pb-4 text-center">
                                     <div class="inline-flex items-center justify-center w-12 h-12 bg-slate-50 text-slate-400 rounded-full mb-3">
                                         ✅
                                     </div>

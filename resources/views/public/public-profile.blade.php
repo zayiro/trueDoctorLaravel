@@ -1,4 +1,38 @@
 <x-guest-layout>    
+    <!-- Inyección exclusiva para el HEAD -->
+    <x-slot:seo>
+        <meta name="title" content="{{ $seoTitle }}">
+        <meta name="description" content="{{ $seoDescription }}">
+        <meta name="robots" content="{{ $metaRobots }}">
+        @php
+            // 1. Construimos el arreglo base con datos limpios
+            $schemaData = [
+                "@context" => "https://schema.org",
+                "@type" => "Physician",
+                "name" => "Dr(a). " . $doctor->user->name,
+                "image" => $doctor->user->profile_photo_url,
+                "medicalSpecialty" => $doctor->specialties->first()?->name ?? 'Medicina General',
+                "telephone" => $doctor->phone ?? 'N/A',
+                "url" => url()->current(),
+                "description" => $doctor->bio ? str(strip_tags($doctor->bio))->limit(160, '...')->toString() : 'Profesional de la salud dedicado a mantener y recuperar el bienestar humano'
+            ];
+
+            // 2. Inyectamos condicionalmente el bloque de calificaciones si existen datos
+            if ($doctor->reviews_count > 0) {
+                $schemaData["aggregateRating"] = [
+                    "@type" => "AggregateRating",
+                    "ratingValue" => (string) $doctor->rating,
+                    "reviewCount" => (string) $doctor->reviews_count
+                ];
+            }
+        @endphp
+
+        {{-- 3. Renderizado seguro: Evita comillas rotas o saltos de línea destructivos --}}
+        <script type="application/ld+json">
+            {!! json_encode($schemaData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) !!}
+        </script>        
+   </x-slot:seo> 
+    
     <div class="mt-5 bg-gray-100 min-h-screen py-12" x-data="bookingSystem({{ $doctor->id }}, {{ $doctor->settings->max_advance_days ?? 30 }})">    
         <!-- Overlay de Carga Global -->
         <div id="loading-overlay" 

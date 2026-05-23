@@ -32,23 +32,7 @@ use App\Http\Controllers\MedicalExpertiseController;
 use App\Http\Controllers\DoctorSettingController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\ValidationController;
-
-//Route::redirect('/', '/admin');
-
-//para que se muestre de una el view login
-
-/*Route::get('/', function () {
-    return view('welcome');
-});
-*/
-
-Route::get('/', [HomeController::class, 'index'])->name('home');
-
-/*
-//si usamos el middleware role.redirect
-Route::get('/', function () {
-    return view('dashboard');
-})->middleware(['auth', 'role.redirect'])->name('dashboard');*/
+use App\Http\Controllers\Admin\AdminController;
 
 Route::middleware([
     'auth:sanctum',
@@ -60,6 +44,7 @@ Route::middleware([
     })->name('dashboard');
 });
 
+// Rutas Privadas (admin)
 Route::middleware(['auth', 'role:admin'])->group(function () {
     // Lista de médicos pendientes
     Route::get('/administrator/validation', [ValidationController::class, 'index'])
@@ -72,45 +57,13 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     // Ruta segura para ver los documentos protegidos
     Route::get('/administrator/{doctor}/document/{type}', [ValidationController::class, 'viewDocument'])
          ->name('administrator.document.view');
+
+    //borrar cache desde el navegador cuando este logueado con role de admin
+    Route::get('/clear-cache', [AdminController::class, 'clearCache'])->name('administrator.clearcache.index');         
+
+    // Rutas protegidas de administración
+    Route::get('/administrator/seo-sintomas', [AdminController::class, 'listIndexedSymptoms'])->name('administrator.symptoms.index');
 });
-
-
-Route::get('/contact', [ContactController::class, 'showContact'])->name('contact.show');
-Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
-
-Route::get('/terms', [ContactController::class, 'showTerms'])->name('terms.show');
-Route::get('/privacy', [ContactController::class, 'showPrivacy'])->name('privacy.show');
-Route::get('/support', [ContactController::class, 'showSupport'])->name('support.show');
-
-Route::get('/register-options', function () {
-    return view('auth.register-options');
-})->name('register.options');
-
-// Ruta para mostrar el formulario (GET)
-Route::get('/register-partner', [RegisterDoctorController::class, 'register'])->name('partner.register');
-
-// Ruta para procesar el registro (POST) - La que definimos antes
-Route::post('/register-partner', [RegisterDoctorController::class, 'store'])->name('partner.register.store');
-
-Route::get('/register-clinic', function () {
-    return view('auth.register-clinic');
-})->name('clinic.register');
-
-Route::post('/register-clinic', [RegisterClinicController::class, 'store'])->name('clinic.register.store');
-
-Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
-
-// En web.php
-/*
-Route::post('/upgrade-plan', function() {
-    Auth::user()->doctor->update(['plan' => 'avanzado']);
-    return back()->with('success', '¡Ahora eres un Doctor Avanzado!');
-})->name('plan.upgrade');*/
-
-// Rutas Públicas (Pacientes)
-Route::get('/search', [SearchController::class, 'index'])->name('search');
-// Asegúrate de colocarla con método GET para que la paginación funcione correctamente
-Route::get('/search-by-symptom', [SearchController::class, 'searchBySymptom'])->name('partner.search.symptom');
 
 // Rutas Privadas (medical partner)
 Route::middleware(['auth', 'role:doctor'])->group(function () {    
@@ -158,7 +111,6 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::post('/partner/unavailabilities', [UnavailabilityController::class, 'store'])->name('partner.unavailabilities.store');
     Route::delete('/partner/unavailabilities/{unavailability}', [UnavailabilityController::class, 'destroy'])->name('partner.unavailabilities.destroy');
 
-
     //buscador de pacientes
     Route::get('/partner/patients', [PartnerPatientController::class, 'index'])->name('partner.patients.index');
     //vista detallada del paciente
@@ -189,22 +141,92 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::delete('/partner/expertises/{expertise}', [MedicalExpertiseController::class, 'destroy'])->name('partner.expertises.destroy');    
 
     Route::post('/partner/appointments/{id}/generate-zoom', [AppointmentController::class, 'generateZoomLink'])->name('partner.appointments.generate_zoom');
+
+    Route::get('/campaigns', \App\Livewire\Campaigns\CampaignIndex::class)->name('campaigns.index');
+    Route::get('/campaigns/create', \App\Livewire\Campaigns\CreateCampaign::class)->name('campaigns.create');
 });
 
-Route::middleware(['auth'])->group(function () {
+// Rutas Privadas (patient)
+Route::middleware(['auth', 'role:patient'])->group(function () {        
+    Route::get('/patient/patient-identification', [PatientController::class, 'index'])->name('patient.patient-identification.index');
+    Route::put('/patient/patient-identification/{patient}', [PatientController::class, 'update'])->name('patient.patient-identification.update');
+    Route::get('/patient/appointments', [PatientController::class, 'appointments'])->name('patient.appointments.index');
+    Route::get('/patient/allergies', [PatientController::class, 'indexAllergy'])->name('patient.allergies.index');
+    Route::get('/patient/history', [PatientController::class, 'history'])->name('patient.history.index');
+    Route::get('/patient/surgeries', [PatientController::class, 'surgeries'])->name('patient.surgeries.index');
+    Route::post('/patient/surgeries', [PatientController::class, 'storeSurgery'])->name('patient.surgeries.store');
+    Route::get('/patient/surgeries/{surgery}/edit', [PatientController::class, 'editSurgery'])->name('patient.surgeries.edit');
+    Route::put('/patient/surgeries/{surgery}', [PatientController::class, 'updateSurgery'])->name('patient.surgeries.update');
+    Route::delete('/patient/surgeries/{surgery}', [PatientController::class, 'destroySurgery'])->name('patient.surgeries.destroy');
+    Route::post('/patient/{id}/allergies', [PatientController::class, 'storeAllergy'])->name('patient.allergies.store');
+    Route::delete('/patient/allergies/{allergy}', [PatientController::class, 'destroyAllergy'])->name('patient.allergies.destroy');
+    Route::get('/patient/family-history', [PatientController::class, 'indexFamilyHistory'])->name('patient.family-history.index');
+    Route::post('/patient/family-history', [PatientController::class, 'storeFamilyHistory'])->name('patient.family-history.store');
+    Route::delete('/patient/allergies/{id}', [PatientController::class, 'destroyFamilyHistory'])->name('patient.family-history.destroy');
+
+    Route::get('/patient/medications', [PatientController::class, 'indexMedication'])->name('patient.medications.index');
+    Route::delete('/patient/medications/{medication}', [PatientController::class, 'destroyMedication'])->name('patient.medications.destroy');
+
+    Route::post('/patient/medications', [PatientController::class, 'storeMedication'])->name('patient.medications.store');
+    Route::put('/patient/medications/{medication}', [PatientController::class, 'updateMedication'])->name('patient.medications.update');
+    Route::patch('/patient/medications/{medication}/toggle', [PatientController::class, 'toggleStatusMedication'])->name('patient.medications.toggle');
+    Route::get('/patient/pdf/clinical-history/{patient}', [PatientController::class, 'downloadClinicalHistory'])->name('patient.pdf.clinical-history');
+
+    // Ruta para que el paciente ejecute la cancelación desde la web
+    Route::post('/patient/appointments/{id}/cancel', [AppointmentController::class, 'cancelWeb'])->name('patient.appointments.cancel');
+
+    // Ruta de la sala de espera para el paciente
+    Route::get('/patient/meet/{room_code}', [AppointmentController::class, 'waitingRoom'])->name('patient.appointments.waiting_room');
+});
+
+//pasos de la reservacion
+Route::middleware(['auth'])->group(function () {    
     // Vista principal de todas las notificaciones
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
 
     // Acción para marcar una o todas como leídas
     Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.readAll');
+
+    // Esta es la que pones en el FORMULARIO
+    Route::get('/appointments/confirm/{id}', [AppointmentController::class, 'confirm'])->name('appointments.confirm');    
+
+    // Ruta para procesar el formulario de documentos
+    Route::post('/partner/verify-documents', [VerificationController::class, 'store'])->name('partner.verify.store');
 });
 
-// Rutas protegidas (dentro del grupo de auth)
-Route::middleware(['auth:sanctum', 'verified'])->group(function () {
-    Route::get('/campaigns', \App\Livewire\Campaigns\CampaignIndex::class)->name('campaigns.index');
-    Route::get('/campaigns/create', \App\Livewire\Campaigns\CreateCampaign::class)->name('campaigns.create');
-});
+Route::get('/', [HomeController::class, 'index'])->name('home');
+
+Route::get('/contact', [ContactController::class, 'showContact'])->name('contact.show');
+Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
+
+Route::get('/terms', [ContactController::class, 'showTerms'])->name('terms.show');
+Route::get('/privacy', [ContactController::class, 'showPrivacy'])->name('privacy.show');
+Route::get('/support', [ContactController::class, 'showSupport'])->name('support.show');
+
+Route::get('/register-options', function () {
+    return view('auth.register-options');
+})->name('register.options');
+
+// Ruta para mostrar el formulario (GET)
+Route::get('/register-partner', [RegisterDoctorController::class, 'register'])->name('partner.register');
+// Ruta para procesar el registro (POST) - La que definimos antes
+Route::post('/register-partner', [RegisterDoctorController::class, 'store'])->name('partner.register.store');
+
+Route::get('/register-clinic', function () {
+    return view('auth.register-clinic');
+})->name('clinic.register');
+
+Route::post('/register-clinic', [RegisterClinicController::class, 'store'])->name('clinic.register.store');
+
+Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
+
+// Rutas Públicas
+Route::get('/search', [SearchController::class, 'index'])->name('search');
+// Asegúrate de colocarla con método GET para que la paginación funcione correctamente
+Route::get('/search-by-symptom', [SearchController::class, 'searchBySymptom'])->name('partner.search.symptom');
+// Nueva vista dedicada al Triage Inteligente
+Route::get('/search-symptom', [SearchController::class, 'searchSymptomView'])->name('search.symptom.view');
 
 Route::get('/{partner_slug}/{campaign_slug}.html', PublicLanding::class)->name('landing.public');
 
@@ -304,15 +326,6 @@ Route::get('/api/get-slots', function (Request $request) {
     return response()->json($slots);
 })->name('api.slots.index');
 
-//pasos de la reservacion
-Route::middleware(['auth'])->group(function () {    
-    // Esta es la que pones en el FORMULARIO
-    Route::get('/appointments/confirm/{id}', [AppointmentController::class, 'confirm'])->name('appointments.confirm');    
-
-    // Ruta para procesar el formulario de documentos
-    Route::post('/partner/verify-documents', [VerificationController::class, 'store'])->name('partner.verify.store');
-});
-
 Route::post('/appointments/step-two', [AppointmentController::class, 'storeStepTwo'])->name('appointments.step-two');
 Route::get('/appointments/patient', [AppointmentController::class, 'patient'])->name('appointments.patient');
 Route::post('/appointments/process-patient', [AppointmentController::class, 'processPatient'])->name('appointments.process-patient');
@@ -332,34 +345,16 @@ Route::get('/api/departments/{department}/cities', function ($deptId) {
         ->get(['id', 'name']);
 });
 
-Route::middleware(['auth', 'role:patient'])->group(function () {        
-    Route::get('/patient/patient-identification', [PatientController::class, 'index'])->name('patient.patient-identification.index');
-    Route::put('/patient/patient-identification/{patient}', [PatientController::class, 'update'])->name('patient.patient-identification.update');
-    Route::get('/patient/appointments', [PatientController::class, 'appointments'])->name('patient.appointments.index');
-    Route::get('/patient/allergies', [PatientController::class, 'indexAllergy'])->name('patient.allergies.index');
-    Route::get('/patient/history', [PatientController::class, 'history'])->name('patient.history.index');
-    Route::get('/patient/surgeries', [PatientController::class, 'surgeries'])->name('patient.surgeries.index');
-    Route::post('/patient/surgeries', [PatientController::class, 'storeSurgery'])->name('patient.surgeries.store');
-    Route::get('/patient/surgeries/{surgery}/edit', [PatientController::class, 'editSurgery'])->name('patient.surgeries.edit');
-    Route::put('/patient/surgeries/{surgery}', [PatientController::class, 'updateSurgery'])->name('patient.surgeries.update');
-    Route::delete('/patient/surgeries/{surgery}', [PatientController::class, 'destroySurgery'])->name('patient.surgeries.destroy');
-    Route::post('/patient/{id}/allergies', [PatientController::class, 'storeAllergy'])->name('patient.allergies.store');
-    Route::delete('/patient/allergies/{allergy}', [PatientController::class, 'destroyAllergy'])->name('patient.allergies.destroy');
-    Route::get('/patient/family-history', [PatientController::class, 'indexFamilyHistory'])->name('patient.family-history.index');
-    Route::post('/patient/family-history', [PatientController::class, 'storeFamilyHistory'])->name('patient.family-history.store');
-    Route::delete('/patient/allergies/{id}', [PatientController::class, 'destroyFamilyHistory'])->name('patient.family-history.destroy');
+// Ruta pública para que Google rastree todos tus enlaces indexables
+Route::get('/sitemap.xml', [SearchController::class, 'generateSitemap'])->name('seo.sitemap');
+Route::redirect('/dashboard', '/admin', 301);
 
-    Route::get('/patient/medications', [PatientController::class, 'indexMedication'])->name('patient.medications.index');
-    Route::delete('/patient/medications/{medication}', [PatientController::class, 'destroyMedication'])->name('patient.medications.destroy');
 
-    Route::post('/patient/medications', [PatientController::class, 'storeMedication'])->name('patient.medications.store');
-    Route::put('/patient/medications/{medication}', [PatientController::class, 'updateMedication'])->name('patient.medications.update');
-    Route::patch('/patient/medications/{medication}/toggle', [PatientController::class, 'toggleStatusMedication'])->name('patient.medications.toggle');
-    Route::get('/patient/pdf/clinical-history/{patient}', [PatientController::class, 'downloadClinicalHistory'])->name('patient.pdf.clinical-history');
+//Páginas de Síntomas Indexables Automáticas
 
-    // Ruta para que el paciente ejecute la cancelación desde la web
-    Route::post('/patient/appointments/{id}/cancel', [AppointmentController::class, 'cancelWeb'])->name('patient.appointments.cancel');
+// LA RUTA SEO DINÁMICA: Google y los usuarios entrarán aquí
+Route::get('/sintomas/{slug}', [SearchController::class, 'showSymptomLanding'])->name('symptoms.landing');
 
-    // Ruta de la sala de espera para el paciente
-    Route::get('/patient/meet/{room_code}', [AppointmentController::class, 'waitingRoom'])->name('patient.appointments.waiting_room');
-});
+// Directorio médico de socios ordenado por planes de suscripción
+Route::get('/medical-directory', [SearchController::class, 'medicalDirectory'])->name('medical.directory');
+

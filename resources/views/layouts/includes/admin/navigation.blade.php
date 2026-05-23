@@ -9,7 +9,7 @@
                 </svg>
             </button>
             <a href="https://opendoctor.online" class="flex ms-2 md:me-24">
-                <img src="{{ asset('images/logoOpenDoctor.jpg') }}" class="rounded h-8" alt="OpenDoctor Reservaciones medicas" />
+                <img src="{{ asset('images/logoOpenDoctor.jpg') }}" class="size-8 rounded-full object-cover" alt="OpenDoctor Reservaciones Médicas" />
                 <span class="self-center text-xl text-heading font-semibold whitespace-nowrap">
                     <div class="flex items-center gap-2 ml-2">
                         <span class="text-lg font-black text-slate-900 tracking-tight">
@@ -45,6 +45,10 @@
                         <div class="block px-4 py-2 text-xs text-gray-400">
                             {{ __('Manage Account') }}
                         </div>
+
+                        <x-dropdown-link href="{{ route('admin.dashboard') }}">
+                            {{ __('Dashboard') }}
+                        </x-dropdown-link>
 
                         <x-dropdown-link href="{{ route('profile.show') }}">
                             {{ __('Profile') }}

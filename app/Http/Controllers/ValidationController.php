@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Doctor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Symfony\Component\HttpFoundation\Response;
 use App\Mail\ValidationStatusNotification;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class ValidationController extends Controller
 {
@@ -19,9 +19,9 @@ class ValidationController extends Controller
     {
         // Traemos los médicos pendientes junto con sus datos de usuario nativos
         $doctors = Doctor::with('user')
-            ->where('validation_status', 'pending_validation')
+            ->whereIn('validation_status', ['pending_validation', 'missing'])
             ->latest()
-            ->paginate(10);
+            ->paginate(10);                    
 
         return view('administrator.validation.index', compact('doctors'));
     }
@@ -71,29 +71,34 @@ class ValidationController extends Controller
      */
     public function viewDocument(Doctor $doctor, $type)
     {
-        // 1. Como pusiste todo con 'Doctor $doctor', Laravel ya buscó por slug 
-        // y te entregó el objeto del médico completo aquí.
-        
-        // 2. Obtenemos el path guardado en la base de datos (ej: "verification_docs/xxxx.jpg")
+        // 1. Obtenemos el path relativo directo guardado en la base de datos
         $relativePath = ($type === 'cedula') ? $doctor->identity_card_path : $doctor->professional_card_path;
 
-        // 3. Construimos la ruta física uniendo 'public' con el path de la base de datos
-        $fullPath = storage_path('app/public/' . $relativePath);
-
-        // 4. Validamos la existencia real en el disco duro
-        if (!$relativePath || !file_exists($fullPath)) {
+        // 2. Validamos la existencia real utilizando el sistema de archivos oficial de Laravel
+        if (!$relativePath || !Storage::disk('public')->exists($relativePath)) {
             abort(404, 'Lo sentimos, el archivo físico no se encuentra en el servidor.');
         }
 
-        // 5. Obtenemos el tipo MIME usando el disco público de Laravel
+        // 3. Obtenemos la ruta física absoluta de manera segura
+        $fullPath = Storage::disk('public')->path($relativePath);
+
+        // 4. Calculamos el tipo MIME real del archivo
         $mimeType = Storage::disk('public')->mimeType($relativePath);
 
-        // 6. Retornamos el archivo inline de forma segura
-        return response()->file($fullPath, [
+        // 5. 💡 EXTRAEMOS LA EXTENSIÓN REAL DEL ARCHIVO (Fijación crítica contra alertas)
+        $extension = pathinfo($fullPath, PATHINFO_EXTENSION);
+        $nombreLimpio = $type . '-' . Str::slug($doctor->user->name) . '.' . $extension;
+
+        // 6. Encabezados de seguridad e inyección inline estricta
+        $headers = [
             'Content-Type' => $mimeType,
-            'Content-Disposition' => 'inline; filename="' . basename($fullPath) . '"',
-            'X-Content-Type-Options' => 'nosniff',
+            'Content-Disposition' => 'inline; filename="' . $nombreLimpio . '"',
+            'X-Content-Type-Options' => 'nosniff', // Prohibir sniffing de código
+            'Content-Length' => filesize($fullPath),
             'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
-        ]);
+        ];
+
+        // 7. Retornamos el archivo
+        return response()->file($fullPath, $headers);
     }
 }

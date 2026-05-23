@@ -7,6 +7,7 @@ use App\Models\Specialty;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class RegisterDoctorController extends Controller
 {
@@ -23,7 +24,7 @@ class RegisterDoctorController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'identification' => 'required|string|max:30|unique:doctors,identification',
-            'phone' => 'required|string|max:20', // <-- ¡FALTA AGREGAR ESTO!
+            'phone' => ['required', 'string', 'regex:/^[0-9]{10}$/'], 
             'medical_license' => 'nullable|string|max:50',
             'password' => 'required|min:8|confirmed',
             'specialties' => 'required|array|min:1',
@@ -34,20 +35,22 @@ class RegisterDoctorController extends Controller
         DB::transaction(function () use ($request) {
             // 1. Crear Usuario
             $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
+                'name'     => $request->name,
+                'email'    => $request->email,
                 'password' => Hash::make($request->password),
-                'role' => 'doctor',
+                'role'     => 'doctor',          
             ]);
 
-            // 2. Crear Perfil de Doctor asociado
+            $user->assignRole('doctor');
+            
+            // 4. Crear Perfil de Doctor asociado
             $doctor = $user->doctor()->create([
                 'medical_license' => $request->medical_license,
-                'identification' => $request->identification,
-                'phone' => $request->phone,
+                'identification'  => $request->identification,
+                'phone'           => $request->phone,
             ]);
 
-            // 3. Guardar en la tabla pivote doctor_specialty
+            // 5. Guardar las especialidades en la tabla pivote doctor_specialty
             $doctor->specialties()->attach($request->specialties);
         });
 

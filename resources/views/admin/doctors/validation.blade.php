@@ -47,7 +47,7 @@
                         <td class="p-4 space-y-1">
                             <a href="{{ route('admin.doctors.document.view', [$doctor, 'cedula']) }}" target="_blank" 
                                class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline">
-                                🪪 Ver Cédula de Identidad
+                                📜 Ver Cédula de Identidad
                             </a>
                             <br>
                             <a href="{{ route('admin.doctors.document.view', [$doctor, 'tarjeta']) }}" target="_blank" 

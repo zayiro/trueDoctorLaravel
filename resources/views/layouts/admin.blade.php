@@ -11,6 +11,7 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ $title }}</title>
+        <meta name="robots" content="@yield('meta_robots', 'index, follow')">
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
