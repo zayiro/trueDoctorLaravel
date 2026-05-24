@@ -5,6 +5,9 @@ namespace App\Providers;
 use App\Models\Doctor;
 use App\Observers\DoctorObserver;
 
+use App\Models\Clinic;
+use App\Observers\ClinicObserver;
+
 use App\Models\User;
 use App\Observers\UserObserver;
 
@@ -42,6 +45,7 @@ class AppServiceProvider extends ServiceProvider
         // se habilitarán allí al instante sin que tenga que editar nada.
         Address::observe(AddressObserver::class);
         // Vinculamos el modelo con su observador
+        Clinic::observe(ClinicObserver::class);
         Doctor::observe(DoctorObserver::class);
     }
 }

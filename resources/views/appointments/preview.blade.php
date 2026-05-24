@@ -1,15 +1,26 @@
 <x-guest-layout>
-    <div class="max-w-xl mx-auto py-12 px-4 mt-6">
+    <div class="max-w-3xl mx-auto py-12 px-4 mt-6">
+        @if(session('error'))
+            <div class="flex items-center p-4 mb-4 text-red-800 rounded-2xl bg-red-50 border border-red-100 shadow-sm" role="alert">
+                <svg class="flex-shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://w3.org" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+                </svg>
+                <div class="ms-3 text-sm font-bold">
+                    {{ session('error') }}
+                </div>
+            </div>
+        @endif
+        
         <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
             <div class="bg-blue-600 p-6 text-center text-white">
-                <h2 class="text-xl font-bold text-white/90">Resumen de tu reserva</h2>
+                <h2 class="text-xl font-bold text-white/90">Resumen de tu reserva</h2>                
             </div>
             
             <div class="p-8 space-y-6">
                 <!-- Doctor -->
                 <div class="flex justify-between border-b pb-4">
                     <span class="text-gray-500 font-medium">Doctor</span>
-                    <span class="font-bold text-gray-800">{{ $appointment->doctor->user->name }}</span>
+                    <span class="font-bold text-gray-800">{{ ucfirst($appointment->doctor->user->name) }}</span>
                 </div>
 
                 <!-- Lugar de la cita -->

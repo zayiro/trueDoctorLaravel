@@ -28,7 +28,7 @@ class PublicProfileController extends Controller
             }
         ]);
 
-        session(['current_doctor_id' => $partner->id]);
+        session(['current_doctor_id' => $partner->user_id]);
                 
         $seoTitle = "Dr(a). " . ucfirst($partner->user->name) . ' | Orientación Médica';
         $seoDescription = $partner->bio ?? 'Especialista certificado de OpenDoctor, reserva tu cita en línea';

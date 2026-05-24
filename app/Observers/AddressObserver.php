@@ -12,18 +12,31 @@ class AddressObserver
      */
     public function created(Address $address): void
     {
-        // 1. Buscamos todos los servicios virtuales que pertenecen a este doctor
-        // Usamos whereHas para filtrar servicios que ya estén vinculados a otras sedes del mismo doctor
-        $virtualServices = Service::where('type', 'virtual')
-            ->whereHas('addresses', function ($query) use ($address) {
-                $query->where('doctor_id', $address->doctor_id);
-            })
+        // 🌟 REGLA 1: Solo actuamos si la sede que se está creando es de tipo VIRTUAL
+        if ($address->type !== 'virtual') {
+            return;
+        }
+
+        // 2. Obtenemos todos los servicios virtuales definidos en el catálogo global del SaaS
+        $globalVirtualServices = Service::where('type', 'virtual')
+            ->where('active', true)
             ->get();
 
-        // 2. Asociamos estos servicios a la nueva sede
-        if ($virtualServices->isNotEmpty()) {
-            $address->services()->attach($virtualServices->pluck('id'));
+        if ($globalVirtualServices->isEmpty()) {
+            return;
         }
+
+        // 3. Estructurar el array para la tabla pivote inyectando los campos obligatorios
+        $attachData = [];
+        foreach ($globalVirtualServices as $service) {
+            $attachData[$service->id] = [
+                'price'    => 0.00,  // Precio base por defecto
+                'duration' => 20,    // Duración estimada base en minutos
+            ];
+        }
+
+        // 4. Vinculación atómica en la tabla pivote address_service usando el address_id nativo
+        $address->services()->attach($attachData);
     }
 
     /**
@@ -38,22 +51,6 @@ class AddressObserver
      * Handle the Address "deleted" event.
      */
     public function deleted(Address $address): void
-    {
-        //
-    }
-
-    /**
-     * Handle the Address "restored" event.
-     */
-    public function restored(Address $address): void
-    {
-        //
-    }
-
-    /**
-     * Handle the Address "force deleted" event.
-     */
-    public function forceDeleted(Address $address): void
     {
         //
     }

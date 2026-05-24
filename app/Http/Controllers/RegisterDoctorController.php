@@ -31,28 +31,37 @@ class RegisterDoctorController extends Controller
             'specialties.*' => 'exists:specialties,id',
         ]);
 
-        // Usamos transacción para asegurar que se cree el usuario Y el doctor
-        DB::transaction(function () use ($request) {
-            // 1. Crear Usuario
-            $user = User::create([
-                'name'     => $request->name,
-                'email'    => $request->email,
-                'password' => Hash::make($request->password),
-                'role'     => 'doctor',          
-            ]);
+        $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
+        $cleanIdentification = str_replace('-', '', $request->nit);
 
-            $user->assignRole('doctor');
-            
-            // 4. Crear Perfil de Doctor asociado
-            $doctor = $user->doctor()->create([
-                'medical_license' => $request->medical_license,
-                'identification'  => $request->identification,
-                'phone'           => $request->phone,
-            ]);
+        try {
+            // Usamos transacción para asegurar que se cree el usuario Y el doctor
+            DB::transaction(function () use ($request, $cleanPhone, $cleanIdentification) {
+                // 1. Crear Usuario
+                $user = User::create([
+                    'name'     => $request->name,
+                    'email'    => $request->email,
+                    'password' => Hash::make($request->password),
+                    'role'     => 'doctor',          
+                ]);
 
-            // 5. Guardar las especialidades en la tabla pivote doctor_specialty
-            $doctor->specialties()->attach($request->specialties);
-        });
+                $user->assignRole('doctor');
+                
+                // 4. Crear Perfil de Doctor asociado
+                $doctor = $user->doctor()->create([
+                    'medical_license'   => $request->medical_license,
+                    'identification'    => $cleanIdentification,
+                    'phone'             => $cleanPhone,
+                    'validation_status' => 'missing', 
+                    'active'            => true
+                ]);
+
+                // 5. Guardar las especialidades en la tabla pivote doctor_specialty
+                $doctor->specialties()->attach($request->specialties);
+            });
+        } catch (\Exception $e) {
+            dd("Error en el registro desacoplado del SaaS: " . $e->getMessage());
+        }
 
         return redirect()->route('login')->with('success', 'Registro exitoso. Tu perfil médico está en proceso de validación.');
     }

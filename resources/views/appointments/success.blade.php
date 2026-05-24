@@ -91,7 +91,7 @@
 
                 <!-- Sección de Acciones Virtuales Oculta si está pendiente -->
                 @if(!$isPending && $appointment->meeting_link)
-                    <div class="my-3 text-blue-900">¡Recuerda conectarte 15 minutos antes del inicio de la videollamada para validar que el audio y video funcionen correctamente!</div>
+                    <div class="my-3 text-blue-900">Por favor, ingresa al enlace 5 minutos antes de la hora programada para realizar las pruebas técnicas de audio y cámara.</div>
                     <div class="mt-8 p-4 bg-purple-50 rounded-2xl border border-purple-100 flex items-center justify-between">
                         <p class="text-sm text-purple-800 font-medium">Tu link de telemedicina está listo:</p>
                         <a href="{{ $appointment->meeting_link }}" target="_blank" class="bg-purple-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-purple-700">Acceder ahora</a>

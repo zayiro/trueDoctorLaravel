@@ -1,9 +1,16 @@
-@php
-$thereAreServices = 1;
-@endphp
-
 <x-guest-layout>
     <div class="max-w-7xl mx-auto px-4 py-8 mt-5">
+        @if(session('error'))
+            <div class="flex items-center p-4 mt-5 mb-4 text-red-800 rounded-2xl bg-red-50 border border-red-100 shadow-sm" role="alert">
+                <svg class="flex-shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://w3.org" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+                </svg>
+                <div class="ms-3 text-sm font-bold">
+                    {{ session('error') }}
+                </div>
+            </div>
+        @endif
+
         <!-- Barra de Filtros -->
         <form wire:submit.prevent="{{ route('search') }}" action="{{ route('search') }}" method="GET" class="bg-white mt-8 p-4 rounded-xl shadow-md flex flex-wrap gap-4 mb-8">
             <div class="flex-1 min-w-[200px]">
@@ -120,7 +127,7 @@ $thereAreServices = 1;
                                             <span>{{ $address->name }}</span>
                                             <span>{{ $address->address }} {{ $address->address == 'Plataforma Online' ? '' : ',' . $address->city->name }}</span>
                                         </div>
-                                        @if($address->services->count() > 0)
+                                        
                                         <div class="flex flex-wrap gap-2 mt-1 mb-4">
                                             @if($address->services)
                                                 @foreach($address->services->take(3) as $service)
@@ -134,11 +141,7 @@ $thereAreServices = 1;
                                             @else
                                                 <span class="text-xs text-gray-400 italic">No tiene servicios registrados</span>
                                             @endif
-                                        </div>
-                                        @else
-                                        @php $thereAreServices = 0; @endphp
-                                        <span>No hay servicios configurados</span>
-                                        @endif
+                                        </div>                                    
                                     @endforeach
                                 </div>
                                 @endif
@@ -146,9 +149,9 @@ $thereAreServices = 1;
                             
                             <!-- Acciones -->                            
                             <div class="flex flex-col justify-center gap-3 min-w-[180px]">
-                                @if($doctor->addresses->count() > 0 && $thereAreServices)
+                                @if($doctor->addresses->count() > 0)
                                 <a href="{{ route('partner.public.profile', $doctor) }}" 
-                                class="bg-blue-500 hover:bg-blue-700 text-white text-center py-2 px-4 rounded">
+                                class="bg-blue-500 hover:bg-blue-700 text-white text-center py-2 px-4 rounded shadow-lg">
                                     Ver disponibilidad
                                 </a>
                                 <p class="text-[10px] text-center text-slate-400 font-medium">Citas a través de {{ config('app.name', 'Reservaciones en línea') }}</p>

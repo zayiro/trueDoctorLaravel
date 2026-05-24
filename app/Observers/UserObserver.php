@@ -19,21 +19,26 @@ class UserObserver
     {
         // Evaluamos el rol del enum de tu tabla 'users'
         //enviamos el correo de bienvenida al usuario segun el role
+        $userEmail = $user->email;
+
+        //para test o cuando SES este en sandbox
+        $userEmail = "ocampotecnologo@gmail.com";
+        
         switch ($user->role) {
             case 'doctor':
-                Mail::to($user->email)->send(new WelcomeDoctorMail($user));
+                Mail::to($userEmail)->send(new WelcomeDoctorMail($user));
                 break;
 
             case 'patient':
-                Mail::to($user->email)->send(new WelcomePatientMail($user));
+                Mail::to($userEmail)->send(new WelcomePatientMail($user));
                 break;
 
             case 'clinic':
-                Mail::to($user->email)->send(new WelcomeClinicMail($user));
+                Mail::to($userEmail)->send(new WelcomeClinicMail($user));
                 break;
             
             case 'admin':
-                Mail::to($user->email)->send(new WelcomeAdminMail($user));
+                Mail::to($userEmail)->send(new WelcomeAdminMail($user));
                 break;
         }
     }

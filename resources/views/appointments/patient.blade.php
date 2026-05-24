@@ -1,35 +1,35 @@
 <x-guest-layout>
-    <div class="max-w-2xl mx-auto py-12 px-4">
+    <div class="max-w-3xl mx-auto py-12 px-4 mt-6">
+        @if(session('error'))
+            <div class="flex items-center p-4 mb-4 text-red-800 rounded-2xl bg-red-50 border border-red-100 shadow-sm" role="alert">
+                <svg class="flex-shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://w3.org" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+                </svg>
+                <div class="ms-3 text-sm font-bold">
+                    {{ session('error') }}
+                </div>
+            </div>
+        @endif
+        
+        @if ($errors->any())
+            <div class="flex p-4 mb-4 text-amber-800 rounded-2xl bg-amber-50 border border-amber-100 shadow-sm" role="alert">
+                <svg class="flex-shrink-0 w-4 h-4 mt-0.5" aria-hidden="true" xmlns="http://w3.org" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+                </svg>
+                <div class="ms-3">
+                    <span class="text-sm font-black uppercase tracking-wide">Por favor corrige lo siguiente:</span>
+                    <ul class="mt-1.5 list-disc list-inside text-xs font-medium">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+        @endif
+        
         <div class="bg-white rounded-3xl shadow-xl p-8 mt-5 mb-8 border border-gray-100">
             <h2 class="text-2xl font-black text-gray-800 mb-6">Completa tus datos</h2>
-
-            @if(session('error'))
-                <div class="flex items-center p-4 mb-4 text-red-800 rounded-2xl bg-red-50 border border-red-100 shadow-sm" role="alert">
-                    <svg class="flex-shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://w3.org" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
-                    </svg>
-                    <div class="ms-3 text-sm font-bold">
-                        {{ session('error') }}
-                    </div>
-                </div>
-            @endif
             
-            @if ($errors->any())
-                <div class="flex p-4 mb-4 text-amber-800 rounded-2xl bg-amber-50 border border-amber-100 shadow-sm" role="alert">
-                    <svg class="flex-shrink-0 w-4 h-4 mt-0.5" aria-hidden="true" xmlns="http://w3.org" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
-                    </svg>
-                    <div class="ms-3">
-                        <span class="text-sm font-black uppercase tracking-wide">Por favor corrige lo siguiente:</span>
-                        <ul class="mt-1.5 list-disc list-inside text-xs font-medium">
-                            @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                </div>
-            @endif
-
             @if (!$isSelfBooking)
                 <form action="{{ route('appointments.process-patient') }}" method="POST">
                     @csrf
@@ -95,7 +95,7 @@
                                     {{ substr(auth()->user()->name, 0, 1) }}
                                 </div>
                                 <div>
-                                    <p class="text-sm text-blue-800 font-bold">{{ auth()->user()->name }}</p>
+                                    <p class="text-sm text-blue-800 font-bold">{{ ucfirst(auth()->user()->name) }}</p>
                                     <p class="text-xs text-blue-600">Perfil activo para reservación</p>
                                 </div>
                             </div>
@@ -111,7 +111,7 @@
 
                     <div class="mt-8 flex items-center justify-between">
                         <a href="{{ url()->previous() }}" class="text-gray-500 font-bold hover:underline">Volver</a>
-                        <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded shadow-lg">
                             Continuar
                         </button>
                     </div>

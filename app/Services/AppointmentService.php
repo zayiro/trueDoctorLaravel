@@ -12,39 +12,56 @@ class AppointmentService
 {
     /**
      * Genera los slots (intervalos) disponibles para un doctor en una dirección específica.
-     * Soporta flujos Web y API Externa, citas presenciales y virtuales.
+     * Soporta flujos Web, App Móvil y API Externa, citas presenciales y virtuales corporativas.
      */
-    public function getAvailableSlots($addressId, $date, $isVirtual = false)
+    public function getAvailableSlots($addressId, $date, $doctorId, $isVirtual = false)
     {
         $requestedDate = Carbon::parse($date);
-        $dayOfWeek = $requestedDate->dayOfWeekIso; // 1 (Lunes) a 7 (Domingo) - Alineado con tu migración
         
-        // 1. Obtener la dirección, el doctor y sus configuraciones de forma segura
-        $address = Address::with(['services', 'doctor.settings'])->find($addressId);
+        // El bucle de nuestro backend procesa los días de 0 (Domingo) a 6 (Sábado)
+        $dayOfWeek = $requestedDate->dayOfWeek; 
+        
+        // 1. Obtener la sede con sus relaciones estructurales cruzadas de co-propiedad
+        $address = Address::with(['clinic.settings', 'services' => function($q) {
+            $q->where('active', true);
+        }])->find($addressId);
+        
         if (!$address) return [];
-        $doctorId = $address->doctor_id;
 
-        // Extraer la duración configurada en la tabla intermedia (Pivot)
+        // Buscamos la duración específica del servicio asignado a esta sede física o virtual
         $serviceSpecific = $address->services->first();
         $intervalMinutes = $serviceSpecific && $serviceSpecific->pivot ? (int) $serviceSpecific->pivot->duration : 20;
 
-        // 2. Obtener horario base (Arreglado el bug virtual)
+        // 2. Obtener horario base adaptado para consultorios institucionales y privados
         if ($isVirtual) {
-            $schedule = Schedule::join('addresses', 'schedules.address_id', '=', 'addresses.id')
-                ->where('addresses.doctor_id', $doctorId)
-                ->where('schedules.day', $dayOfWeek)
-                ->selectRaw('MIN(start_time) as start_time, MAX(end_time) as end_time')
-                ->first();
-        } else {
+            // El médico puede hacer telemedicina en su consulta privada o contratado por una clínica
             $schedule = Schedule::where('address_id', $addressId)
+                ->where('doctor_id', $doctorId)
+                ->where('day', $dayOfWeek)
+                ->first();
+                
+            // Contingencia: Si no hay horario virtual local, busca su bloque técnico general
+            if (!$schedule) {
+                $schedule = Schedule::where('address_id', $addressId)
+                    ->where('day', $dayOfWeek)
+                    ->first();
+            }
+        } else {
+            // Sede física: Se extrae el bloque de horas que el médico tiene asignado en ese consultorio
+            $schedule = Schedule::where('address_id', $addressId)
+                ->where('doctor_id', $doctorId)
                 ->where('day', $dayOfWeek)
                 ->first();
         }
 
         if (!$schedule || !$schedule->start_time) return [];
 
-        // 3. Crear todos los bloques de tiempo posibles
-        $allSlots = $this->generateTimeSlots($schedule->start_time, $schedule->end_time, $intervalMinutes);
+        // Convertimos Carbon Strings a strings planos limpios para la matriz matemática
+        $startTimeStr = $schedule->start_time instanceof Carbon ? $schedule->start_time->format('H:i:s') : $schedule->start_time;
+        $endTimeStr = $schedule->end_time instanceof Carbon ? $schedule->end_time->format('H:i:s') : $schedule->end_time;
+
+        // 3. Generar la matriz de bloques de tiempo posibles
+        $allSlots = $this->generateTimeSlots($startTimeStr, $endTimeStr, $intervalMinutes);
 
         // 4. Obtener bloqueos (unavailabilities) activos del doctor
         $unavailabilities = Unavailability::where('doctor_id', $doctorId)
@@ -59,11 +76,17 @@ class AppointmentService
             })
             ->get();
 
-        // 5. Cargar las horas de aviso mínimo de la tabla doctor_settings (por defecto 24 horas)
-        $address = Address::with(['services', 'doctor.settings'])->find($addressId);
-        $minNoticeHours = $address->doctor->settings->min_notice_hours ?? 24;
+        // 5. 🔥 CARGA INTELIGENTE DE POLÍTICAS DE ANTICIPACIÓN (SaaS Multi-inquilino)
+        // Si la sede le pertenece a una clínica, hereda sus plazos; si no, lee los de la consulta privada del doctor
+        if ($address->clinic_id && $address->clinic) {
+            $settings = $address->clinic->settings;
+            $minNoticeHours = $settings->min_notice_hours ?? 2;
+        } else {
+            $doctorModel = \App\Models\Doctor::with('settings')->find($doctorId);
+            $settings = $doctorModel?->settings;
+            $minNoticeHours = $settings->min_notice_hours ?? 24;
+        }
         
-        // Calcular el límite exacto sumando la anticipación requerida a la hora de este instante
         $limiteCitaMinima = Carbon::now()->addHours($minNoticeHours);
 
         // 6. Filtrar disponibilidad real cruzando con el validador de traslapes y anticipación
@@ -71,8 +94,7 @@ class AppointmentService
             $startTimeString = $slot['start'];
             $slotDateTime = Carbon::parse("$date $startTimeString");
 
-            // 👇 REGLA DE ORO DE ANTICIPACIÓN: El bloque de la cita no puede violar las horas de aviso mínimo configuradas.
-            // Esto bloquea horas pasadas de hoy y también horas del día de mañana si no cumplen el mínimo de anticipación.
+            // REGLA DE ORO DE ANTICIPACIÓN: Control estricto de horas pasadas
             $esPasado = $slotDateTime->lt($limiteCitaMinima);
 
             // Condición B: ¿Está bloqueado manualmente por ausencia del doctor?
@@ -88,9 +110,11 @@ class AppointmentService
             $estaOcupado = !$this->isAvailable($doctorId, $date, $startTimeString, $intervalMinutes);
 
             return [
-                'time' => Carbon::parse($startTimeString)->format('H:i'),
+                'time'      => Carbon::parse($startTimeString)->format('H:i'),
                 'available' => !$esPasado && !$estaBloqueado && !$estaOcupado
             ];
+        })->filter(function($slot) {
+            return $slot['available'] === true; // API Filtra solo los bloques listos para agendar
         })->values()->toArray();
     }
 
@@ -154,73 +178,41 @@ class AppointmentService
             ->exists();
     }
 
-        /**
-     * Valida si una cita específica se puede cancelar o reprogramar
-     * basándose en las políticas de aviso del doctor.
-     *
-     * @param int $appointmentId
-     * @return array ['allowed' => bool, 'message' => string]
+    /**
+     * Valida si una cita específica se puede cancelar o reprogramar (Reparada y Completada)
      */
     public function checkIfCanModify($appointmentId)
     {
-        // 1. Buscar la cita junto con la relación de configuraciones de su doctor
-        $appointment = Appointment::with('doctor.settings')->find($appointmentId);
+        $appointment = Appointment::with(['doctor.settings', 'clinic.settings'])->find($appointmentId);
 
         if (!$appointment) {
-            return [
-                'allowed' => false,
-                'message' => 'The requested appointment does not exist.'
-            ];
+            return ['allowed' => false, 'message' => 'La cita solicitada no existe en la base de datos.'];
         }
 
-        // 2. Verificar si el estado actual permite alguna modificación
         if (in_array($appointment->status, ['cancelled', 'completed'])) {
-            return [
-                'allowed' => false,
-                'message' => "Cannot modify an appointment that is already marked as '{$appointment->status}'."
-            ];
+            return ['allowed' => false, 'message' => "No se puede modificar una cita con estado '{$appointment->status}'."];
         }
 
-        // 3. Extraer las políticas de cancelación desde doctor settings (respaldo de 24 horas por defecto)
-        $settings = $appointment->doctor->settings;
-        $allowPatientCancellation = $settings->allow_patient_cancellation ?? true;
-        $cancellationNoticeHours = $settings->cancellation_notice_hours ?? 24;
-
-        // Si el doctor desactivó las cancelaciones autónomas en su dashboard
-        if (!$allowPatientCancellation) {
-            return [
-                'allowed' => false,
-                'message' => 'The specialist does not allow autonomous cancellations. Please contact the office directly.'
-            ];
+        // 🔥 CONTROL POLÍTICAS CORPORATIVAS EN EDICIÓN
+        if ($appointment->clinic_id && $appointment->clinic) {
+            $settings = $appointment->clinic->settings;
+            $allowCancellation = $settings->allow_patient_cancellation ?? true;
+            $noticeHours = $settings->cancellation_notice_hours ?? 2;
+        } else {
+            $settings = $appointment->doctor->settings;
+            $allowCancellation = $settings->allow_patient_cancellation ?? true;
+            $noticeHours = $settings->cancellation_notice_hours ?? 24;
         }
 
-        // 4. Cómputo matemático del tiempo restante
-        $now = Carbon::now();
-        $appointmentStartDateTime = Carbon::parse($appointment->date . ' ' . $appointment->start_time);
-
-        // Si la cita ya comenzó o pertenece al pasado
-        if ($appointmentStartDateTime->isPast()) {
-            return [
-                'allowed' => false,
-                'message' => 'Cannot modify an appointment that has already expired or belongs to the past.'
-            ];
+        if (!$allowCancellation) {
+            return ['allowed' => false, 'message' => 'Las políticas vigentes no permiten la cancelación autónoma de citas. Contacta soporte.'];
         }
 
-        // Calcular la diferencia neta en horas entre el momento actual y el inicio de la cita
-        $remainingHours = $now->diffInHours($appointmentStartDateTime, false);
-
-        // Validar si cumple con el mínimo de horas requerido por el doctor
-        if ($remainingHours < $cancellationNoticeHours) {
-            return [
-                'allowed' => false,
-                'message' => "Cancellations or changes must be made at least {$cancellationNoticeHours} hours in advance. Current remaining time: {$remainingHours} hours."
-            ];
+        $appointmentDateTime = Carbon::parse($appointment->date . ' ' . $appointment->start_time);
+        if (Carbon::now()->addHours($noticeHours)->gt($appointmentDateTime)) {
+            return ['allowed' => false, 'message' => "La cita solo puede modificarse con un mínimo de {$noticeHours} horas de anticipación."];
         }
 
-        // Si todas las comprobaciones de seguridad pasan con éxito
-        return [
-            'allowed' => true,
-            'message' => 'The appointment can be modified successfully.'
-        ];
+        return ['allowed' => true, 'message' => 'Modificación permitida por el sistema de políticas.'];
     }
 }

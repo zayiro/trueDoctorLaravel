@@ -18,16 +18,26 @@ class DoctorObserver
 
         // Creamos la configuración por defecto
         DoctorSetting::create([
-            'doctor_id' => $doctor->id,
-            'plan_id' => $defaultPlan->id ?? null,
-            'accepts_online_payments' => false,
-            'currency' => 'COP',
-            'min_notice_hours' => 2,
-            'max_advance_days' => 30,
-            'requires_approval' => false,
-            'email_notifications' => true,
-            'whatsapp_notifications' => false,
+            'doctor_id'                  => $doctor->id,
+            'plan_id'                    => 1, // Premium por defecto según tu requerimiento
+            'accepts_online_payments'    => false,
+            'currency'                   => 'COP',
+            'min_notice_hours'           => 2,
+            'max_advance_days'           => 30,
+            'requires_approval'          => false,
+            'buffer_time_minutes'        => 0,
+            'max_appointments_per_day'   => null,
+            'allow_patient_cancellation' => true,
+            'cancellation_notice_hours'  => 2,
+            'allow_patient_rescheduling' => true,
+            'virtual_meeting_platform'   => 'internal',
+            'google_calendar_sync'       => false,
+            'email_notifications'        => true,
+            'whatsapp_notifications'     => false,
         ]);
+
+        // Autogenera la sede virtual institucional sin duplicados
+        $doctor->createVirtualAddress();
     }
 
     /**

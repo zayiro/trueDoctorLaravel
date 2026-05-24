@@ -37,12 +37,13 @@
                 .then(res => res.json())
                 .then(res => {
                     if (res.exito) {
+                        console.log('Respuesta del servidor:', res); // Debug detallado
                         this.medicos = res.medicos; 
                         this.triageInfo.activa = true; 
                         this.triageInfo.consejo = res.triage.consejo;
                         this.triageInfo.urgencia = res.triage.urgencia;
                         this.triageInfo.nombreEspecialidad = res.triage.especialidad_correcta;
-                        this.triageInfo.slug = res.triage.slug_sugerido; 
+                        this.triageInfo.slug = res.triage.especialidad_slug; 
                     }
                     this.cargando = false;
                 })
@@ -94,7 +95,7 @@
                                 </p>
                                 <p class="text-sm opacity-90">
                                     Contamos con profesionales calificados para atenderte.
-                                    <a :href="`{{ route('search') }}?specialty=${triageInfo.slug}`" class="underline font-bold ml-1 hover:opacity-80 transition">
+                                    <a :href="`{{ route('search') }}?specialty=${triageInfo.slug}&city=null`" class="underline font-bold ml-1 hover:opacity-80 transition">
                                         Ver nuestros especialistas en <span x-text="triageInfo.nombreEspecialidad.toLowerCase()"></span> recomendados →
                                     </a>
                                 </p>

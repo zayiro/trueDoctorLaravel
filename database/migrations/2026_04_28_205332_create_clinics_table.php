@@ -16,11 +16,17 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->text('name');
-            $table->string('nit')->unique();
-            $table->string('plan')->default('basico'); // basico o avanzado
+            $table->string('nit')->unique();            
+            $table->string('reps_code', 12)->unique()->nullable(false);
             $table->string('phone')->nullable();
+            $table->text('bio')->nullable();
+            $table->string('experience_years')->nullable();
             $table->decimal('rating', 3, 2)->default(0);
             $table->integer('reviews_count')->default(0);
+            $table->string('validation_status')->default('missing')->comment('Estados: missing, pending_validation, approved, rejected');
+            $table->string('identity_card_path')->nullable();
+            $table->string('resps_code_card_path')->nullable();
+            $table->boolean('active')->default(true);
             $table->timestamps();
         });
     }

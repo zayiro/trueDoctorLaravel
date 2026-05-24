@@ -3,66 +3,90 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Specialty;
 use App\Models\Clinic;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class RegisterClinicController extends Controller
 {
+    public function register() 
+    {
+        $specialties = Specialty::orderBy('name', 'asc')->get();
+
+        return view('auth.register-clinic', compact('specialties'));
+    }
+
     public function store(Request $request)
     {
         $request->validate([
-            'clinic_name' => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'nit' => [
                 'required',
                 'string',
                 'min:7',
                 'max:20',
                 'unique:clinics,nit',
-                'regex:/^[0-9]+(-[0-9]{1})?$/', // Tu nueva Regex para NIT
+                'regex:/^[0-9]+(-[0-9]{1})?$/', 
             ],
-            'phone' => [
+            'reps_code' => [
                 'required',
                 'string',
-                'min:10',
-                'regex:/^([0-9\s\-\+\(\)]*)$/', // Tu nueva Regex para Teléfono
+                'digits:12', 
+                Rule::unique('clinics', 'reps_code'), 
             ],
-
-            // Datos del Usuario Gerente
-            'name' => 'required|string|max:255',
+            'phone' => ['required', 'string', 'regex:/^[0-9]{10}$/'], 
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:8|confirmed',
         ], [
-            // Mensajes personalizados para que el usuario entienda los errores de Regex
             'nit.regex' => 'El formato del NIT debe ser solo números o incluir el dígito de verificación (ej: 12345678-9).',
-            'phone.regex' => 'El formato del teléfono no es válido. Usa números, espacios o los símbolos + ( ) -',
             'nit.unique' => 'Este NIT ya está registrado en nuestra plataforma.',
+            'phone.regex' => 'El número celular debe contener exactamente 10 dígitos numéricos (ej: 3001234567).',
+            'reps_code.required' => 'El código de habilitación REPS es obligatorio.',
+            'reps_code.digits' => 'El código REPS debe tener exactamente 12 números.',
+            'reps_code.unique' => 'Este código REPS ya se encuentra registrado.',
         ]);        
 
-        DB::transaction(function () use ($request) {
-            // 1. Crear Usuario (Gerente)
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-            ]);
+        $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
+        $cleanNit = str_replace('-', '', $request->nit);
 
-            // 2. Asignar Rol de Spatie
-            $user->assignRole('clinic'); // Asegúrate de haber creado este rol
+        try {
+            DB::transaction(function () use ($request, $cleanNit, $cleanPhone) {
+                // 1. Crear Usuario Gerente
+                $user = User::create([
+                    'name'     => $request->name,
+                    'email'    => $request->email,
+                    'password' => Hash::make($request->password),
+                    'role'     => 'clinic',
+                ]);
 
-            $cleanPhone = preg_replace('/[^0-9+]/', '', $request->phone);
-            $cleanNit = str_replace('-', '', $request->nit);
+                // 2. Asignar Rol con Spatie
+                $user->assignRole('clinic');
 
-            // 3. Crear Perfil de Clínica
-            $user->clinic()->create([
-                'name' => $request->clinic_name,
-                'nit' => $cleanNit,
-                'phone' => $cleanPhone,
-                'plan' => 'basico',
-            ]);
-        });
+                // 3. Crear Perfil de Clínica
+                // 🔥 Al ejecutarse este create(), Laravel dispara el ClinicObserver automáticamente en segundo plano
+                $clinic = $user->clinic()->create([
+                    'name'              => $request->name, 
+                    'nit'               => $cleanNit,
+                    'reps_code'         => $request->reps_code, 
+                    'phone'             => $cleanPhone,
+                    'validation_status' => 'missing', 
+                    'active'            => true
+                ]);
+                
+                // 4. Sincronizar especialidades médicas seleccionadas
+                if ($request->has('specialties')) {
+                    $clinic->specialties()->sync($request->specialties);
+                }
+            });
 
-        return redirect()->route('login')->with('success', 'Clínica registrada. Ya puedes administrar tu centro médico.');
+            return redirect()->route('login')
+                ->with('success', 'Clínica registrada correctamente. Ya puedes iniciar sesión para administrar tu centro médico.');
+
+        } catch (\Exception $e) {
+            dd("Error en el registro desacoplado del SaaS: " . $e->getMessage());
+        }
     }
 }

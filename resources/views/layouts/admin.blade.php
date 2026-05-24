@@ -36,6 +36,9 @@
         @elseif(auth()->user()->role == 'admin')
             @include('layouts.includes.administrator.navigation')
             @include('layouts.includes.administrator.sidebar')
+        @elseif(auth()->user()->role == 'clinic')
+            @include('layouts.includes.clinic.navigation')
+            @include('layouts.includes.clinic.sidebar')
         @else
             @include('layouts.includes.patient.navigation')
             @include('layouts.includes.patient.sidebar')

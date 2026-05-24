@@ -1,4 +1,5 @@
 <x-guest-layout>
+    <!-- Sección: Buscador de especialidades medicas por ciudad (opcional) -->
     <div class="relative bg-white pb-20 pt-16 lg:pt-32 overflow-hidden">
         <div class="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
             <div class="text-center mb-12">
@@ -57,7 +58,8 @@
         </div>
     </div>
 
-    <div class="relative bg-white pb-10 pt-16 lg:pt-4 overflow-hidden">
+    <!-- Sección: buscador de sintomas de enfermedades -->
+    <div class="relative bg-white pb-10 pt-12 lg:pt-4 overflow-hidden">
         <div class="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
             <div class="text-center mb-12">
                 <h1 class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
@@ -91,4 +93,59 @@
             </div>
         </div>
     </div>
+
+    <!-- Sección: Analizador de Exámenes IA -->
+    <div class="relative bg-white pb-10 pt-10 lg:pt-4 overflow-hidden">
+        <section class="my-16 max-w-5xl mx-auto px-4 mt-5">
+            <div class="relative bg-white rounded-[2.5rem] p-8 sm:p-10 overflow-hidden shadow-xl shadow-slate-900/10 border border-slate-800">
+                
+                <!-- Elementos Decorativos de Fondo (Luz radial suave) -->
+                <div class="absolute -right-20 -top-20 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -left-20 -bottom-20 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="grid md:grid-cols-5 gap-8 items-center relative z-10">
+                    <!-- Textos Persuasivos -->
+                     <h1 class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
+                        ¿Tienes exámenes de laboratorio y <span class="text-blue-600">no entiendes los resultados?</span>
+                    </h1>
+                    <div class="md:col-span-3 space-y-4 text-center md:text-left">                        
+                        <p class="text-lg sm:text-base text-slate-500 leading-relaxed max-w-xl">
+                            Sube tus reportes en PDF o imagen y recibe una interpretación médica detallada, comprensible y segura en menos de un minuto.
+                        </p>
+                        
+                        <!-- Micro Ventajas Clínicas -->
+                        <div class="pt-2 flex flex-wrap justify-center md:justify-start gap-x-4 gap-y-2 font-bold text-slate-600">
+                            <span class="flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                                Análisis de Biomarcadores
+                            </span>
+                            <span class="flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                                Copia Segura en tu Email
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Botón y Precio -->
+                    <div class="md:col-span-2 flex flex-col items-center justify-center bg-slate-800/40 border border-slate-800 p-6 rounded-2xl text-center space-y-4 text-lg">
+                        <div class="space-y-0.5">
+                            <p class="font-black tracking-tight tabular-nums">$18.500 <span class="font-bold text-slate-600">/ examen</span></p>
+                        </div>
+                        
+                        <!-- CTA Principal hacia tu formulario -->
+                        <a href="{{ route('exams.index') }}" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-black px-10 py-4 rounded-2xl transition shadow-lg shadow-blue-200 flex items-center justify-center gap-2">
+                            Interpretar mis exámenes ahora
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path>
+                            </svg>
+                        </a>
+                        
+                        <p class="text-slate-600 text-sm">No requiere registro previo</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
 </x-guest-layout>

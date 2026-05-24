@@ -22,11 +22,6 @@
             Inicio
           </x-dropdown-link>
         </li>
-        <li>
-          <x-dropdown-link href="{{ route('plans.index') }}">
-            Planes
-          </x-dropdown-link>
-        </li>
         @auth
           <li>
             <x-dropdown-link href="{{  route('admin.dashboard') }}">

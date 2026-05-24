@@ -4,63 +4,204 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany; 
 
 class Clinic extends Model {
     protected $fillable = [
         'user_id', 
+        'slug',
         'name', 
         'nit', 
-        'plan', 
+        'reps_code',
         'phone', 
+        'bio',
+        'experience_years',
         'rating', 
-        'reviews_count'
+        'reviews_count',
+        'validation_status',
+        'identity_card_path',
+        'reps_code_card_path',
+        'active'
     ];
 
-    public function user() {
-        return $this->belongsTo(User::class);
+    /**
+     * Los atributos que deben ser convertidos a tipos nativos de PHP.
+     * Mantiene la precisión decimal del rating y el tipo booleano del estado activo.
+     */
+    protected $casts = [
+        'active'        => 'boolean',
+        'rating'        => 'float',
+        'reviews_count' => 'integer',
+    ];
+
+    /**
+     * Crea una sede técnica de telemedicina institucional solo si no existe una previa.
+     */
+    public function createVirtualAddress()
+    {
+        // BLINDAJE ANTI-DUPLICADOS INSTITUCIONALES
+        $exists = $this->addresses()->where('type', 'virtual')->exists();
+        
+        if ($exists) {
+            return $this->addresses()->where('type', 'virtual')->first();
+        }
+
+        return $this->addresses()->create([
+            'name'      => 'Atención Virtual / Telemedicina (Institucional)',
+            'address'   => 'Plataforma Online',
+            'type'      => 'virtual',
+            'phone'     => $this->phone ?? 'N/A', 
+            'city_id'   => 1, // ID numérico limpio para la FK de ciudades
+            'status'    => true,
+        ]);
     }
 
     /**
-     * Indica a Laravel que busque por 'slug' en las rutas en lugar de 'id'
+     * Relación con el usuario administrador dueño de la clínica.
      */
-    public function getRouteKeyName()
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function getRouteKeyName(): string
     {
         return 'slug';
     }
 
     /**
-     * Lógica automática al crear el registro
+     * Disparadores automáticos del ciclo de vida del modelo corporativo.
      */
     protected static function booted()
     {
         static::creating(function ($clinic) {
-            // Generamos el slug a partir del nombre del usuario relacionado
-            // Resultado ejemplo: "clinica-imbanaco-4a2b1"
-            // Buscamos el nombre del usuario si no viene ya cargado
-            $name = $clinic->user ? $clinic->user->name : 'clinica';
-            $clinic->slug = Str::slug($name) . '-' . Str::lower(Str::random(5));
+            $cleanId = Str::slug($clinic->nit);
+            $name = $clinic->user ? $clinic->user->name : 'centro-medico';
+            $clinic->slug = Str::slug($name) . '-' . $cleanId;
+        });
+
+        static::updated(function ($clinic) {
+            if ($clinic->wasChanged('phone')) {
+                // Sincroniza el teléfono exclusivamente en su dirección virtual institucional
+                $clinic->addresses()
+                    ->where('type', 'virtual')
+                    ->update(['phone' => $clinic->phone]);
+            }
         });
     }
 
-    public function reviews()
+    /**
+     * Relación uno a uno con la configuración de la clínica.
+     */
+    public function settings(): HasOne
+    {
+        return $this->hasOne(ClinicSetting::class, 'clinic_id');
+    }
+
+    /**
+     * 🔥 CORREGIDO: Retorno correcto del tipo de relación HasOneThrough
+     */
+    public function plan(): HasOneThrough
+    {
+        return $this->hasOneThrough(
+            Plan::class,
+            ClinicSetting::class,
+            'clinic_id', 
+            'id',        
+            'id',        
+            'plan_id'    
+        );
+    }
+
+        /**
+     * Atributo para obtener el promedio de calificación fácilmente.
+     */
+    public function getAverageRatingAttribute(): float
+    {
+        return $this->reviews()->exists() ? round($this->reviews()->avg('rating'), 1) : 0.0;
+    }
+
+    /**
+     * Sedes o consultorios físicos y virtuales creados por la clínica.
+     */
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(Address::class, 'clinic_id');
+    }
+
+    /**
+     * Médicos profesionales vinculados a la nómina de la clínica.
+     */
+    public function doctors(): BelongsToMany
+    {
+        return $this->belongsToMany(Doctor::class, 'clinic_doctor')
+                    ->withPivot('status')
+                    ->withTimestamps();
+    }
+
+    /**
+     * 🔥 REFACTORIZACIÓN CRÍTICA: Mapeo correcto del catálogo de servicios de la clínica.
+     * Extrae de forma limpia los servicios únicos distribuidos en la infraestructura institucional.
+     */
+    public function services() 
+    {
+        $addressIds = $this->addresses()->pluck('id')->toArray();
+        return Service::whereHas('addresses', function ($query) use ($addressIds) {
+            $query->whereIn('address_id', $addressIds);
+        });
+    }
+
+    /**
+     * Especialidades médicas activas en el centro médico.
+     */
+    public function specialties(): BelongsToMany
+    {
+        return $this->belongsToMany(Specialty::class, 'clinic_specialty')->withTimestamps();
+    }
+
+    /**
+     * Calificaciones y testimonios de pacientes (Polimorfismo).
+     */
+    public function reviews(): MorphMany
     {
         return $this->morphMany(Review::class, 'reviewable');
     }
 
-    // Atributo para obtener el promedio fácilmente
-    public function getAverageRatingAttribute()
+    /**
+     * Campañas de marketing institucional de la clínica.
+     */
+    public function campaigns(): HasMany
     {
-        return round($this->reviews()->avg('rating'), 1) ?? 0;
+        return $this->hasMany(Campaign::class, 'clinic_id');
     }
 
-    public function services() 
+    /**
+     * VERIFICACIÓN SAAS: ¿Puede añadir más sedes según su plan activo?
+     */
+    public function canAddMoreAddresses(): bool
     {
-        return $this->hasMany(Service::class);
+        $plan = $this->plan()->first();
+        if (!$plan) return false;
+
+        return $this->addresses()->count() < $plan->max_addresses;
     }
 
-    public function campaigns()
+    /**
+     * VERIFICACIÓN SAAS: ¿Puede añadir más servicios según su plan activo?
+     */
+    public function canAddMoreServices(): bool
     {
-        return $this->hasMany(Campaign::class);
+        $plan = $this->plan()->first();
+        if (!$plan) return false;
+
+        // Cuenta los servicios únicos distribuidos entre todas sus sedes
+        $currentServicesCount = DB::table('address_service')
+            ->whereIn('address_id', $this->addresses()->pluck('id'))
+            ->distinct('service_id')
+            ->count();
+
+        return $currentServicesCount < $plan->max_services;
     }
 }
-

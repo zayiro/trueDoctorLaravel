@@ -19,6 +19,9 @@ $breadcrumbs = [
                 @csrf
                 @method('PUT')
 
+                <!-- Alertas de error de validación -->
+                <x-validation-errors class="mb-4" />
+
                 <div class="grid grid-cols-1 gap-6">
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-2">Nombre del Servicio (Global)</label>
@@ -41,7 +44,6 @@ $breadcrumbs = [
                     </div>
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-2">Modalidad</label>
-                        <!-- Deshabilitado: El tipo de servicio (Físico/Virtual) viene definido desde su creación -->
                         <select class="w-full rounded-2xl border-gray-300 py-3 bg-gray-50 text-gray-500 cursor-not-allowed" disabled>
                             <option value="physical" {{ $service->type === 'physical' ? 'selected' : '' }}>Presencial</option>
                             <option value="virtual" {{ $service->type === 'virtual' ? 'selected' : '' }}>Virtual</option>
@@ -56,7 +58,6 @@ $breadcrumbs = [
                         value="{{ old('price_virtual', $service->addresses->firstWhere('type', 'virtual')?->pivot->price) }}"
                         class="w-full md:w-1/2 rounded-2xl border-purple-300 py-3 focus:ring-purple-500">
                 </div>
-
                 <!-- Sedes con checkboxes y precios pre-marcados -->
                 <div x-show="type === 'physical'" class="p-6 bg-blue-50 rounded-3xl border border-blue-100">
                     <label class="block text-sm font-bold text-blue-900 mb-4">Sedes donde se ofrece y sus precios:</label>
@@ -66,9 +67,15 @@ $breadcrumbs = [
                                 // Buscamos si esta sede específica ya tiene registrado el servicio
                                 $pivotData = $service->addresses->firstWhere('id', $address->id)?->pivot;
                                 $isAssigned = !is_null($pivotData);
+                                
+                                // Evaluamos si debe estar marcado cruzando la DB y el historial old
+                                $shouldBeChecked = old('address_ids') 
+                                    ? in_array($address->id, old('address_ids', [])) 
+                                    : $isAssigned;
                             @endphp
+                            
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-xl border border-blue-200 gap-4"
-                                x-data="{ checked: {{ in_array($address->id, old('address_ids', $selectedAddressIds ?? [])) ? 'true' : 'false' }} }">
+                                x-data="{ checked: {{ $shouldBeChecked ? 'true' : 'false' }} }">
                                 
                                 <!-- Checkbox Sede -->
                                 <label class="flex items-center cursor-pointer flex-1">
@@ -77,14 +84,14 @@ $breadcrumbs = [
                                         class="rounded text-blue-600 focus:ring-blue-500">
                                     <div class="ml-3">
                                         <span class="block text-sm font-bold text-gray-800">{{ $address->name }}</span>
-                                        <span class="block text-xs text-gray-500">{{ $address->address_line ?? $address->address }}</span>
+                                        <span class="block text-xs text-gray-500">{{ $address->address }}</span>
                                     </div>
                                 </label>
 
-                                <!-- Input Precio Específico -->
+                                <!-- Input Precio Específico de esta Sede -->
                                 <div class="flex items-center gap-2">
                                     <span class="text-xs font-bold text-gray-500">Precio Sede ($)</span>
-                                    <!-- :required="checked" hace que sea obligatorio SOLO si el checkbox está marcado -->
+                                    <!-- Es obligatorio SOLO si la sede está marcada -->
                                     <input type="number" name="prices[{{ $address->id }}]" step="0.01" min="0"
                                         value="{{ old('prices.'.$address->id, $pivotData?->price ?? '') }}"
                                         :required="checked"
@@ -93,15 +100,17 @@ $breadcrumbs = [
                             </div>
                         @endforeach
                     </div>
-                    @error('prices.*') <p class="mt-2 text-xs text-red-600 font-bold">Revisa que los precios ingresados sean correctos.</p> @enderror
+                    @error('prices.*') 
+                        <p class="mt-2 text-xs text-red-600 font-bold">Revisa que los precios ingresados sean números válidos mayores a 0.</p> 
+                    @enderror
                 </div>
 
-
+                <!-- Botones de Acción del Formulario -->
                 <div class="pt-4 flex gap-4">
-                    <button type="submit" class="flex-1 bg-blue-600 text-white font-black py-4 rounded-2xl shadow-lg hover:bg-blue-700 transition">
-                        ACTUALIZAR SERVICIO
+                    <button type="submit" class="flex-1 bg-blue-600 text-white font-black py-4 rounded-2xl shadow-lg hover:bg-blue-700 transition tracking-wide uppercase text-sm">
+                        Actualizar Configuración de Servicio
                     </button>
-                    <a href="{{ route('partner.services.index') }}" class="px-8 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition">
+                    <a href="{{ route('partner.services.index') }}" class="px-8 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition text-sm flex items-center justify-center">
                         Cancelar
                     </a>
                 </div>

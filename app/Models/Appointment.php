@@ -7,9 +7,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Appointment extends Model
 {
+    /**
+     * Los atributos que son asignables masivamente.
+     */
     protected $fillable = [
         'patient_id',
         'doctor_id',
+        'clinic_id',  // 🔥 AGREGADO: Esencial para el rastreo y comisiones institucionales del SaaS
         'service_id',
         'address_id',
         'date',
@@ -19,13 +23,22 @@ class Appointment extends Model
         'price',
         'status',
         'meeting_link',     // Enlace para el paciente (o fallback interno)
-        'zoom_meeting_id',  // ID identificador de Zoom (Nuevo)
-        'zoom_start_url',   // Enlace de inicio para el Doctor (Nuevo)
+        'zoom_meeting_id',  // ID identificador de Zoom
+        'zoom_start_url',   // Enlace de inicio para el Doctor
         'notes',
     ];
 
     /**
-     * Determina si la cita actual cuenta con una videollamada de Zoom activa
+     * Los atributos que deben ser convertidos a tipos nativos.
+     * 🔥 AGREGADO: Garantiza que la fecha sea un objeto Carbon y el precio mantenga precisión flotante.
+     */
+    protected $casts = [
+        'date'  => 'date',
+        'price' => 'float',
+    ];
+
+    /**
+     * Determina si la cita actual cuenta con una videollamada de Zoom activa.
      */
     public function hasZoom(): bool
     {
@@ -33,23 +46,31 @@ class Appointment extends Model
     }
 
     /**
-     * Relación con el Servicio
+     * 🔥 NUEVA RELACIÓN: La Clínica institucional donde el paciente agendó su espacio.
+     */
+    public function clinic(): BelongsTo
+    {
+        return $this->belongsTo(Clinic::class, 'clinic_id');
+    }
+
+    /**
+     * Relación con el Servicio médico contratado.
      */
     public function service(): BelongsTo
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(Service::class, 'service_id');
     }
 
     /**
-     * Relación con la Sede (Dirección)
+     * Relación con la Sede física o consultorio virtual donde ocurre la cita.
      */
     public function address(): BelongsTo
     {
-        return $this->belongsTo(Address::class);
+        return $this->belongsTo(Address::class, 'address_id');
     }
 
     /**
-     * Relación con el Doctor
+     * Relación con el Especialista Médico que atenderá la consulta.
      */
     public function doctor(): BelongsTo
     {
@@ -57,10 +78,10 @@ class Appointment extends Model
     }
 
     /**
-     * Relación con el Paciente
+     * Relación con el Paciente dueño de la reserva.
      */
     public function patient(): BelongsTo
     {
-        return $this->belongsTo(Patient::class);
+        return $this->belongsTo(Patient::class, 'patient_id');
     }
 }

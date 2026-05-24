@@ -5,7 +5,7 @@ $breadcrumbs = [
         'href' => route('admin.dashboard'),
     ],
     [
-        'name' => 'Servicios',
+        'name' => 'Portafolio de Servicios',
     ]
 ];
 @endphp
@@ -30,8 +30,8 @@ $breadcrumbs = [
     @endif
 
     <div class="max-w-6xl mx-auto py-10 px-4">
-        {{-- Si el doctor puede agregar más, mostramos el botón --}}
-        @if($doctor->canAddMoreServices())
+        {{-- Si el propietario (doctor o clínica) puede agregar más, mostramos el botón --}}
+        @if($owner->canAddMoreServices())
         <div class="flex justify-between items-center mb-8">
             <a class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition flex items-center gap-2" href="{{ route('partner.services.create') }}">
                 <i class="fa-regular fa-map-location"></i>
@@ -39,20 +39,19 @@ $breadcrumbs = [
             </a>
         </div>
         @else
-            {{-- Si alcanzó el límite, mostramos un mensaje --}}    
-            <div class="text-sm text-amber-600 font-medium italic mb-4">
-                Has alcanzado el límite de <strong>{{ $doctor->plan->max_services }}</strong> servicios de tu {{ $doctor->plan->name }}.
-                <a href="{{ route('partner.profile.edit') }}" class="underline">Mejora tu plan aquí</a>.
+            {{-- Si alcanzó el límite del plan, mostramos un mensaje --}}    
+            <div class="text-sm text-amber-600 font-medium italic mb-4 p-4 bg-amber-50 rounded-xl border border-amber-100">
+                Has alcanzado el límite de <strong>{{ $owner->plan->max_services ?? 3 }}</strong> servicios de tu plan {{ $owner->plan->name ?? 'Básico' }}.
+                <a href="{{ route('partner.profile.edit') }}" class="underline font-bold ml-1 hover:text-amber-800">Mejora tu plan aquí</a>.
             </div>
         @endif
 
-        <div class="mb-3">
-            <p>
-                <strong>Uso del plan:</strong> 
-                {{ $uniqueServicesCount }} de {{ $doctor->plan->max_services }} servicios creados.
+        <div class="mb-5 bg-slate-50 p-4 rounded-xl border border-slate-100 inline-block">
+            <p class="text-sm text-slate-600">
+                <strong>Uso del plan actual:</strong> 
+                <span class="font-bold text-slate-900">{{ $uniqueServicesCount }}</span> de <span class="font-bold text-slate-900">{{ $owner->plan->max_services ?? 3 }}</span> servicios creados.
             </p>
         </div>
-
         <div class="bg-white shadow-xl rounded-3xl overflow-hidden border border-gray-100">
             <table class="w-full text-left border-collapse">
                 <thead>
@@ -69,8 +68,8 @@ $breadcrumbs = [
                 <tbody class="divide-y divide-gray-50">
                     @forelse($services as $service)
                     @php
-                        // Evaluamos el excedente sobre el servicio unificado
-                        $isOverLimit = ($loop->index >= $doctor->plan->max_services);
+                        // Evaluamos el excedente sobre el servicio unificado cruzando el plan del dueño
+                        $isOverLimit = ($loop->index >= ($owner->plan->max_services ?? 3));
                         // Tomamos la primera dirección para mostrar una duración de referencia en la tabla
                         $firstAddress = $service->addresses->first();
                     @endphp
@@ -98,7 +97,7 @@ $breadcrumbs = [
                                 <!-- Precio virtual único -->
                                 <span class="text-green-600 font-black">${{ number_format($firstAddress?->pivot->price ?? 0, 2) }}</span>
                             @else
-                                <!-- Si hay múltiples sedes con precios variables, listamos los precios por sede -->
+                                <!-- Listamos los precios de la clínica o doctor por cada sede física -->
                                 <div class="flex flex-col gap-1">
                                     @foreach($service->addresses as $address)
                                         <span class="text-xs text-gray-600">
@@ -116,7 +115,7 @@ $breadcrumbs = [
                                 <div class="flex flex-wrap gap-1">
                                     @foreach($service->addresses as $address)
                                         <span class="bg-gray-100 text-gray-600 text-[10px] px-2 py-0.5 rounded border border-gray-200">
-                                            {{ $address->name }} - <span class="font-bold">{{ $address->city->name }}</span>
+                                            {{ $address->name }} - <span class="font-bold">{{ $address->city->name ?? 'N/A' }}</span>
                                         </span>
                                     @endforeach
                                 </div>
@@ -132,22 +131,25 @@ $breadcrumbs = [
                         <td class="px-6 py-4">
                             @if (!$isOverLimit)
                             <div class="flex items-center space-x-3">
-                                <a href="{{ route('partner.services.edit', $service) }}" class="text-gray-400 hover:text-blue-600 transition">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                <a href="{{ route('partner.services.edit', $service->id) }}" class="text-indigo-600 hover:text-indigo-900 text-sm font-semibold transition">
+                                    Editar
                                 </a>
-                                <form action="{{ route('partner.services.destroy', $service) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar este servicio?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="p-2 text-gray-400 hover:text-red-600 transition">Eliminar</button>                            
-                                </form>
                             </div>
+                            @else
+                                <span class="text-xs text-amber-600 font-medium bg-amber-50 px-2 py-1 rounded-md border border-amber-100">Excede plan</span>
                             @endif
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="px-6 py-8 text-center text-gray-400 italic">
-                            No tienes servicios configurados.
+                        <td colspan="7" class="px-6 py-16 text-center bg-white">
+                            <div class="mx-auto w-12 h-12 text-slate-400 mb-3">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" class="w-12 h-12 mx-auto text-slate-300">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                                </svg>
+                            </div>
+                            <h4 class="text-base font-bold text-slate-800">No hay servicios configurados</h4>
+                            <p class="text-gray-500 text-sm mt-1 max-w-sm mx-auto">Comienza agregando los servicios de salud que ofreces para asignarle sus respectivos precios y duraciones por sede.</p>
                         </td>
                     </tr>
                     @endforelse

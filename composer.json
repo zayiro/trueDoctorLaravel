@@ -20,6 +20,7 @@
         "openai-php/laravel": "^0.19.1",
         "power-components/livewire-powergrid": "^6.9",
         "spatie/laravel-permission": "^7.4",
+        "spatie/pdf-to-image": "^1.2",
         "wireui/wireui": "^2.6"
     },
     "require-dev": {

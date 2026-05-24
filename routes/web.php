@@ -1,11 +1,6 @@
 <?php
 
 use App\Models\City;
-use App\Models\Schedule;
-use App\Models\Appointment;
-use App\Models\Unavailability;
-use App\Models\Address;
-use Carbon\Carbon;
 
 use Illuminate\Http\Request;
 use App\Livewire\PublicLanding;
@@ -22,7 +17,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\PublicProfileController;
 use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\DoctorAppointmentController;
+use App\Http\Controllers\PartnerAppointmentController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\PartnerPatientController;
@@ -33,15 +28,16 @@ use App\Http\Controllers\DoctorSettingController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\ValidationController;
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\MedicalExamController; 
+use App\Http\Controllers\DashboardController;
 
+// 🔥 REFACTORIZACIÓN CORE: Conectamos la URL central con tu DashboardController analítico
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 });
 
 // Rutas Privadas (admin)
@@ -101,42 +97,48 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::post('/partner/schedules', [ScheduleController::class, 'store'])->name('partner.schedules.store');
     Route::delete('/partner/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('partner.schedules.destroy');
 
-    Route::get('/partner/appointments', [DoctorAppointmentController::class, 'index'])->name('partner.appointments.index');
-    Route::patch('/partner/appointments/{appointment}/complete', [DoctorAppointmentController::class, 'complete'])->name('partner.appointments.complete');
-    Route::patch('/partner/appointments/{appointment}/cancel', [DoctorAppointmentController::class, 'cancel'])->name('partner.appointments.cancel');
-    Route::delete('/partner/appointments/{appointment}', [DoctorAppointmentController::class, 'destroy'])->name('partner.appointments.destroy');
+    Route::get('/appointments', [PartnerAppointmentController::class, 'index'])->name('partner.appointments.index');
+    Route::get('/partner/appointments', [PartnerAppointmentController::class, 'index'])->name('partner.appointments.index');
+    Route::patch('/partner/appointments/{appointment}/complete', [PartnerAppointmentController::class, 'complete'])->name('partner.appointments.complete');
+    Route::patch('/partner/appointments/{appointment}/cancel', [PartnerAppointmentController::class, 'cancel'])->name('partner.appointments.cancel');
+    Route::delete('/partner/appointments/{appointment}', [PartnerAppointmentController::class, 'destroy'])->name('partner.appointments.destroy');
 
     Route::patch('/partner/addresses/{address}/status', [AddressController::class, 'toggleStatus'])->name('partner.addresses.status.toggle');
 
+    // ========================================================
+    // BLOQUEOS TEMPORALES Y MANEJO DE AUSENCIAS
+    // ========================================================
     Route::post('/partner/unavailabilities', [UnavailabilityController::class, 'store'])->name('partner.unavailabilities.store');
     Route::delete('/partner/unavailabilities/{unavailability}', [UnavailabilityController::class, 'destroy'])->name('partner.unavailabilities.destroy');
 
+    // ========================================================
+    // EXPEDIENTES DE PACIENTES E HISTORIAL MÉDICO
+    // ========================================================
     //buscador de pacientes
     Route::get('/partner/patients', [PartnerPatientController::class, 'index'])->name('partner.patients.index');
     //vista detallada del paciente
     Route::get('partner/patients/{id}', [PartnerPatientController::class, 'show'])->name('partner.patients.show');
 
+    // Vista de Reagendamiento Táctico (Alpine.js / API Slots compatible)
     // Vista para seleccionar el nuevo horario
     Route::get('/partner/appointments/{appointment}/reschedule', [AppointmentController::class, 'rescheduleView'])->name('partner.appointments.reschedule');
-    
     // Acción para procesar el cambio
     Route::put('/partner/appointments/{appointment}/reschedule/process', [AppointmentController::class, 'rescheduleProcess'])->name('partner.appointments.reschedule.process');
 
     // Ruta para cancelar la cita (la que está causando el error)
     Route::delete('/partner/appointments/{appointment}', [AppointmentController::class, 'destroy'])->name('partner.appointments.destroy');
 
+    // ========================================================
+    // SINTOMATOLOGÍAS E INDEXACIÓN DE ENFERMEDADES (SINTOMAS)
+    // ========================================================
     // Listado principal (Index)
     Route::get('/partner/expertises', [MedicalExpertiseController::class, 'index'])->name('partner.expertises.index');
-
     // Procesar el guardado del formulario (Store)
     Route::post('/partner/expertises', [MedicalExpertiseController::class, 'store'])->name('partner.expertises.store');
-
     // Formulario de edición (Edit)
     Route::get('/partner/expertises/{expertise}/edit', [MedicalExpertiseController::class, 'edit'])->name('partner.expertises.edit');
-
     // Procesar la actualización (Update)
     Route::put('/partner/expertises/{expertise}', [MedicalExpertiseController::class, 'update'])->name('partner.expertises.update');
-
     // Eliminar un registro (Destroy)
     Route::delete('/partner/expertises/{expertise}', [MedicalExpertiseController::class, 'destroy'])->name('partner.expertises.destroy');    
 
@@ -144,6 +146,14 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
 
     Route::get('/campaigns', \App\Livewire\Campaigns\CampaignIndex::class)->name('campaigns.index');
     Route::get('/campaigns/create', \App\Livewire\Campaigns\CreateCampaign::class)->name('campaigns.create');
+});
+
+// Grupo exclusivo para la administración de nóminas de centros médicos
+Route::middleware(['auth', 'role:clinic'])->prefix('partner/clinic')->name('partner.')->group(function () {
+    Route::get('/doctors', [ClinicDoctorController::class, 'index'])->name('clinic_doctors.index');
+    Route::post('/doctors', [ClinicDoctorController::class, 'store'])->name('clinic_doctors.store');
+    Route::patch('/doctors/{doctor}/toggle', [ClinicDoctorController::class, 'toggleStatus'])->name('clinic_doctors.toggle');
+    Route::delete('/doctors/{doctor}', [ClinicDoctorController::class, 'destroy'])->name('clinic_doctors.destroy');
 });
 
 // Rutas Privadas (patient)
@@ -208,15 +218,12 @@ Route::get('/register-options', function () {
     return view('auth.register-options');
 })->name('register.options');
 
-// Ruta para mostrar el formulario (GET)
+// Ruta para mostrar el formulario de registro de doctores
 Route::get('/register-partner', [RegisterDoctorController::class, 'register'])->name('partner.register');
-// Ruta para procesar el registro (POST) - La que definimos antes
 Route::post('/register-partner', [RegisterDoctorController::class, 'store'])->name('partner.register.store');
 
-Route::get('/register-clinic', function () {
-    return view('auth.register-clinic');
-})->name('clinic.register');
-
+// Ruta para mostrar el formulario de registro de clinicas
+Route::get('/register-clinic', [RegisterClinicController::class, 'register'])->name('clinic.register');
 Route::post('/register-clinic', [RegisterClinicController::class, 'store'])->name('clinic.register.store');
 
 Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
@@ -239,7 +246,7 @@ Route::get('/api/{partner}/availability', [PublicProfileController::class, 'getA
     ->missing(function () {
     return redirect()->route('home'); // Redirige al inicio si no existe
 });
-
+/*
 Route::get('/api/get-slots', function (Request $request) {
     if (!$request->date) {
         return response()->json(['error' => 'Faltan datos'], 400);
@@ -324,7 +331,16 @@ Route::get('/api/get-slots', function (Request $request) {
     }
 
     return response()->json($slots);
-})->name('api.slots.index');
+})->name('api.slots.index');*/
+
+
+// ========================================================
+// ENDPOINTS DE CONSULTA PÚBLICA PARA EL PERFIL (APIs WEB)
+// ========================================================
+// Endpoint unificado y ultra-seguro para el cálculo de slots en el calendario (Web y Reagendamiento)
+Route::get('/api/get-slots', [PartnerAppointmentController::class, 'getSlots'])->name('api.slots.index');
+// Indispensable para alimentar el Paso 2 de servicios por sede
+Route::get('/api/addresses/{address}/services', [PartnerAppointmentController::class, 'getServices'])->name('api.addresses.services');
 
 Route::post('/appointments/step-two', [AppointmentController::class, 'storeStepTwo'])->name('appointments.step-two');
 Route::get('/appointments/patient', [AppointmentController::class, 'patient'])->name('appointments.patient');
@@ -347,7 +363,7 @@ Route::get('/api/departments/{department}/cities', function ($deptId) {
 
 // Ruta pública para que Google rastree todos tus enlaces indexables
 Route::get('/sitemap.xml', [SearchController::class, 'generateSitemap'])->name('seo.sitemap');
-Route::redirect('/dashboard', '/admin', 301);
+//Route::redirect('/dashboard', '/admin', 301);
 
 //Páginas de Síntomas Indexables Automáticas
 
@@ -357,3 +373,9 @@ Route::get('/sintomas/{slug}', [SearchController::class, 'showSymptomLanding'])-
 // Directorio médico de socios ordenado por planes de suscripción
 Route::get('/medical-directory', [SearchController::class, 'medicalDirectory'])->name('medical.directory');
 
+Route::get('/examenes', [MedicalExamController::class, 'index'])->name('exams.index');
+Route::post('/examenes', [MedicalExamController::class, 'store'])->name('exams.store');
+Route::get('/examenes/{id}/pago', [MedicalExamController::class, 'checkout'])->name('exams.checkout');
+Route::post('/examenes/{id}/pagar', [MedicalExamController::class, 'processPayment'])->name('exams.id_pago');
+Route::get('/examenes/{id}/resultado', [MedicalExamController::class, 'showResult'])->name('exams.result');
+Route::get('/examenes/{id}/pago', [MedicalExamController::class, 'checkout'])->name('exams.checkout');

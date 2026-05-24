@@ -47,13 +47,19 @@
                         <span class="step-number">1.</span> Ingrese a su panel de administración institucional utilizando las credenciales corporativas registradas.
                     </div>
                     <div class="step-item">
-                        <span class="step-number">2.</span> Configure la infraestructura básica de su organización (sedes físicas, consultorios disponibles y áreas de especialidad).
+                        <span class="step-number">2.</span> Diríjase a la sección de perfil y suba la <strong>documentación requerida</strong> (Identificación oficial y Tarjeta Profesional).
                     </div>
                     <div class="step-item">
-                        <span class="step-number">3.</span> Registre a su personal de salud y asigne las agendas correspondientes a cada consultorio o canal de telemedicina.
+                        <span class="step-number">3.</span> Nuestro equipo validará sus credenciales en un lapso menor a 24 horas.
                     </div>
                     <div class="step-item" style="margin-bottom: 0;">
-                        <span class="step-number">4.</span> Active la recepción de citas y comience a monitorizar el flujo de pacientes e ingresos consolidados en tiempo real.
+                        <span class="step-number">4.</span> Una vez aprobado(a), podrá comenzar a registrar las diferentes funcionalidades.
+                    </div>
+                    <div class="step-item">
+                        <span class="step-number">5.</span> Configure la infraestructura básica de su organización (sedes físicas, consultorios disponibles y áreas de especialidad).
+                    </div>
+                    <div class="step-item">
+                        <span class="step-number">6.</span> Registre a su personal de salud y asigne las agendas correspondientes a cada consultorio o canal de telemedicina.
                     </div>
                 </div>
 

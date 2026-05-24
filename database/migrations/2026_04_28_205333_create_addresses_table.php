@@ -13,7 +13,13 @@ return new class extends Migration
     {
         Schema::create('addresses', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('doctor_id')->constrained()->onDelete('cascade');
+
+            // 1. Hacemos que doctor_id sea nullable (ya que la clínica puede ser dueña de la sede)
+            $table->foreignId('doctor_id')->nullable()->constrained()->onDelete('cascade');
+            
+            // 2. Agregamos el campo para vincular la sede a una clínica (anulable)
+            $table->foreignId('clinic_id')->nullable()->constrained()->onDelete('cascade');
+            
             $table->string('name');
             $table->string('address');
             $table->string('type')->default('physical');

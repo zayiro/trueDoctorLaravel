@@ -51,30 +51,36 @@ class SearchController extends Controller
         $doctors = Doctor::with([
             'user',
             'specialties',
-            'addresses.services',
+            'addresses.city',
             'addresses' => function ($query) use ($request) {
-                // 1. Filtramos las direcciones por ciudad si el usuario seleccionó una
+                // 1. Filtrar sedes por ciudad si se solicita
                 if ($request->filled('city')) {
                     $query->whereHas('city', function ($q) use ($request) {
                         $q->where('slug', $request->city);
                     });
                 }
-                // 2. Cargar los servicios de cada sede
-                $query->with('services'); 
-            },
-            'addresses.city' // Para mostrar el nombre de la ciudad en la vista
+                // 2. Cargar SOLO los servicios que estén activos en la vista
+                $query->with(['services' => function ($q) {
+                    $q->where('services.active', true);
+                }]);
+            }
         ])
         // CONDICIONES CRÍTICAS DEL SAAS:
-        ->where('active', true) // Solo médicos con cuenta activa
-        ->where('validation_status', 'approved') // Solo médicos validados y aprobados manualmente
+        ->where('active', true) 
+        ->where('validation_status', 'approved') 
         
-        // Filtro: Solo doctores que tengan la especialidad solicitada
+        // FILTRO OBLIGATORIO: Al menos un servicio activo global
+        ->whereHas('addresses.services', function ($query) {
+            $query->where('services.active', true);
+        })
+        
+        // Filtro por especialidad
         ->when($request->specialty, function ($query) use ($request) {
             $query->whereHas('specialties', function ($q) use ($request) {
                 $q->where('slug', $request->specialty);
             });
         })
-        // Filtro: Solo doctores que tengan direcciones en la ciudad solicitada
+        // Filtro por ciudad
         ->when($request->city, function ($query) use ($request) {
             $query->whereHas('addresses.city', function ($q) use ($request) {
                 $q->where('slug', $request->city);
@@ -82,7 +88,6 @@ class SearchController extends Controller
         })
         ->paginate(10);
 
-        // Mantener los filtros en los links de paginación
         $doctors->appends($request->all());
 
         return view('search.index', compact('doctors', 'specialties', 'cities'));
@@ -181,12 +186,13 @@ class SearchController extends Controller
                                 'type' => 'object',
                                 'properties' => [
                                     'especialidad_correcta' => ['type' => 'string', 'description' => 'Nombre exacto de la lista.'],
+                                    'especialidad_slug' => ['type' => 'string', 'description' => 'El slug en minúsculas, usando guiones en lugar de espacios (ej: medicina-general, cardiologia).'],
                                     'urgencia' => ['type' => 'string', 'enum' => ['Alta', 'Media', 'Baja']],
                                     'consejo' => ['type' => 'string', 'description' => 'Breve orientación al paciente.'],
                                     'seo_title' => ['type' => 'string', 'description' => 'Título SEO optimizado para la landing de este síntoma.'],
                                     'seo_description' => ['type' => 'string', 'description' => 'Meta descripción SEO para la landing de este síntoma.']
                                 ],
-                                'required' => ['especialidad_correcta', 'urgencia', 'consejo', 'seo_title', 'seo_description'],
+                                'required' => ['especialidad_correcta', 'especialidad_slug', 'urgencia', 'consejo', 'seo_title', 'seo_description'],
                                 'additionalProperties' => false
                             ]
                         ]
