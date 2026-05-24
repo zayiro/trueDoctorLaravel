@@ -252,7 +252,7 @@ class SearchController extends Controller
 
         // 2. Construir la consulta de doctores optimizada cargando solo lo necesario
         $doctors = Doctor::with([
-                'user:id,name,last_name,avatar', 
+                'user:id,name', 
                 'specialties:id,name,slug', 
                 'addresses.city:id,name',
                 'addresses.services'
