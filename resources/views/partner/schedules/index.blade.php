@@ -173,7 +173,7 @@ $colorState = $address->status ? 'green' : 'red';
 
                         <!-- Botón de Envío -->
                         <div class="pt-2">
-                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-indigo-100 transition-all uppercase tracking-wider text-xs">
+                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-2xl shadow-lg shadow-indigo-100 transition-all uppercase tracking-wider text-xs">
                                 Agregar a la Agenda
                             </button>
                         </div>

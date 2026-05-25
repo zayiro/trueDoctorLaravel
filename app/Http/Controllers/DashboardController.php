@@ -90,7 +90,7 @@ class DashboardController extends Controller
             ->take(5)
             ->get()
             ->reverse();
-
+        
         return view('admin.dashboard', compact(
             'user', 'owner', 'citasHoy', 'citasProximas', 
             'facturacionMes', 'tasaCancelacion', 'modalidades', 

@@ -218,6 +218,10 @@ Route::get('/register-options', function () {
     return view('auth.register-options');
 })->name('register.options');
 
+// ========================================================
+// 🌍 ENDPOINTS PÚBLICOS DE CONSULTA (ACCESO LIBRE PARA LOS USUARIOS)
+// ========================================================
+
 // Ruta para mostrar el formulario de registro de doctores
 Route::get('/register-partner', [RegisterDoctorController::class, 'register'])->name('partner.register');
 Route::post('/register-partner', [RegisterDoctorController::class, 'store'])->name('partner.register.store');
@@ -228,7 +232,6 @@ Route::post('/register-clinic', [RegisterClinicController::class, 'store'])->nam
 
 Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
 
-// Rutas Públicas
 Route::get('/search', [SearchController::class, 'index'])->name('search');
 // Asegúrate de colocarla con método GET para que la paginación funcione correctamente
 Route::get('/search-by-symptom', [SearchController::class, 'searchBySymptom'])->name('partner.search.symptom');
@@ -237,7 +240,7 @@ Route::get('/search-symptom', [SearchController::class, 'searchSymptomView'])->n
 
 Route::get('/{partner_slug}/{campaign_slug}.html', PublicLanding::class)->name('landing.public');
 
-// Ruta para ver el perfil del doctor en la busqueda -- esta es la ruta que causa error al entrar al dashboard logueado
+// Ruta para ver el perfil del doctor en la busqueda
 Route::get('/medical-partner/{partner:slug}', [PublicProfileController::class, 'show'])->name('partner.public.profile');
 
 // Ruta API para que FullCalendar cargue los huecos libres
@@ -246,100 +249,11 @@ Route::get('/api/{partner}/availability', [PublicProfileController::class, 'getA
     ->missing(function () {
     return redirect()->route('home'); // Redirige al inicio si no existe
 });
-/*
-Route::get('/api/get-slots', function (Request $request) {
-    if (!$request->date) {
-        return response()->json(['error' => 'Faltan datos'], 400);
-    }
 
-    $fechaConsultada = Carbon::parse($request->date);
-    $diaSemana = $fechaConsultada->dayOfWeek; 
-    $ahora = Carbon::now();
-    $isVirtual = $request->input('is_virtual') === 'true';
-
-    // NUEVO SEGURO: Obtener el doctor_id directamente de la dirección sin requerir auth()
-    $address = Address::find($request->address_id);
-    if (!$address) {
-        return response()->json(['error' => 'Dirección no encontrada'], 404);
-    }
-    $doctorId = $address->doctor_id;
-
-    // 1. VALIDAR AUSENCIAS (UNAVAILABILITIES) utilizando la variable segura $doctorId
-    $isUnavailable = Unavailability::where('doctor_id', $doctorId)
-        ->whereDate('start_date', '<=', $fechaConsultada)
-        ->whereDate('end_date', '>=', $fechaConsultada)
-        ->where(function($q) use ($request, $isVirtual) {
-            if ($isVirtual) {
-                $q->whereNull('address_id');
-            } else {
-                $q->whereNull('address_id')
-                  ->orWhere('address_id', $request->address_id);
-            }
-        })
-        ->exists();
-
-    if ($isUnavailable) {
-        return response()->json([]); // Bloqueo total: el doctor no está disponible
-    }
-
-    // 2. Obtener disponibilidad del Schedule (Igual que antes)
-    if ($isVirtual) {
-        $schedule = Schedule::where('day', $diaSemana)
-            ->selectRaw('MIN(start_time) as start_time, MAX(end_time) as end_time')
-            ->first();
-    } else {
-        $schedule = Schedule::where('address_id', $request->address_id)
-            ->where('day', $diaSemana)
-            ->first();
-    }
-
-    if (!$schedule || !$schedule->start_time) return response()->json([]); 
-
-    $duracion = (int) $request->input('duration', 20); 
-
-    // 3. Obtener ocupación (Igual que antes)
-    $citasOcupadas = Appointment::where('date', $request->date)
-        ->whereIn('status', ['confirmed', 'pending'])
-        ->when(!$isVirtual, function($query) use ($request) {
-            return $query->where('address_id', $request->address_id);
-        })
-        ->when($request->exclude_id, function($query) use ($request) {
-            return $query->where('id', '!=', $request->exclude_id);
-        })
-        ->pluck('start_time')
-        ->map(fn($time) => Carbon::parse($time)->format('H:i'))
-        ->toArray();
-
-    // 4. Generación de Slots (Igual que antes)
-    $slots = [];
-    $inicio = Carbon::parse($schedule->start_time);
-    $fin = Carbon::parse($schedule->end_time);
-
-    while ($inicio->copy()->addMinutes($duracion) <= $fin) {
-        $horaSlot = $inicio->format('H:i');
-        $objHoraSlot = Carbon::parse($request->date . ' ' . $horaSlot);
-
-        $estaOcupado = in_array($horaSlot, $citasOcupadas);
-        $esPasado = $fechaConsultada->isToday() && $objHoraSlot->lt($ahora);
-
-        $slots[] = [
-            "time" => $horaSlot,
-            "available" => !$estaOcupado && !$esPasado
-        ];
-
-        $inicio->addMinutes($duracion); 
-    }
-
-    return response()->json($slots);
-})->name('api.slots.index');*/
-
-
-// ========================================================
-// ENDPOINTS DE CONSULTA PÚBLICA PARA EL PERFIL (APIs WEB)
-// ========================================================
 // Endpoint unificado y ultra-seguro para el cálculo de slots en el calendario (Web y Reagendamiento)
-Route::get('/api/get-slots', [PartnerAppointmentController::class, 'getSlots'])->name('api.slots.index');
-// Indispensable para alimentar el Paso 2 de servicios por sede
+Route::get('/api/slots', [PartnerAppointmentController::class, 'getSlots'])->name('api.slots.index');
+
+// Catálogo dinámico de servicios por sede
 Route::get('/api/addresses/{address}/services', [PartnerAppointmentController::class, 'getServices'])->name('api.addresses.services');
 
 Route::post('/appointments/step-two', [AppointmentController::class, 'storeStepTwo'])->name('appointments.step-two');

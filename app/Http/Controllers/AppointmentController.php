@@ -238,8 +238,35 @@ class AppointmentController extends Controller
             // Limpieza del embudo de reserva en sesión
             session()->forget(['booking_data', 'current_doctor_id']);
 
-            return redirect()->route('patient.appointments')
+            return redirect()->route('appointments.preview', ['id' => $appointment->id])
                 ->with('success', $status === 'pending' ? 'Cita solicitada. Esperando aprobación del centro.' : 'Cita agendada exitosamente.');
         });
+    }
+
+    /**
+     * 🔥 NUEVA FUNCIÓN: Renderiza la pantalla de resumen de la orden médica.
+     * Recibe el ID de la URL y precarga las dependencias del SaaS.
+     */
+    public function preview($id)
+    {
+        // Buscamos la cita médica con todas sus relaciones unificadas
+        $appointment = Appointment::with(['doctor.user', 'clinic', 'service', 'address.city'])->findOrFail($id);
+
+        // Despachamos la vista compactando el objeto
+        return view('appointments.preview', compact('appointment'));
+    }
+
+    /**
+     * 🔥 NUEVO MÉTODO CORE: Renderiza la pantalla de confirmación exitosa de la cita.
+     * Carga el registro por ID de la URL y limpia el embudo de cara al paciente.
+     */
+    public function success($id)
+    {
+        // Buscamos la cita precargando todas sus relaciones corporativas de co-propiedad
+        $appointment = Appointment::with(['doctor.user', 'clinic', 'service', 'address.city'])
+            ->findOrFail($id);
+
+        // Retornamos la vista pasando el objeto de la consulta
+        return view('appointments.success', compact('appointment'));
     }
 }

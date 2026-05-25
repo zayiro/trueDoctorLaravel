@@ -77,7 +77,8 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Actualiza bloques horarios existentes en lote.
+     * Actualiza bloques horarios existentes en lote de forma segura.
+     * Si se desmarca el checkbox, se elimina la franja para liberar el consultorio.
      */
     public function update(Request $request, Address $address)
     {
@@ -89,17 +90,33 @@ class ScheduleController extends Controller
         ]);
 
         foreach ($request->schedules as $id => $data) {
-            Schedule::where('id', $id)
-                ->where('address_id', $address->id) // Blindaje de seguridad cruzado
-                ->update([
+            $schedule = Schedule::where('id', $id)
+                ->where('address_id', $address->id)
+                ->first();
+
+            if (!$schedule) {
+                continue;
+            }
+
+            // 🔥 LOGICA ATÓMICA: Si el checkbox NO fue enviado, el usuario deshabilitó el día.
+            // Procedemos a eliminar la fila de la base de datos para limpiar el calendario público.
+            if (!isset($data['is_active'])) {
+                
+                // Opcional: Podrías meter aquí la misma validación de destroy() 
+                // para evitar borrar franjas que ya tengan citas agendadas.
+                $schedule->delete();
+                
+            } else {
+                // Si el checkbox está marcado, actualizamos las horas de inicio y fin normales
+                $schedule->update([
                     'start_time' => $data['start_time'],
                     'end_time'   => $data['end_time'],
-                    'is_active'  => isset($data['is_active']),
                 ]);
+            }
         }
 
-        return redirect()->route('partner.addresses.index')
-            ->with('success', 'Turnos y horarios de la sede actualizados correctamente.');
+        return redirect()->route('partner.schedules.index', $address->id)
+            ->with('success', 'Los horarios y turnos de la sede han sido actualizados en lote.');
     }
 
     /**

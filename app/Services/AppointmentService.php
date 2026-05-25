@@ -110,7 +110,7 @@ class AppointmentService
             $estaOcupado = !$this->isAvailable($doctorId, $date, $startTimeString, $intervalMinutes);
 
             return [
-                'time'      => Carbon::parse($startTimeString)->format('H:i'),
+                'time'      => Carbon::parse($startTimeString)->format('g:i A'),
                 'available' => !$esPasado && !$estaBloqueado && !$estaOcupado
             ];
         })->filter(function($slot) {
@@ -178,8 +178,11 @@ class AppointmentService
             ->exists();
     }
 
-    /**
-     * Valida si una cita específica se puede cancelar o reprogramar (Reparada y Completada)
+        /**
+     * Valida si una cita específica se puede cancelar o reprogramar (Reparada, Completada y Blindada).
+     *
+     * @param int $appointmentId
+     * @return array ['allowed' => bool, 'message' => string]
      */
     public function checkIfCanModify($appointmentId)
     {
@@ -208,7 +211,10 @@ class AppointmentService
             return ['allowed' => false, 'message' => 'Las políticas vigentes no permiten la cancelación autónoma de citas. Contacta soporte.'];
         }
 
-        $appointmentDateTime = Carbon::parse($appointment->date . ' ' . $appointment->start_time);
+        // 🔥 CORREGIDO: Formateamos el objeto Carbon 'date' a string limpio antes de concatenar la hora
+        $fechaString = $appointment->date instanceof Carbon ? $appointment->date->format('Y-m-d') : $appointment->date;
+        $appointmentDateTime = Carbon::parse($fechaString . ' ' . $appointment->start_time);
+        
         if (Carbon::now()->addHours($noticeHours)->gt($appointmentDateTime)) {
             return ['allowed' => false, 'message' => "La cita solo puede modificarse con un mínimo de {$noticeHours} horas de anticipación."];
         }

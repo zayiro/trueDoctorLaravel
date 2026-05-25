@@ -211,7 +211,10 @@
                                             <span class="font-bold text-slate-800 text-sm" x-text="service.name"></span>
                                             <span class="text-xs text-slate-400 mt-0.5" x-text="'⏱ Duración: ' + service.duration + ' min'"></span>
                                         </div>
-                                        <span class="text-base font-black text-green-600" x-text="'$' + parseFloat(service.price).toFixed(2)"></span>
+                                        <span class="text-base font-black text-green-600" 
+                                            x-text="'$' + new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(service.price)">
+                                        </span>
+
                                     </div>
                                 </label>
                             </template>
@@ -259,7 +262,7 @@
                                     <button type="button" 
                                             x-on:click="confirmBooking(slot.time)"
                                             class="p-3 text-center bg-white border border-slate-200 rounded-xl font-bold text-xs text-slate-700 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm">
-                                        <span x-text="slot.time.substring(0, 5)"></span>
+                                        <span x-text="slot.time"></span>
                                     </button>
                                 </template>
                             </div>

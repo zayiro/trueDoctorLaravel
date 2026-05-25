@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('patient_id')->constrained();
             $table->foreignId('doctor_id')->constrained();
+            $table->foreignId('clinic_id')->nullable()->constrained()->onDelete('set null');
             $table->foreignId('service_id')->constrained();
             $table->foreignId('address_id')->nullable()->constrained(); 
             $table->date('date');
