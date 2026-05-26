@@ -2,6 +2,7 @@
     @php
         // Evaluamos si la cita entró en estado pendiente o confirmada
         $isPending = $appointment->status === 'pending';
+        $appointmentDate = \Carbon\Carbon::parse($appointment->date)->format('Y-m-d');
     @endphp
 
     <div class="max-w-3xl mx-auto py-12 px-4 text-center">
@@ -63,14 +64,14 @@
 
                         <div>
                             <span class="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-1">Fecha y Hora</span>
-                            <p class="text-sm font-bold text-slate-700 capitalize">
-                                {{ \Carbon\Carbon::parse($appointment->date)->translatedFormat('dddd, d \d\e F \d\e Y') }}
+                            <p class="text-sm font-bold text-slate-700 capitalize">                                                                
+                                {{ ucfirst(\Carbon\Carbon::parse($appointmentDate)->translatedFormat('l, d \d\e F \d\e Y')) }}
                             </p>
                             <p class="text-base font-black text-slate-800 mt-0.5">
                                 {{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }}
                             </p>
                             <span class="text-[10px] text-indigo-600 font-bold block mt-1.5 bg-indigo-50 px-2.5 py-0.5 rounded-md inline-block border border-indigo-100/50">
-                                {{ \Carbon\Carbon::parse($appointment->date)->diffForHumans(null, false, false, 2) }}
+                                {{ \Carbon\Carbon::parse($appointmentDate)->diffForHumans(null, false, false, 2) }}
                             </span>
                         </div>
                     </div>
@@ -126,7 +127,7 @@
             @php
                 // Formateo higiénico de cadenas para WhatsApp
                 $phoneClean = preg_replace('/[^0-9]/', '', $appointment->doctor->phone);
-                $dateText = \Carbon\Carbon::parse($appointment->date)->translatedFormat('dddd, d \d\e F \d\e Y');
+                $dateText = \Carbon\Carbon::parse($appointmentDate)->translatedFormat('dddd, d \d\e F \d\e Y');
                 $timeText = \Carbon\Carbon::parse($appointment->start_time)->format('g:i A');
                 $statusHeader = $isPending ? "SOLICITUD DE CITA EN ESPERA DE APROBACIÓN" : "NUEVA CITA MÉDICA CONFIRMADA";
 

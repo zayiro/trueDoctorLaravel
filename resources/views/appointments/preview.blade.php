@@ -1,3 +1,6 @@
+@php
+$appointmentDate = \Carbon\Carbon::parse($appointment->date)->format('Y-m-d');
+@endphp
 <x-guest-layout>
     <div class="max-w-3xl mx-auto py-12 px-4 mt-6">
         @if(session('error'))
@@ -70,11 +73,11 @@
                     <span class="text-slate-400 text-xs font-black uppercase tracking-wider">Fecha Programada</span>
                     <div class="text-end">
                         <span class="font-bold text-sm text-slate-800 block">
-                            {{ \Carbon\Carbon::parse($appointment->date)->translatedFormat('d \d\e F \d\e Y') }}
+                            {{ ucfirst(\Carbon\Carbon::parse($appointmentDate)->translatedFormat('l, d \d\e F \d\e Y')) }}
                         </span>
                         <!-- Tiempo restante dinámico adaptativo -->
                         <span class="text-[10px] text-indigo-600 font-bold block mt-1 bg-indigo-50 px-2 py-0.5 rounded-md inline-block border border-indigo-100/50">
-                            {{ \Carbon\Carbon::parse($appointment->date)->diffForHumans(null, false, false, 2) }}
+                            {{ \Carbon\Carbon::parse($appointmentDate)->diffForHumans(null, false, false, 2) }}
                         </span>
                     </div>
                 </div>

@@ -27,38 +27,54 @@ use App\Http\Controllers\MedicalExpertiseController;
 use App\Http\Controllers\DoctorSettingController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\ValidationController;
-use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\MedicalExamController; 
 use App\Http\Controllers\DashboardController;
 
-// 🔥 REFACTORIZACIÓN CORE: Conectamos la URL central con tu DashboardController analítico
+use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\UserManagementController;
+
+
+// URL central del DashboardController analítico
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
-    'verified',
+    //'verified',
 ])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 });
 
 // Rutas Privadas (admin)
-Route::middleware(['auth', 'role:admin'])->group(function () {
-    // Lista de médicos pendientes
-    Route::get('/administrator/validation', [ValidationController::class, 'index'])
-         ->name('administrator.validation.index');
-         
-    // Acciones de aprobación/rechazo
-    Route::post('/administrator/{doctor}/validate', [ValidationController::class, 'update'])
-         ->name('administrator.validation.update');
-
-    // Ruta segura para ver los documentos protegidos
-    Route::get('/administrator/{doctor}/document/{type}', [ValidationController::class, 'viewDocument'])
-         ->name('administrator.document.view');
+Route::middleware(['auth', 'role:admin'])->group(function () {    
+    // Listado de validaciones
+    Route::get('/validation', [ValidationController::class, 'index'])->name('administrator.validation.index');
+    
+    // Procesar aprobación o rechazo
+    Route::post('/validation/update', [ValidationController::class, 'update'])->name('administrator.validation.update');
+    
+    // Visualizador seguro de documentos
+    Route::get('/document/view/{type}', [ValidationController::class, 'viewDocument'])->name('administrator.document.view');
 
     //borrar cache desde el navegador cuando este logueado con role de admin
     Route::get('/clear-cache', [AdminController::class, 'clearCache'])->name('administrator.clearcache.index');         
 
     // Rutas protegidas de administración
     Route::get('/administrator/seo-sintomas', [AdminController::class, 'listIndexedSymptoms'])->name('administrator.symptoms.index');
+
+    // 1. Directorio Principal de Usuarios
+    Route::get('/users', [UserManagementController::class, 'index'])
+        ->name('administrator.users.index');
+    
+    // 2. Switch de activación/suspensión urgente
+    Route::patch('/users/{user}/toggle', [UserManagementController::class, 'toggleStatus'])
+        ->name('administrator.users.toggle');
+    
+    // 3. Disparador manual de recuperación de contraseña
+    Route::post('/users/{user}/reset-password', [UserManagementController::class, 'sendResetLink'])
+        ->name('administrator.users.reset');
+
+    // Rutas para la creación de administradores del staff
+    Route::get('/users/create-admin', [UserManagementController::class, 'createAdmin'])->name('administrator.users.createAdmin');
+    Route::post('/users/create-admin', [UserManagementController::class, 'storeAdmin'])->name('administrator.users.storeAdmin');
 });
 
 // Rutas Privadas (medical partner)
@@ -203,7 +219,19 @@ Route::middleware(['auth'])->group(function () {
 
     // Ruta para procesar el formulario de documentos
     Route::post('/partner/verify-documents', [VerificationController::class, 'store'])->name('partner.verify.store');
+
+    // Buscador de citas por referencia
+    Route::get('/appointments/search', [AppointmentController::class, 'searchByReference'])->name('appointments.search');
+
+    Route::get('/appointments/search', [AppointmentController::class, 'searchByReference'])->name('appointments.search');
+    
+    // Ruta de actualización parcial de estado con variables en inglés
+    Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])->name('appointments.updateStatus');
 });
+
+// ========================================================
+// 🌍 ENDPOINTS PÚBLICOS DE CONSULTA (ACCESO LIBRE PARA LOS USUARIOS)
+// ========================================================
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
@@ -217,10 +245,6 @@ Route::get('/support', [ContactController::class, 'showSupport'])->name('support
 Route::get('/register-options', function () {
     return view('auth.register-options');
 })->name('register.options');
-
-// ========================================================
-// 🌍 ENDPOINTS PÚBLICOS DE CONSULTA (ACCESO LIBRE PARA LOS USUARIOS)
-// ========================================================
 
 // Ruta para mostrar el formulario de registro de doctores
 Route::get('/register-partner', [RegisterDoctorController::class, 'register'])->name('partner.register');
@@ -277,7 +301,6 @@ Route::get('/api/departments/{department}/cities', function ($deptId) {
 
 // Ruta pública para que Google rastree todos tus enlaces indexables
 Route::get('/sitemap.xml', [SearchController::class, 'generateSitemap'])->name('seo.sitemap');
-//Route::redirect('/dashboard', '/admin', 301);
 
 //Páginas de Síntomas Indexables Automáticas
 

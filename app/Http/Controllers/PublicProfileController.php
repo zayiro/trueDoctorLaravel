@@ -70,6 +70,7 @@ class PublicProfileController extends Controller
         ));
     }
 
+    /*
     public function book(Request $request, AppointmentService $appointmentService)
     {
         // Validar que los datos lleguen correctamente
@@ -121,8 +122,7 @@ class PublicProfileController extends Controller
         // Redirigir a la vista de éxito
         return redirect()->route('appointments.success', $appointment->id)
             ->with('success', '¡Tu cita ha sido agendada correctamente!');
-    }
-
+    }*/
     public function success(Appointment $appointment)
     {
         // Seguridad: Solo el dueño de la cita puede verla

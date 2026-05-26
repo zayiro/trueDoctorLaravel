@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
+use Illuminate\Support\Carbon;
 
 class Appointment extends Model
 {
@@ -13,7 +15,7 @@ class Appointment extends Model
     protected $fillable = [
         'patient_id',
         'doctor_id',
-        'clinic_id',  // 🔥 AGREGADO: Esencial para el rastreo y comisiones institucionales del SaaS
+        'clinic_id', 
         'service_id',
         'address_id',
         'date',
@@ -30,12 +32,32 @@ class Appointment extends Model
 
     /**
      * Los atributos que deben ser convertidos a tipos nativos.
-     * 🔥 AGREGADO: Garantiza que la fecha sea un objeto Carbon y el precio mantenga precisión flotante.
+     * Garantiza que la fecha sea un objeto Carbon y el precio mantenga precisión flotante.
      */
     protected $casts = [
         'date'  => 'date',
         'price' => 'float',
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($appointment) {
+            // Genera un código único aleatorio antes de guardar
+            // Ejemplo resultado: OD-65A2F
+            do {
+                // Genera el prefijo con la fecha actual (Ej: 20260525)
+                $prefix = Carbon::now()->format('Ymd');
+                
+                // Genera 4 caracteres aleatorios (Ej: X79B)
+                $random = strtoupper(Str::random(4));
+                
+                // Une ambos componentes con un guion
+                $code = $prefix . '-' . $random;
+            } while (self::where('reference', $code)->exists()); // Evita duplicados
+
+            $appointment->reference = $code;
+        });
+    }
 
     /**
      * Determina si la cita actual cuenta con una videollamada de Zoom activa.
@@ -67,6 +89,12 @@ class Appointment extends Model
     public function address(): BelongsTo
     {
         return $this->belongsTo(Address::class, 'address_id');
+    }
+
+    // Relación con el Paciente (Usuario)
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 
     /**

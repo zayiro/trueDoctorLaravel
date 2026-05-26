@@ -32,6 +32,119 @@ class AppointmentController extends Controller
         $this->appointmentService = $service;
         $this->zoomService = $zoomService;
     }
+
+    /**
+     * Obtiene el modelo dueño actual (Doctor o Clinic).
+     */
+    protected function getOwner()
+    {
+        $user = Auth::user();
+        return $user->role === 'clinic' ? $user->clinic : $user->doctor;
+    }
+
+    /**
+     * Busca una reservación por su referencia filtrando según el rol del usuario.
+     */
+    public function searchByReference(Request $request)
+    {
+        // 1. Validar la entrada
+        $request->validate([
+            'reference' => 'required|string|max:20',
+        ]);
+
+        $user = Auth::user();
+        $reference = strtoupper(trim($request->reference));
+
+        // 2. Consulta base con relaciones optimizadas
+        $query = Appointment::where('reference', $reference)
+            ->with(['address.clinic', 'address.doctor', 'service', 'user']);
+
+        // 3. Aplicar reglas de seguridad por Rol (Multi-tenancy & Multi-profile)
+        switch ($user->role) {
+            case 'clinic':
+                $query->whereHas('address', function ($q) use ($user) {
+                    $q->where('clinic_id', $user->clinic->id);
+                });
+                break;
+
+            case 'doctor':
+                $query->whereHas('address', function ($q) use ($user) {
+                    $q->where('doctor_id', $user->doctor->id);
+                });
+                break;
+
+            case 'patient':
+                $query->where('user_id', $user->id);
+                break;
+
+            case 'admin':
+                // El administrador global no tiene filtros, puede ver todo.
+                break;
+
+            default:
+                abort(403, 'Rol no autorizado.');
+        }
+
+        // 4. Ejecutar la consulta
+        $appointment = $query->first();
+
+        // 5. Validar existencia y pertenencia
+        if (!$appointment) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'No se encontró la reservación o no tiene permisos para verla.');
+        }
+
+        // 6. Redirección a vistas según el perfil
+        if (in_array($user->role, ['doctor', 'clinic', 'admin'])) {
+            return view('appointments.show-internal', compact('appointment'));
+        }
+
+        return view('admin.appointments.show', compact('appointment', 'user'));
+    }
+
+    /**
+     * Actualiza el estado de una cita validando los permisos del rol.
+     */
+    public function updateStatus(Request $request, Appointment $appointment)
+    {
+        // 1. Validar que el estado enviado sea uno permitido
+        $request->validate([
+            'status' => 'required|in:pending,confirmed,completed,cancelled',
+        ]);
+
+        $user = Auth::user();
+        $newStatus = $request->status;
+
+        // 2. CONTROL DE SEGURIDAD INTERNA Y PERMISOS POR ROL
+        if ($user->role === 'patient') {
+            // Un paciente SOLO puede cancelar su propia cita
+            if ($appointment->user_id !== $user->id) {
+                abort(403, 'Acción no autorizada.');
+            }
+            if ($newStatus !== 'cancelled') {
+                return redirect()->back()->with('error', 'Los pacientes solo pueden cancelar citas.');
+            }
+        } elseif (in_array($user->role, ['doctor', 'clinic'])) {
+            // Doctores y Clínicas solo pueden modificar citas de sus sedes (Tenancy)
+            $ownerId = $user->role === 'clinic' ? $user->clinic->id : $user->doctor->id;
+            $foreignKey = $user->role === 'clinic' ? 'clinic_id' : 'doctor_id';
+
+            if ($appointment->address->$foreignKey !== $ownerId) {
+                abort(403, 'Acción no autorizada.');
+            }
+        } elseif ($user->role !== 'admin') {
+            abort(403, 'Rol no autorizado.');
+        }
+
+        // 3. Ejecutar la actualización del estado
+        $appointment->update([
+            'status' => $newStatus
+        ]);
+
+        return redirect()->route('appointments.search', ['reference' => $appointment->reference])
+            ->with('success', 'El estado de la reservación ha sido actualizado a: ' . __($newStatus));
+    }
     
     public function store(Request $request)
     {
@@ -103,7 +216,7 @@ class AppointmentController extends Controller
 
     public function processPatient(Request $request)
     {        
-        $bookingData = session('booking_data');
+        $bookingData = session('booking_data');        
         if (!$bookingData || !isset($bookingData['doctor_id'])) {
             return redirect()->route('search')->with('error', 'Sesión inválida o datos de reserva incompletos.');
         }
@@ -211,12 +324,12 @@ class AppointmentController extends Controller
             }
 
             $status = $requiresApproval ? 'pending' : 'confirmed';
-
+                        
             // 💾 Crear la cita con trazabilidad total en el SaaS [2]
             $appointment = Appointment::create([
                 'patient_id' => $patient->id,
                 'doctor_id'  => $doctor->id,
-                'clinic_id'  => $address->clinic_id, // Guarda el ID institucional si aplica [2]
+                'clinic_id'  => $address->clinic_id, 
                 'service_id' => $serviceSpecific->id,
                 'address_id' => $address->id,
                 'date'       => $bookingData['date'],

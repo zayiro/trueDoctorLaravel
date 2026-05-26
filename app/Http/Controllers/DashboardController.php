@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
-use App\Models\Address;
+use App\Models\User;
 use App\Models\Doctor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,8 +17,20 @@ class DashboardController extends Controller
         $user = Auth::user();
         $now = Carbon::now();
 
+        $usuariosPorRol = [];
+
         // 1. CONDICIONAL DE SEGURIDAD MULTI-PERFIL
-        if ($user->role === 'clinic') {
+        if ($user->role === 'admin') {
+            // Al ser administrador global, ve las métricas de todo el SaaS de golpe
+            $owner = null;
+            $ownerColumn = null;
+
+            // Conteo global de usuarios agrupados por rol para el Administrador
+            $usuariosPorRol = User::select('role', DB::raw('count(*) as total'))
+                ->groupBy('role')
+                ->pluck('total', 'role')
+                ->toArray();
+        } elseif ($user->role === 'clinic') {
             $owner = $user->clinic;
             $ownerColumn = 'clinic_id';
         } else {
@@ -26,61 +38,75 @@ class DashboardController extends Controller
             $ownerColumn = 'doctor_id';
         }
 
-        if (!$owner) {
-            return redirect()->back()->with('error', 'Perfil comercial no indexado.');
+        // Si no es admin y tampoco tiene un perfil comercial creado, lo mandamos a crear su perfil
+        if ($user->role !== 'admin' && !$owner) {
+            // Cambia esto a la ruta del onboarding o perfil de tu SaaS si lo prefieres
+            return redirect()->route('profile.show')->with('error', 'Perfil comercial no indexado.');
         }
 
-        // 2. INDICADORES EN TIEMPO REAL (KPIs BASE)
+        // 2. INDICADORES EN TIEMPO REAL (KPIs BASE con soporte para Admin)
+        // Inicializamos la consulta base de citas
+        $queryCitas = Appointment::query();
+
+        // Si no es administrador, filtramos estrictamente por su Tenant / Dueño
+        if ($user->role !== 'admin') {
+            $queryCitas->where($ownerColumn, $owner->id);
+        }
+
         // Volumen de citas hoy
-        $citasHoy = Appointment::where($ownerColumn, $owner->id)
+        $citasHoy = (clone $queryCitas)
             ->whereDate('date', $now->toDateString())
             ->whereNotIn('status', ['cancelled'])
             ->count();
 
         // Citas próximas / pendientes de atención
-        $citasProximas = Appointment::where($ownerColumn, $owner->id)
+        $citasProximas = (clone $queryCitas)
             ->whereDate('date', '>=', $now->toDateString())
             ->whereIn('status', ['confirmed', 'pending'])
             ->count();
 
-        // Facturación Bruta Mensual (Citas del mes actual completadas o confirmadas)
-        $facturacionMes = Appointment::where($ownerColumn, $owner->id)
+        // Facturación Bruta Mensual
+        $facturacionMes = (clone $queryCitas)
             ->whereMonth('date', $now->month)
             ->whereYear('date', $now->year)
             ->whereIn('status', ['confirmed', 'completed'])
             ->sum('price');
 
         // Tasa de Ausentismo / Cancelación
-        $totalCitasHistoricas = Appointment::where($ownerColumn, $owner->id)->count();
-        $totalCanceladas = Appointment::where($ownerColumn, $owner->id)->where('status', 'cancelled')->count();
+        $totalCitasHistoricas = (clone $queryCitas)->count();
+        $totalCanceladas = (clone $queryCitas)->where('status', 'cancelled')->count();
         
         $tasaCancelacion = $totalCitasHistoricas > 0 
             ? round(($totalCanceladas / $totalCitasHistoricas) * 100, 1) 
             : 0;
 
         // 3. ESTADÍSTICAS AVANZADAS DE DISTRIBUCIÓN
-        // Distribución por Modalidad (Presencial vs Virtual)
-        $modalidades = Appointment::where($ownerColumn, $owner->id)
-            ->join('services', 'appointments.service_id', '=', 'services.id')
-            ->select('services.type', DB::raw('count(*) as total'))
+        $modalidadesQuery = Appointment::join('services', 'appointments.service_id', '=', 'services.id');
+        if ($user->role !== 'admin') {
+            $modalidadesQuery->where('appointments.' . $ownerColumn, $owner->id);
+        }
+        $modalidades = $modalidadesQuery->select('services.type', DB::raw('count(*) as total'))
             ->groupBy('services.type')
             ->pluck('total', 'type')
             ->toArray();
         
-        // Distribución por Sedes / Consultorios físicos más rentables
-        $sedesTop = Appointment::where('appointments.' . $ownerColumn, $owner->id) // 🔥 CORREGIDO: Especificamos la tabla appointments
-            ->join('addresses', 'appointments.address_id', '=', 'addresses.id')
-            ->select('addresses.name', 'addresses.id', DB::raw('count(*) as cantidad'), DB::raw('sum(price) as ingresos')) // 🔥 AGREGADO: addresses.id explícito para el group por estándar SQL
+        // Distribución por Sedes / Consultorios
+        $sedesQuery = Appointment::join('addresses', 'appointments.address_id', '=', 'addresses.id');
+        if ($user->role !== 'admin') {
+            $sedesQuery->where('appointments.' . $ownerColumn, $owner->id);
+        }
+        $sedesTop = $sedesQuery->select('addresses.name', 'addresses.id', DB::raw('count(*) as cantidad'), DB::raw('sum(price) as ingresos'))
             ->groupBy('addresses.name', 'addresses.id')
             ->orderBy('ingresos', 'desc')
             ->take(3)
             ->get();
 
-
-        // 4. HISTORIAL GRÁFICO (Últimos 5 meses de transacciones)
-        $historicoMensual = Appointment::where($ownerColumn, $owner->id)
-            ->whereIn('status', ['confirmed', 'completed'])
-            ->select(
+        // 4. HISTORIAL GRÁFICO (Últimos 5 meses)
+        $historicoQuery = Appointment::whereIn('status', ['confirmed', 'completed']);
+        if ($user->role !== 'admin') {
+            $historicoQuery->where($ownerColumn, $owner->id);
+        }
+        $historicoMensual = $historicoQuery->select(
                 DB::raw("DATE_FORMAT(date, '%Y-%m') as mes"),
                 DB::raw('sum(price) as total'),
                 DB::raw('count(*) as conteo')
@@ -90,11 +116,11 @@ class DashboardController extends Controller
             ->take(5)
             ->get()
             ->reverse();
-        
+                
         return view('admin.dashboard', compact(
             'user', 'owner', 'citasHoy', 'citasProximas', 
             'facturacionMes', 'tasaCancelacion', 'modalidades', 
-            'sedesTop', 'historicoMensual'
+            'sedesTop', 'historicoMensual', 'owner', 'usuariosPorRol'
         ));
     }
 }

@@ -10,6 +10,12 @@
             'active' => false,
         ],
         [
+            'name' => 'Directorio de Usuarios',
+            'icon' => 'fa-solid fa-gauge',
+            'href' => route('administrator.users.index'),
+            'active' => false,
+        ],
+        [
             'name' => 'Aprovaciones',
             'icon' => 'fa-solid fa-gauge',
             'href' => route('administrator.validation.index'),

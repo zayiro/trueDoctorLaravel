@@ -5,7 +5,7 @@ $breadcrumbs = [
         'href' => route('admin.dashboard'),
     ],
     [
-        'name' => 'Validacion de documentos',
+        'name' => 'Validación de Documentos',
     ]
 ];
 @endphp
@@ -13,136 +13,128 @@ $breadcrumbs = [
 <x-admin-layout :breadcrumbs="$breadcrumbs">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        <!-- Encabezado del Panel -->
         <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8 pb-4 border-b border-slate-200">
             <div>
-                <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Validación de Profesionales</h1>
-                <p class="text-sm text-slate-500 mt-1">Revisa las credenciales de los médicos postulados para activar sus cuentas en OpenDoctor.</p>
+                <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Validación de Cuentas Comerciales</h1>
+                <p class="text-sm text-slate-500 mt-1">Revisa las credenciales de médicos y clínicas postuladas para activar sus cuentas.</p>
             </div>
-            <!-- Contador rápido en base a la variable de paginación -->
-            <div class="mt-4 md:mt-0 bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-blue-100 self-start">
-                {{ $doctors->total() }} Médicos pendientes
+            
+            <div class="mt-4 md:mt-0 bg-indigo-50 text-indigo-700 text-xs font-semibold px-4 py-2 rounded-full border border-indigo-100 self-start">
+                {{ $partners->total() }} Solicitudes pendientes
             </div>
         </div>
 
-        <!-- Alertas de Éxito / Errores globales -->
         @if (session('success'))
-            <div class="p-4 mb-6 text-sm text-emerald-800 rounded-xl bg-emerald-50 border border-emerald-200 shadow-sm animate-fade-in">
+            <div class="p-4 mb-6 text-sm text-emerald-800 rounded-xl bg-emerald-50 border border-emerald-200 shadow-sm">
                 <span class="font-semibold">Éxito:</span> {{ session('success') }}
             </div>
         @endif
-
-        <!-- Tabla Principal de Registros -->
         <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
-                            <th class="p-4">Médico / Contacto</th>
-                            <th class="p-4">Identificación y Cédula</th>
+                            <th class="p-4">Cuenta / Contacto</th>
+                            <th class="p-4">Identificación Legal</th>
                             <th class="p-4">Documentación Soportada</th>
                             <th class="p-4 text-right">Acciones de Control</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 text-sm text-slate-700">
-                        @forelse ($doctors as $doctor)
+                        @forelse ($partners as $partner)
+                            @php
+                                $isClinic = $partner->user?->role === 'clinic';
+                                $queryParam = $isClinic ? ['clinic_id' => $partner->id] : ['doctor_id' => $partner->id];
+                            @endphp
                             <tr class="hover:bg-slate-50/50 transition-colors">
                                 
-                                <!-- Columna 1: Datos del Médico -->
                                 <td class="p-4">
-                                    <div class="font-semibold text-slate-900">{{ $doctor->user->name ?? 'Médico sin nombre' }}</div>
-                                    <div class="text-xs text-slate-400 mt-0.5">{{ $doctor->user->email ?? 'Sin correo' }}</div>
-                                    @if($doctor->phone)
-                                        <div class="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                                            📞 {{ $doctor->phone }}
-                                        </div>
+                                    <div class="font-semibold text-slate-900">
+                                        {{ $partner->user->name ?? ($isClinic ? 'Clínica sin nombre' : 'Médico sin nombre') }}
+                                        <span class="ml-1.5 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full {{ $isClinic ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">
+                                            {{ $isClinic ? 'Clínica' : 'Médico' }}
+                                        </span>
+                                    </div>
+                                    <div class="text-xs text-slate-400 mt-1">{{ $partner->user->email ?? 'Sin correo' }}</div>
+                                    @if($partner->phone)
+                                        <div class="text-xs text-slate-500 mt-1 flex items-center gap-1">📞 {{ $partner->phone }}</div>
                                     @endif
                                 </td>
                                 
-                                <!-- Columna 2: Identificación Legal -->
                                 <td class="p-4">
-                                    @if($doctor->identification)
-                                    <div class="inline-flex items-center text-xs font-mono bg-slate-100 text-slate-700 px-2 py-1 rounded mb-1.5 border border-slate-200">
-                                        Identificación: <strong class="text-slate-700">{{ $doctor->identification }}</strong>
-                                    </div>
+                                    @if($partner->identification)
+                                        <div class="inline-flex items-center text-xs font-mono bg-slate-100 text-slate-700 px-2 py-1 rounded mb-1.5 border border-slate-200">
+                                            {{ $isClinic ? 'NIT / RUT:' : 'Identificación:' }} <strong class="text-slate-700 ml-1">{{ $partner->identification }}</strong>
+                                        </div>
                                     @else
                                         <span class="text-xs text-amber-600 block italic">Identificación no registrada</span>
                                     @endif
 
-                                    @if($doctor->medical_license)
-                                        <div class="inline-flex items-center text-xs font-mono bg-slate-100 text-slate-700 px-2 py-1 rounded mb-1.5 border border-slate-200 mt-2">
-                                            Registro Médico: <strong class="text-slate-700">{{ $doctor->medical_license }}</strong>
-                                        </div>
+                                    @if(!$isClinic)
+                                        @if($partner->medical_license)
+                                            <div class="inline-flex items-center text-xs font-mono bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-200 mt-1.5 block w-fit">
+                                                Registro Médico: <strong class="text-slate-700 ml-1">{{ $partner->medical_license }}</strong>
+                                            </div>
+                                        @else
+                                            <span class="text-xs text-amber-600 block italic mt-1.5">Licencia no registrada</span>
+                                        @endif
                                     @else
-                                        <span class="text-xs text-amber-600 block italic">Licencia no registrada</span>
+                                        @if($partner->commerce_license ?? null)
+                                            <div class="inline-flex items-center text-xs font-mono bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-200 mt-1.5 block w-fit">
+                                                Reg. Mercantil: <strong class="text-slate-700 ml-1">{{ $partner->commerce_license }}</strong>
+                                            </div>
+                                        @else
+                                            <span class="text-xs text-amber-600 block italic mt-1.5">Registro mercantil ausente</span>
+                                        @endif
                                     @endif
                                 </td>
-
-                                <!-- Columna 3: Descarga Segura de Archivos -->
                                 <td class="p-4">
                                     <div class="flex flex-col gap-y-2">                                        
-                                        @if ($doctor->identity_card_path)
-                                            <!-- Cédula -->
-                                            <a href="{{ route('administrator.document.view', ['doctor' => $doctor, 'type' => 'cedula']) }}" 
-                                            target="_blank" 
-                                            class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline group w-fit">
-                                                <span class="mr-1.5">📜</span> Ver Identificación
-                                                <svg class="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                        @if ($partner->identity_card_path)
+                                            <a href="{{ route('administrator.document.view', array_merge(['type' => 'cedula'], $queryParam)) }}" target="_blank" class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline group w-fit">
+                                                <span class="mr-1.5">📜</span> Ver {{ $isClinic ? 'RUT / NIT' : 'Identificación' }}
                                             </a>
                                         @else
-                                            <span class="text-sm text-red-500">No se ha subido el documento</span>
+                                            <span class="text-xs text-red-500 font-medium">❌ Falta identidad</span>
                                         @endif
                                         
-                                        @if ($doctor->professional_card_path)
-                                            <!-- Tarjeta Profesional -->
-                                            <a href="{{ route('administrator.document.view', ['doctor' => $doctor, 'type' => 'tarjeta']) }}" 
-                                            target="_blank" 
-                                            class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline group w-fit">
-                                                <span class="mr-1.5">📜</span> Ver Tarjeta Profesional
-                                                <svg class="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                        @if ($partner->professional_card_path)
+                                            <a href="{{ route('administrator.document.view', array_merge(['type' => 'tarjeta'], $queryParam)) }}" target="_blank" class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline group w-fit">
+                                                <span class="mr-1.5">📜</span> Ver {{ $isClinic ? 'Cámara de Comercio' : 'Tarjeta Profesional' }}
                                             </a>
                                         @else
-                                            <span class="text-sm text-red-500">No se ha subido el documento</span>
+                                            <span class="text-xs text-red-500 font-medium">❌ Falta certificación</span>
                                         @endif                                    
                                     </div>
                                 </td>
 
-                                <!-- Columna 4: Botones de Aprobación / Rechazo -->
                                 <td class="p-4 text-right align-middle">
                                     <div class="inline-flex items-center justify-end gap-x-2">
-                                        @if ($doctor->identity_card_path && $doctor->professional_card_path)
-                                        <!-- Formulario para Aprobar Médico -->
-                                        <form action="{{ route('administrator.validation.update', $doctor) }}" method="POST">
-                                            @csrf
-                                            <input type="hidden" name="status" value="approved">
-                                            <button type="submit" class="py-1.5 px-3 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 shadow-sm transition">
-                                                Aprobar
-                                            </button>
-                                        </form>
+                                        @if ($partner->identity_card_path && $partner->professional_card_path)
+                                            <form action="{{ route('administrator.validation.update') }}" method="POST">
+                                                @csrf
+                                                <input type="hidden" name="status" value="approved">
+                                                <input type="hidden" name="{{ $isClinic ? 'clinic_id' : 'doctor_id' }}" value="{{ $partner->id }}">
+                                                <button type="submit" class="py-1.5 px-3 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition">Aprobar</button>
+                                            </form>
 
-                                        <!-- Formulario para Rechazar Médico -->
-                                        <form action="{{ route('administrator.validation.update', $doctor) }}" method="POST" 
-                                            onsubmit="return confirm('¿Estás seguro de que deseas rechazar este profesional? Se eliminarán los documentos actuales para que pueda cargarlos nuevamente.')">
-                                            @csrf
-                                            <input type="hidden" name="status" value="rejected">
-                                            <button type="submit" class="py-1.5 px-3 text-xs font-semibold rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition">
-                                                Rechazar
-                                            </button>
-                                        </form>
+                                            <form action="{{ route('administrator.validation.update') }}" method="POST" onsubmit="return confirm('¿Estás seguro de que deseas rechazar esta cuenta?')">
+                                                @csrf
+                                                <input type="hidden" name="status" value="rejected">
+                                                <input type="hidden" name="{{ $isClinic ? 'clinic_id' : 'doctor_id' }}" value="{{ $partner->id }}">
+                                                <button type="submit" class="py-1.5 px-3 text-xs font-semibold rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition">Rechazar</button>
+                                            </form>
                                         @endif
                                     </div>
                                 </td>
 
                             </tr>
                         @empty
-                            <!-- Estado vacío si no hay registros pendientes -->
                             <tr>
-                                <td colspan="4" class="p-12 pb-4 text-center">
-                                    <div class="inline-flex items-center justify-center w-12 h-12 bg-slate-50 text-slate-400 rounded-full mb-3">
-                                        ✅
-                                    </div>
+                                <td colspan="4" class="p-12 text-center bg-slate-50/30">
+                                    <div class="inline-flex items-center justify-center w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full mb-3 text-xl border border-emerald-100">✓</div>
                                     <div class="text-sm font-semibold text-slate-900">Al día con las revisiones</div>
-                                    <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">No hay médicos o clínicas esperando validación de documentos en este momento.</p>
+                                    <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">No hay registros esperando validación de documentos.</p>
                                 </td>
                             </tr>
                         @endforelse
@@ -151,10 +143,9 @@ $breadcrumbs = [
             </div>
         </div>
 
-        <!-- Paginador nativo de Laravel Tailwind -->
-        @if($doctors->hasPages())
+        @if($partners->hasPages())
             <div class="mt-6">
-                {{ $doctors->links() }}
+                {{ $partners->links() }}
             </div>
         @endif
     </div>

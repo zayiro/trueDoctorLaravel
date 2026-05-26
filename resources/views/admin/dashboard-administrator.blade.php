@@ -1,3 +1,0 @@
-<div>
-    soy administrador
-</div> 
