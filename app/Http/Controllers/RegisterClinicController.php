@@ -5,13 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Specialty;
 use App\Models\Clinic;
+use App\Models\Plan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Spatie\Permission\Models\Role;
 
 class RegisterClinicController extends Controller
 {
+    /**
+     * Muestra el formulario de registro para centros médicos y clínicas.
+     */
     public function register() 
     {
         $specialties = Specialty::orderBy('name', 'asc')->get();
@@ -19,10 +24,13 @@ class RegisterClinicController extends Controller
         return view('auth.register-clinic', compact('specialties'));
     }
 
+    /**
+     * Procesa la creación transaccional de la clínica, su rol en Spatie y su plan institucional.
+     */
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => ['required', 'string', 'max:255'],
             'nit' => [
                 'required',
                 'string',
@@ -38,8 +46,8 @@ class RegisterClinicController extends Controller
                 Rule::unique('clinics', 'reps_code'), 
             ],
             'phone' => ['required', 'string', 'regex:/^[0-9]{10}$/'], 
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:8|confirmed',
+            'email' => ['required', 'email', 'unique:users,email'],
+            'password' => ['required', 'min:8', 'confirmed'],
         ], [
             'nit.regex' => 'El formato del NIT debe ser solo números o incluir el dígito de verificación (ej: 12345678-9).',
             'nit.unique' => 'Este NIT ya está registrado en nuestra plataforma.',
@@ -53,8 +61,10 @@ class RegisterClinicController extends Controller
         $cleanNit = str_replace('-', '', $request->nit);
 
         try {
+            // Estructura transaccional unificada para prevenir inconsistencias en el SaaS
             DB::transaction(function () use ($request, $cleanNit, $cleanPhone) {
-                // 1. Crear Usuario Gerente
+                
+                // 1. Crear el usuario administrador del centro médico
                 $user = User::create([
                     'name'     => $request->name,
                     'email'    => $request->email,
@@ -62,11 +72,12 @@ class RegisterClinicController extends Controller
                     'role'     => 'clinic',
                 ]);
 
-                // 2. Asignar Rol con Spatie
-                $user->assignRole('clinic');
+                // 2. Sincronización blindada de permisos con Spatie
+                $role = Role::firstOrCreate(['name' => 'clinic']);                
+                $user->assignRole($role);
 
-                // 3. Crear Perfil de Clínica
-                // 🔥 Al ejecutarse este create(), Laravel dispara el ClinicObserver automáticamente en segundo plano
+                // 3. Crear el perfil de la clínica
+                // Al ejecutarse este create(), Laravel dispara el ClinicObserver para inyectar ClinicSetting y la Sede Virtual
                 $clinic = $user->clinic()->create([
                     'name'              => $request->name, 
                     'nit'               => $cleanNit,
@@ -76,7 +87,7 @@ class RegisterClinicController extends Controller
                     'active'            => true
                 ]);
                 
-                // 4. Sincronizar especialidades médicas seleccionadas
+                // 4. Sincronizar el catálogo de especialidades médicas seleccionadas
                 if ($request->has('specialties')) {
                     $clinic->specialties()->sync($request->specialties);
                 }
@@ -86,7 +97,10 @@ class RegisterClinicController extends Controller
                 ->with('success', 'Clínica registrada correctamente. Ya puedes iniciar sesión para administrar tu centro médico.');
 
         } catch (\Exception $e) {
-            dd("Error en el registro desacoplado del SaaS: " . $e->getMessage());
+            // Retorno elegante para no romper el servidor con un dd() en producción
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Error durante el registro transaccional de la clínica: ' . $e->getMessage());
         }
     }
 }

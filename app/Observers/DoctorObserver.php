@@ -19,7 +19,7 @@ class DoctorObserver
         // Creamos la configuración por defecto
         DoctorSetting::create([
             'doctor_id'                  => $doctor->id,
-            'plan_id'                    => 1, // Premium por defecto según tu requerimiento
+            'plan_id'                    => $defaultPlan ? $defaultPlan->id : 1, 
             'accepts_online_payments'    => false,
             'currency'                   => 'COP',
             'min_notice_hours'           => 2,

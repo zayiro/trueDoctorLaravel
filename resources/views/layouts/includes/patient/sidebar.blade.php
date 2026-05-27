@@ -1,7 +1,9 @@
 @php
-$patient = auth()->user()->patient;
+$user = auth()->user();
+// Validamos si existe la relación en la base de datos
+$patient = ($user && $user->patient()->exists()) ? $user->patient : null;
 
- $links = [
+$links = [
     [
         'header' => 'Administrar página',        
     ],
@@ -9,25 +11,25 @@ $patient = auth()->user()->patient;
         'name' => 'Dashboard',
         'icon' => 'fa-solid fa-gauge',
         'href' => route('admin.dashboard'),
-        'active' => false,
+        'active' => request()->routeIs('admin.dashboard'),
     ],
     [
         'name' => 'Notificaciones',
         'icon' => 'fa-solid fa-gauge',
         'href' => route('notifications.index'),
-        'active' => false,
+        'active' => request()->routeIs('notifications.index'),
     ],
     [
         'name' => 'Mis citas',
         'icon' => 'fa-solid fa-gauge',
         'href' => route('patient.appointments.index'),
-        'active' => false,
+        'active' => request()->routeIs('patient.appointments.index'),
     ],
     [
         'name' => 'Pagos y Facturación',
         'icon' => 'fa-solid fa-gauge',
         'href' => route('partner.appointments.index'),
-        'active' => false,
+        'active' => request()->routeIs('partner.appointments.index'),
     ],
     [
         'header' => 'Antecedentes Médicos',        
@@ -36,45 +38,45 @@ $patient = auth()->user()->patient;
         'name' => 'Ficha de identificación',
         'icon' => 'fa-solid fa-gauge',
         'href' => route('patient.patient-identification.index'),
-        'active' => false,
+        'active' => request()->routeIs('patient.patient-identification.index'),
     ],
     [
         'name' => 'Historial Médico',
         'icon' => 'fa-solid fa-gauge',
         'href' => route('patient.history.index'),
-        'active' => false,
+        'active' => request()->routeIs('patient.history.index'),
     ],
     [
         'name' => 'Alergias',
         'icon' => 'fa-solid fa-gauge',
         'href' => route('patient.allergies.index'),
-        'active' => false,
+        'active' => request()->routeIs('patient.allergies.index'),
     ],
     [
         'name' => 'Reporte Quirúrgico',
         'icon' => 'fa-solid fa-gauge',
         'href' => route('patient.surgeries.index'),
-        'active' => false,
+        'active' => request()->routeIs('patient.surgeries.index'),
     ],
     [
         'name' => 'Historial Familiar',
         'icon' => 'fa-solid fa-gauge',
         'href' => route('patient.family-history.index'),
-        'active' => false,
+        'active' => request()->routeIs('patient.family-history.index'),
     ],
     [
         'name' => 'Medicación',
         'icon' => 'fa-solid fa-gauge',
         'href' => route('patient.medications.index'),
-        'active' => false,
+        'active' => request()->routeIs('patient.medications.index'),
     ],   
     [
         'name' => 'Descargar Historia Clínica',
         'icon' => 'fa-solid fa-gauge',
-        'href' => route('patient.pdf.clinical-history', $patient),
-        'active' => false,
+        'href' => $patient ? route('patient.pdf.clinical-history', $patient) : '#',
+        'active' => request()->routeIs('patient.pdf.clinical-history'),
     ],    
- ];
+];
 @endphp
 
 <aside id="top-bar-sidebar" class="fixed top-0 left-0 z-40 w-64 h-full transition-transform -translate-x-full sm:translate-x-0" aria-label="Sidebar">

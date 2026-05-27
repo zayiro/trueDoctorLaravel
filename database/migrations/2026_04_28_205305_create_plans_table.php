@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('plan'); // Ejemplo: "premium"
             $table->integer('max_addresses')->default(2);
             $table->integer('max_services')->default(3);
+            $table->integer('max_doctors')->default(1);
             $table->integer('max_appointments_per_year')->default(50);
             // Booleano para permitir o no el buscador
             $table->boolean('can_search_patients')->default(false);

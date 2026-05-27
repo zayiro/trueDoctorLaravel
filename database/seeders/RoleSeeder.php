@@ -14,10 +14,7 @@ class RoleSeeder extends Seeder
      */
     public function run(): void
     {
-        /*Role::create([
-            'name' => 'admin',
-        ])->givePermissionTo(Permission::all());*/
-        
+        // 1. Catálogo maestro de roles requeridos en el SaaS
         $roles = [
             'patient',
             'doctor',
@@ -26,10 +23,20 @@ class RoleSeeder extends Seeder
             'clinic'
         ];
 
-        foreach ($roles as $role) {
-            Role::create([
-                'name' => $role
+        // 2. Creación segura e idéntica de roles (Evita duplicados si se corre múltiples veces)
+        foreach ($roles as $roleName) {
+            Role::firstOrCreate([
+                'name' => $roleName
             ]);
+        }
+
+        // 3. Asignación automática de permisos al Administrador Global
+        // Una vez asegurados los roles, buscamos al admin y le otorgamos todos los permisos maestros
+        $adminRole = Role::where('name', 'admin')->first();
+        
+        if ($adminRole && Permission::exists()) {
+            // Solo sincroniza si ya has corrido un seeder de permisos previamente
+            $adminRole->givePermissionTo(Permission::all());
         }
     }
 }

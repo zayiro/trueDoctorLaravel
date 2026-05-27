@@ -7,6 +7,10 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany; 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Clinic extends Model {
     protected $fillable = [
@@ -48,12 +52,16 @@ class Clinic extends Model {
             return $this->addresses()->where('type', 'virtual')->first();
         }
 
+        // Buscamos de forma segura la primera ciudad cargada en el SaaS
+        $firstCity = City::first();
+        $cityId = $firstCity ? $firstCity->id : null;
+
         return $this->addresses()->create([
             'name'      => 'Atención Virtual / Telemedicina (Institucional)',
             'address'   => 'Plataforma Online',
             'type'      => 'virtual',
             'phone'     => $this->phone ?? 'N/A', 
-            'city_id'   => 1, // ID numérico limpio para la FK de ciudades
+            'city_id'   => $cityId, 
             'status'    => true,
         ]);
     }
@@ -203,5 +211,32 @@ class Clinic extends Model {
             ->count();
 
         return $currentServicesCount < $plan->max_services;
+    }
+
+        /**
+     * VERIFICACIÓN SAAS: ¿Puede añadir más médicos a su nómina según su plan activo?
+     * Mapeo inteligente basado en el slug del plan actual para evitar alterar migraciones.
+     */
+    public function canAddMoreDoctors(): bool
+    {
+        $plan = $this->plan()->first();
+        if (!$plan) {
+            return false;
+        }
+
+        // Definimos los límites directamente por el slug del plan
+        $limits = [
+            'free'    => 1,   // El plan básico solo permite el médico administrador
+            'premium' => 5,   // Capacidad intermedia para clínicas pequeñas
+            'gold'    => 50,  // Capacidad extendida para centros médicos grandes
+        ];
+
+        // Obtenemos el límite asignado al slug (por defecto 1 si no coincide)
+        $maxDoctors = $limits[$plan->slug] ?? 1;
+
+        // Contamos la nómina actual (tanto pendientes como aprobados)
+        $currentDoctorsCount = $this->doctors()->count();
+
+        return $currentDoctorsCount < $maxDoctors;
     }
 }

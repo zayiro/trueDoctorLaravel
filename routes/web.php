@@ -29,6 +29,9 @@ use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\ValidationController;
 use App\Http\Controllers\MedicalExamController; 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DoctorClinicController;
+use App\Http\Controllers\ClinicDoctorController;
+use App\Http\Controllers\ReviewController;
 
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\UserManagementController;
@@ -162,14 +165,21 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
 
     Route::get('/campaigns', \App\Livewire\Campaigns\CampaignIndex::class)->name('campaigns.index');
     Route::get('/campaigns/create', \App\Livewire\Campaigns\CreateCampaign::class)->name('campaigns.create');
+
+    // Bandeja de clínicas vinculadas para el médico
+    Route::get('clinics', [DoctorClinicController::class, 'index'])->name('doctor_clinics.index');
+    
+    // Procesos de aceptación o desvinculación voluntaria
+    Route::patch('clinics/{clinic}/accept', [DoctorClinicController::class, 'accept'])->name('doctor_clinics.accept');
+    Route::delete('clinics/{clinic}/reject', [DoctorClinicController::class, 'reject'])->name('doctor_clinics.reject');
 });
 
 // Grupo exclusivo para la administración de nóminas de centros médicos
-Route::middleware(['auth', 'role:clinic'])->prefix('partner/clinic')->name('partner.')->group(function () {
-    Route::get('/doctors', [ClinicDoctorController::class, 'index'])->name('clinic_doctors.index');
-    Route::post('/doctors', [ClinicDoctorController::class, 'store'])->name('clinic_doctors.store');
-    Route::patch('/doctors/{doctor}/toggle', [ClinicDoctorController::class, 'toggleStatus'])->name('clinic_doctors.toggle');
-    Route::delete('/doctors/{doctor}', [ClinicDoctorController::class, 'destroy'])->name('clinic_doctors.destroy');
+Route::middleware(['auth', 'role:clinic'])->prefix('partner/clinic')->group(function () {    
+    Route::get('/clinic/doctors', [ClinicDoctorController::class, 'index'])->name('clinic_doctors.index');
+    Route::post('/clinic/doctors', [ClinicDoctorController::class, 'store'])->name('clinic_doctors.store');
+    Route::patch('/clinic/doctors/{doctor}/toggle', [ClinicDoctorController::class, 'toggleStatus'])->name('clinic_doctors.toggle');
+    Route::delete('/clinic/doctors/{id}', [ClinicDoctorController::class, 'destroy'])->name('clinic_doctors.destroy');
 });
 
 // Rutas Privadas (patient)
@@ -199,7 +209,7 @@ Route::middleware(['auth', 'role:patient'])->group(function () {
     Route::get('/patient/pdf/clinical-history/{patient}', [PatientController::class, 'downloadClinicalHistory'])->name('patient.pdf.clinical-history');
 
     // Ruta para que el paciente ejecute la cancelación desde la web
-    Route::post('/patient/appointments/{id}/cancel', [AppointmentController::class, 'cancelWeb'])->name('patient.appointments.cancel');
+    Route::post('/patient/appointments/{id}/cancel', [PatientController::class, 'cancelWeb'])->name('patient.appointments.cancel');
 
     // Ruta de la sala de espera para el paciente
     Route::get('/patient/meet/{room_code}', [AppointmentController::class, 'waitingRoom'])->name('patient.appointments.waiting_room');

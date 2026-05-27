@@ -7,17 +7,18 @@
             'name' => 'Dashboard',
             'icon' => 'fa-solid fa-gauge',
             'href' => route('admin.dashboard'),
-            'active' => false,
+            'active' => request()->routeIs('admin.dashboard'),
         ],
         [
             'name' => 'Nómina de Especialistas',
             'icon' => 'fa-solid fa-gauge',
             'href' => route('clinic_doctors.index'),
-            'active' => false,
+            'active' => request()->routeIs('clinic_doctors.*'), // Corregido: removido el prefijo 'partner.'
         ],
     ];
 
-    $validation = auth()->user()->doctor->validation_status;
+    // 🔒 CORRECCIÓN DEL BUG: Cambiado de 'doctor' a 'clinic' usando el operador seguro (?->)
+    $validation = auth()->user()->clinic?->validation_status ?? 'missing';
 
     if ($validation != 'approved')
     {

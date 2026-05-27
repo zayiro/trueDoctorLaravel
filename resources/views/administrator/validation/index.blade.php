@@ -35,7 +35,6 @@ $breadcrumbs = [
                     <thead>
                         <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
                             <th class="p-4">Cuenta / Contacto</th>
-                            <th class="p-4">Identificación Legal</th>
                             <th class="p-4">Documentación Soportada</th>
                             <th class="p-4 text-right">Acciones de Control</th>
                         </tr>
@@ -62,48 +61,21 @@ $breadcrumbs = [
                                 </td>
                                 
                                 <td class="p-4">
-                                    @if($partner->identification)
-                                        <div class="inline-flex items-center text-xs font-mono bg-slate-100 text-slate-700 px-2 py-1 rounded mb-1.5 border border-slate-200">
-                                            {{ $isClinic ? 'NIT / RUT:' : 'Identificación:' }} <strong class="text-slate-700 ml-1">{{ $partner->identification }}</strong>
-                                        </div>
-                                    @else
-                                        <span class="text-xs text-amber-600 block italic">Identificación no registrada</span>
-                                    @endif
-
-                                    @if(!$isClinic)
-                                        @if($partner->medical_license)
-                                            <div class="inline-flex items-center text-xs font-mono bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-200 mt-1.5 block w-fit">
-                                                Registro Médico: <strong class="text-slate-700 ml-1">{{ $partner->medical_license }}</strong>
-                                            </div>
-                                        @else
-                                            <span class="text-xs text-amber-600 block italic mt-1.5">Licencia no registrada</span>
-                                        @endif
-                                    @else
-                                        @if($partner->commerce_license ?? null)
-                                            <div class="inline-flex items-center text-xs font-mono bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-200 mt-1.5 block w-fit">
-                                                Reg. Mercantil: <strong class="text-slate-700 ml-1">{{ $partner->commerce_license }}</strong>
-                                            </div>
-                                        @else
-                                            <span class="text-xs text-amber-600 block italic mt-1.5">Registro mercantil ausente</span>
-                                        @endif
-                                    @endif
-                                </td>
-                                <td class="p-4">
                                     <div class="flex flex-col gap-y-2">                                        
                                         @if ($partner->identity_card_path)
                                             <a href="{{ route('administrator.document.view', array_merge(['type' => 'cedula'], $queryParam)) }}" target="_blank" class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline group w-fit">
                                                 <span class="mr-1.5">📜</span> Ver {{ $isClinic ? 'RUT / NIT' : 'Identificación' }}
                                             </a>
                                         @else
-                                            <span class="text-xs text-red-500 font-medium">❌ Falta identidad</span>
+                                            <span class="text-xs text-red-500 font-medium">❌ Falta {{ $isClinic ? 'RUT / NIT' : 'Identificación' }}</span>
                                         @endif
                                         
                                         @if ($partner->professional_card_path)
                                             <a href="{{ route('administrator.document.view', array_merge(['type' => 'tarjeta'], $queryParam)) }}" target="_blank" class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline group w-fit">
-                                                <span class="mr-1.5">📜</span> Ver {{ $isClinic ? 'Cámara de Comercio' : 'Tarjeta Profesional' }}
+                                                <span class="mr-1.5">📜</span> Ver {{ $isClinic ? 'Certificado REPS' : 'Tarjeta Profesional' }}
                                             </a>
                                         @else
-                                            <span class="text-xs text-red-500 font-medium">❌ Falta certificación</span>
+                                            <span class="text-xs text-red-500 font-medium">❌ Falta {{ $isClinic ? 'Certificado REPS' : 'Tarjeta Profesional' }}</span>
                                         @endif                                    
                                     </div>
                                 </td>

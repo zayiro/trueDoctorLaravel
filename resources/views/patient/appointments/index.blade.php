@@ -1,11 +1,12 @@
 @php
+// Definición de las migas de pan adaptadas al diseño del SaaS
 $breadcrumbs = [
     [
         'name' => 'Dashboard',
         'href' => route('admin.dashboard'),
     ],
     [
-        'name' => 'Mis citas',
+        'name' => 'Mis Citas',
     ]
 ];
 
@@ -48,7 +49,7 @@ $now = now();
     @endif
 
     <div class="py-8 px-4 max-w-5xl mx-auto">
-        <!-- Encabezado y Filtro -->
+        <!-- Encabezado de la Sección y Filtro por Estados -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <div>
                 <h2 class="text-2xl font-bold text-gray-800">Mis Citas</h2>
@@ -66,10 +67,9 @@ $now = now();
                 </select>
             </form>
         </div>
-
-        <!-- Lista de Citas -->
+        <!-- Lista de Citas Médicas -->
         <ul class="space-y-4">
-            @forelse($appointments as $appointment)
+            @forelse($pastAppointments as $appointment)
                 @php
                 switch ($appointment->status) {
                     case 'confirmed': $statusText = 'Confirmada'; break;
@@ -79,24 +79,15 @@ $now = now();
                     default: $statusText = ucfirst($appointment->status); break;
                 }
 
-                // 1. Creamos el objeto Carbon con la fecha y hora exacta de inicio de la cita
                 $start = \Carbon\Carbon::parse($appointment->date . ' ' . $appointment->start_time);
-
-                // 2. Calculamos el final de la cita sumando la duración
                 $end = $start->copy()->addMinutes($appointment->duration);
-
-                // 3. Calculamos el momento exacto en que se debe encender el botón (15 minutos antes)
                 $activationTime = $start->copy()->subMinutes(15);
 
-                // 4. El botón de acceso estará activo únicamente si "AHORA" está entre la hora de activación y el fin de la cita
-                // Y si la cita se encuentra confirmada formalmente.
                 $showMeetingButton = now()->between($activationTime, $end) && ($appointment->status === 'confirmed');
 
-                // VALIDACIÓN DE CANCELACIÓN VISUAL
                 $settings = $appointment->doctor->settings;
                 $allowPatientCancellation = $settings->allow_patient_cancellation ?? true;
                 $cancellationNoticeHours = $settings->cancellation_notice_hours ?? 24;
-
                 $remainingHours = now()->diffInHours($start, false);
 
                 $canCancelVisually = $allowPatientCancellation && !$start->isPast() && ($remainingHours >= $cancellationNoticeHours) && !in_array($appointment->status, ['cancelled', 'completed']);
@@ -104,8 +95,7 @@ $now = now();
 
                 <li class="bg-white border border-gray-200 rounded-lg shadow-sm hover:border-indigo-300 transition-colors">
                     <div class="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        
-                        <!-- Lado Izquierdo: Fecha y Hora -->
+                        <!-- Lado Izquierdo: Fecha y Hora de la Consulta -->
                         <div class="flex items-center gap-4 min-w-[150px]">
                             <div class="bg-indigo-50 text-indigo-700 rounded-lg p-3 text-center flex-shrink-0 min-w-[70px]">
                                 <span class="block text-[10px] uppercase font-bold text-gray-500">
@@ -124,7 +114,7 @@ $now = now();
                             </div>
                         </div>
 
-                        <!-- Centro: Información Médica -->
+                        <!-- Centro: Información Médica y Tipo de Servicio -->
                         <div class="flex-1">
                             <div class="flex items-center gap-2">
                                 <h4 class="text-lg font-bold text-gray-900">
@@ -141,14 +131,12 @@ $now = now();
                                 </span>
                                 <span class="flex items-center text-xs text-gray-500">
                                     <svg class="w-4 h-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"></path></svg>
-                                    {{ $appointment->address ? ($appointment->address->name .", ". $appointment->address->address) : 'Consulta Virtual desde el panel' }}
+                                    {{ $appointment->address ? ($appointment->address->name . ", " . $appointment->address->address) : 'Consulta Virtual desde el panel' }}
                                 </span>
                             </div>
                         </div>
-
-                        <!-- Lado Derecho: Estado y Acciones -->
+                        <!-- Lado Derecho: Estado, Enlaces de Telemedicina y Cancelaciones -->
                         <div class="flex flex-col items-start sm:items-end justify-between gap-3 min-w-[140px]">
-                            {{-- Renderizado Dinámico de Badges de Estado --}}
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border
                                 @if($appointment->status === 'confirmed') bg-green-50 text-green-700 border-green-200
                                 @elseif($appointment->status === 'pending') bg-amber-50 text-amber-700 border-amber-200
@@ -158,14 +146,10 @@ $now = now();
                             </span>
 
                             <div class="flex flex-row sm:flex-col gap-2 w-full">
-                                {{-- BOTÓN DE INGRESO PARA EL PACIENTE --}}
                                 @if($showMeetingButton && $appointment->meeting_link)
                                     <a href="{{ $appointment->meeting_link }}" 
                                        target="_blank" 
                                        class="inline-flex justify-center items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black uppercase tracking-wider text-center w-full shadow-md transition-all transform hover:-translate-y-0.5">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"/>
-                                        </svg>
                                         Entrar a Consulta
                                     </a>
                                 @elseif($appointment->service->type === 'virtual' && $appointment->status === 'confirmed' && !$showMeetingButton)
@@ -174,7 +158,6 @@ $now = now();
                                     </span>
                                 @endif
 
-                                {{-- FORMULARIO O BOTÓN DE CANCELACIÓN --}}
                                 @if($canCancelVisually)
                                     <form action="{{ route('patient.appointments.cancel', $appointment->id) }}" method="POST" 
                                           onsubmit="return confirm('¿Estás seguro de que deseas cancelar esta consulta médica?');" class="w-full">
@@ -197,5 +180,9 @@ $now = now();
                 </div>
             @endforelse
         </ul>
+
+        <div class="mt-6">
+            {{ $pastAppointments->links() }}
+        </div>
     </div>
 </x-admin-layout>

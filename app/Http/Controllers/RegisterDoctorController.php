@@ -45,8 +45,10 @@ class RegisterDoctorController extends Controller
                     'role'     => 'doctor',          
                 ]);
 
-                $user->assignRole('doctor');
-                
+                // ESTO ES LO QUE LE ASIGNA EL ROL EN SPATIE:
+                $role = Role::firstOrCreate(['name' => 'doctor']);                
+                $user->assignRole($role);
+
                 // 4. Crear Perfil de Doctor asociado
                 $doctor = $user->doctor()->create([
                     'medical_license'   => $request->medical_license,

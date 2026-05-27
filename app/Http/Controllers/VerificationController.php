@@ -8,50 +8,69 @@ use Illuminate\Support\Facades\Storage;
 
 class VerificationController extends Controller
 {
+    /**
+     * Procesa y almacena de forma segura los documentos de verificación para Doctores o Clínicas.
+     */
     public function store(Request $request)
     {        
-        // 1. Validaciones de archivos
+        $user = auth()->user();
+
+        // 1. VALIDACIÓN MAESTRA DE ARCHIVOS INDEPENDIENTE DEL ROL
         $request->validate([
             'identity_card' => ['required', 'file', 'mimes:jpeg,png,jpg,pdf', 'max:4096'],
             'professional_card' => ['required', 'file', 'mimes:jpeg,png,jpg,pdf', 'max:4096'],
         ], [
-            'identity_card.required' => 'La foto de la cédula es obligatoria.',
-            'identity_card.mimes' => 'La cédula debe ser JPG, PNG o PDF.',
-            'identity_card.max' => 'La cédula no debe pesar más de 4MB.',
-            'professional_card.required' => 'La tarjeta profesional es obligatoria.',
-            'professional_card.mimes' => 'La tarjeta profesional debe ser JPG, PNG o PDF.',
-            'professional_card.max' => 'La tarjeta profesional no debe pesar más de 4MB.',
+            'identity_card.required' => 'El soporte del primer documento (Cédula/RUT) es obligatorio.',
+            'identity_card.mimes' => 'El archivo debe ser en formato JPG, PNG o PDF.',
+            'identity_card.max' => 'El archivo no debe pesar más de 4MB.',
+            'professional_card.required' => 'El soporte del segundo documento (Tarjeta/REPS) es obligatorio.',
+            'professional_card.mimes' => 'El archivo debe ser en formato JPG, PNG o PDF.',
+            'professional_card.max' => 'El archivo no debe pesar más de 4MB.',
         ]);
 
-        // Obtener el registro de la tabla 'doctors' asociado al usuario autenticado
-        $doctor = auth()->user()->doctor; 
-
-        if (!$doctor) {
-            return redirect()->back()->with('error', 'No se encontró un perfil de médico asociado a esta cuenta.');
+        // 2. ABSTRACCIÓN DINÁMICA DEL TENANT (Inversión de Control)
+        $profile = null;
+        $firstField = 'identity_card_path';
+        
+        // Mapeamos dinámicamente las llaves según las migraciones de tu base de datos
+        if ($user->role === 'doctor') {
+            $profile = $user->doctor;
+            $secondField = 'professional_card_path';
+        } elseif ($user->role === 'clinic') {
+            $profile = $user->clinic;
+            $secondField = 'reps_code_card_path'; // Llave exacta de tu migración 'clinics'
         }
 
-        // 2. Guardar archivos de forma segura en 'storage/app/verification_docs'
+        // Blindaje de seguridad en caso de que el perfil no esté indexado por el Observer
+        if (!$profile) {
+            return redirect()->back()->with('error', 'No se encontró un perfil comercial válido asociado a esta cuenta.');
+        }
+
+        // 3. PROCESAMIENTO Y LIMPIEZA DE ARCHIVOS EN STORAGE
+        $firstPath = $profile->{$firstField};
         if ($request->hasFile('identity_card')) {
-            if ($doctor->identity_card_path) {
-                Storage::delete($doctor->identity_card_path);
+            if ($profile->{$firstField}) {
+                Storage::delete($profile->{$firstField});
             }
-            $cedulaPath = $request->file('identity_card')->store('verification_docs');
+            // Guarda los documentos en el disco local protegido
+            $firstPath = $request->file('identity_card')->store('verification_docs');
         }
 
+        $secondPath = $profile->{$secondField};
         if ($request->hasFile('professional_card')) {
-            if ($doctor->professional_card_path) {
-                Storage::delete($doctor->professional_card_path);
+            if ($profile->{$secondField}) {
+                Storage::delete($profile->{$secondField});
             }
-            $tarjetaPath = $request->file('professional_card')->store('verification_docs');
+            $secondPath = $request->file('professional_card')->store('verification_docs');
         }
 
-        // 3. Actualizar el registro del médico con tu campo 'validation_status'
-        $doctor->update([
+        // 4. ACTUALIZACIÓN TRANSACCIONAL DEL ESTADO DE VERIFICACIÓN
+        $profile->update([
             'validation_status' => 'pending_validation',
-            'identity_card_path' => $cedulaPath ?? $doctor->identity_card_path,
-            'professional_card_path' => $tarjetaPath ?? $doctor->professional_card_path,
+            $firstField         => $firstPath,
+            $secondField        => $secondPath,
         ]);
 
-        return redirect()->back()->with('success', 'Documentación enviada correctamente. Tu perfil está en revisión.');
+        return redirect()->back()->with('success', 'Documentación institucional enviada correctamente. Tu perfil ha entrado en fase de revisión.');
     }
 }

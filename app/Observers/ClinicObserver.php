@@ -14,13 +14,14 @@ class ClinicObserver
      */
     public function created(Clinic $clinic): void
     {
-        // 1. Buscar el plan gratuito por defecto para centros médicos
-        $defaultPlan = Plan::where('plan', 'free')->first();
+        // 1. Buscar el plan institucional por defecto diseñado para centros médicos
+        $institutionalPlan = Plan::where('slug', 'clinic_gold')->first();
 
         // 2. Inicializar la configuración por defecto de la clínica corporativa
         ClinicSetting::create([
             'clinic_id'                  => $clinic->id, 
-            'plan_id'                    => 1,
+            // Si localiza el plan asigna su ID, de lo contrario respalda con el ID 1 de forma segura
+            'plan_id'                    => $institutionalPlan ? $institutionalPlan->id : 1,
             'accepts_online_payments'    => false,
             'currency'                   => 'COP',
             'min_notice_hours'           => 2,
@@ -37,7 +38,7 @@ class ClinicObserver
             'whatsapp_notifications'     => false,
         ]);
 
-        // Autogenera la sede virtual institucional sin duplicados
+        // 3. Autogenera la sede virtual institucional sin duplicados
         $clinic->createVirtualAddress();
     }
 }

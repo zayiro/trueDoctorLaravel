@@ -8,6 +8,11 @@ use App\Models\User;
 use App\Models\Appointment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use App\Notifications\ClinicInvitationNotification;
+use App\Notifications\DirectDoctorWelcomeNotification;
 
 class ClinicDoctorController extends Controller
 {
@@ -16,16 +21,15 @@ class ClinicDoctorController extends Controller
      */
     public function index()
     {
-        // Forzamos que solo las cuentas con rol de clínica puedan ver este panel
         if (auth()->user()->role !== 'clinic') {
             abort(403, 'Acceso exclusivo para centros médicos.');
         }
 
         $clinic = auth()->user()->clinic;
 
-        // Listamos los doctores de su nómina cruzando la tabla pivote clinic_doctor
+        // Listamos los doctores cruzando la tabla pivote clinic_doctor
         $doctors = $clinic->doctors()
-            ->with('user') // Cargamos el usuario para obtener el nombre y foto de perfil
+            ->with('user') 
             ->withPivot('status', 'created_at')
             ->orderBy('clinic_doctor.created_at', 'desc')
             ->get();
@@ -34,7 +38,7 @@ class ClinicDoctorController extends Controller
     }
 
     /**
-     * Procesa la invitación o vinculación directa de un médico usando su número de identificación.
+     * Procesa la vinculación: Busca y envía invitación a existentes, o registra desde cero.
      */
     public function store(Request $request)
     {
@@ -44,34 +48,113 @@ class ClinicDoctorController extends Controller
 
         $clinic = auth()->user()->clinic;
 
+        // 🛡️ BLINDAJE MULTI-TENANCY: Control de límites del plan asignado
+        if (!$clinic->canAddMoreDoctors()) {
+            return back()->with('error', 'Has alcanzado el límite máximo de médicos permitidos en tu plan actual. Considera mejorar tu suscripción.');
+        }
+
+        // Determinar el flujo mediante el campo 'action_type' enviado desde el formulario
+        $actionType = $request->input('action_type', 'invite');
+
+        if ($actionType === 'invite') {
+            return $this->handleInvitationFlow($request, $clinic);
+        }
+
+        if ($actionType === 'register_direct') {
+            return $this->handleDirectRegistrationFlow($request, $clinic);
+        }
+
+        abort(400, 'Acción no soportada.');
+    }
+
+    /**
+     * FLUJO 1: Invitar a un doctor existente por su número de identificación.
+     */
+    protected function handleInvitationFlow(Request $request, Clinic $clinic)
+    {
         $request->validate([
             'identification' => 'required|string',
         ], [
             'identification.required' => 'Debes ingresar el número de cédula o identificación del médico.',
         ]);
 
-        // 1. Buscamos al médico en la base de datos global del SaaS
+        // Buscamos al médico en la base de datos global del SaaS
         $doctor = Doctor::where('identification', trim($request->identification))->first();
 
         if (!$doctor) {
-            return back()->with('error', 'No se encontró ningún médico registrado en la plataforma con ese número de identificación. El especialista debe registrarse primero en el SaaS.')->withInput();
+            return back()->with('error', 'No se encontró ningún médico registrado en la plataforma con ese número de identificación. Si es un médico propio tuyo, usa la opción de "Registrar Nuevo Médico".')->withInput();
         }
 
-        // 2. Validamos si el médico ya se encuentra vinculado o invitado en esta clínica
+        // Validar si ya está vinculado o tiene solicitud en proceso
         $alreadyLinked = $clinic->doctors()->where('doctor_id', $doctor->id)->exists();
         
         if ($alreadyLinked) {
             return back()->with('error', 'El especialista seleccionado ya se encuentra en tu nómina o tiene una solicitud en proceso.');
         }
 
-        // 3. Registramos la vinculación en la tabla pivote clinic_doctor
-        // Por defecto el estado entra como 'approved' (vinculación directa) o puedes cambiarlo a 'pending' si requiere aprobación del médico
+        // Entra con estado 'pending' esperando la aprobación del médico independiente
         $clinic->doctors()->attach($doctor->id, [
-            'status' => 'approved' 
+            'status' => 'pending' 
         ]);
 
+        // Notificación al médico invitado
+        $doctor->user->notify(new ClinicInvitationNotification($clinic));
+
         return redirect()->route('partner.clinic_doctors.index')
-            ->with('success', "El Dr/a. {$doctor->user->name} ha sido vinculado exitosamente a tu centro médico.");
+            ->with('success', "Se ha enviado una solicitud de vinculación al Dr/a. {$doctor->user->name}. Aparecerá como pendiente hasta que la acepte.");
+    }
+
+    /**
+     * FLUJO 2: Registrar un médico nuevo que no existe en el SaaS e incorporarlo inmediatamente.
+     */
+    protected function handleDirectRegistrationFlow(Request $request, Clinic $clinic)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'identification' => 'required|string|unique:doctors,identification',
+        ], [
+            'name.required' => 'El nombre del médico es obligatorio.',
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.unique' => 'Este correo electrónico ya está registrado por otro usuario en la plataforma.',
+            'identification.required' => 'La identificación o cédula del médico es obligatoria.',
+            'identification.unique' => 'Ya existe un médico registrado en el SaaS con este número de identificación.',
+        ]);
+
+        try {
+            DB::transaction(function () use ($request, $clinic) {
+                // Crear usuario base con contraseña aleatoria segura
+                $user = User::create([
+                    'name' => trim($request->name),
+                    'email' => trim($request->email),
+                    'password' => Hash::make(Str::random(16)), 
+                    'role' => 'doctor',
+                ]);
+
+                // Asignación de rol de Spatie
+                $user->assignRole('doctor');
+
+                // Crear el perfil del médico (Dispara el Observer para configurar DoctorSetting y VirtualAddress)
+                $doctor = Doctor::create([
+                    'user_id' => $user->id,
+                    'identification' => trim($request->identification),
+                ]);
+
+                // Vincular directamente a la clínica como 'approved'
+                $clinic->doctors()->attach($doctor->id, [
+                    'status' => 'approved'
+                ]);
+
+                // Notificación con enlace de activación de cuenta
+                $user->notify(new DirectDoctorWelcomeNotification($clinic));
+            });
+
+            return redirect()->route('partner.clinic_doctors.index')
+                ->with('success', "El médico ha sido registrado en la plataforma e incorporado a tu nómina exitosamente.");
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Ocurrió un error inesperado al procesar el registro del médico. Inténtalo de nuevo.')->withInput();
+        }
     }
 
     /**
@@ -85,14 +168,17 @@ class ClinicDoctorController extends Controller
 
         $clinic = auth()->user()->clinic;
 
-        // Buscamos el registro pivote exacto
         $pivot = $clinic->doctors()->where('doctor_id', $doctor->id)->first()?->pivot;
 
         if (!$pivot) {
             abort(404, 'Relación de nómina no encontrada.');
         }
 
-        // Cambiamos el estado entre 'approved' (activo) e 'inactive' (inactivo)
+        // Si el estado es 'pending', no permitimos cambiarlo desde la clínica de forma manual
+        if ($pivot->status === 'pending') {
+            return back()->with('error', 'No puedes alterar el estado de un médico cuya solicitud aún está pendiente de aprobación.');
+        }
+
         $newStatus = $pivot->status === 'approved' ? 'inactive' : 'approved';
 
         $clinic->doctors()->updateExistingPivot($doctor->id, [
@@ -115,7 +201,7 @@ class ClinicDoctorController extends Controller
 
         $clinic = auth()->user()->clinic;
 
-        // 🛡️ CONTROL DE INTEGRIDAD: Validar si el médico tiene citas confirmadas en esta clínica antes de despedirlo
+        // 🛡️ CONTROL DE INTEGRIDAD: Validar si el médico tiene citas vigentes en esta clínica antes de removerlo
         $hasPendingAppointments = Appointment::where('clinic_id', $clinic->id)
             ->where('doctor_id', $doctor->id)
             ->whereIn('status', ['pending', 'confirmed'])
@@ -126,7 +212,6 @@ class ClinicDoctorController extends Controller
             return back()->with('error', 'No puedes desvincular a este médico porque actualmente tiene citas agendadas con pacientes en tus sedes. Debes cancelar o reagendar las citas primero.');
         }
 
-        // Desvinculación atómica de la tabla intermedia clinic_doctor
         $clinic->doctors()->detach($doctor->id);
 
         return back()->with('success', 'El especialista ha sido removido de la nómina de la clínica correctamente.');

@@ -40,6 +40,11 @@ class Patient extends Model
     // 2. Crea un atributo virtual (Accessor)
     public function getAgeAttribute()
     {
+        // Valida que exista la fecha antes de calcular la edad
+        if (!$this->birth_date) {
+            return 'No registrada';
+        }
+
         return $this->birth_date->age;
     }
 
@@ -118,14 +123,6 @@ class Patient extends Model
     public function patientHistories()
     {
         return $this->hasMany(PatientHistory::class);
-    }
-
-    //usando un Mutator. Así, si alguien escribe "172", el sistema lo convierte a "1.72" antes de guardar
-    protected function height(): Attribute
-    {
-        return Attribute::make(
-            set: fn (mixed $value) => $value > 10 ? $value / 100 : $value,
-        );
     }
 
     /**

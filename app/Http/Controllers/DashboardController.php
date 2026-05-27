@@ -13,11 +13,11 @@ use Carbon\Carbon;
 class DashboardController extends Controller
 {
     public function index()
-    {
+    {        
         $user = Auth::user();
         $now = Carbon::now();
 
-        $usuariosPorRol = [];
+        $usersByRole = [];
 
         // 1. CONDICIONAL DE SEGURIDAD MULTI-PERFIL
         if ($user->role === 'admin') {
@@ -26,71 +26,109 @@ class DashboardController extends Controller
             $ownerColumn = null;
 
             // Conteo global de usuarios agrupados por rol para el Administrador
-            $usuariosPorRol = User::select('role', DB::raw('count(*) as total'))
+            $usersByRole = User::select('role', DB::raw('count(*) as total'))
                 ->groupBy('role')
                 ->pluck('total', 'role')
                 ->toArray();
         } elseif ($user->role === 'clinic') {
             $owner = $user->clinic;
             $ownerColumn = 'clinic_id';
-        } else {
+        } elseif ($user->role === 'doctor') {
             $owner = $user->doctor;
             $ownerColumn = 'doctor_id';
+        } else {
+            // El usuario tiene el rol de paciente (patient)
+            $owner = $user->patient;
+            $ownerColumn = 'patient_id';
         }
-
-        // Si no es admin y tampoco tiene un perfil comercial creado, lo mandamos a crear su perfil
+        
+        // Si no es admin y tampoco tiene un perfil creado, lo mandamos a completar sus datos
         if ($user->role !== 'admin' && !$owner) {
-            // Cambia esto a la ruta del onboarding o perfil de tu SaaS si lo prefieres
-            return redirect()->route('profile.show')->with('error', 'Perfil comercial no indexado.');
+            return redirect()->route('profile.show')->with('error', 'Perfil no encontrado.');
         }
 
-        // 2. INDICADORES EN TIEMPO REAL (KPIs BASE con soporte para Admin)
-        // Inicializamos la consulta base de citas
-        $queryCitas = Appointment::query();
+        // =========================================================================
+        // FLUJO ESPECÍFICO PARA EL ROL DE PACIENTE (PATIENT)
+        // =========================================================================
+        if ($user->role === 'patient') {
+            
+            // Obtiene las próximas 5 citas pendientes o confirmadas del paciente
+            $upcomingAppointments = Appointment::where('patient_id', $owner->id)
+                ->whereDate('date', '>=', $now->toDateString())
+                ->whereIn('status', ['confirmed', 'pending'])
+                ->with('doctor.user') // Carga la relación para obtener el nombre del médico
+                ->orderBy('date', 'asc')
+                ->take(5)
+                ->get();
 
-        // Si no es administrador, filtramos estrictamente por su Tenant / Dueño
+            // Obtiene las últimas 5 citas completadas / asistidas históricas
+            $pastAppointments = Appointment::where('patient_id', $owner->id)
+                ->whereIn('status', ['completed'])
+                ->orderBy('date', 'desc')
+                ->take(5)
+                ->get();
+
+            // Estructura los indicadores médicos extraídos del modelo Patient
+            $healthMetrics = [
+                'bmi' => $owner->imc,
+                'bmi_status' => $owner->imc_status,
+                'age' => $owner->age,
+                'blood_type' => $owner->blood_type ?? 'No registrada'
+            ];
+
+            return view('admin.dashboard', compact(
+                'user', 'owner', 'upcomingAppointments', 'pastAppointments', 'healthMetrics'
+            ));
+        }
+
+        // =========================================================================
+        // FLUJO CORPORATIVO (ADMINISTRADORES, CLÍNICAS Y MÉDICOS)
+        // =========================================================================
+        $appointmentsQuery = Appointment::query();
+
+        // Si no es administrador global, filtra estrictamente por su Tenant / Dueño
         if ($user->role !== 'admin') {
-            $queryCitas->where($ownerColumn, $owner->id);
+            $appointmentsQuery->where($ownerColumn, $owner->id);
         }
 
-        // Volumen de citas hoy
-        $citasHoy = (clone $queryCitas)
+        // Volumen de citas para el día de hoy
+        $appointmentsToday = (clone $appointmentsQuery)
             ->whereDate('date', $now->toDateString())
             ->whereNotIn('status', ['cancelled'])
             ->count();
 
-        // Citas próximas / pendientes de atención
-        $citasProximas = (clone $queryCitas)
+        // Cantidad de citas próximas o pendientes de atención médica
+        $upcomingAppointmentsCount = (clone $appointmentsQuery)
             ->whereDate('date', '>=', $now->toDateString())
             ->whereIn('status', ['confirmed', 'pending'])
             ->count();
 
-        // Facturación Bruta Mensual
-        $facturacionMes = (clone $queryCitas)
+        // Facturación / Ingresos brutos mensuales de la clínica o médico
+        $monthlyRevenue = (clone $appointmentsQuery)
             ->whereMonth('date', $now->month)
             ->whereYear('date', $now->year)
             ->whereIn('status', ['confirmed', 'completed'])
             ->sum('price');
 
-        // Tasa de Ausentismo / Cancelación
-        $totalCitasHistoricas = (clone $queryCitas)->count();
-        $totalCanceladas = (clone $queryCitas)->where('status', 'cancelled')->count();
+        // Cálculo porcentual de la tasa de ausentismo o cancelaciones globales
+        $totalHistoricalAppointments = (clone $appointmentsQuery)->count();
+        $totalCancelledAppointments = (clone $appointmentsQuery)->where('status', 'cancelled')->count();
         
-        $tasaCancelacion = $totalCitasHistoricas > 0 
-            ? round(($totalCanceladas / $totalCitasHistoricas) * 100, 1) 
+        $cancellationRate = $totalHistoricalAppointments > 0 
+            ? round(($totalCancelledAppointments / $totalHistoricalAppointments) * 100, 1) 
             : 0;
 
-        // 3. ESTADÍSTICAS AVANZADAS DE DISTRIBUCIÓN
-        $modalidadesQuery = Appointment::join('services', 'appointments.service_id', '=', 'services.id');
+        // Distribución avanzada por modalidades de servicio
+        $modalitiesQuery = Appointment::join('services', 'appointments.service_id', '=', 'services.id');
         if ($user->role !== 'admin') {
-            $modalidadesQuery->where('appointments.' . $ownerColumn, $owner->id);
+            $modalitiesQuery->where('appointments.' . $ownerColumn, $owner->id);
         }
-        $modalidades = $modalidadesQuery->select('services.type', DB::raw('count(*) as total'))
+        $modalities = $modalitiesQuery->select('services.type', DB::raw('count(*) as total'))
             ->groupBy('services.type')
             ->pluck('total', 'type')
             ->toArray();
         
-        // Distribución por Sedes / Consultorios
+        // Distribución física por sedes o consultorios principales
         $sedesQuery = Appointment::join('addresses', 'appointments.address_id', '=', 'addresses.id');
         if ($user->role !== 'admin') {
             $sedesQuery->where('appointments.' . $ownerColumn, $owner->id);
@@ -101,7 +139,7 @@ class DashboardController extends Controller
             ->take(3)
             ->get();
 
-        // 4. HISTORIAL GRÁFICO (Últimos 5 meses)
+        // Historial gráfico financiero consolidado de los últimos 5 meses
         $historicoQuery = Appointment::whereIn('status', ['confirmed', 'completed']);
         if ($user->role !== 'admin') {
             $historicoQuery->where($ownerColumn, $owner->id);
@@ -118,9 +156,9 @@ class DashboardController extends Controller
             ->reverse();
                 
         return view('admin.dashboard', compact(
-            'user', 'owner', 'citasHoy', 'citasProximas', 
-            'facturacionMes', 'tasaCancelacion', 'modalidades', 
-            'sedesTop', 'historicoMensual', 'owner', 'usuariosPorRol'
+            'user', 'owner', 'appointmentsToday', 'upcomingAppointmentsCount', 
+            'monthlyRevenue', 'cancellationRate', 'modalities', 
+            'sedesTop', 'historicoMensual', 'usersByRole'
         ));
     }
 }

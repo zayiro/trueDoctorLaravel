@@ -25,7 +25,7 @@ return new class extends Migration
             $table->integer('reviews_count')->default(0);
             $table->string('validation_status')->default('missing')->comment('Estados: missing, pending_validation, approved, rejected');
             $table->string('identity_card_path')->nullable();
-            $table->string('resps_code_card_path')->nullable();
+            $table->string('reps_code_card_path')->nullable();
             $table->boolean('active')->default(true);
             $table->timestamps();
         });

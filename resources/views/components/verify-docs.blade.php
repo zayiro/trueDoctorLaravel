@@ -1,4 +1,7 @@
-@props(['status' => 'missing'])
+@props([
+    'type'   => 'doctor', 
+    'status' => 'missing'  
+])
 
 <div class="max-w-7xl mx-auto my-8 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 sm:p-8">
     
@@ -6,10 +9,7 @@
     @if($status === 'pending_validation')
         <div class="text-center py-8">
             <div class="mb-4">
-                <img src="{{ asset('images/logoOpenDoctor.jpg') }}" 
-                    alt="OpenDoctor" 
-                    class="w-24 h-24 mx-auto rounded-full bg-white shadow-sm border border-slate-100 flex items-center justify-center p-3 overflow-hidden"
-                >
+                <img src="{{ asset('images/logoOpenDoctor.jpg') }}" alt="OpenDoctor" class="w-24 h-24 mx-auto rounded-full bg-white shadow-sm border border-slate-100 flex items-center justify-center p-3 overflow-hidden">
             </div>
             <h3 class="text-xl font-bold text-slate-900 mb-2">Documentación en proceso de validación</h3>
             <p class="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
@@ -17,8 +17,7 @@
                 <span class="block mt-2 font-medium text-amber-600">Este proceso toma menos de 24 horas hábiles.</span>                
             </p>
         </div>
-
-    {{-- CASO 2: Hay que subir documentos --}}
+    {{-- CASO 2: Cuenta sin validar o documentos rechazados --}}
     @else
         <div class="text-center mb-8">
             <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-50 text-blue-600 mb-4">
@@ -27,26 +26,27 @@
                 </svg>
             </div>
             <h2 class="text-xl font-bold text-slate-900 mb-2">Para activar tu cuenta debemos validar tu documentación</h2>
-            <p class="text-sm text-slate-600 max-w-md mx-auto">
-                En <span class="text-lg font-black text-slate-900 tracking-tight">
-                            Open<span class="text-indigo-600">Doctor</span>
-                        </span> garantizamos la seguridad de los pacientes. Tu perfil no será público hasta que verifiquemos tu identidad profesional.
+            
+            <p class="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+                En <span class="text-lg font-black text-slate-900 tracking-tight">Open<span class="text-indigo-600">Doctor</span></span> garantizamos la seguridad de los pacientes. 
+                @if($type === 'clinic')
+                    Tu centro médico no será público ni podrá habilitar agendas hasta que verifiquemos el <strong>código REPS institucional</strong> y el NIT de la organización.
+                @else
+                    Tu perfil profesional no será público ni podrás habilitar agendas hasta que verifiquemos tu identidad y <strong>tarjeta médica profesional</strong>.
+                @endif
             </p>
 
             @if($status === 'rejected')
-                <div class="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2 justify-center">
-                    <span>⚠️ <strong>Documentos previos rechazados:</strong> Por favor vuelve a subirlos asegurándote de que sean legibles.</span>
+                <div class="mt-5 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2 justify-center max-w-xl mx-auto">
+                    <span>⚠️ <strong>Documentos rechazados:</strong> Los soportes anteriores no pudieron ser verificados. Por favor, vuelve a subirlos.</span>
                 </div>
             @endif
         </div>
 
-        <!-- Formulario principal -->
         <form action="{{ route('partner.verify.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
             @csrf
-            
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                <!-- SOLUCIÓN: Campo 1 con selectores directos inmunes a Livewire -->
+                <!-- Campo 1: Cédula de Identidad o NIT Comercial -->
                 <div class="space-y-2 mb-3" x-data="{ 
                     fileName: '', 
                     isDragOver: false,
@@ -56,9 +56,11 @@
                         }
                     }
                 }">
-                    <label class="block text-sm font-medium text-slate-700">Cédula de Identidad (Frente/Anverso)</label>
+                    <label class="block text-sm font-medium text-slate-700">
+                        {{ $type === 'clinic' ? 'NIT de la Organización (Soporte RUT)' : 'Cédula de Identidad (Anverso / Reverso)' }}
+                    </label>
                     
-                    <div class="relative flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-xl transition bg-slate-50 group"
+                    <div class="relative flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-xl transition bg-slate-50 group p-3"
                          :class="{
                             'border-emerald-500 bg-emerald-50/40': fileName,
                             'border-blue-500 bg-blue-50/20': isDragOver && !fileName,
@@ -66,9 +68,8 @@
                          }"
                          @dragover.prevent="isDragOver = true"
                          @dragleave.prevent="isDragOver = false"
-                         @drop.prevent="isDragOver = false; const input = document.getElementById('identity_card'); input.files = $event.dataTransfer.files; updateFile(input.files)">
+                         @drop.prevent="isDragOver = false; const input = document.getElementById('identity_card_input'); input.files = $event.dataTransfer.files; updateFile(input.files)">
                         
-                        <!-- Usamos id único en vez de x-ref -->
                         <input type="file" 
                                id="identity_card_input"
                                name="identity_card" 
@@ -77,26 +78,23 @@
                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30"
                                @change="updateFile($event.target.files)" />
                         
-                        <!-- Estado: Archivo Seleccionado -->
                         <div x-show="fileName" x-cloak class="text-center px-4 flex flex-col items-center pointer-events-none z-20">
                             <div class="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-2">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
                             </div>
                             <span class="text-xs font-semibold text-slate-700 truncate max-w-[200px]" x-text="fileName"></span>
-                            <span class="text-[10px] text-emerald-600 mt-1 font-medium">¡Listo para enviar! (Clic para cambiar)</span>
+                            <span class="text-[10px] text-emerald-600 mt-1 font-medium">¡Listo! (Clic para cambiar)</span>
                         </div>
 
-                        <!-- Estado: Vacío / Arrastrando -->
                         <div x-show="!fileName" class="text-center px-4 flex flex-col items-center pointer-events-none z-20">
-                            <svg class="w-8 h-8 text-slate-400 group-hover:text-blue-500 mb-2 transition" :class="{'text-blue-500 scale-110': isDragOver}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                            <span class="text-xs font-medium text-slate-600" x-text="isDragOver ? '¡Suéltalo aquí!' : 'Arrastra o selecciona tu cédula'"></span>
+                            <svg class="w-8 h-8 text-slate-400 group-hover:text-blue-500 mb-2 transition" :class="{'text-blue-500 scale-110': isDragOver}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            <span class="text-xs font-medium text-slate-600" x-text="isDragOver ? '¡Suéltalo aquí!' : '{{ $type === 'clinic' ? 'Arrastra o selecciona tu documento RUT' : 'Arrastra o selecciona tu cédula de identidad' }}'"></span >
                             <span class="text-[10px] text-slate-400 mt-1">JPG, PNG o PDF hasta 4MB</span>
                         </div>
                     </div>
-                    @error('identity_card') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                    @error('professional_card') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
                 </div>
-
-                <!-- SOLUCIÓN: Campo 2 con selectores directos inmunes a Livewire -->
+                <!-- Campo 2: Tarjeta Profesional o Licencia REPS Institucional -->
                 <div class="space-y-2 mb-3" x-data="{ 
                     fileName: '', 
                     isDragOver: false,
@@ -106,9 +104,11 @@
                         }
                     }
                 }">
-                    <label class="block text-sm font-medium text-slate-700">Tarjeta o Licencia Profesional</label>
+                    <label class="block text-sm font-medium text-slate-700">
+                        {{ $type === 'clinic' ? 'Certificación o Código de Habilitación REPS' : 'Tarjeta o Licencia Profesional Médica' }}
+                    </label>
                     
-                    <div class="relative flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-xl transition bg-slate-50 group"
+                    <div class="relative flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-xl transition bg-slate-50 group p-3"
                          :class="{
                             'border-emerald-500 bg-emerald-50/40': fileName,
                             'border-blue-500 bg-blue-50/20': isDragOver && !fileName,
@@ -118,7 +118,6 @@
                          @dragleave.prevent="isDragOver = false"
                          @drop.prevent="isDragOver = false; const input = document.getElementById('professional_card_input'); input.files = $event.dataTransfer.files; updateFile(input.files)">
                         
-                        <!-- Usamos id único en vez de x-ref -->
                         <input type="file" 
                                id="professional_card_input"
                                name="professional_card" 
@@ -127,35 +126,27 @@
                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30"
                                @change="updateFile($event.target.files)" />
                         
-                        <!-- Estado: Archivo Seleccionado -->
                         <div x-show="fileName" x-cloak class="text-center px-4 flex flex-col items-center pointer-events-none z-20">
                             <div class="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-2">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
                             </div>
                             <span class="text-xs font-semibold text-slate-700 truncate max-w-[200px]" x-text="fileName"></span>
-                            <span class="text-[10px] text-emerald-600 mt-1 font-medium">¡Listo para enviar! (Clic para cambiar)</span>
+                            <span class="text-[10px] text-emerald-600 mt-1 font-medium">¡Listo! (Clic para cambiar)</span>
                         </div>
 
-                        <!-- Estado: Vacío / Arrastrando -->
                         <div x-show="!fileName" class="text-center px-4 flex flex-col items-center pointer-events-none z-20">
-                            <svg class="w-8 h-8 text-slate-400 group-hover:text-blue-500 mb-2 transition" :class="{'text-blue-500 scale-110': isDragOver}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                            <span class="text-xs font-medium text-slate-600" x-text="isDragOver ? '¡Suéltalo aquí!' : 'Arrastra o selecciona tu tarjeta'"></span>
+                            <svg class="w-8 h-8 text-slate-400 group-hover:text-blue-500 mb-2 transition" :class="{'text-blue-500 scale-110': isDragOver}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            <span class="text-xs font-medium text-slate-600" x-text="isDragOver ? '¡Suéltalo aquí!' : '{{ $type === 'clinic' ? 'Arrastra o selecciona tu documento REPS' : 'Arrastra o selecciona tu tarjeta profesional' }}'"></span >
                             <span class="text-[10px] text-slate-400 mt-1">JPG, PNG o PDF hasta 4MB</span>
                         </div>
                     </div>
                     @error('professional_card') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
                 </div>
-
             </div>
 
-            <!-- Botón de Envío -->
-            <button type="submit" class="w-full py-4 px-4 inline-flex justify-center items-center gap-x-2 text-lg font-semibold rounded-xl border border-transparent bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition shadow-sm">
+            <button type="submit" class="w-full py-4 px-4 inline-flex justify-center items-center gap-x-2 text-lg font-semibold rounded-xl border border-transparent bg-blue-600 text-white hover:bg-blue-700 transition shadow-lg">
                 Enviar Documentación para Revisión
             </button>
-
-            <p class="text-center text-[11px] text-slate-400 mt-4">
-                🔒 Tus datos se encriptan de extremo a extremo y solo se usarán con fines de verificación legal.
-            </p>
         </form>
     @endif
 </div>

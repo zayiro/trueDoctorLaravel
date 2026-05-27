@@ -18,7 +18,7 @@ class Doctor extends Model
      * Los atributos que son asignables masivamente.
      */
     protected $fillable = [
-        'user_id', // 🔥 OBLIGATORIO: Permite asociar el perfil del médico con su cuenta de usuario principal
+        'user_id', 
         'medical_license',
         'phone',
         'experience_years',
@@ -56,13 +56,17 @@ class Doctor extends Model
         if ($exists) {
             return $this->addresses()->where('type', 'virtual')->whereNull('clinic_id')->first();
         }
+
+        // Buscamos de forma segura la primera ciudad cargada en el SaaS
+        $firstCity = City::first();
+        $cityId = $firstCity ? $firstCity->id : null;
         
         return $this->addresses()->create([
             'name'      => 'Atención Virtual / Telemedicina',
             'address'   => 'Plataforma Online',
             'type'      => 'virtual',
             'phone'     => $this->phone ?? 'N/A', 
-            'city_id'   => 1, // ID numérico limpio para la relación de ciudades
+            'city_id'   => $cityId, 
             'status'    => true,
         ]);
     }

@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class UserManagementController extends Controller
 {
@@ -109,13 +110,17 @@ class UserManagementController extends Controller
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        User::create([
+        $user = User::create([
             'name'              => $request->name,
             'email'             => $request->email,
             'password'          => Hash::make($request->password),
             'role'              => 'admin', // 🔥 Forzado a nivel de backend por seguridad
             'email_verified_at' => now(),   // Autoverificado al ser cuenta del staff
         ]);
+
+        // ESTO ES LO QUE LE ASIGNA EL ROL EN SPATIE:
+        $role = Role::firstOrCreate(['name' => 'admin']);        
+        $user->assignRole($role);
 
         return redirect()->route('administrator.users.index')
             ->with('success', 'Nuevo administrador creado correctamente en el sistema.');
