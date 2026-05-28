@@ -57,8 +57,8 @@ class RegisterClinicController extends Controller
             'reps_code.unique' => 'Este código REPS ya se encuentra registrado.',
         ]);        
 
-        $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
-        $cleanNit = str_replace('-', '', $request->nit);
+        $cleanPhone = preg_replace('/[^0-9]/', '', trim($request->phone));
+        $cleanNit = str_replace('-', '', trim($request->nit));
 
         try {
             // Estructura transaccional unificada para prevenir inconsistencias en el SaaS
@@ -66,8 +66,8 @@ class RegisterClinicController extends Controller
                 
                 // 1. Crear el usuario administrador del centro médico
                 $user = User::create([
-                    'name'     => $request->name,
-                    'email'    => $request->email,
+                    'name'     => trim($request->name),
+                    'email'    => strtolower(trim($request->email)),
                     'password' => Hash::make($request->password),
                     'role'     => 'clinic',
                 ]);
@@ -79,9 +79,9 @@ class RegisterClinicController extends Controller
                 // 3. Crear el perfil de la clínica
                 // Al ejecutarse este create(), Laravel dispara el ClinicObserver para inyectar ClinicSetting y la Sede Virtual
                 $clinic = $user->clinic()->create([
-                    'name'              => $request->name, 
+                    'name'              => trim($request->name), 
                     'nit'               => $cleanNit,
-                    'reps_code'         => $request->reps_code, 
+                    'reps_code'         => trim($request->reps_code), 
                     'phone'             => $cleanPhone,
                     'validation_status' => 'missing', 
                     'active'            => true

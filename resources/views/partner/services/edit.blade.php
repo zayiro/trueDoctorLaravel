@@ -24,8 +24,8 @@ $breadcrumbs = [
 
                 <div class="grid grid-cols-1 gap-6">
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-2">Nombre del Servicio (Global)</label>
-                        <input type="text" value="{{ $service->name }}" class="w-full rounded-2xl border-gray-300 py-3 bg-gray-50 text-gray-500 cursor-not-allowed" disabled>
+                        <label for="name" class="block text-sm font-bold text-gray-700 mb-2">Nombre del Servicio (Global)</label>
+                        <input type="text" name="name" id="name" value="{{ $service->name }}" class="w-full rounded-2xl border-gray-200 py-3 text-gray-500">
                     </div>
                 </div>
 

@@ -2,7 +2,7 @@
 $appointmentDate = \Carbon\Carbon::parse($appointment->date)->format('Y-m-d');
 @endphp
 <x-guest-layout>
-    <div class="max-w-3xl mx-auto py-12 px-4 mt-6">
+    <div class="max-w-4xl mx-auto py-12 px-4 mt-6">
         @if(session('error'))
             <div class="flex items-center p-4 mb-4 text-red-800 rounded-2xl bg-red-50 border border-red-100 shadow-sm" role="alert">
                 <svg class="flex-shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://w3.org" fill="currentColor" viewBox="0 0 20 20">
@@ -19,15 +19,15 @@ $appointmentDate = \Carbon\Carbon::parse($appointment->date)->format('Y-m-d');
             
             <div class="bg-slate-900 p-8 text-center text-white pt-10">
                 <span class="text-[10px] font-black text-indigo-400 Regal uppercase tracking-[0.2em] mb-1 block">Paso de Verificación</span>
-                <h2 class="text-2xl font-black text-white tracking-tight">Resumen de tu Orden Médica</h2>                
-                <p class="text-xs text-slate-400 mt-1">Valida los datos de tu especialista antes de proceder a la confirmación de la agenda.</p>
+                <h2 class="text-2xl font-black text-indigo-600 tracking-tight">Resumen de tu Orden Médica</h2>                
+                <p class="text-sm text-slate-400 mt-1">Valida los datos de tu especialista antes de proceder a la confirmación de la agenda.</p>
             </div>
             
             <div class="p-8 space-y-5">
                 <!-- Profesional de la Salud -->
                 <div class="flex justify-between items-center border-b border-slate-100 pb-4">
-                    <span class="text-slate-400 text-xs font-black uppercase tracking-wider">Especialista Asignado</span>
-                    <span class="font-extrabold text-sm text-slate-800">Dr/a. {{ ucfirst($appointment->doctor->user->name) }}</span>
+                    <span class="text-slate-400 text-sm font-black uppercase tracking-wider">Especialista Asignado</span>
+                    <span class="font-extrabold text-sm text-slate-800">{{ $appointment->doctor->gender === 'male' ? 'Dr. ' . ucfirst($appointment->doctor->user->name) : 'Dra. ' . ucfirst($appointment->doctor->user->name) }}</span>
                 </div>
 
                 <!-- Lugar de la consulta unificado (Soporte Clínicas Corporativas) -->
@@ -45,10 +45,10 @@ $appointmentDate = \Carbon\Carbon::parse($appointment->date)->format('Y-m-d');
                             <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Ubicación y Sede</h3>
                             @if($appointment->service->type === 'virtual')
                                 <p class="text-base font-black text-slate-800">Consulta Virtual / Telemedicina</p>
-                                <p class="text-purple-700 font-semibold text-xs bg-purple-50 px-2 py-0.5 rounded-md inline-block mt-1 border border-purple-100/50">El canal digital se despachará en tu perfil y correo electrónico.</p>
+                                <p class="text-purple-700 font-semibold text-sm bg-purple-50 px-2 py-0.5 rounded-md inline-block mt-1 border border-purple-100/50">El canal digital se despachará en tu perfil y correo electrónico.</p>
                             @else
                                 <p class="text-base font-black text-slate-800">{{ $appointment->address->name }}</p>
-                                <p class="text-xs text-slate-500 font-medium">
+                                <p class="text-sm text-slate-500 font-medium">
                                     {{ $appointment->address->city->name ?? '' }}@if($appointment->address->address), {{ $appointment->address->address }}@endif
                                 </p>
                                 
@@ -111,7 +111,7 @@ $appointmentDate = \Carbon\Carbon::parse($appointment->date)->format('Y-m-d');
                         @if($acceptsOnlinePayments)
                             {{-- Caso TRUE: Requiere transaccionalidad virtual inmediata --}}
                             <form action="{{ route('appointments.confirm', $appointment->id) }}" method="GET">                                
-                                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-emerald-100 transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider">
+                                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-emerald-100 transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-wider">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
                                     </svg>
@@ -120,8 +120,8 @@ $appointmentDate = \Carbon\Carbon::parse($appointment->date)->format('Y-m-d');
                             </form>
                         @else
                             {{-- Caso FALSE: Agendamiento directo o pago en el consultorio físico --}}
-                            <form action="{{ route('appointments.success', $appointment->id) }}" method="GET">                                
-                                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 transition-all text-xs uppercase tracking-wider">
+                            <form action="{{ route('appointments.success', $appointment) }}" method="GET">                                
+                                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 transition-all text-sm uppercase tracking-wider">
                                     Confirmar y Finalizar Reserva
                                 </button>
                             </form>

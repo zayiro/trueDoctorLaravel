@@ -107,9 +107,10 @@ class Doctor extends Model
             } elseif ($doctor->user_id) {
                 $name = User::find($doctor->user_id)?->name ?? 'doctor';
             }
-
-            $cleanId = Str::slug($doctor->identification);
-            $doctor->slug = Str::slug($name) . '-' . $cleanId;
+            
+            do {
+                $code = Str::slug($name) . '-' . strtoupper(Str::random(4));
+            } while (self::where('slug', $code)->exists()); // Evita duplicados
         });
 
         static::updated(function ($doctor) {

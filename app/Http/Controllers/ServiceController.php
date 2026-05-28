@@ -24,7 +24,7 @@ class ServiceController extends Controller
     }
 
     /**
-     * Muestra la lista de servicios vinculados al propietario auténticado.
+     * Muestra la lista de servicios vinculados al propietario autenticado.
      */
     public function index()
     {
@@ -32,21 +32,23 @@ class ServiceController extends Controller
         $user = Auth::user();
 
         if (!$owner) {
-            return redirect()->back()->with('error', 'Perfil no encontrado.');
+            return redirect()->back()->with('error', 'Perfil comercial no encontrado.');
         }
 
-        // Obtener servicios filtrando dinámicamente por la columna del propietario
-        $ownerColumn = $user->role === 'clinic' ? 'clinic_id' : 'doctor_id';
+        // 🔒 CORREGIDO: Usamos la columna exacta de la relación física en la tabla pivote 
+        // Esto evita posibles ambigüedades de SQL (Ambiguous column name) si hay Joins internos.
+        $ownerField = $user->role === 'clinic' ? 'clinic_id' : 'doctor_id';
 
-        $services = Service::whereHas('addresses', function ($query) use ($ownerColumn, $owner) {
-            $query->where($ownerColumn, $owner->id);
-        })->with(['addresses' => function ($query) use ($ownerColumn, $owner) {
-            $query->where($ownerColumn, $owner->id)->with('city');
+        $services = Service::whereHas('addresses', function ($query) use ($ownerField, $owner) {
+            $query->where($ownerField, $owner->id);
+        })->with(['addresses' => function ($query) use ($ownerField, $owner) {
+            // Eager loading seguro que trae la ciudad limpia de la sede
+            $query->where($ownerField, $owner->id)->with('city');
         }])->get();
 
         $uniqueServicesCount = $services->count();
-
-        // Enviamos la variable genérica $owner para mantener simetría con Blade
+        
+        // Enviamos las variables compactadas en perfecta simetría con tu vista Blade
         return view('partner.services.index', compact('services', 'owner', 'uniqueServicesCount'));
     }
 
@@ -144,23 +146,27 @@ class ServiceController extends Controller
         return redirect()->route('partner.services.index')->with('success', '¡Servicio configurado correctamente!');
     }
 
+        /**
+     * Actualiza el servicio y sincroniza de forma masiva las tarifas y duraciones por sede.
+     */
     public function update(Request $request, Service $service)
     {
         $owner = $this->getOwner();
         $user = Auth::user();
         
-        $ownerColumn = $user->role === 'clinic' ? 'addresses.clinic_id' : 'addresses.doctor_id';
+        // 🔒 CONTROL MULTI-TENANT: Usamos la columna exacta de la relación en la tabla intermedia
+        $ownerField = $user->role === 'clinic' ? 'clinic_id' : 'doctor_id';
 
-        // Verificamos propiedad real en la tabla pivote antes de editar nada
-        $belongsToOwner = $service->addresses()->where($ownerColumn, $owner->id)->exists();
+        $belongsToOwner = $service->addresses()->where($ownerField, $owner->id)->exists();
         if (!$belongsToOwner) {
             abort(403, 'No tienes permiso para modificar este servicio.');
         }
 
         $rules = [
-            'duration'      => 'required|integer|min:1',
-            'price_virtual' => 'required_if:type,virtual|nullable|numeric|min:0',
-            'address_ids'   => 'required_if:type,physical|array',
+            'name'          => ['required', 'string', 'max:255'], 
+            'duration'      => ['required', 'integer', 'min:1'],
+            'price_virtual' => ['required_if:type,virtual', 'nullable', 'numeric', 'min:0'],
+            'address_ids'   => ['required_if:type,physical', 'array'],
             'address_ids.*' => [
                 'exists:addresses,id,deleted_at,NULL',
                 function ($attribute, $value, $fail) use ($owner) {
@@ -169,12 +175,12 @@ class ServiceController extends Controller
                     }
                 },
             ],
-            'prices'        => 'required_if:type,physical|array',
+            'prices'        => ['required_if:type,physical', 'array'],
         ];
 
         if ($request->has('address_ids') && $service->type === 'physical') {
             foreach ($request->input('address_ids') as $id) {
-                $rules["prices.$id"] = 'required|numeric|min:0';
+                $rules["prices.$id"] = ['required', 'numeric', 'min:0'];
             }
         }
 
@@ -182,6 +188,11 @@ class ServiceController extends Controller
             'prices.*.required' => 'Debes asignar un precio a todas las sedes que selecciones.',
             'prices.*.numeric'  => 'El precio debe ser un número válido.',
             'prices.*.min'      => 'El precio no puede ser menor a 0.',
+        ]);
+        // 🔒 REPARADO DE RAÍZ: Solo actualizamos el nombre en la tabla maestra 'services'
+        // para prevenir errores 1054 de columnas inexistentes en la base de datos
+        $service->update([
+            'name' => $validated['name'],
         ]);
 
         $syncData = [];
@@ -191,21 +202,22 @@ class ServiceController extends Controller
             if ($virtualAddress) {
                 $syncData[$virtualAddress->id] = [
                     'price'    => round($validated['price_virtual'], 2),
-                    'duration' => $validated['duration'],
+                    'duration' => $validated['duration'], // Guardado seguro en el pivot
                 ];
             }
         } else {
             foreach ($validated['address_ids'] as $addressId) {
                 $syncData[$addressId] = [
                     'price'    => round($validated['prices'][$addressId], 2),
-                    'duration' => $validated['duration'],
+                    'duration' => $validated['duration'], // Guardado seguro en el pivot
                 ];
             }
         }
 
+        // Sincronización masiva en la tabla pivote address_service sin borrar registros de otros dueños
         $service->addresses()->syncWithoutDetaching($syncData);
 
-        // 🔥 CORREGIDO Y COMPLETADO: Limpieza atómica tras actualizar sedes físicas
+        // Limpieza atómica tras actualizar sedes físicas (Remueve las desmarcadas de este dueño)
         if ($service->type === 'physical') {
             $ownerPhysicalAddressIds = $owner->addresses()->where('type', 'physical')->pluck('id')->toArray();
             $addressesToDetach = array_diff($ownerPhysicalAddressIds, $validated['address_ids'] ?? []);
@@ -215,6 +227,34 @@ class ServiceController extends Controller
             }
         }
 
-        return redirect()->route('partner.services.index')->with('success', 'Servicio actualizado correctamente.');
+        return redirect()->route('partner.services.index')->with('success', 'Servicio médico actualizado con éxito.');
+    }
+
+    /**
+     * Muestra el formulario para editar un servicio médico existente con sus sedes.
+     */
+    public function edit(Service $service)
+    {
+        $user = auth()->user();
+        $owner = $this->getOwner(); 
+        
+        $ownerField = $user->role === 'clinic' ? 'clinic_id' : 'doctor_id';
+
+        // 1. Verificamos propiedad real en la tabla pivote de sedes antes de abrir la vista
+        $belongsToOwner = $service->addresses()->where($ownerField, $owner->id)->exists();
+        
+        if (!$belongsToOwner) {
+            abort(403, 'No tienes permisos para modificar este servicio médico.');
+        }
+
+        // 🔒 SOLUCIÓN AL BUG: Cargamos las sedes físicas del dueño para el formulario
+        // Si tu vista requiere también la sede virtual, quita el ->where('type', 'physical')
+        $addresses = $owner->addresses()
+            ->where('status', true)
+            ->where('type', 'physical') 
+            ->get();
+
+        // 2. Retorna la vista de edición enviando ambas variables compactadas
+        return view('partner.services.edit', compact('service', 'addresses'));
     }
 }

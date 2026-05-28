@@ -216,4 +216,28 @@ class ClinicDoctorController extends Controller
 
         return back()->with('success', 'El especialista ha sido removido de la nómina de la clínica correctamente.');
     }
+
+    /**
+     * Reenvía el correo electrónico de invitación a un médico aliado.
+     */
+    public function resendInvitation(Doctor $doctor)
+    {
+        $clinic = auth()->user()->clinic;
+        
+            // Validar que el médico realmente esté vinculado a esta clínica
+            $isLinked = $clinic->doctors()
+                ->where('doctor_id', $doctor->id)
+                ->where('clinic_doctor.status', 'pending') // Solo si aún está pendiente
+                ->exists();
+
+            if (!$isLinked) {
+                return redirect()->back()
+                ->with('error', 'No se encontró ninguna invitación pendiente para este especialista.');
+            }
+
+            // Disparar la notificación cargando la relación del usuario
+            $doctor->user->notify(new ClinicInvitationNotification($clinic));
+
+            return redirect()->back()->with('success', 'La invitación ha sido reenviada con éxito al médico.');
+    }
 }

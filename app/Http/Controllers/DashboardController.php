@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class DashboardController extends Controller
 {
@@ -129,22 +130,24 @@ class DashboardController extends Controller
             ->toArray();
         
         // Distribución física por sedes o consultorios principales
-        $sedesQuery = Appointment::join('addresses', 'appointments.address_id', '=', 'addresses.id');
+        $locationQuery = Appointment::join('addresses', 'appointments.address_id', '=', 'addresses.id');
         if ($user->role !== 'admin') {
-            $sedesQuery->where('appointments.' . $ownerColumn, $owner->id);
+            $locationQuery->where('appointments.' . $ownerColumn, $owner->id);
         }
-        $sedesTop = $sedesQuery->select('addresses.name', 'addresses.id', DB::raw('count(*) as cantidad'), DB::raw('sum(price) as ingresos'))
+
+        $topClinicalLocations = $locationQuery->select('addresses.name', 'addresses.id', DB::raw('count(*) as cantidad'), DB::raw('sum(price) as ingresos'))
             ->groupBy('addresses.name', 'addresses.id')
             ->orderBy('ingresos', 'desc')
             ->take(3)
             ->get();
 
         // Historial gráfico financiero consolidado de los últimos 5 meses
-        $historicoQuery = Appointment::whereIn('status', ['confirmed', 'completed']);
+        $historicalQuery = Appointment::whereIn('status', ['confirmed', 'completed']);
         if ($user->role !== 'admin') {
-            $historicoQuery->where($ownerColumn, $owner->id);
+            $historicalQuery->where($ownerColumn, $owner->id);
         }
-        $historicoMensual = $historicoQuery->select(
+
+        $monthlyHistorical = $historicalQuery->select(
                 DB::raw("DATE_FORMAT(date, '%Y-%m') as mes"),
                 DB::raw('sum(price) as total'),
                 DB::raw('count(*) as conteo')
@@ -154,11 +157,42 @@ class DashboardController extends Controller
             ->take(5)
             ->get()
             ->reverse();
-                
+
+        // Formateamos los últimos 5 meses para el motor gráfico de Chart.js
+        $chartLabels = [];
+        $chartData = [];
+                            
+        // Mapeo en español para los meses
+        $monthNames = [
+            '01'=>'Ene', '02'=>'Feb', '03'=>'Mar', '04'=>'Abr', '05'=>'May', '06'=>'Jun',
+            '07'=>'Jul', '08'=>'Ago', '09'=>'Sep', '10'=>'Oct', '11'=>'Nov', '12'=>'Dic'
+        ];
+
+        foreach ($monthlyHistorical as $data) {
+            // Separa '2026-05' en año y mes
+            $parts = explode('-', $data->mes);
+            $label = isset($parts[1]) ? ($monthNames[$parts[1]] . ' ' . substr($parts[0], 2)) : $data->mes;
+            
+            $chartLabels[] = $label;
+            $chartData[] = (float) $data->total;
+        }
+
+        // 📊 GRÁFICO DE DONA: Distribución financiera consolidada por sedes
+        $locationLabels = [];
+        $locationRevenueData = [];
+
+        foreach ($topClinicalLocations as $location) {
+            // Acortamos el nombre de la sede de forma elegante si excede los 20 caracteres
+            $locationLabels[] = Str::limit($location->name, 20, '...');
+            $locationRevenueData[] = (float) $location->ingresos;
+        }
+
         return view('admin.dashboard', compact(
             'user', 'owner', 'appointmentsToday', 'upcomingAppointmentsCount', 
             'monthlyRevenue', 'cancellationRate', 'modalities', 
-            'sedesTop', 'historicoMensual', 'usersByRole'
+            'topClinicalLocations', 'monthlyHistorical', 'usersByRole',
+            'chartLabels', 'chartData', 'locationLabels',
+            'locationRevenueData'
         ));
     }
 }

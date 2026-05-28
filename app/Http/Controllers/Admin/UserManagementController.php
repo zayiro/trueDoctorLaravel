@@ -114,7 +114,7 @@ class UserManagementController extends Controller
             'name'              => $request->name,
             'email'             => $request->email,
             'password'          => Hash::make($request->password),
-            'role'              => 'admin', // 🔥 Forzado a nivel de backend por seguridad
+            'role'              => 'admin', // Forzado a nivel de backend por seguridad
             'email_verified_at' => now(),   // Autoverificado al ser cuenta del staff
         ]);
 

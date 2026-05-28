@@ -1,4 +1,12 @@
 @php
+    // Calcular invitaciones pendientes del doctor de forma limpia
+    $pendingInvitationsCount = 0;
+    if (auth()->check() && auth()->user()->role === 'doctor') {
+        $pendingInvitationsCount = auth()->user()->doctor->clinics()
+            ->where('clinic_doctor.status', 'pending')
+            ->count();
+    }
+
     $links = [
         [
             'header' => 'Administrar página',        
@@ -52,10 +60,11 @@
             'active' => false,
         ],
         [
-            'name' => 'MKT',
+            'name' => 'Vinculaciones',
             'icon' => 'fa-solid fa-gauge',
-            'href' => route('campaigns.index'),
-            'active' => false,
+            'href' => route('partner.doctor_clinics.index'),
+            'active' => request()->routeIs('partner.doctor_clinics.*'),
+            'badge' => $pendingInvitationsCount > 0 ? $pendingInvitationsCount : null,
         ],
         [
             'name' => 'Conocimientos Médicos',
@@ -113,11 +122,19 @@
                                 @endforeach
                             </ul>
                         @else
-                            <a href="{{  $link['href'] }}" class="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group {{ $link['active'] ? 'bg-gray-100' : '' }}">
-                                <span class="w-6 h-6 inline-flex justify-center items-center text-gray-500">
-                                    <i class="{{  $link['icon'] }}"></i>
-                                </span>
-                                <span class="ms-3">{{  $link['name'] }}</span>
+                            <a href="{{  $link['href'] }}" class="flex items-center justify-between p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group {{ $link['active'] ? 'bg-gray-100' : '' }}">
+                                <div class="flex items-center">
+                                    <span class="w-6 h-6 inline-flex justify-center items-center text-gray-500">
+                                        <i class="{{  $link['icon'] }}"></i>
+                                    </span>
+                                    <span class="ms-3">{{  $link['name'] }}</span>
+                                </div>
+                                {{-- Renderizado condicional de la píldora flotante animada --}}
+                                @isset($link['badge'])
+                                    <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-semibold text-white bg-red-500 rounded-full animate-bounce">
+                                        {{ $link['badge'] }}
+                                    </span>
+                                @endisset
                             </a>
                         @endisset
                     @endisset

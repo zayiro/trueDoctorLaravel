@@ -26,7 +26,7 @@ class ClinicInvitationNotification extends Notification
     public function toMail($notifiable): MailMessage
     {
         // Ruta ficticia hacia el dashboard del doctor donde verá sus invitaciones
-        $url = route('doctor.clinics.index'); 
+        $url = route('partner.clinic_doctors.index'); 
 
         return (new MailMessage)
             ->subject("Invitación de Vinculación: {$this->clinic->name}")

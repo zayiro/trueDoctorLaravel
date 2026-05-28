@@ -167,26 +167,44 @@ class AppointmentController extends Controller
             $appointmentData['address_id'] = $request->address_id;
         }
 
-        $appointment = Appointment::create($appointmentData);
+        Appointment::create($appointmentData);
 
         return redirect()->route('patient.appointments')
             ->with('success', 'Cita agendada. ' . ($service->type === 'virtual' ? 'El link de la reunión está listo.' : ''));
     }
 
+        /**
+     * Almacena temporalmente en sesión los datos de la cita elegida por el paciente.
+     */
     public function storeStepTwo(Request $request) 
     {
+        // 1. Extraemos los identificadores unificados congelados previamente en el PublicProfileController@show() perfil publico del doctor o clinica 
         $doctorId = session('current_doctor_id');
+        $clinicUserId = session('current_clinic_user_id');
 
-        if (!$doctorId) {
+        // 🔒 BLINDAJE MULTI-TENANT: Validamos que exista al menos una entidad comercial activa
+        if (!$doctorId && !$clinicUserId) {
             return [
-                "message" => "Doctor no seleccionado correctamente",
-                "status" => false,
+                "message" => "No se ha detectado una clínica o especialista seleccionado para procesar la reserva.",
+                "status"  => false,
             ];
         }
-        
+
+        $clinicId = null;
+        // Si hay una clínica en sesión, resolvemos su ID relacional físico de la tabla 'clinics'
+        if ($clinicUserId) {
+            $clinicProfile = Clinic::where('user_id', $clinicUserId)->first();
+            $clinicId = $clinicProfile?->id;
+        }
+
+        // Si la cita es en una clínica pero se eligió un servicio de un médico de su nómina,
+        // el selector de la API del frontend inyectará el doctor_id dentro del request
+        $targetDoctorId = $request->input('doctor_id', $doctorId);
+        // 2. Empaquetamos el objeto estructurado de reserva de forma limpia
         session([
             'booking_data' => [
-                'doctor_id'  => $doctorId, 
+                'clinic_id'  => $clinicId, // Almacena el ID físico de la clínica (null si es consulta privada)
+                'doctor_id'  => $targetDoctorId, // Almacena el especialista a cargo (null si es servicio general de clínica)
                 'service_id' => $request->service_id,
                 'address_id' => $request->address_id,
                 'date'       => $request->date,
@@ -195,8 +213,8 @@ class AppointmentController extends Controller
         ]);
 
         return [
-            "message" => "booking_data configurada correctamente",
-            "status" => true,
+            "message" => "Información de reserva (booking_data) configurada correctamente en el ecosistema.",
+            "status"  => true,
         ];
     }
 
@@ -215,8 +233,8 @@ class AppointmentController extends Controller
     }
 
     public function processPatient(Request $request)
-    {        
-        $bookingData = session('booking_data');        
+    {
+        $bookingData = session('booking_data');
         if (!$bookingData || !isset($bookingData['doctor_id'])) {
             return redirect()->route('search')->with('error', 'Sesión inválida o datos de reserva incompletos.');
         }
@@ -324,8 +342,10 @@ class AppointmentController extends Controller
             }
 
             $status = $requiresApproval ? 'pending' : 'confirmed';
+            $appointmentReference = 
                         
             // 💾 Crear la cita con trazabilidad total en el SaaS [2]
+            // el campo reference se crea en el modelo booted()
             $appointment = Appointment::create([
                 'patient_id' => $patient->id,
                 'doctor_id'  => $doctor->id,
@@ -338,6 +358,7 @@ class AppointmentController extends Controller
                 'duration'   => $duration,
                 'price'      => $price,
                 'status'     => $status,
+                'channel'    => 'web',
                 'notes'      => $request->notes,
             ]);
 
@@ -369,17 +390,34 @@ class AppointmentController extends Controller
         return view('appointments.preview', compact('appointment'));
     }
 
-    /**
-     * 🔥 NUEVO MÉTODO CORE: Renderiza la pantalla de confirmación exitosa de la cita.
-     * Carga el registro por ID de la URL y limpia el embudo de cara al paciente.
+        /**
+     * Muestra la pantalla de confirmación exitosa de la cita médica validando la tenencia del recurso.
      */
-    public function success($id)
+    public function success(Appointment $appointment)
     {
-        // Buscamos la cita precargando todas sus relaciones corporativas de co-propiedad
-        $appointment = Appointment::with(['doctor.user', 'clinic', 'service', 'address.city'])
-            ->findOrFail($id);
+        $activeUser = auth()->user();
 
-        // Retornamos la vista pasando el objeto de la consulta
+        // 🔒 FILTRO DE SEGURIDAD MAESTRO: Si es paciente, solo puede ver sus propias citas
+        if ($activeUser->role === 'patient') {
+            $patientProfile = $activeUser->patient;
+            
+            if (!$patientProfile || $appointment->patient_id !== $patientProfile->id) {
+                abort(403, 'Acceso no autorizado a este recibo de consulta médica.');
+            }
+        }
+
+        // 🔒 FILTRO DE SEGURIDAD SAAS: Si es médico o clínica, solo ven citas de su propio ecosistema
+        if ($activeUser->role === 'doctor' && $appointment->doctor_id !== $activeUser->doctor?->id) {
+            abort(403, 'No tienes privilegios para auditar esta transacción.');
+        }
+
+        if ($activeUser->role === 'clinic' && $appointment->clinic_id !== $activeUser->clinic?->id) {
+            abort(403, 'Esta cita no corresponde al registro transaccional de tu institución.');
+        }
+
+        // Carga previa en memoria (Eager Loading) de las relaciones de co-propiedad
+        $appointment->load(['doctor.user', 'clinic', 'service', 'address.city']);
+
         return view('appointments.success', compact('appointment'));
     }
 }

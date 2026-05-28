@@ -2,42 +2,104 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\Mail;
-use App\Mail\AppointmentConfirmed;
-
-use App\Notifications\NewAppointmentNotification;
-
+use App\Models\User;
 use App\Models\Doctor;
+use App\Models\Clinic;
 use App\Models\Service;
 use App\Models\Address;
+use App\Models\Appointment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\AppointmentConfirmed;
+use App\Notifications\NewAppointmentNotification;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class PublicProfileController extends Controller
 {
-    public function show(Doctor $partner)
+    /**
+     * Muestra el perfil público unificado de un Doctor o una Clínica basada en su Slug.
+     */
+    public function show($slug)
     {
-        $partner->load([
-            'user',
-            'specialties', 
-            'addresses' => function($q) {
-                $q->where('status', true)
-                ->with(['city', 'services' => function($query) {
-                    $query->where('active', true);
-                }]);
-            }
-        ]);
+        // 1. Buscamos primero en el catálogo maestro de Clínicas habilitadas
+        $partner = Clinic::where('slug', $slug)
+            ->where('validation_status', 'approved')
+            ->where('active', true)
+            ->first();
 
-        session(['current_doctor_id' => $partner->user_id]);
-                
-        $seoTitle = "Dr(a). " . ucfirst($partner->user->name) . ' | Orientación Médica';
-        $seoDescription = $partner->bio ?? 'Especialista certificado de OpenDoctor, reserva tu cita en línea';
+        $profileType = 'clinic';
+
+        // 2. Si no es una clínica, buscamos en el catálogo de Especialistas Independientes
+        if (!$partner) {
+            $partner = Doctor::where('slug', $slug)
+                ->where('validation_status', 'approved')
+                ->where('active', true)
+                ->first();
+
+            $profileType = 'doctor';
+        }
+
+        // 3. Si no existe en ninguna de las dos entidades, arrojamos un 404 limpio
+        if (!$partner) {
+            abort(404, 'The requested medical profile does not exist or is under validation.');
+        }
+
+        // 4. Eager Loading (Carga previa adaptada a la Co-propiedad de opendoctor)
+        if ($profileType === 'clinic') {
+            $partner->load([
+                'user',
+                'specialties',
+                'addresses' => function ($query) {
+                    $query->where('status', true)
+                          ->with(['city', 'services' => function ($q) {
+                              $q->where('active', true);
+                          }]);
+                }
+            ]);
+            
+            // Congelamos el ID de usuario de la clínica para el contexto transaccional
+            session(['current_clinic_user_id' => $partner->user_id]);
+            session()->forget('current_doctor_id');
+
+            $seoName = $partner->name;
+            $seoDescription = $partner->bio ?? 'Centro médico e institucional verificado por OpenDoctor.';
+        } else {
+            $partner->load([
+                'user',
+                'specialties',
+                'addresses' => function ($query) {
+                    $query->where('status', true)
+                          ->with(['city', 'services' => function ($q) {
+                              $q->where('active', true);
+                          }]);
+                }
+            ]);
+
+            // Congelamos el ID de usuario del médico independiente
+            session(['current_doctor_id' => $partner->user_id]);
+            session()->forget('current_clinic_user_id');
+
+            $seoName = "Dr(a). " . ucfirst($partner->user->name);
+            $seoDescription = $partner->bio ?? 'Especialista profesional calificado, agenda tu cita médica en línea.';
+        }
+
+        // 5. Configuración SEO Dinámica
+        $seoTitle = $seoName . ' | Agendamiento en Línea';
         $metaRobots = "index, follow";
         
-        return view('public.public-profile', ['doctor' => $partner, 'seoTitle' => $seoTitle, 'seoDescription' => $seoDescription, 'metaRobots' => $metaRobots]);
+        return view('public.public-profile', [
+            'partner'        => $partner, 
+            'profileType'    => $profileType, 
+            'seoTitle'       => $seoTitle, 
+            'seoDescription' => $seoDescription, 
+            'metaRobots'     => $metaRobots
+        ]);
     }
 
-
+    /**
+     * Devuelve la disponibilidad de FullCalendar según la infraestructura del Doctor.
+     */
     public function getAvailability(Doctor $doctor, Request $request)
     {
         $start = Carbon::parse($request->start);
@@ -47,20 +109,21 @@ class PublicProfileController extends Controller
         $schedules = $doctor->addresses()->with('schedules')->get()->pluck('schedules')->flatten();
 
         foreach ($schedules as $schedule) {
-            // Generamos eventos visuales para FullCalendar basados en los horarios base
-            // (Similar a la lógica anterior pero filtrando por el ID del doctor)
+            // Generación interna de bloques de tiempo (FullCalendar)
         }
 
         return response()->json($events);
     }
 
+    /**
+     * Genera la previsualización de la cita antes de confirmar la transacción.
+     */
     public function preview(Request $request)
     {
         $service = Service::with('doctor.user')->findOrFail($request->service);
         $address = $request->address ? Address::with('city')->find($request->address) : null;
         $datetime = Carbon::parse($request->datetime);
         
-        // Datos del paciente que vienen del paso previo
         $notes = $request->notes;
         $phone = $request->phone;
         $identification = $request->identification;
@@ -70,63 +133,17 @@ class PublicProfileController extends Controller
         ));
     }
 
-    /*
-    public function book(Request $request, AppointmentService $appointmentService)
-    {
-        // Validar que los datos lleguen correctamente
-        $request->validate([
-            'service_id' => 'required|exists:services,id',
-            'datetime'   => 'required',
-            'address_id' => 'nullable|exists:addresses,id',
-        ]);
-
-        // Buscar el servicio para obtener precio y duración "congelada"
-        $service = Service::findOrFail($request->service_id);
-        $dateTime = Carbon::parse($request->datetime);
-        
-        // Validar choque de horarios
-        $available = $appointmentService->isAvailable(
-            $service->doctor_id, 
-            $dateTime->toDateString(), 
-            $dateTime->toTimeString(), 
-            $service->duration
-        );
-
-        if (!$available) {
-            return back()->with('error', 'Lo sentimos, este horario acaba de ser ocupado. Por favor elige otro.');
-        }
-
-        // Crear la cita
-        $appointment = Appointment::create([
-            'patient_id' => auth()->user()->patient->id,
-            'doctor_id'  => $service->doctor_id,
-            'service_id' => $service->id,
-            'address_id' => $request->address_id,
-            'date'       => $dateTime->toDateString(),
-            'start_time' => $dateTime->toTimeString(),
-            'end_time'   => $dateTime->copy()->addMinutes($service->duration)->toTimeString(),
-            'duration'     => $service->duration,
-            'price'        => $service->price,
-            'status'     => 'pending',
-            'notes'      => $request->notes,
-            'meeting_link' => ($service->type === 'virtual') ? url('/meet/' . Str::random(10)) : null,
-        ]);
-
-        // 1. Enviar correo al paciente
-        Mail::to($appointment->patient->user->email)->send(new AppointmentConfirmed($appointment));
-
-        // 2. Notificación al Doctor
-        $doctorUser = $appointment->doctor->user;
-        $doctorUser->notify(new NewAppointmentNotification($appointment));
-
-        // Redirigir a la vista de éxito
-        return redirect()->route('appointments.success', $appointment->id)
-            ->with('success', '¡Tu cita ha sido agendada correctamente!');
-    }*/
+    /**
+     * Muestra la confirmación de éxito validando correctamente la tenencia del recurso.
+     */
     public function success(Appointment $appointment)
     {
-        // Seguridad: Solo el dueño de la cita puede verla
-        if ($appointment->patient_id !== auth()->id()) { abort(403); }
+        $patient = auth()->user()->patient;
+
+        // 🔒 CONTROL DE ACCESO CORRECTO: Validamos contra el ID de la tabla patients, no el user_id directo
+        if (!$patient || $appointment->patient_id !== $patient->id) { 
+            abort(403, 'Unauthorized access to this medical receipt.'); 
+        }
 
         $appointment->load(['doctor.user', 'service', 'address.city']);
         return view('public.appointments.success', compact('appointment'));

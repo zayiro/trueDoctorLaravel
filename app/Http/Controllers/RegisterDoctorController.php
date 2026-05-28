@@ -31,16 +31,16 @@ class RegisterDoctorController extends Controller
             'specialties.*' => 'exists:specialties,id',
         ]);
 
-        $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
-        $cleanIdentification = str_replace('-', '', $request->nit);
+        $cleanPhone = preg_replace('/[^0-9]/', '', trim($request->phone));
+        $cleanIdentification = str_replace('-', '', trim($request->nit));
 
         try {
             // Usamos transacción para asegurar que se cree el usuario Y el doctor
             DB::transaction(function () use ($request, $cleanPhone, $cleanIdentification) {
                 // 1. Crear Usuario
                 $user = User::create([
-                    'name'     => $request->name,
-                    'email'    => $request->email,
+                    'name'     => trim($request->name),
+                    'email'    => strtolower(trim($request->email)),
                     'password' => Hash::make($request->password),
                     'role'     => 'doctor',          
                 ]);
@@ -51,7 +51,7 @@ class RegisterDoctorController extends Controller
 
                 // 4. Crear Perfil de Doctor asociado
                 $doctor = $user->doctor()->create([
-                    'medical_license'   => $request->medical_license,
+                    'medical_license'   => trim($request->medical_license),
                     'identification'    => $cleanIdentification,
                     'phone'             => $cleanPhone,
                     'validation_status' => 'missing', 

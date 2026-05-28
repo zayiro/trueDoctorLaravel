@@ -1,5 +1,5 @@
 <x-guest-layout>
-    <div class="max-w-3xl mx-auto py-12 px-4 mt-6">
+    <div class="max-w-4xl mx-auto py-12 px-4 mt-6">
         @if(session('error'))
             <div class="flex items-center p-4 mb-4 text-red-800 rounded-2xl bg-red-50 border border-red-100 shadow-sm" role="alert">
                 <svg class="flex-shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://w3.org" fill="currentColor" viewBox="0 0 20 20">
@@ -49,10 +49,22 @@
                             <input type="hidden" name="has_account" id="has_account" value="{{ old('has_account', 'no') }}">
 
                             {{-- SECCIÓN: REGISTRO (NUEVO) --}}
-                            <div id="section-new" class="space-y-5">
-                                <div class="bg-blue-50 p-4 rounded-2xl text-sm text-blue-800">
-                                    Crea tu perfil para gestionar esta y futuras citas.
+                            <div id="section-new" class="space-y-5">                                
+                                <div class="bg-emerald-50/60 border border-emerald-100 rounded-3xl p-5 flex gap-4 items-start mb-6">
+                                    <div class="bg-emerald-600 text-white p-2.5 rounded-xl shadow-md shadow-emerald-100 flex-shrink-0">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <!-- 💡 MENSAJE BASADO EN CONFIDENCIALIDAD -->
+                                        <h4 class="font-black text-slate-800 text-sm uppercase tracking-wide">Tu seguridad médica es nuestra prioridad</h4>
+                                        <p class="text-sm text-slate-500 mt-1 leading-relaxed font-medium">
+                                            Para proteger tu historial, generar las órdenes de consulta de forma legal y darte acceso seguro a tu enlace de <strong class="text-emerald-600">Telemedicina</strong>, requerimos crear una clave de acceso única para ti. Tus datos médicos viajan totalmente encriptados.
+                                        </p>
+                                    </div>
                                 </div>
+
                                 <div>
                                     <label for="name" class="block text-sm font-bold text-gray-700 mb-1">Nombre completo</label>
                                     <input type="text" name="name" id="name" value="{{ old('name') }}" autocomplete="name" class="w-full rounded-xl border-gray-200 focus:ring-blue-500 input-new">
@@ -82,9 +94,27 @@
                                     <label for="login_email" class="block text-sm font-bold text-gray-700 mb-1">Email</label>
                                     <input type="email" name="login_email" id="login_email" value="{{ old('login_email') }}" autocomplete="email" class="w-full rounded-xl border-gray-200 focus:ring-blue-500 input-exist">
                                 </div>
-                                <div>
+                                <div x-data="{ showPass: false }">
                                     <label for="login_password" class="block text-sm font-bold text-gray-700 mb-1">Contraseña</label>
-                                    <input type="password" name="login_password" id="login_password" autocomplete="current-password" class="w-full rounded-xl border-gray-200 focus:ring-blue-500 input-exist">
+                                    <div class="relative mt-1 rounded-md shadow-sm">
+                                        <input 
+                                            id="login_password" 
+                                            name="login_password" 
+                                            class="block w-full pr-10 rounded-xl border-gray-200 focus:ring-blue-500 input-exist" 
+                                            :type="showPass ? 'text' : 'password'"                                             
+                                            required 
+                                            autocomplete="current-password" 
+                                        />
+                                        <button type="button" @click="showPass = !showPass" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none">
+                                            <svg x-show="showPass" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            <svg x-show="!showPass" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" x-cloak>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.025 10.025 0 014.132-5.411m0 0L4 3m1.37 1.37L21 21m-2.13-2.13l-1.37-1.37M9.88 9.88a3 3 0 104.24 4.24m-1.07-4.24L12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         @endguest

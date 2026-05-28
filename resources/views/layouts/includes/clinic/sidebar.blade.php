@@ -12,9 +12,9 @@
         [
             'name' => 'Nómina de Especialistas',
             'icon' => 'fa-solid fa-gauge',
-            'href' => route('clinic_doctors.index'),
-            'active' => request()->routeIs('clinic_doctors.*'), // Corregido: removido el prefijo 'partner.'
-        ],
+            'href' => route('partner.clinic_doctors.index'),
+            'active' => request()->routeIs('partner.clinic_doctors.*'), // Corregido: removido el prefijo 'partner.'
+        ],        
     ];
 
     // 🔒 CORRECCIÓN DEL BUG: Cambiado de 'doctor' a 'clinic' usando el operador seguro (?->)

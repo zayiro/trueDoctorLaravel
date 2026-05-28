@@ -144,7 +144,7 @@ $breadcrumbs = [
                             
                             <div class="flex-1 min-w-0">
                                 <h4 class="text-base font-extrabold text-slate-800 truncate leading-snug">
-                                    {{ $doctor->user->name }}
+                                    {{ ucfirst($doctor->user->name) }}
                                 </h4>
                                 <span class="text-[11px] text-slate-400 font-medium block mt-0.5">
                                     CC: {{ $doctor->identification }}
@@ -158,11 +158,11 @@ $breadcrumbs = [
                                 <!-- Especialidades del Médico -->
                                 <div class="flex flex-wrap gap-1 mt-2">
                                     @forelse($doctor->specialties as $spec)
-                                        <span class="text-[9px] font-bold bg-slate-50 text-slate-500 px-2 py-0.5 rounded-md border border-slate-100/70">
+                                        <span class="text-[11px] font-bold bg-slate-50 text-slate-500 px-2 py-0.5 rounded-md border border-slate-100/70">
                                             {{ $spec->name }}
                                         </span>
                                     @empty
-                                        <span class="text-[9px] font-bold bg-amber-50 text-amber-600 px-2 py-0.5 rounded-md border border-amber-100/50">
+                                        <span class="text-[11px] font-bold bg-amber-50 text-amber-600 px-2 py-0.5 rounded-md border border-amber-100/50">
                                             Sin especialidades asignadas
                                         </span>
                                     @endforelse
@@ -175,17 +175,31 @@ $breadcrumbs = [
                             <!-- Badge de Estado Dinámico -->
                             <div>
                                 @if($status === 'approved')
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100">
                                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
                                         Activo
                                     </span>
                                 @elseif($status === 'pending')
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-100 animate-pulse">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-100 animate-pulse">
                                         <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>
                                         Invitado Pendiente
                                     </span>
+                                    <div class="mt-2">
+                                        <form action="{{ route('partner.clinic_doctors.resend-invitation', $doctor) }}" method="POST" class="inline">
+                                            @csrf
+                                            <button type="submit" 
+                                                    class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-center text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-800 transition-colors"
+                                                    title="Reenviar invitación por correo">
+                                                {{-- Icono de Avión de Papel (Flowbite Icons) --}}
+                                                <svg class="w-3.5 h-3.5 mr-1.5 text-white" aria-hidden="true" xmlns="http://w3.org" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="m17.914 1.125-16.14 4.5a1.241 1.241 0 0 0-.166 2.316l5.24 2.11 2.11 5.24a1.243 1.243 0 0 0 2.315-.166l4.5-16.14a1.252 1.252 0 0 0-1.369-1.369Z"/>
+                                                </svg>
+                                                Reenviar Invitación
+                                            </button>
+                                        </form>
+                                    </div>
                                 @else
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-50 text-red-700 border border-red-100">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-red-50 text-red-700 border border-red-100">
                                         <span class="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5"></span>
                                         Inactivo
                                     </span>

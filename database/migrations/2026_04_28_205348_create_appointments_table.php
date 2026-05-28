@@ -31,6 +31,7 @@ return new class extends Migration
             $table->text('zoom_start_url')->nullable()->comment('Enlace exclusivo para que el Doctor inicie como Anfitrión');
 
             $table->enum('status', ['pending', 'confirmed', 'cancelled', 'completed'])->default('pending');
+            $table->enum('channel', ['app', 'web', 'whatsapp'])->default('web');
             $table->text('notes')->nullable();
             $table->timestamps();
 

@@ -167,19 +167,20 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::get('/campaigns/create', \App\Livewire\Campaigns\CreateCampaign::class)->name('campaigns.create');
 
     // Bandeja de clínicas vinculadas para el médico
-    Route::get('clinics', [DoctorClinicController::class, 'index'])->name('doctor_clinics.index');
+    Route::get('clinics', [DoctorClinicController::class, 'index'])->name('partner.doctor_clinics.index');
     
     // Procesos de aceptación o desvinculación voluntaria
-    Route::patch('clinics/{clinic}/accept', [DoctorClinicController::class, 'accept'])->name('doctor_clinics.accept');
-    Route::delete('clinics/{clinic}/reject', [DoctorClinicController::class, 'reject'])->name('doctor_clinics.reject');
+    Route::patch('clinics/{clinic}/accept', [DoctorClinicController::class, 'accept'])->name('partner.doctor_clinics.accept');
+    Route::delete('clinics/{clinic}/reject', [DoctorClinicController::class, 'reject'])->name('partner.doctor_clinics.reject');
 });
 
 // Grupo exclusivo para la administración de nóminas de centros médicos
-Route::middleware(['auth', 'role:clinic'])->prefix('partner/clinic')->group(function () {    
-    Route::get('/clinic/doctors', [ClinicDoctorController::class, 'index'])->name('clinic_doctors.index');
-    Route::post('/clinic/doctors', [ClinicDoctorController::class, 'store'])->name('clinic_doctors.store');
-    Route::patch('/clinic/doctors/{doctor}/toggle', [ClinicDoctorController::class, 'toggleStatus'])->name('clinic_doctors.toggle');
-    Route::delete('/clinic/doctors/{id}', [ClinicDoctorController::class, 'destroy'])->name('clinic_doctors.destroy');
+Route::middleware(['auth', 'role:clinic'])->group(function () {    
+    Route::get('/clinic/doctors', [ClinicDoctorController::class, 'index'])->name('partner.clinic_doctors.index');
+    Route::post('/clinic/doctors', [ClinicDoctorController::class, 'store'])->name('partner.clinic_doctors.store');
+    Route::patch('/clinic/doctors/{doctor}/toggle', [ClinicDoctorController::class, 'toggleStatus'])->name('partner.clinic_doctors.toggle');
+    Route::delete('/clinic/doctors/{id}', [ClinicDoctorController::class, 'destroy'])->name('partner.clinic_doctors.destroy');
+    Route::post('/clinic/doctors/{doctor}/resend-invitation', [ClinicDoctorController::class, 'resendInvitation'])->name('partner.clinic_doctors.resend-invitation');
 });
 
 // Rutas Privadas (patient)
@@ -215,7 +216,6 @@ Route::middleware(['auth', 'role:patient'])->group(function () {
     Route::get('/patient/meet/{room_code}', [AppointmentController::class, 'waitingRoom'])->name('patient.appointments.waiting_room');
 });
 
-//pasos de la reservacion
 Route::middleware(['auth'])->group(function () {    
     // Vista principal de todas las notificaciones
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
@@ -275,7 +275,7 @@ Route::get('/search-symptom', [SearchController::class, 'searchSymptomView'])->n
 Route::get('/{partner_slug}/{campaign_slug}.html', PublicLanding::class)->name('landing.public');
 
 // Ruta para ver el perfil del doctor en la busqueda
-Route::get('/medical-partner/{partner:slug}', [PublicProfileController::class, 'show'])->name('partner.public.profile');
+Route::get('/medical-partner/{slug}', [PublicProfileController::class, 'show'])->name('partner.public.profile');
 
 // Ruta API para que FullCalendar cargue los huecos libres
 Route::get('/api/{partner}/availability', [PublicProfileController::class, 'getAvailability'])
@@ -294,7 +294,7 @@ Route::post('/appointments/step-two', [AppointmentController::class, 'storeStepT
 Route::get('/appointments/patient', [AppointmentController::class, 'patient'])->name('appointments.patient');
 Route::post('/appointments/process-patient', [AppointmentController::class, 'processPatient'])->name('appointments.process-patient');
 Route::get('/appointments/preview/{id}', [AppointmentController::class, 'preview'])->name('appointments.preview');
-Route::get('/appointments/success/{id}', [AppointmentController::class, 'success'])->name('appointments.success');
+Route::get('/appointments/success/{appointment}', [AppointmentController::class, 'success'])->name('appointments.success');
 
 // Vista de la tabla de precios
 Route::get('/plans/show', [PlanController::class, 'showPlans'])->name('plans.index');

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Clinic;
 use App\Models\Appointment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class DoctorClinicController extends Controller
 {
@@ -14,16 +15,12 @@ class DoctorClinicController extends Controller
      */
     public function index()
     {
-        // Forzamos el acceso exclusivo al perfil médico
-        if (auth()->user()->role !== 'doctor') {
-            abort(403, 'Acceso exclusivo para profesionales de la salud.');
-        }
-
-        $doctor = auth()->user()->doctor;
+        // El Middleware asignado en las rutas ya garantiza que el usuario sea un 'doctor'
+        $doctor = Auth::user()->doctor;
 
         // Listamos todas las clínicas cruzando la tabla intermedia clinic_doctor
         $clinics = $doctor->clinics()
-            ->with('user') // Para obtener detalles del administrador de la clínica si se requiere
+            ->with('user') // Trae los detalles del perfil de usuario de la clínica de forma eficiente
             ->withPivot('status', 'created_at')
             ->orderBy('clinic_doctor.created_at', 'desc')
             ->get();
@@ -36,11 +33,7 @@ class DoctorClinicController extends Controller
      */
     public function accept(Clinic $clinic)
     {
-        if (auth()->user()->role !== 'doctor') {
-            abort(403);
-        }
-
-        $doctor = auth()->user()->doctor;
+        $doctor = Auth::user()->doctor;
 
         // Buscamos el registro pivote exacto
         $pivot = $doctor->clinics()->where('clinic_id', $clinic->id)->first()?->pivot;
@@ -54,7 +47,10 @@ class DoctorClinicController extends Controller
             'status' => 'approved'
         ]);
 
-        return back()->with('success', "Te has vinculado formalmente al cuerpo médico de: {$clinic->name}. Desde ahora podrán coordinar tu agenda en sus sedes.");
+        // Cargamos la relación de usuario si el nombre está en la tabla users
+        $clinicName = $clinic->user->name ?? $clinic->name;
+
+        return back()->with('success', "Te has vinculado formalmente al cuerpo médico de: {$clinicName}. Desde ahora podrán coordinar tu agenda en sus sedes.");
     }
 
     /**
@@ -62,11 +58,7 @@ class DoctorClinicController extends Controller
      */
     public function reject(Clinic $clinic)
     {
-        if (auth()->user()->role !== 'doctor') {
-            abort(403);
-        }
-
-        $doctor = auth()->user()->doctor;
+        $doctor = Auth::user()->doctor;
 
         $pivot = $doctor->clinics()->where('clinic_id', $clinic->id)->first()?->pivot;
 

@@ -13,6 +13,7 @@ class Appointment extends Model
      * Los atributos que son asignables masivamente.
      */
     protected $fillable = [
+        'reference',
         'patient_id',
         'doctor_id',
         'clinic_id', 
@@ -24,6 +25,7 @@ class Appointment extends Model
         'duration',
         'price',
         'status',
+        'channel',
         'meeting_link',     // Enlace para el paciente (o fallback interno)
         'zoom_meeting_id',  // ID identificador de Zoom
         'zoom_start_url',   // Enlace de inicio para el Doctor
@@ -41,18 +43,11 @@ class Appointment extends Model
 
     protected static function booted()
     {
-        static::creating(function ($appointment) {
-            // Genera un código único aleatorio antes de guardar
-            // Ejemplo resultado: OD-65A2F
+        static::creating(function ($appointment) {            
             do {
-                // Genera el prefijo con la fecha actual (Ej: 20260525)
-                $prefix = Carbon::now()->format('Ymd');
-                
-                // Genera 4 caracteres aleatorios (Ej: X79B)
-                $random = strtoupper(Str::random(4));
-                
-                // Une ambos componentes con un guion
-                $code = $prefix . '-' . $random;
+                $prefix = Carbon::now()->format('ymdH');                
+                $random = strtoupper(Str::random(3));                                
+                $code = $prefix . "-" . $random;
             } while (self::where('reference', $code)->exists()); // Evita duplicados
 
             $appointment->reference = $code;

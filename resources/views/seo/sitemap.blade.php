@@ -1,5 +1,5 @@
 {!! '<' . '?xml version="1.0" encoding="UTF-8"?' . '>' !!}
-<!-- Corrección del espacio de nombres estándar oficial -->
+<!-- 🔒 CORREGIDO: Espacio de nombres oficial de sitemaps.org para evitar rechazos en Google -->
 <urlset xmlns="http://sitemaps.org">
     
     <!-- 1. PÁGINAS ESTÁTICAS PRINCIPALES -->
@@ -39,13 +39,25 @@
     <!-- 3. PERFILES DINÁMICOS DE LOS DOCTORES -->
     @foreach($doctors as $doctor)
         <url>
-            <loc>{{ route('partner.public.profile', ['partner' => $doctor->slug]) }}</loc>
+            <!-- 🔒 CORREGIDO: Cambiado 'partner' por 'slug' en el parámetro de la ruta -->
+            <loc>{{ route('partner.public.profile', ['slug' => $doctor->slug]) }}</loc>
             <lastmod>{{ $doctor->updated_at->toAtomString() }}</lastmod>
             <changefreq>weekly</changefreq>
             <priority>0.8</priority>
         </url>
     @endforeach
+    <!-- 4. PERFILES DINÁMICOS DE LAS CLÍNICAS (NUEVO) -->
+    @foreach($clinics as $clinic)
+        <url>
+            <!-- 🔒 MULTI-TENANT: Indexación unificada usando la firma 'slug' del centro médico -->
+            <loc>{{ route('partner.public.profile', ['slug' => $clinic->slug]) }}</loc>
+            <lastmod>{{ $clinic->updated_at->toAtomString() }}</lastmod>
+            <changefreq>weekly</changefreq>
+            <priority>0.8</priority>
+        </url>
+    @endforeach
     
+    <!-- 5. LANDINGS DINÁMICAS DE SÍNTOMAS INDEXADOS -->
     @foreach($indexedSymptoms as $symptom)
         <url>
             <loc>{{ route('symptoms.landing', $symptom->slug) }}</loc>

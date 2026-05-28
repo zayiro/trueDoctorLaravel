@@ -39,6 +39,26 @@
                             <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                             <span>Sede virtual incluida</span>
                         </li>
+                        @if($plan->plan !== 'free')
+                            <li class="flex items-center gap-3 text-gray-700">
+                                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                <span>Analítica</span>
+                            </li>
+                            @if ($plan->plan === 'gold' || $plan->plan === 'clinic_gold')
+                            <li class="flex items-center gap-3 text-gray-700">
+                                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                <span>Rendimiento financiero (KPI)</span>
+                            </li>
+                            <li class="flex items-center gap-3 text-gray-700">
+                                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                <span>Ingresos por consultorio (KPI)</span>
+                            </li>
+                            @endif
+                        @endif
+                        <li class="flex items-center gap-3 text-gray-700">
+                            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <span>Soporte</span>
+                        </li>                        
                     </ul>
 
                     <form action="{{ route('plans.subscribe', $plan) }}" method="POST">

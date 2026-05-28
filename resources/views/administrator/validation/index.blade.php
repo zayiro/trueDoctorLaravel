@@ -11,7 +11,7 @@ $breadcrumbs = [
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="max-w-7xl mx-auto py-8">
         
         <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8 pb-4 border-b border-slate-200">
             <div>
@@ -44,6 +44,13 @@ $breadcrumbs = [
                             @php
                                 $isClinic = $partner->user?->role === 'clinic';
                                 $queryParam = $isClinic ? ['clinic_id' => $partner->id] : ['doctor_id' => $partner->id];
+
+                                $showForm = 0;
+                                if ($isClinic && $partner->identity_card_path && $partner->reps_code_card_path) {
+                                    $showForm = 1;
+                                } elseif (!$isClinic && $partner->identity_card_path && $partner->professional_card_path)  {
+                                    $showForm = 1;  
+                                }
                             @endphp
                             <tr class="hover:bg-slate-50/50 transition-colors">
                                 
@@ -70,19 +77,29 @@ $breadcrumbs = [
                                             <span class="text-xs text-red-500 font-medium">❌ Falta {{ $isClinic ? 'RUT / NIT' : 'Identificación' }}</span>
                                         @endif
                                         
-                                        @if ($partner->professional_card_path)
-                                            <a href="{{ route('administrator.document.view', array_merge(['type' => 'tarjeta'], $queryParam)) }}" target="_blank" class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline group w-fit">
-                                                <span class="mr-1.5">📜</span> Ver {{ $isClinic ? 'Certificado REPS' : 'Tarjeta Profesional' }}
-                                            </a>
+                                        @if ($isClinic)
+                                            @if ($partner->reps_code_card_path)
+                                                <a href="{{ route('administrator.document.view', array_merge(['type' => 'tarjeta'], $queryParam)) }}" target="_blank" class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline group w-fit">
+                                                    <span class="mr-1.5">📜</span> Ver Certificado REPS
+                                                </a>
+                                            @else
+                                                <span class="text-xs text-red-500 font-medium">❌ Falta Certificado REPS</span>
+                                            @endif        
                                         @else
-                                            <span class="text-xs text-red-500 font-medium">❌ Falta {{ $isClinic ? 'Certificado REPS' : 'Tarjeta Profesional' }}</span>
-                                        @endif                                    
+                                             @if ($partner->professional_card_path)
+                                                <a href="{{ route('administrator.document.view', array_merge(['type' => 'tarjeta'], $queryParam)) }}" target="_blank" class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline group w-fit">
+                                                    <span class="mr-1.5">📜</span> Ver Tarjeta Profesional
+                                                </a>
+                                            @else
+                                                <span class="text-xs text-red-500 font-medium">❌ Falta Tarjeta Profesional</span>
+                                            @endif 
+                                        @endif
                                     </div>
                                 </td>
 
                                 <td class="p-4 text-right align-middle">
-                                    <div class="inline-flex items-center justify-end gap-x-2">
-                                        @if ($partner->identity_card_path && $partner->professional_card_path)
+                                    <div class="inline-flex items-center justify-end gap-x-2">                                        
+                                        @if ($showForm)
                                             <form action="{{ route('administrator.validation.update') }}" method="POST">
                                                 @csrf
                                                 <input type="hidden" name="status" value="approved">
@@ -104,9 +121,9 @@ $breadcrumbs = [
                         @empty
                             <tr>
                                 <td colspan="4" class="p-12 text-center bg-slate-50/30">
-                                    <div class="inline-flex items-center justify-center w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full mb-3 text-xl border border-emerald-100">✓</div>
+                                    <div class="inline-flex items-center justify-center w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full mb-3 text-xl border border-emerald-100 mt-3">✓</div>
                                     <div class="text-sm font-semibold text-slate-900">Al día con las revisiones</div>
-                                    <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">No hay registros esperando validación de documentos.</p>
+                                    <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto mb-3">No hay registros esperando validación de documentos.</p>
                                 </td>
                             </tr>
                         @endforelse

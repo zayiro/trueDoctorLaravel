@@ -11,7 +11,7 @@ $breadcrumbs = [
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-    <div class="max-w-4xl mx-auto py-10 px-4">
+    <div class="max-w-7xl mx-auto py-10 px-4">
         <div class="flex justify-between items-center mb-8">
             <h2 class="text-3xl font-black text-gray-800">Centro de Notificaciones</h2>
             @if(auth()->user()->unreadNotifications->count() > 0)
@@ -57,8 +57,8 @@ $breadcrumbs = [
                         @endif
                     </div>
                 @empty
-                    <div class="p-10 text-center text-gray-400 italic">
-                        No hay notificaciones para mostrar.
+                    <div class="p-8 text-center bg-white border border-gray-200 rounded-xl dark:bg-gray-800 dark:border-gray-700">
+                        <p class="text-base text-gray-500 dark:text-gray-400">No tienes ninguna notificación registrada en este momento.</p>
                     </div>
                 @endforelse
             </div>

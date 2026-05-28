@@ -10,12 +10,12 @@ $colorState = $address->status ? 'green' : 'red';
 <x-admin-layout :breadcrumbs="$breadcrumbs">
     <div class="max-w-7xl mx-auto py-6 px-4">
         
-        <!-- SECCIÓN DE ALERTAS INTELIGENTES -->
+        <!-- SECCIÓN DE ALERTAS INTELIGENTES CONTROLADAS CON ALPINE.JS -->
         <div class="space-y-4 mb-8">
             @if(session('schedule_conflicts'))
-                <div class="mb-8 p-6 bg-red-50 border-2 border-red-200 rounded-[2.5rem] shadow-xl shadow-red-100 animate-pulse">
+                <div x-data="{ show: true }" x-show="show" x-transition class="mb-8 p-6 bg-red-50 border-2 border-red-200 rounded-[2.5rem] shadow-xl shadow-red-100">
                     <div class="flex items-center gap-3 mb-4 text-red-700">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <svg class="w-8 h-8 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                         <h4 class="font-black uppercase tracking-widest text-lg">Bloqueo de Seguridad</h4>
                     </div>
                     
@@ -31,10 +31,10 @@ $colorState = $address->status ? 'green' : 'red';
                     </div>
 
                     <div class="flex gap-4">
-                        <a href="{{ route('partner.appointments.index') }}" class="flex-1 bg-red-600 text-white py-3 rounded-2xl font-black text-xs uppercase tracking-widest text-center hover:bg-red-700 transition-all">
+                        <a href="{{ route('partner.appointments.index') }}" class="flex-1 bg-red-600 text-white py-3 rounded-2xl font-black text-xs uppercase tracking-widest text-center hover:bg-red-700 transition-all shadow-md shadow-red-200">
                             Ir a Reagendar Pacientes
                         </a>
-                        <button onclick="this.parentElement.parentElement.remove()" class="px-6 py-3 text-red-400 font-bold text-xs uppercase">
+                        <button type="button" @click="show = false" class="px-6 py-3 text-red-400 font-bold text-xs uppercase tracking-wider hover:text-red-600 transition-colors">
                             Cerrar Aviso
                         </button>
                     </div>
@@ -42,44 +42,25 @@ $colorState = $address->status ? 'green' : 'red';
             @endif
 
             @if (session('success'))
-                <div class="flex items-center p-4 text-emerald-800 rounded-3xl bg-emerald-50 border border-emerald-100 shadow-sm">
-                    <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                    <div class="ms-3 text-sm font-bold">{{ session('success') }}</div>
+                <div x-data="{ show: true }" x-show="show" x-transition class="flex items-center justify-between p-4 text-emerald-800 rounded-3xl bg-emerald-50 border border-emerald-100 shadow-sm">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                        <div class="ms-3 text-sm font-bold">{{ session('success') }}</div>
+                    </div>
+                    <button type="button" @click="show = false" class="text-emerald-400 hover:text-emerald-600 font-black text-sm px-2">×</button>
                 </div>
             @endif
 
             @if (session('error'))
-                <div class="flex items-center p-4 text-red-800 rounded-3xl bg-red-50 border border-red-100 shadow-sm">
-                    <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <div class="ms-3 text-sm font-bold">{{ session('error') }}</div>
-                </div>
-            @endif
-
-            @if(session('conflict_appointments'))
-                <div class="p-6 bg-amber-50 border-2 border-amber-200 rounded-[2.5rem] shadow-xl shadow-amber-100/50">
-                    <div class="flex items-center gap-3 mb-4 text-amber-700">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                        <h4 class="font-black uppercase tracking-widest text-sm">¡Citas en Conflicto Detectadas!</h4>
+                <div x-data="{ show: true }" x-show="show" x-transition class="flex items-center justify-between p-4 text-red-800 rounded-3xl bg-red-50 border border-red-100 shadow-sm">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <div class="ms-3 text-sm font-bold">{{ session('error') }}</div>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        @foreach(session('conflict_appointments') as $app)
-                            <div class="flex justify-between items-center text-xs bg-white/80 p-3 rounded-xl border border-amber-200 shadow-sm">
-                                <span class="font-bold text-slate-800">{{ $app->patient->user->name }}</span>
-                                <span class="text-amber-600 font-black">{{ \Carbon\Carbon::parse($app->date)->format('d/m') }} - {{ \Carbon\Carbon::parse($app->start_time)->format('g:i A') }}</span>
-                            </div>
-                        @endforeach
-                    </div>
-                    <form action="{{ route('partner.unavailabilities.store') }}" method="POST" class="flex gap-3">
-                        @csrf
-                        @foreach(session('old_data') as $key => $value) <input type="hidden" name="{{ $key }}" value="{{ $value }}"> @endforeach
-                        <input type="hidden" name="force_save" value="1">
-                        <button type="submit" class="flex-1 bg-amber-600 text-white py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-amber-700 transition-all shadow-lg shadow-amber-200">Registrar de todos modos</button>
-                        <a href="{{ route('partner.appointments.index') }}" class="flex-1 bg-white text-slate-600 py-3 rounded-2xl font-black text-xs uppercase tracking-widest border border-slate-200 text-center hover:bg-slate-50 transition-all">Revisar Agenda</a>
-                    </form>
+                    <button type="button" @click="show = false" class="text-red-400 hover:text-red-600 font-black text-sm px-2">×</button>
                 </div>
             @endif
         </div>
-
         <!-- CABECERA DE SEDE MULTIPERFIL -->
         <div class="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4 bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
             <div>
@@ -98,6 +79,7 @@ $colorState = $address->status ? 'green' : 'red';
                 Volver a la Agenda Principal
             </a>
         </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <!-- COLUMNA IZQUIERDA: FORMULARIO HORARIOS -->
             <div class="lg:col-span-1">
@@ -115,7 +97,7 @@ $colorState = $address->status ? 'green' : 'red';
                         @csrf
                         <input type="hidden" name="address_id" value="{{ $address->id }}">
 
-                        <!-- 🔥 SELECTOR DE DOCTORES EXCLUSIVO PARA CLÍNICAS -->
+                        <!-- SELECTOR DE DOCTORES EXCLUSIVO PARA CLÍNICAS -->
                         @if(auth()->user()->role === 'clinic')
                             <div>
                                 <label for="doctor_id" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Especialista Asignado</label>
@@ -127,6 +109,7 @@ $colorState = $address->status ? 'green' : 'red';
                                         </option>
                                     @endforeach
                                 </select>
+                                @error('doctor_id') <p class="text-xs text-red-600 mt-1 font-semibold">{{ $message }}</p> @enderror
                             </div>
                         @endif
 
@@ -155,12 +138,13 @@ $colorState = $address->status ? 'green' : 'red';
                                 <input type="time" name="end_time" id="end_time" value="{{ old('end_time') }}" class="w-full rounded-2xl border-slate-200 py-3 text-sm focus:ring-indigo-500" required>
                             </div>
                         </div>
+                        @error('end_time') <p class="text-xs text-red-600 mt-1 font-semibold">{{ $message }}</p> @enderror
 
                         <!-- Replicar Días -->
                         <div>
                             <span class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Replicar en otros días (Opcional)</span>
                             <div class="flex flex-wrap gap-2">
-                                @foreach([1=>'L', 2=>'M', 3=>'M', 4=>'J', 5=>'V', 6=>'S', 0=>'D'] as $val => $letra)
+                                @foreach([1=>'L', 2=>'Ma', 3=>'Mi', 4=>'J', 5=>'V', 6=>'S', 0=>'D'] as $val => $letra)
                                     <label class="cursor-pointer">
                                         <input type="checkbox" name="repeat_days[]" value="{{ $val }}" class="sr-only peer" {{ in_array($val, old('repeat_days', [])) ? 'checked' : '' }}>
                                         <div class="w-8 h-8 flex items-center justify-center text-xs font-bold rounded-xl border border-slate-200 text-slate-500 bg-white peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600 transition-all select-none">
@@ -213,7 +197,7 @@ $colorState = $address->status ? 'green' : 'red';
                                         {{ $schedule->range }}
                                     </span>
 
-                                    <!-- 🔥 RENDER DINÁMICO DEL ESPECIALISTA A CARGO -->
+                                    <!-- ESPECIALISTA A CARGO -->
                                     <span class="text-xs text-slate-500 flex items-center gap-1">
                                         <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
@@ -222,7 +206,7 @@ $colorState = $address->status ? 'green' : 'red';
                                     </span>
                                 </div>
 
-                                <!-- Botón atómico de eliminación con validación de seguridad -->
+                                <!-- Botón de eliminación con validación de seguridad -->
                                 <form action="{{ route('partner.schedules.destroy', $schedule) }}" method="POST" onsubmit="return confirm('¿Estás seguro de remover este bloque horario de la agenda pública?');">
                                     @csrf
                                     @method('DELETE')

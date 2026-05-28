@@ -31,8 +31,8 @@ class CreateNewUser implements CreatesNewUsers
 
         // 2. Crear el Usuario base con su rol
         $user = User::create([
-            'name' => $input['name'],
-            'email' => $input['email'],
+            'name' => trim($input['name']),
+            'email' => strtolower(trim($input['email'])),
             'password' => Hash::make($input['password']),
             'role'     => 'patient',  
         ]);

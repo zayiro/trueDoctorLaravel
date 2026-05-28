@@ -18,13 +18,15 @@ $breadcrumbs = [
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">    
-    <div>                        
+    <div>        
         @if($isAdmin || (($isDoctor || $isClinic) && $validationStatus === 'approved'))
+            <div class="mb-5">
+                <a href="{{ route('partner.public.profile', ['slug' => $owner->slug]) }}" target="_blank" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-indigo-700 transition-colors">Ver perfil publico</a>
+            </div>
             <x-appointment-search-form class="mb-6 p-4 bg-white rounded-lg shadow" />
         @endif
 
         <div class="max-w-7xl mx-auto py-8 space-y-8">
-
             @if($isPatient)
                 <!-- CABECERA PRINCIPAL DEL PORTAL DE PACIENTES -->
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-[2rem] border border-gray-100 shadow-lg">
@@ -134,7 +136,7 @@ $breadcrumbs = [
                             <h2 class="text-3xl font-black text-slate-800 tracking-tight">Estadísticas e indicadores</h2>
                         </div>
                         <div class="text-xs font-bold text-slate-500 bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-100 uppercase tracking-wider">
-                            Socio Médico: <span class="text-indigo-600 font-black">{{ $owner?->name ?? $user->name }}</span>
+                            <span class="text-indigo-600 font-black">{{ $owner?->name ?? $user->name }}</span>
                         </div>
                     </div>
 
@@ -188,6 +190,47 @@ $breadcrumbs = [
                                 <h3 class="text-2xl font-black text-rose-600">{{ $cancellationRate }}%</h3>
                             </div>
                         </div>
+
+                        <!-- 📊 SECCIÓN: HISTORIAL DE FACTURACIÓN CONSOLIDADA -->
+                        <div class="bg-white p-6 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-50">
+                            <div class="flex items-center gap-3 mb-6">
+                                <div class="bg-indigo-500 p-2 rounded-xl shadow-lg shadow-indigo-200">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-black text-slate-800 text-sm uppercase tracking-wide">Rendimiento Financiero</h4>
+                                    <p class="text-xs text-slate-400">Historial consolidado de ingresos de los últimos 5 meses de operación.</p>
+                                </div>
+                            </div>
+
+                            <!-- Contenedor responsivo para el Canvas del gráfico -->
+                            <div class="relative w-full h-72">
+                                <canvas id="financialHistoryChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- 🏢 SECCIÓN: DISTRIBUCIÓN FINANCIERA POR SEDES -->
+                        <div class="bg-white p-6 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-50 flex flex-col justify-between">
+                            <div class="flex items-center gap-3 mb-6">
+                                <div class="bg-emerald-500 p-2 rounded-xl shadow-lg shadow-emerald-200">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v12m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-black text-slate-800 text-sm uppercase tracking-wide">Ingresos por Consultorio</h4>
+                                    <p class="text-xs text-slate-400">Distribución de rentabilidad según el volumen de atenciones físicas o virtuales.</p>
+                                </div>
+                            </div>
+
+                            <!-- Contenedor responsivo para el Canvas de la Dona -->
+                            <div class="relative w-full h-64 flex items-center justify-center">
+                                <canvas id="locationDistributionChart"></canvas>
+                            </div>
+                        </div>
+
                     </div>
                 @endif
 
@@ -195,4 +238,106 @@ $breadcrumbs = [
 
         </div>
     </div>
+
+@if(!$isPatient)    
+    <script src="{{ asset('js/chart/chart.umd.js') }}"></script>  
+    <script>        
+        document.addEventListener("DOMContentLoaded", function() {
+            const ctx = document.getElementById('financialHistoryChart').getContext('2d');
+            
+            // Inicialización del gráfico de barras estilizado en CSSIndigo
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: {!! json_encode($chartLabels) !!},
+                    datasets: [{
+                        label: 'Ingresos Mensuales',
+                        data: {!! json_encode($chartData) !!},
+                        backgroundColor: 'rgba(79, 70, 229, 0.85)',
+                        borderColor: 'rgb(79, 70, 229)',
+                        borderWidth: 1,
+                        borderRadius: 12,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }, // Ocultamos la leyenda para diseño limpio
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ' Total: $' + new Intl.NumberFormat('es-CO').format(context.raw);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { borderDash: [5, 5], color: '#f1f5f9' },
+                            ticks: {
+                                callback: function(value) { return '$' + new Intl.NumberFormat('es-CO').format(value); },
+                                font: { size: 10, weight: 'bold' }
+                            }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 11, weight: 'bold' } }
+                        }
+                    }
+                }
+            });
+        });
+    
+                // Inicialización de la Gráfica de Dona para las Sedes de Atención
+        const locationCtx = document.getElementById('locationDistributionChart').getContext('2d');
+        
+        new Chart(locationCtx, {
+            type: 'doughnut',
+            data: {
+                // Inyección segura de las variables en inglés procesadas en el controlador
+                labels: {!! json_encode($locationLabels) !!},
+                datasets: [{
+                    data: {!! json_encode($locationRevenueData) !!},
+                    // Paleta de colores corporativa premium (Índigo, Esmeralda, Ámbar)
+                    backgroundColor: [
+                        'rgba(79, 70, 229, 0.85)',  
+                        'rgba(16, 185, 129, 0.85)', 
+                        'rgba(245, 158, 11, 0.85)'  
+                    ],
+                    borderColor: [
+                        'rgb(79, 70, 229)',
+                        'rgb(16, 185, 129)',
+                        'rgb(245, 158, 11)'
+                    ],
+                    borderWidth: 2,
+                    cutout: '70%', // Estilizado de dona delgada moderna
+                    radius: '90%'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom', // Muestra los nombres de las sedes abajo
+                        labels: {
+                            boxWidth: 12,
+                            padding: 15,
+                            font: { size: 11, weight: 'bold' }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return ' ' + context.label + ': $' + new Intl.NumberFormat('es-CO').format(context.raw);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+@endif
 </x-admin-layout>

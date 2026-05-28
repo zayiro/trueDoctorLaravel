@@ -10,11 +10,12 @@
         </button>
     </div>
 
+    <!-- El formulario apunta a la persistencia de horarios en lote -->
     <form action="{{ route('partner.schedules.store') }}" method="POST" class="space-y-6">
         @csrf
         <input type="hidden" name="address_id" value="{{ $address->id }}">
 
-        <!-- 🔥 SELECTOR DE DOCTORES EXCLUSIVO PARA CUENTAS DE CLÍNICA -->
+        <!-- SELECTOR DE DOCTORES EXCLUSIVO PARA CUENTAS DE CLÍNICA -->
         @if(auth()->user()->role === 'clinic')
             <div class="p-6 bg-slate-50 rounded-2xl border border-slate-100 mb-6">
                 <label for="doctor_id" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Profesional de Salud Asignado a la Jornada</label>
@@ -26,14 +27,13 @@
                         </option>
                     @endforeach
                 </select>
-                <p class="text-[11px] text-slate-400 mt-1.5">Los bloques marcados a continuación se cargarán exclusivamente a la agenda de este especialista dentro de esta sede.</p>
+                <p class="text-[11px] text-slate-400 mt-1.5">Los bloques marcados se cargarun a la agenda de este especialista dentro de esta sede.</p>
             </div>
         @endif
-
         <!-- Bloques de Días Semanales -->
         <div class="space-y-3">
             @php
-                // Ajustado: 1 = Lunes, 0 = Domingo para emparejar con el backend y tu base de datos
+                // Sincronizado: 1 = Lunes, 0 = Domingo para emparejar con el backend
                 $days = [
                     1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles', 
                     4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado', 0 => 'Domingo'
@@ -51,14 +51,14 @@
                 </div>
                 <div class="flex items-center gap-3 w-full sm:w-2/3 justify-start sm:justify-end">
                     <div class="relative">
-                        <input type="time" name="start[{{ $index }}]" id="start-{{ $index }}"
-                               class="block w-32 border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm time-input py-2"
+                        <input type="time" name="start_time[{{ $index }}]" id="start-{{ $index }}"
+                               class="block w-32 border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm time-input py-2 font-bold text-slate-700"
                                value="08:00">
                     </div>
                     <span class="text-slate-400 font-semibold">—</span>
                     <div class="relative">
-                        <input type="time" name="end[{{ $index }}]" id="end-{{ $index }}"
-                               class="block w-32 border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm time-input py-2"
+                        <input type="time" name="end_time[{{ $index }}]" id="end-{{ $index }}"
+                               class="block w-32 border-gray-300 rounded-xl shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm time-input py-2 font-bold text-slate-700"
                                value="17:00">
                     </div>
                 </div>
@@ -69,7 +69,7 @@
         <!-- Botones de Acción -->
         <div class="mt-8 flex justify-end gap-3 border-t border-slate-50 pt-6">
             <a href="{{ route('partner.schedules.index', $address->id) }}" 
-                class="px-6 py-3 border border-gray-300 rounded-2xl text-gray-600 bg-white hover:bg-gray-50 focus:outline-none transition duration-200 text-xs font-bold uppercase tracking-wider">
+                class="px-6 py-3 border border-gray-300 rounded-2xl text-slate-500 bg-white hover:bg-slate-50 transition duration-200 text-xs font-bold uppercase tracking-wider">
                 Cancelar
             </a> 
             <button type="submit" class="bg-indigo-600 text-white px-8 py-3.5 rounded-2xl font-black shadow-indigo-100 shadow-lg hover:bg-indigo-700 transition-all uppercase tracking-wider text-xs">
@@ -88,7 +88,7 @@
         const mondayEnd = document.getElementById('end-1').value;
         const isMondayActive = document.getElementById('check-1').checked;
 
-        // Lista de los índices de los días restantes (Martes a Sábado, y Domingo como 0)
+        // Lista de los índices de los días restantes
         const targetDays = [2, 3, 4, 5, 6, 0];
 
         targetDays.forEach(i => {

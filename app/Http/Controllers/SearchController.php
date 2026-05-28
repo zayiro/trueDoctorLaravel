@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Doctor;
 use App\Models\Specialty;
 use App\Models\City;
+use App\Models\Clinic;
 use App\Models\IndexedSymptom;
 
 use Illuminate\Http\Request;
@@ -17,29 +18,44 @@ use Illuminate\Support\Str;
 class SearchController extends Controller
 {
     /**
-     * Genera el archivo dinámico sitemap.xml para Google y Bing.
+     * Genera el archivo dinámico sitemap.xml para la indexación de Google y Bing.
      */
     public function generateSitemap()
     {
+        // 1. Consultamos los especialistas independientes aprobados y activos
         $doctors = Doctor::select(['id', 'slug', 'updated_at']) 
             ->where('active', true)
             ->where('validation_status', 'approved')
             ->orderBy('updated_at', 'desc')
             ->get();
 
-        $indexedSymptoms = IndexedSymptom::select(['id', 'slug', 'updated_at'])
+        // 🔒 ADICIÓN MULTI-TENANT: Consultamos los centros médicos institucionales aprobados y activos
+        $clinics = Clinic::select(['id', 'slug', 'updated_at'])
+            ->where('active', true)
+            ->where('validation_status', 'approved')
             ->orderBy('updated_at', 'desc')
             ->get();
 
-        $content = view('seo.sitemap', compact('doctors', 'indexedSymptoms'))->render();
+        // 2. Consultamos el catálogo dinámico de síntomas indexados
+        $indexedSymptoms = IndexedSymptom::select(['id', 'slug', 'updated_at'])
+            ->orderBy('updated_at', 'desc')
+            ->get();
+        // 3. Compilamos la vista XML pasando todas las entidades del SaaS
+        $sitemapContent = view('seo.sitemap', compact(
+            'doctors', 
+            'clinics', 
+            'indexedSymptoms'
+        ))->render();
 
-        return response($content, 200, [
+        // 4. Retornamos la respuesta forzando el formato nativo XML y caché de 1 hora
+        return response($sitemapContent, 200, [
             'Content-Type'  => 'application/xml',
-            'Cache-Control' => 'public, max-age=3600'
+            'Cache-Control' => 'public, max-age=3600',
+            'X-Content-Type-Options' => 'nosniff' // Protección contra sniffing de código
         ]);
     }
     
-        /**
+    /**
      * Vista principal del buscador global de opendoctor.online (Priorización por Plan Premium y Calificación).
      */
     public function index(Request $request)
@@ -47,10 +63,10 @@ class SearchController extends Controller
         $specialties = Specialty::orderBy('name', 'asc')->get();
         $cities = City::orderBy('name', 'asc')->get();                        
         
-        $doctors = Doctor::with([
+        // 1. Iniciamos la consulta base sobre el modelo maestro Doctor sin JOINS conflictivos
+        $searchQuery = Doctor::with([
             'user',
             'specialties',
-            // Precarga avanzada de sedes institucionales de clínicas
             'clinics.addresses' => function ($query) use ($request) {
                 $query->where('status', true)->where('type', 'physical')->with('city');
                 if ($request->filled('city')) {
@@ -59,7 +75,6 @@ class SearchController extends Controller
                     });
                 }
             },
-            // Precarga avanzada de sedes privadas del especialista autónomo
             'addresses.city',
             'addresses' => function ($query) use ($request) {
                 $query->where('status', true);
@@ -73,52 +88,51 @@ class SearchController extends Controller
                 }]);
             }
         ])
-        // 🔥 MEJORA SAAS: Conexión atómica de base de datos para leer el nivel del plan activo del médico
-        ->join('doctor_settings', 'doctors.id', '=', 'doctor_settings.doctor_id')
-        ->join('plans', 'doctor_settings.plan_id', '=', 'plans.id')
-        
-        // Seleccionamos todas las columnas del doctor y renombramos el precio del plan para ordenación
-        ->select('doctors.*', 'plans.price as plan_price')
-        
+        // 🔒 SOLUCIÓN ANTI-SYNTAX ERROR: Rescatamos el precio del plan vía Subquery limpia
+        ->addSelect(['plan_price' => function ($subQuery) {
+            $subQuery->select('plans.price')
+                ->from('plans')
+                ->join('doctor_settings', 'plans.id', '=', 'doctor_settings.plan_id')
+                ->whereColumn('doctor_settings.doctor_id', 'doctors.id')
+                ->limit(1);
+        }])
         ->where('doctors.active', true) 
-        ->where('doctors.validation_status', 'approved') 
-        
-        // El médico debe contar con servicios activos (en clínicas o consulta privada)
-        ->where(function ($mainQuery) {
-            $mainQuery->whereHas('addresses.services', function ($query) {
+        ->where('doctors.validation_status', 'approved');
+        // El médico debe contar con servicios activos en el ecosistema (Sedes propias o de clínicas)
+        $searchQuery->where(function ($mainFilter) {
+            $mainFilter->whereHas('addresses.services', function ($query) {
                 $query->where('services.active', true);
             })->orWhereHas('clinics.addresses.services', function ($query) {
                 $query->where('services.active', true);
             });
-        })
+        });
         
-        // Filtro condicional por Especialidad Médica
-        ->when($request->specialty, function ($query) use ($request) {
+        // Filtro condicional por Especialidad Médica (Slug)
+        $searchQuery->when($request->specialty, function ($query) use ($request) {
             $query->whereHas('specialties', function ($q) use ($request) {
                 $q->where('slug', $request->specialty);
             });
-        })
+        });
         
-        // Búsqueda por Ciudad (Sedes Privadas OR Sedes de Clínicas vinculadas)
-        ->when($request->city, function ($query) use ($request) {
-            $query->where(function($mainQuery) use ($request) {
-                $mainQuery->whereHas('addresses.city', function ($q) use ($request) {
+        // Filtro condicional por Búsqueda de Ciudad
+        $searchQuery->when($request->city, function ($query) use ($request) {
+            $query->where(function ($cityFilter) use ($request) {
+                $cityFilter->whereHas('addresses.city', function ($q) use ($request) {
                     $q->where('slug', $request->city);
-                })->orWhereHas('clinics.addresses.city', function($q) use ($request) {
+                })->orWhereHas('clinics.addresses.city', function ($q) use ($request) {
                     $q->where('slug', $request->city);
                 });
             });
-        })
+        });
         
-        // 🔥 CRITERIOS DE ORDENAMIENTO REQUERIDOS:
-        ->orderBy('plans.price', 'desc')      // 1. Los mejores planes (Premium/Profesionales) van de primero
-        ->orderBy('doctors.rating', 'desc')    // 2. Desempate por mayor número de estrellas de calificación
-        ->orderBy('doctors.reviews_count', 'desc') // 3. Desempate por volumen de testimonios de pacientes
-        ->paginate(10);
+        // 🔥 ORDENACIÓN ALGORÍTMICA TOTALMENTE COMPATIBLE CON MYSQL STRICT
+        $doctors = $searchQuery->orderBy('plan_price', 'desc') // 1. Prioridad del Plan (Subquery)
+            ->orderBy('doctors.rating', 'desc')                 // 2. Estrellas de Reputación
+            ->orderBy('doctors.reviews_count', 'desc')           // 3. Volumen de Testimonios
+            ->paginate(10);
         
+        // Conservamos los filtros en los enlaces de la paginación de la vista
         $doctors->appends($request->all());
-
-        //dd($doctors);
 
         return view('search.index', compact('doctors', 'specialties', 'cities'));
     }

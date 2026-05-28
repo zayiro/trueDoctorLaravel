@@ -7,66 +7,81 @@ use App\Models\Schedule;
 use App\Models\Unavailability;
 use App\Models\Appointment;
 use App\Models\Doctor;
+use App\Models\Clinic;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class ScheduleController extends Controller
 {    
     /**
-     * Filtro estricto de seguridad multi-inquilino corporativo.
+     * Filtro estricto de seguridad multi-inquilino corporativo y co-propiedad del SaaS.
      */
     private function authorizeAddressOwner(Address $address)
     {
         $user = Auth::user();
 
+        // Caso A: Si el usuario es una clínica, valida que sea dueña de la sede
         if ($user->role === 'clinic' && $address->clinic_id !== $user->clinic->id) {
-            abort(403, 'No posees permisos de gestión sobre esta sede institucional.');
+            abort(403, 'No posees privilegios administrativos sobre esta sede institucional.');
         }
 
-        if ($user->role === 'doctor' && $address->doctor_id !== $user->doctor->id) {
-            abort(403, 'No posees permisos de gestión sobre esta sede privada.');
+        // Caso B: Si el usuario es un doctor, valida tenencia privada o vinculación en nómina
+        if ($user->role === 'doctor') {
+            if ($address->doctor_id !== $user->doctor->id) {
+                // Si la sede es de una clínica, verificamos si este médico pertenece a su nómina
+                $isLinked = \Illuminate\Support\Facades\DB::table('clinic_doctor')
+                    ->where('clinic_id', $address->clinic_id)
+                    ->where('doctor_id', $user->doctor->id)
+                    ->where('status', 'approved')
+                    ->exists();
+
+                if (!$isLinked) {
+                    abort(403, 'No posees permisos de gestión ni vinculación en la nómina de esta sede médica.');
+                }
+            }
         }
     }
 
     /**
-     * Muestra la lista de horarios y turnos de la sede.
+     * Muestra la lista de horarios y turnos de la sede de forma analítica.
      */
     public function index(Address $address)
     {
         $this->authorizeAddressOwner($address);
         $user = Auth::user();
 
-        // Si es una clínica, cargamos los horarios de todos los doctores asignados a esta sede
-        // Si es doctor, solo los horarios generales
+        // Cargamos los horarios asignados a esta sede unificada
         $schedules = Schedule::where('address_id', $address->id)
             ->with('doctor.user')
             ->orderBy('day')
             ->get();
         
-        // Carga de ausencias/bloqueos según el contexto
         if ($user->role === 'clinic') {
-            // La clínica ve las ausencias de todos los doctores de su nómina actual
-            $doctorIds = $address->clinic->doctors()->pluck('doctors.id')->toArray();
+            // La clínica consulta relacionalmente los doctores aprobados en su nómina actual
+            $doctorIds = $address->clinic->doctors()->wherePivot('status', 'approved')->pluck('doctors.id')->toArray();
+            
             $unavailabilities = Unavailability::whereIn('doctor_id', $doctorIds)
                 ->where('end_date', '>=', now()->toDateString())
                 ->with('doctor.user')
                 ->orderBy('start_date', 'asc')
                 ->get();
             
-            // Pasamos los doctores vinculados para el formulario de asignación de turnos en la vista
-            $availableDoctors = $address->clinic->doctors()->with('user')->get();
+            $availableDoctors = $address->clinic->doctors()->wherePivot('status', 'approved')->with('user')->get();
         } else {
             $doctor = $user->doctor;
             $unavailabilities = Unavailability::where('doctor_id', $doctor->id)
                 ->where('end_date', '>=', now()->toDateString())
                 ->orderBy('start_date', 'asc')
                 ->get();
-            $availableDoctors = collect([$doctor]); // Solo él mismo
+                
+            $availableDoctors = collect([$doctor]); // El especialista se gestiona de forma autónoma
         }
 
         return view('partner.schedules.index', compact('address', 'schedules', 'unavailabilities', 'availableDoctors'));
     }
-
+    /**
+     * Muestra el formulario para modificar franjas horarias por lotes.
+     */
     public function edit(Address $address)
     {
         $this->authorizeAddressOwner($address);
@@ -78,15 +93,17 @@ class ScheduleController extends Controller
 
     /**
      * Actualiza bloques horarios existentes en lote de forma segura.
-     * Si se desmarca el checkbox, se elimina la franja para liberar el consultorio.
      */
     public function update(Request $request, Address $address)
     {
         $this->authorizeAddressOwner($address);
 
+        // 🔒 CORREGIDO: Añadida la consistencia temporal (Fin posterior al Inicio)
         $request->validate([
-            'schedules.*.start_time' => 'required',
-            'schedules.*.end_time'   => 'required',
+            'schedules.*.start_time' => ['required'],
+            'schedules.*.end_time'   => ['required', 'after:schedules.*.start_time'],
+        ], [
+            'schedules.*.end_time.after' => 'La hora de finalización debe ser estrictamente posterior a la hora de inicio.',
         ]);
 
         foreach ($request->schedules as $id => $data) {
@@ -98,16 +115,10 @@ class ScheduleController extends Controller
                 continue;
             }
 
-            // 🔥 LOGICA ATÓMICA: Si el checkbox NO fue enviado, el usuario deshabilitó el día.
-            // Procedemos a eliminar la fila de la base de datos para limpiar el calendario público.
+            // Si el checkbox de activación no viaja en el request, el usuario deshabilitó el turno
             if (!isset($data['is_active'])) {
-                
-                // Opcional: Podrías meter aquí la misma validación de destroy() 
-                // para evitar borrar franjas que ya tengan citas agendadas.
                 $schedule->delete();
-                
             } else {
-                // Si el checkbox está marcado, actualizamos las horas de inicio y fin normales
                 $schedule->update([
                     'start_time' => $data['start_time'],
                     'end_time'   => $data['end_time'],
@@ -118,7 +129,6 @@ class ScheduleController extends Controller
         return redirect()->route('partner.schedules.index', $address->id)
             ->with('success', 'Los horarios y turnos de la sede han sido actualizados en lote.');
     }
-
     /**
      * Registra franjas horarias controlando la disponibilidad física de la sede.
      */
@@ -126,18 +136,31 @@ class ScheduleController extends Controller
     {
         $user = Auth::user();
 
-        // 1. Validaciones base
+        // 1. Validaciones base de datos
         $rules = [
-            'address_id'   => 'required|exists:addresses,id,deleted_at,NULL',
-            'day'          => 'required|integer|between:0,6',
-            'repeat_days'  => 'nullable|array',
-            'start_time'   => 'required',
-            'end_time'     => 'required|after:start_time',
+            'address_id'   => ['required', 'exists:addresses,id,deleted_at,NULL'],
+            'day'          => ['required', 'integer', 'between:0,6'],
+            'repeat_days'  => ['nullable', 'array'],
+            'start_time'   => ['required'],
+            'end_time'     => ['required', 'after:start_time'],
         ];
 
-        // Si opera una clínica, el formulario debe exigir a qué doctor se le asigna el turno
+        // 🔒 BLINDAJE SAAS: Si es clínica, valida que el médico exista y pertenezca a su nómina aprobada
         if ($user->role === 'clinic') {
-            $rules['doctor_id'] = 'required|exists:doctors,id';
+            $rules['doctor_id'] = [
+                'required',
+                'exists:doctors,id',
+                function ($attribute, $value, $fail) use ($user) {
+                    $isStaff = \Illuminate\Support\Facades\DB::table('clinic_doctor')
+                        ->where('clinic_id', $user->clinic->id)
+                        ->where('doctor_id', $value)
+                        ->where('status', 'approved')
+                        ->exists();
+                    if (!$isStaff) {
+                        $fail('El especialista seleccionado no se encuentra activo en tu nómina institucional.');
+                    }
+                }
+            ];
         }
 
         $request->validate($rules);
@@ -145,25 +168,24 @@ class ScheduleController extends Controller
         $address = Address::findOrFail($request->address_id);
         $this->authorizeAddressOwner($address);
 
-        // Definimos el ID del doctor asignado
         $targetDoctorId = $user->role === 'clinic' ? $request->doctor_id : $user->doctor->id;
 
-        // Combinamos el día base con los días repetidos
+        // Combinamos el día base con los días repetidos seleccionados
         $daysToRegister = collect($request->input('repeat_days', []))
             ->push($request->day)
             ->unique();
 
-        // 🔍 2. VALIDACIÓN DE SUPERPOSICIÓN (FÍSICA E INDIVIDUAL)
+        // 🔍 2. VALIDACIÓN DE SUPERPOSICIÓN HORARIA
         foreach ($daysToRegister as $day) {
             $overlap = Schedule::where('address_id', $address->id)
                 ->where('day', $day)
                 ->where(function ($query) use ($request, $targetDoctorId) {
                     $query->where(function ($q) use ($request) {
-                        // Conflicto 1: Superposición horaria física en el consultorio
+                        // Conflicto 1: Choque físico en el mismo consultorio
                         $q->where('start_time', '<', $request->end_time)
                           ->where('end_time', '>', $request->start_time);
                     })->orWhere(function ($q) use ($request, $targetDoctorId) {
-                        // Conflicto 2: El mismo médico no puede tener agenda en otro consultorio a la misma hora
+                        // Conflicto 2: El médico no puede estar en dos consultorios a la misma hora
                         $q->where('doctor_id', $targetDoctorId)
                           ->where('start_time', '<', $request->end_time)
                           ->where('end_time', '>', $request->start_time);
@@ -171,16 +193,16 @@ class ScheduleController extends Controller
                 })->exists();
 
             if ($overlap) {
-                $nombresDias = [0=>'Dom', 1=>'Lun', 2=>'Mar', 3=>'Mie', 4=>'Jue', 5=>'Vie', 6=>'Sab'];
-                return back()->with('error', "Conflicto de Agenda: El rango seleccionado para el día {$nombresDias[$day]} colisiona con un turno existente en esta sede o en la agenda del especialista.")->withInput();
+                $dayNames = [0=>'Dom', 1=>'Lun', 2=>'Mar', 3=>'Mie', 4=>'Jue', 5=>'Vie', 6=>'Sab'];
+                return back()->with('error', "Conflicto de Agenda: El rango seleccionado para el día {$dayNames[$day]} colisiona con un turno existente en esta sede o en la agenda del especialista.")->withInput();
             }
         }
 
-        // 💾 3. PERSISTENCIA SEGURA
+        // 💾 3. PERSISTENCIA SEGURA MULTI-TENANT
         foreach ($daysToRegister as $day) {
             Schedule::create([
                 'address_id' => $address->id,
-                'doctor_id'  => $targetDoctorId, // 🔥 ALTA SAAS: El horario ahora sabe de quién es
+                'doctor_id'  => $targetDoctorId,
                 'day'        => $day,
                 'start_time' => $request->start_time,
                 'end_time'   => $request->end_time,
@@ -189,7 +211,7 @@ class ScheduleController extends Controller
 
         return back()->with('success', '¡Turnos de agenda agregados correctamente!');
     }
-    
+
     /**
      * Remueve franjas horarias evaluando que no altere citas activas.
      */
@@ -197,9 +219,9 @@ class ScheduleController extends Controller
     {
         $this->authorizeAddressOwner($schedule->address);
 
-        // 1. Buscamos si hay citas agendadas asignadas a este doctor específico en esta franja
+        // 1. Buscamos si hay citas agendadas asignadas a este doctor en esta franja exacta
         $conflicts = Appointment::where('address_id', $schedule->address_id)
-            ->where('doctor_id', $schedule->doctor_id) // 🔥 Filtrado exacto por médico dueño del turno
+            ->where('doctor_id', $schedule->doctor_id) 
             ->whereRaw('DAYOFWEEK(date) = ?', [$schedule->day + 1]) 
             ->where('date', '>=', now()->toDateString())
             ->whereIn('status', ['confirmed', 'pending'])
@@ -210,7 +232,7 @@ class ScheduleController extends Controller
             ->with('patient.user')
             ->get();
 
-        // 2. Si hay colisiones, bloqueamos la eliminación
+        // 2. Si hay colisiones vigentes de pacientes reales, se frena la eliminación
         if ($conflicts->count() > 0) {
             return back()->with([
                 'schedule_conflicts' => $conflicts,

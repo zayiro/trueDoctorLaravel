@@ -143,9 +143,9 @@ $breadcrumbs = [
                         @empty
                             <tr>
                                 <td colspan="4" class="p-12 text-center bg-slate-50/30">
-                                    <div class="inline-flex items-center justify-center w-12 h-12 bg-slate-100 text-slate-400 rounded-full mb-3 text-xl">🔍</div>
+                                    <div class="inline-flex items-center justify-center w-12 h-12 bg-slate-100 text-slate-400 rounded-full mt-3 mb-3 text-xl">🔍</div>
                                     <div class="text-sm font-semibold text-slate-900">Sin coincidencias</div>
-                                    <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">No se encontraron usuarios activos que coincidan con los parámetros ingresados.</p>
+                                    <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto mb-3">No se encontraron usuarios activos que coincidan con los parámetros ingresados.</p>
                                 </td>
                             </tr>
                         @endforelse

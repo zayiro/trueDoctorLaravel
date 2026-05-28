@@ -5,47 +5,45 @@
         <meta name="description" content="{{ $seoDescription }}">
         <meta name="robots" content="{{ $metaRobots }}">
         @php
-            // 1. Construimos el mapa relacional plano para los rastreadores de Google
+            $isClinicProfile = $profileType === 'clinic';
+            
+            // 1. Construimos el mapa relacional plano adaptado por rol comercial
             $schemaData = [
                 "@context" => "https://schema.org",
-                "@type" => "Physician",
-                "name" => "Dr(a). " . $doctor->user->name,
-                "image" => $doctor->user->profile_photo_url,
-                "medicalSpecialty" => $doctor->specialties->first()?->name ?? 'Medicina General',
-                "telephone" => $doctor->phone ?? 'N/A',
+                "@type" => $isClinicProfile ? "MedicalBusiness" : "Physician",
+                "name" => $isClinicProfile ? $partner->name : ($partner->gender === 'female' ? 'Doctora ' . $partner->user->name : 'Doctor ' . $partner->user->name),
+                "image" => $isClinicProfile ? ($partner->user->profile_photo_url ?? asset('images/default-clinic.png')) : $partner->user->profile_photo_url,
+                "medicalSpecialty" => $partner->specialties->first()?->name ?? 'Medicina General',
+                "telephone" => $partner->phone ?? 'N/A',
                 "url" => url()->current(),
-                "description" => $doctor->bio ? str(strip_tags($doctor->bio))->limit(160, '...')->toString() : 'Profesional de la salud dedicado a mantener y recuperar el bienestar humano'
+                "description" => $partner->bio ? str(strip_tags($partner->bio))->limit(160, '...')->toString() : 'Servicios profesionales de salud dedicados a mantener y recuperar el bienestar humano.'
             ];
 
-            // 2. Acoplamos las calificaciones de reputación corporativa si registran datos
-            if ($doctor->reviews_count > 0) {
+            // 2. Acoplamos las calificaciones de reputación corporativa
+            if ($partner->reviews_count > 0) {
                 $schemaData["aggregateRating"] = [
                     "@type" => "AggregateRating",
-                    "ratingValue" => (string) $doctor->rating,
-                    "reviewCount" => (string) $doctor->reviews_count
+                    "ratingValue" => (string) $partner->rating,
+                    "reviewCount" => (string) $partner->reviews_count
                 ];
             }
         @endphp
 
-        {{-- Renderizado inyectado: Blindado contra saltos de línea o comillas rotas --}}
         <script type="application/ld+json">
             {!! json_encode($schemaData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) !!}
         </script>        
    </x-slot:seo> 
     
-    <!-- Inicialización del ecosistema con las cuotas máximas de reserva programadas -->
-    <div class="mt-5 bg-gray-100 min-h-screen py-12" x-data="bookingSystem({{ $doctor->id }}, {{ $doctor->settings->max_advance_days ?? 30 }})">    
+    <!-- Inicialización del ecosistema con las cuotas máximas de reserva -->
+    <div class="mt-5 bg-gray-100 min-h-screen py-12" x-data="bookingSystem({{ $partner->id }}, '{{ $profileType }}', {{ $partner->settings->max_advance_days ?? 30 }})">    
         
         <!-- Overlay de Carga Atómico Global (Pantalla de Espera) -->
-        <div id="loading-overlay" 
-            style="display:none;" 
-            class="fixed inset-0 bg-white/95 z-[9999] flex flex-col items-center justify-center backdrop-blur-sm">            
+        <div id="loading-overlay" style="display:none;" class="fixed inset-0 bg-white/95 z-[9999] flex flex-col items-center justify-center backdrop-blur-sm">            
             <div class="flex flex-col items-center">
                 <svg class="animate-spin h-16 w-16 text-indigo-600 mb-4" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                
                 <p class="text-xl font-black text-slate-800 tracking-tight">Confirmando reservación médica...</p>
                 <p id="getHourText" class="text-sm text-slate-400 font-medium hidden">Buscando los mejores espacios horarios libres para ti</p>
             </div>
@@ -53,76 +51,101 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
-                <!-- COLUMNA IZQUIERDA: Tarjeta Informativa del Especialista -->
+                <!-- COLUMNA IZQUIERDA: Tarjeta Informativa del Socio Médico -->
                 <div class="lg:col-span-1">
                     <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-5 sticky top-10 space-y-5">
                         <div class="text-center">
-                            <img src="{{ $doctor->user->profile_photo_url }}" class="w-32 h-32 rounded-full mx-auto border-4 border-indigo-50 shadow-sm object-cover">
-                            <div class="font-black text-xs text-indigo-600 uppercase tracking-widest mt-4">{{ $doctor->gender === 'female' ? 'Doctora' : 'Doctor' }}</div>
-                            <h1 class="text-2xl font-black text-slate-800 mt-0.5 tracking-tight">{{ ucfirst($doctor->user->name) }}</h1>
-                            <p class="text-slate-500 font-semibold text-sm mt-0.5">{{ $doctor->specialties->first()->name ?? 'Especialista Médico' }}</p>
+                            <img src="{{ $partner->user->profile_photo_url ?? asset('images/default-clinic.png') }}" class="w-32 h-32 rounded-full mx-auto border-4 border-indigo-50 shadow-sm object-cover">
+                            
+                            {{-- Distintivo dinámico de Cabecera --}}
+                            <div class="font-black text-xs text-indigo-600 uppercase tracking-widest mt-4">
+                                @if($profileType === 'clinic') Centro Médico @else {{ $partner->gender === 'female' ? 'Doctora' : 'Doctor' }} @endif
+                            </div>
+                            <h1 class="text-2xl font-black text-slate-800 mt-0.5 tracking-tight">
+                                @if($profileType === 'clinic') {{ $partner->name }} @else {{ ucfirst($partner->user->name) }} @endif
+                            </h1>
+                            <p class="text-slate-500 font-semibold text-sm mt-0.5">
+                                {{ $partner->specialties->first()->name ?? 'Atención Médica' }}
+                            </p>
                             
                             <div class="flex justify-center mt-2.5">
-                                @include('partials.stars', ['rating' => $doctor->rating])
+                                @include('partials.stars', ['rating' => $partner->rating])
                             </div>
                         </div>
 
                         <div class="p-4 text-xs text-slate-600 bg-indigo-50/60 rounded-2xl text-center border border-indigo-100/30 leading-relaxed font-medium">
-                            Agende una cita presencial o virtual en minutos con <span>{{ $doctor->gender === 'female' ? 'la doctora ' . $doctor->user->name : 'el doctor ' . $doctor->user->name }}</span> en la sede y horario que mejor se adapte a sus necesidades.
+                            @if($profileType === 'clinic')
+                                Agende una cita presencial o virtual en minutos con nuestro personal de salud calificado en la sede y horario que prefiera.
+                            @else
+                                Agende una cita presencial o virtual en minutos con {{ $partner->gender === 'female' ? 'la doctora ' . $partner->user->name : 'el doctor ' . $partner->user->name }} en la sede y horario que mejor se adapte a sus necesidades.
+                            @endif
                         </div>
 
                         <div class="bg-slate-50 rounded-2xl p-4 border border-slate-100/70 space-y-4">
                             <div class="space-y-1">
-                                <h4 class="font-bold text-xs uppercase text-slate-400 tracking-wider">Sobre el profesional</h4>
-                                <div class="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{{ $doctor->bio ?? 'Perfil profesional en proceso de actualización.' }}</div>
+                                <h4 class="font-bold text-xs uppercase text-slate-400 tracking-wider">Sobre nosotros</h4>
+                                <div class="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{{ $partner->bio ?? 'Perfil en proceso de actualización.' }}</div>
                             </div>
 
                             <div class="space-y-1">
-                                <h4 class="font-bold text-xs uppercase text-slate-400 tracking-wider">Especialidades</h4>
+                                <h4 class="font-bold text-xs uppercase text-slate-400 tracking-wider">Especialidades Habilitadas</h4>
                                 <div class="text-sm text-slate-700 font-semibold">    
                                     @php
-                                        $doctorSpecialties = $doctor->specialties->isNotEmpty() 
-                                            ? $doctor->specialties->pluck('name')->toArray() 
+                                        $partnerSpecialties = $partner->specialties->isNotEmpty() 
+                                            ? $partner->specialties->pluck('name')->toArray() 
                                             : [];
                                     @endphp
-                                    {{ !empty($doctorSpecialties) ? implode(', ', $doctorSpecialties) : 'Medicina General' }}                                
+                                    {{ !empty($partnerSpecialties) ? implode(', ', $partnerSpecialties) : 'Medicina General' }}                                
                                 </div>
                             </div>
                             
                             <div class="grid grid-cols-2 gap-3 border-t border-slate-200/50 pt-3">
+                                @if($profileType === 'doctor')
+                                    <div class="space-y-0.5">
+                                        <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Licencia Médica</h4>
+                                        <div class="text-xs font-bold text-slate-700">{{ $partner->medical_license ?? 'N/A' }}</div>
+                                    </div>
+                                @else
+                                    <div class="space-y-0.5">
+                                        <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Código REPS</h4>
+                                        <div class="text-xs font-bold text-slate-700">{{ $partner->reps_code ?? 'N/A' }}</div>
+                                    </div>
+                                @endif
                                 <div class="space-y-0.5">
-                                    <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Licencia Médica</h4>
-                                    <div class="text-xs font-bold text-slate-700">{{ $doctor->medical_license ?? 'N/A' }}</div>
-                                </div>
-                                <div class="space-y-0.5">
-                                    <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Experiencia</h4>
-                                    <div class="text-xs font-bold text-slate-700">{{ $doctor->experience_years ? $doctor->experience_years . ' años' : 'N/A' }}</div>
+                                    <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Trayectoria</h4>
+                                    <div class="text-xs font-bold text-slate-700">{{ $partner->experience_years ? $partner->experience_years . ' años' : 'N/A' }}</div>
                                 </div>
                             </div>
 
-                            <div class="space-y-1 border-t border-slate-200/50 pt-3">
-                                <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Idiomas de atención</h4>
-                                <div class="text-xs font-semibold text-slate-700">    
-                                    @php
-                                        $langNames = ['es' => 'Español', 'en' => 'Inglés', 'pt' => 'Portugués', 'fr' => 'Francés', 'de' => 'Alemán'];
-                                        $doctorLanguages = is_array($doctor->languages) 
-                                            ? array_map(fn($code) => $langNames[$code] ?? strtoupper($code), $doctor->languages) 
-                                            : [];
-                                    @endphp
-                                    {{ !empty($doctorLanguages) ? implode(', ', $doctorLanguages) : 'Español' }}                                
+                            @if($profileType === 'doctor')
+                                <div class="space-y-1 border-t border-slate-200/50 pt-3">
+                                    <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Idiomas de atención</h4>
+                                    <div class="text-xs font-semibold text-slate-700">    
+                                        @php
+                                            $langNames = ['es' => 'Español', 'en' => 'Inglés', 'pt' => 'Portugués', 'fr' => 'Francés', 'de' => 'Alemán'];
+                                            $partnerLanguages = is_array($partner->languages) 
+                                                ? array_map(fn($code) => $langNames[$code] ?? strtoupper($code), $partner->languages) 
+                                                : [];
+                                        @endphp
+                                        {{ !empty($partnerLanguages) ? implode(', ', $partnerLanguages) : 'Español' }}                                
+                                    </div>
                                 </div>
-                            </div>
+                            @endif
 
                             <div class="space-y-2 border-t border-slate-200/50 pt-3">
-                                <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Enfermedades y síntomas que trata</h4>
+                                <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Tratamientos y Servicios Comunes</h4>
                                 <div class="flex flex-wrap gap-1.5">
-                                    @forelse($doctor->expertises as $expertise)
-                                        <span class="text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-xl border border-slate-200/40 font-medium" title="Síntomas relacionados: {{ $expertise->symptoms_keywords }}">
-                                            🔍 {{ $expertise->disease_name }}
-                                        </span>
-                                    @empty
-                                        <span class="text-xs text-slate-400 italic">Consulta general y preventiva.</span>
-                                    @endforelse
+                                    @if($profileType === 'doctor' && isset($partner->expertises))
+                                        @forelse($partner->expertises as $expertise)
+                                            <span class="text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-xl border border-slate-200/40 font-medium" title="Síntomas: {{ $expertise->symptoms_keywords }}">
+                                                🔍 {{ $expertise->disease_name }}
+                                            </span>
+                                        @empty
+                                            <span class="text-xs text-slate-400 italic">Consulta general y preventiva.</span>
+                                        @endforelse
+                                    @else
+                                        <span class="text-xs text-slate-400 italic">Consulta institucional y especializada.</span>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -140,26 +163,30 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             @php
-                                // 1. Obtener los IDs de las clínicas del doctor
-                                $clinicIds = $doctor->clinics->pluck('id')->toArray();
-
-                                // 2. Traer todas las sedes (las del doctor OR las de sus clínicas) en una sola consulta
-                                $allAddresses = \App\Models\Address::where('status', true)
-                                    ->where(function($query) use ($doctor, $clinicIds) {
-                                        $query->where('doctor_id', $doctor->id)
-                                            ->orWhereIn('clinic_id', $clinicIds);
-                                    })
-                                    ->get();
+                                if ($profileType === 'clinic') {
+                                    // Si es una clínica, consultamos estrictamente las sedes de esa institución
+                                    $allAddresses = \App\Models\Address::where('status', true)
+                                        ->where('clinic_id', $partner->id)
+                                        ->get();
+                                } else {
+                                    // Si es un doctor, consultamos sus sedes privadas y las sedes de sus clínicas aliadas
+                                    $clinicIds = $partner->clinics->pluck('id')->toArray();
+                                    $allAddresses = \App\Models\Address::where('status', true)
+                                        ->where(function($query) use ($partner, $clinicIds) {
+                                            $query->where('doctor_id', $partner->id)
+                                                ->orWhereIn('clinic_id', $clinicIds);
+                                        })
+                                        ->get();
+                                }
                             @endphp
 
                             @foreach($allAddresses as $address)
                                 <label class="cursor-pointer block select-none group">
-                                    <!-- Alpine.js captura el cambio de sede y actualiza los catálogos locales instantáneamente -->
                                     <input type="radio" name="address_id" value="{{ $address->id }}" 
                                         x-on:change="selectAddress({{ $address->id }}, '{{ $address->type }}')" 
                                         class="sr-only peer">
                                     
-                                    <div class="p-4 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 peer-checked:bg-indigo-50/50 peer-checked:border-indigo-600 peer-checked:ring-1 peer-checked:ring-indigo-600 transition-all shadow-sm flex flex-col justify-between h-full">
+                                    <div class="p-4 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 peer-checked:bg-indigo-50/70 peer-checked:border-indigo-600 peer-checked:ring-2 peer-checked:ring-indigo-600/20 transition-all shadow-sm flex flex-col justify-between h-full">
                                         <div class="space-y-0.5">
                                             <span class="font-extrabold text-slate-800 text-sm block group-hover:text-indigo-600 transition-colors">
                                                 {{ $address->name }}
@@ -169,7 +196,6 @@
                                             </span>
                                         </div>
 
-                                        <!-- Badge Distintivo de Co-propiedad Corporativa -->
                                         <div class="mt-3 border-t border-slate-100 pt-2 flex items-center justify-between">
                                             @if($address->clinic_id)
                                                 <span class="text-[9px] font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100/30">
@@ -187,7 +213,6 @@
                                     </div>
                                 </label>
                             @endforeach
-
                         </div>
                     </div>
 
@@ -198,9 +223,7 @@
                             <p class="text-xs text-slate-400">Los valores y tiempos varían según la sede seleccionada.</p>
                         </div>
 
-                        <!-- Contenedor del listado de servicios válidos -->
                         <div class="space-y-2" x-show="availableServices.length > 0">
-                            <!-- Bucle Reactivo de Servicios inyectados por la API según la Sede elegida -->
                             <template x-for="service in availableServices" :key="service.id">
                                 <label class="cursor-pointer block select-none">
                                     <input type="radio" name="service_id" :value="service.id" 
@@ -214,15 +237,12 @@
                                         <span class="text-base font-black text-green-600" 
                                             x-text="'$' + new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(service.price)">
                                         </span>
-
                                     </div>
                                 </label>
                             </template>
                         </div>
 
-                        <!-- 🔥 NUEVO: MENSAJE DE CONTINGENCIA UX CUANDO LA SEDE ESTÁ VACÍA -->
-                        <div class="p-6 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl text-center flex flex-col items-center justify-center py-8" 
-                            x-show="availableServices.length === 0" x-transition>
+                        <div class="p-6 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl text-center flex flex-col items-center justify-center py-8" x-show="availableServices.length === 0" x-transition>
                             <div class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-3 border border-slate-200/50 shadow-inner">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
@@ -230,12 +250,10 @@
                             </div>
                             <h4 class="text-slate-800 font-extrabold text-sm uppercase tracking-wider">Catálogo No Disponible</h4>
                             <p class="text-slate-500 text-xs mt-1 max-w-sm mx-auto leading-relaxed">
-                                El especialista o centro médico aún no ha cargado los servicios de salud ni las tarifas correspondientes para esta sede. Por favor, selecciona otro de los consultorios disponibles en la lista de arriba.
+                                @if($profileType === 'clinic') El centro médico @else El especialista @endif aún no ha cargado los servicios de salud ni las tarifas correspondientes para esta sede. Por favor, selecciona otro consultorio de la lista de arriba.
                             </p>
                         </div>
                     </div>
-
-
                     <!-- 3. CALENDARIO Y SLOTS DE ATENCIÓN (Alpine.js) -->
                     <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-4" x-show="selectedService !== null" x-transition>
                         <div class="border-b border-slate-100 pb-3">
@@ -283,9 +301,9 @@
     <!-- ======================================================== -->
     <!-- ARQUITECTURA REACTIVA CON ALPINE.JS (MÁQUINA DE ESTADOS) -->
     <!-- ======================================================== -->
-    <script>
+        <script>
         document.addEventListener('alpine:init', () => {
-            Alpine.data('bookingSystem', (doctorId, maxAdvanceDays) => ({
+            Alpine.data('bookingSystem', (partnerId, profileType, maxAdvanceDays) => ({
                 selectedAddress: null,
                 addressType: null,
                 selectedService: null,
@@ -308,43 +326,37 @@
                     this.serviceDuration = duration;
                     this.fetchAvailableSlots();
                 },
-
                 async fetchServices() {
                     try {
                         const response = await fetch(`/api/addresses/${this.selectedAddress}/services`);
                         this.availableServices = await response.json();
                     } catch (error) {
-                        console.error("Error cargando el catálogo de la sede:", error);
+                        console.error("Error cargando sedes:", error);
                     }
                 },
 
                 async fetchAvailableSlots() {
                     if (!this.selectedAddress || !this.selectedService || !this.selectedDate) return;
-                    
                     this.loadingSlots = true;
                     this.availableSlots = [];
 
                     try {
-                        const url = `/api/slots?date=${this.selectedDate}&duration=${this.serviceDuration}&address_id=${this.selectedAddress}&doctor_id=${doctorId}&is_virtual=${this.addressType === 'virtual' ? 'true' : 'false'}`;
+                        const param = profileType === 'clinic' ? `clinic_id=${partnerId}` : `doctor_id=${partnerId}`;
+                        const url = `/api/slots?date=${this.selectedDate}&duration=${this.serviceDuration}&address_id=${this.selectedAddress}&${param}&is_virtual=${this.addressType === 'virtual' ? 'true' : 'false'}`;
                         const response = await fetch(url);
                         this.availableSlots = await response.json();
                     } catch (error) {
-                        console.error("Error consultando los espacios libres:", error);
+                        console.error("Error cargando slots:", error);
                     } finally {
                         this.loadingSlots = false;
                     }
                 },
-
                 async confirmBooking(time) {
                     document.getElementById('loading-overlay').style.display = 'flex';
-
                     try {
                         const response = await fetch("{{ route('appointments.step-two') }}", {
                             method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                                "X-CSRF-TOKEN": "{{ csrf_token() }}"
-                            },
+                            headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": "{{ csrf_token() }}" },
                             body: JSON.stringify({
                                 service_id: this.selectedService,
                                 address_id: this.selectedAddress,
@@ -352,7 +364,6 @@
                                 hour: time
                             })
                         });
-
                         const res = await response.json();
                         if (res.status) {
                             window.location.href = "{{ route('appointments.patient') }}";
@@ -362,7 +373,7 @@
                         }
                     } catch (error) {
                         document.getElementById('loading-overlay').style.display = 'none';
-                        console.error("Fallo crítico en el túnel de reserva:", error);
+                        console.error("Fallo crítico:", error);
                     }
                 }
             }));
