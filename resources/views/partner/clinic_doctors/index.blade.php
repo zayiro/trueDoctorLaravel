@@ -212,6 +212,7 @@ $breadcrumbs = [
                                 @if($status !== 'pending')
                                     <form action="{{ route('partner.clinic_doctors.toggle', $doctor) }}" method="POST" class="inline">
                                         @csrf
+                                        @method('PATCH')
                                         <button type="submit" 
                                                 class="inline-flex items-center justify-center px-3 py-2 border rounded-xl text-xs font-bold transition-all outline-none
                                                 {{ $status === 'approved' 

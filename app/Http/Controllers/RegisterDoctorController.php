@@ -34,9 +34,11 @@ class RegisterDoctorController extends Controller
         $cleanPhone = preg_replace('/[^0-9]/', '', trim($request->phone));
         $cleanIdentification = str_replace('-', '', trim($request->nit));
 
+        $fullPhone = $request->country_code . $cleanPhone;
+
         try {
             // Usamos transacción para asegurar que se cree el usuario Y el doctor
-            DB::transaction(function () use ($request, $cleanPhone, $cleanIdentification) {
+            DB::transaction(function () use ($request, $fullPhone, $cleanIdentification) {
                 // 1. Crear Usuario
                 $user = User::create([
                     'name'     => trim($request->name),
@@ -53,7 +55,7 @@ class RegisterDoctorController extends Controller
                 $doctor = $user->doctor()->create([
                     'medical_license'   => trim($request->medical_license),
                     'identification'    => $cleanIdentification,
-                    'phone'             => $cleanPhone,
+                    'phone'             => $fullPhone,
                     'validation_status' => 'missing', 
                     'active'            => true
                 ]);

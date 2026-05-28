@@ -1,6 +1,17 @@
 <x-guest-layout>
     <div class="max-w-7xl mx-auto px-4 py-8 mt-5">
-        
+        @if(session('info'))
+            <div class="p-4 mb-6 text-sm text-blue-800 rounded-2xl bg-blue-50 border border-blue-200/60 dark:bg-gray-800 dark:text-blue-400 dark:border-blue-900 flex items-center gap-3 shadow-sm animate-fade-in" role="alert">
+                {{-- Icono de Información (Flowbite Icons) --}}
+                <svg class="w-5 h-5 text-blue-500 flex-shrink-0" aria-hidden="true" xmlns="http://w3.org" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 5a1 1 0 1 1 2 0v2a1 1 0 1 1-2 0V5Zm1.5 10a1 1 0 1 1-2 0v-4a1 1 0 1 1 2 0v4Z"/>
+                </svg>
+                <div>
+                    <span class="font-bold">Aviso del sistema:</span> {{ session('info') }}
+                </div>
+            </div>
+        @endif
+
         <!-- CONTROL DE ALERTAS TRANSACCIONALES CON ALPINE.JS -->
         @if(session('error'))
             <div x-data="{ show: true }" x-show="show" x-transition class="flex items-center justify-between p-4 mt-5 mb-4 text-red-800 rounded-2xl bg-red-50 border border-red-100 shadow-sm" role="alert">
@@ -89,8 +100,8 @@
                             </div>
 
                             <!-- Información de Cabecera del Resultado -->
-                            <div class="flex-1">
-                                <h3 class="text-xl font-black text-slate-900 tracking-tight">{{ ucfirst($doctor->user->name) }}</h3>   
+                            <div class="flex-1">                                
+                                <h3 class="text-xl font-black text-slate-900 tracking-tight">{{ $doctor->gender === 'male' ? 'Dr. ' . ucfirst($doctor->user->name) : 'Dra. ' . ucfirst($doctor->user->name) }}</h3>   
                                 
                                 @if($doctor->specialties->isNotEmpty())                             
                                     <div class="flex flex-wrap gap-1.5 mt-2 mb-4">

@@ -59,8 +59,14 @@
                                     <div>
                                         <!-- 💡 MENSAJE BASADO EN CONFIDENCIALIDAD -->
                                         <h4 class="font-black text-slate-800 text-sm uppercase tracking-wide">Tu seguridad médica es nuestra prioridad</h4>
-                                        <p class="text-sm text-slate-500 mt-1 leading-relaxed font-medium">
-                                            Para proteger tu historial, generar las órdenes de consulta de forma legal y darte acceso seguro a tu enlace de <strong class="text-emerald-600">Telemedicina</strong>, requerimos crear una clave de acceso única para ti. Tus datos médicos viajan totalmente encriptados.
+                                        <p class="text-sm text-slate-500 mt-1 leading-relaxed font-medium">    
+                                            Para proteger tu historial, generar las órdenes de consulta de forma legal y darte acceso seguro a 
+                                            @if($isVirtualAddress)
+                                                tu enlace de <strong class="text-blue-600 font-bold">Telemedicina</strong>,
+                                            @else
+                                                <strong class="text-blue-600 font-bold">tu cita presencial</strong>,
+                                            @endif
+                                            requerimos crear una clave de acceso única para ti. Tus datos médicos viajan totalmente encriptados.    
                                         </p>
                                     </div>
                                 </div>
@@ -79,9 +85,40 @@
                                         <input type="text" name="identification" id="identification" value="{{ old('identification') }}" autocomplete="identification" oninput="this.value = this.value.replace(/[^0-9]/g, '')" class="w-full rounded-xl border-gray-200 input-new">                                
                                     </div>
                                 </div>
+                                
                                 <div>
                                     <label for="phone" class="block text-sm font-bold text-gray-700 mb-1">Teléfono móvil</label>
-                                    <input type="tel" name="phone" id="phone" value="{{ old('phone') }}" autocomplete="tel" maxlength="10" oninput="this.value = this.value.replace(/[^0-9]/g, '')" class="w-full rounded-xl border-gray-200 input-new">                            
+                                    <div class="flex mt-1 rounded-xl shadow-sm border border-slate-200 bg-white focus-within:ring-2 focus-within:ring-blue-500 overflow-hidden">
+                                        <!-- Selector de Indicativo de País (Comienza por Colombia y Suramérica) -->
+                                        <select name="country_code" id="country_code" required 
+                                                class="bg-slate-50 text-slate-700 text-sm border-0 border-r border-slate-200 rounded-l-xl focus:ring-0 px-5 cursor-pointer">
+                                            <option value="+57" {{ old('country_code') == '+57' ? 'selected' : '' }}>🇨🇴 +57</option>
+                                            <option value="+54" {{ old('country_code') == '+54' ? 'selected' : '' }}>🇦🇷 +54</option>
+                                            <option value="+591" {{ old('country_code') == '+591' ? 'selected' : '' }}>🇧🇴 +591</option>
+                                            <option value="+55" {{ old('country_code') == '+55' ? 'selected' : '' }}>🇧🇷 +55</option>
+                                            <option value="+56" {{ old('country_code') == '+56' ? 'selected' : '' }}>🇨🇱 +56</option>
+                                            <option value="+593" {{ old('country_code') == '+593' ? 'selected' : '' }}>🇪🇨 +593</option>
+                                            <option value="+595" {{ old('country_code') == '+595' ? 'selected' : '' }}>🇵🇾 +595</option>
+                                            <option value="+51" {{ old('country_code') == '+51' ? 'selected' : '' }}>🇵🇪 +51</option>
+                                            <option value="+598" {{ old('country_code') == '+598' ? 'selected' : '' }}>🇺🇾 +598</option>
+                                            <option value="+58" {{ old('country_code') == '+58' ? 'selected' : '' }}>🇻🇪 +58</option>
+                                            <option value="+592" {{ old('country_code') == '+592' ? 'selected' : '' }}>🇬🇾 +592</option>
+                                            <option value="+597" {{ old('country_code') == '+597' ? 'selected' : '' }}>🇸🇷 +597</option>
+                                        </select>
+
+                                        <!-- Input del Teléfono Blindado sin bordes nativos -->
+                                        <x-input 
+                                            id="phone" 
+                                            class="block w-full border-0 focus:ring-0 p-2.5 text-sm text-slate-900 rounded-r-xl" 
+                                            type="tel" 
+                                            name="phone" 
+                                            :value="old('phone')" 
+                                            required 
+                                            maxlength="10"
+                                            pattern="[0-9]{10}"
+                                            placeholder="3026433874" 
+                                        />
+                                    </div>    
                                 </div>
                             </div>
 

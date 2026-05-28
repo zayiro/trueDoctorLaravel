@@ -19,7 +19,7 @@ $appointmentDate = \Carbon\Carbon::parse($appointment->date)->format('Y-m-d');
             
             <div class="bg-slate-900 p-8 text-center text-white pt-10">
                 <span class="text-[10px] font-black text-indigo-400 Regal uppercase tracking-[0.2em] mb-1 block">Paso de Verificación</span>
-                <h2 class="text-2xl font-black text-indigo-600 tracking-tight">Resumen de tu Orden Médica</h2>                
+                <h2 class="text-2xl font-black text-white tracking-tight">Resumen de tu Orden Médica</h2>                
                 <p class="text-sm text-slate-400 mt-1">Valida los datos de tu especialista antes de proceder a la confirmación de la agenda.</p>
             </div>
             
@@ -77,7 +77,7 @@ $appointmentDate = \Carbon\Carbon::parse($appointment->date)->format('Y-m-d');
                         </span>
                         <!-- Tiempo restante dinámico adaptativo -->
                         <span class="text-[10px] text-indigo-600 font-bold block mt-1 bg-indigo-50 px-2 py-0.5 rounded-md inline-block border border-indigo-100/50">
-                            {{ \Carbon\Carbon::parse($appointmentDate)->diffForHumans(null, false, false, 2) }}
+                            {{ \Carbon\Carbon::parse($appointmentDate, 'America/Bogota')->diffForHumans(\Carbon\Carbon::now('America/Bogota'), false, false, 2) }}
                         </span>
                     </div>
                 </div>
@@ -125,6 +125,16 @@ $appointmentDate = \Carbon\Carbon::parse($appointment->date)->format('Y-m-d');
                                     Confirmar y Finalizar Reserva
                                 </button>
                             </form>
+
+                            <!-- Enlace de escape por si los datos no son correctos -->
+                            <div class="mt-6 text-center">
+                                <form action="{{ route('appointments.cancel-flow') }}" method="POST" onsubmit="return confirm('¿Deseas cancelar este proceso y volver a buscar?');">
+                                    @csrf
+                                    <button type="submit" class="text-xs font-semibold text-slate-400 hover:text-red-500 underline transition-colors duration-150">
+                                        Regresar y cambiar datos
+                                    </button>
+                                </form>
+                            </div>
                         @endif
                     </div>
                 </div>

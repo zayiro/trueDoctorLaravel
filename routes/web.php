@@ -295,6 +295,7 @@ Route::get('/appointments/patient', [AppointmentController::class, 'patient'])->
 Route::post('/appointments/process-patient', [AppointmentController::class, 'processPatient'])->name('appointments.process-patient');
 Route::get('/appointments/preview/{id}', [AppointmentController::class, 'preview'])->name('appointments.preview');
 Route::get('/appointments/success/{appointment}', [AppointmentController::class, 'success'])->name('appointments.success');
+Route::post('/appointments/cancel-flow', [AppointmentController::class, 'cancelFlow'])->name('appointments.cancel-flow');
 
 // Vista de la tabla de precios
 Route::get('/plans/show', [PlanController::class, 'showPlans'])->name('plans.index');

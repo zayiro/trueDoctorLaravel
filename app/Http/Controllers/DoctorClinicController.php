@@ -37,7 +37,7 @@ class DoctorClinicController extends Controller
 
         // Buscamos el registro pivote exacto
         $pivot = $doctor->clinics()->where('clinic_id', $clinic->id)->first()?->pivot;
-
+        
         if (!$pivot || $pivot->status !== 'pending') {
             return back()->with('error', 'No tienes ninguna solicitud de vinculación pendiente de este centro médico.');
         }

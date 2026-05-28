@@ -103,7 +103,7 @@ $breadcrumbs = [
                         </div>
                         <div class="px-5 py-4 bg-gray-50 border-t border-gray-200 dark:bg-gray-700/50 dark:border-gray-700 rounded-b-xl flex items-center justify-end space-x-2">
                             @if($clinic->pivot->status === 'pending')
-                                <form action="{{ route('partner.doctor_clinics.reject', $clinic->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Rechazar la solicitud de esta clínica?');">
+                                <form action="{{ route('partner.doctor_clinics.reject', $clinic) }}" method="POST" class="inline" onsubmit="return confirm('¿Rechazar la solicitud de esta clínica?');">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="px-3 py-2 text-xs font-medium text-red-700 hover:text-white border border-red-300 hover:bg-red-600 rounded-lg dark:border-red-600 dark:text-red-400 dark:hover:text-white dark:hover:bg-red-600 transition-colors duration-150">
@@ -111,7 +111,7 @@ $breadcrumbs = [
                                     </button>
                                 </form>
 
-                                <form action="{{ route('partner.doctor_clinics.accept', $clinic->id) }}" method="POST" class="inline">
+                                <form action="{{ route('partner.doctor_clinics.accept', $clinic) }}" method="POST" class="inline">
                                     @csrf
                                     @method('PATCH')
                                     <button type="submit" class="px-3 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors duration-150">
@@ -119,10 +119,10 @@ $breadcrumbs = [
                                     </button>
                                 </form>
                             @else
-                                <form action="{{ route('partner.doctor_clinics.reject', $clinic->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Deseas darte de baja de esta clínica?');">
+                                <form action="{{ route('partner.doctor_clinics.reject', $clinic) }}" method="POST" class="inline" onsubmit="return confirm('¿Deseas darte de baja de esta clínica?');">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 rounded-lg dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors duration-150">
+                                    <button type="submit" class="px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-indigo-500/75 hover:bg-gray-100 rounded-lg dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors duration-150">
                                         Retirarse del Centro
                                     </button>
                                 </form>

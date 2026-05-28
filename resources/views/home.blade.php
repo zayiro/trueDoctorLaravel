@@ -97,20 +97,22 @@
     <!-- Sección: Analizador de Exámenes IA -->
     <div class="relative bg-white pb-10 pt-10 lg:pt-4 overflow-hidden">
         <section class="my-16 max-w-5xl mx-auto px-4 mt-5">
-            <div class="relative bg-white rounded-[2.5rem] p-8 sm:p-10 overflow-hidden shadow-xl shadow-slate-900/10 border border-slate-800">
+            <div class="relative bg-white rounded-[2.5rem] p-8 sm:p-10 overflow-hidden shadow-xl shadow-slate-900/10 border border-slate-400">
                 
                 <!-- Elementos Decorativos de Fondo (Luz radial suave) -->
                 <div class="absolute -right-20 -top-20 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
                 <div class="absolute -left-20 -bottom-20 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-                <div class="grid md:grid-cols-5 gap-8 items-center relative z-10">
+                <div class="grid gap-8 items-center relative z-10">
                     <!-- Textos Persuasivos -->
                      <h1 class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
                         ¿Tienes exámenes de laboratorio y <span class="text-blue-600">no entiendes los resultados?</span>
                     </h1>
-                    <div class="md:col-span-3 space-y-4 text-center md:text-left">                        
-                        <p class="text-lg sm:text-base text-slate-500 leading-relaxed max-w-xl">
-                            Sube tus reportes en PDF o imagen y recibe una interpretación médica detallada, comprensible y segura en menos de un minuto.
+                    <div class="space-y-4 text-center md:text-left">                        
+                        <p class="text-base text-slate-500 leading-relaxed">
+                            Sube tus reportes en PDF o imagen y recibe una 
+                            <span class="text-slate-900 font-bold underline decoration-blue-500">interpretación médica en tiempo real</span>. 
+                            Nuestro sistema analiza tus biomarcadores <span class="text-blue-600 font-bold">al instante</span>, entregándote un reporte detallado y seguro en segundos.
                         </p>
                         
                         <!-- Micro Ventajas Clínicas -->
@@ -127,22 +129,72 @@
                     </div>
 
                     <!-- Botón y Precio -->
-                    <div class="md:col-span-2 flex flex-col items-center justify-center bg-slate-800/40 border border-slate-800 p-6 rounded-2xl text-center space-y-4 text-lg">
-                        <div class="space-y-0.5">
-                            <p class="font-black tracking-tight tabular-nums">$18.500 <span class="font-bold text-slate-600">/ examen</span></p>
-                        </div>
-                        
-                        <!-- CTA Principal hacia tu formulario -->
-                        <a href="{{ route('exams.index') }}" 
-                        class="bg-blue-600 hover:bg-blue-700 text-white font-black px-10 py-4 rounded-2xl transition shadow-lg shadow-blue-200 flex items-center justify-center gap-2">
-                            Interpretar mis exámenes ahora
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path>
-                            </svg>
-                        </a>
-                        
-                        <p class="text-slate-600 text-sm">No requiere registro previo</p>
+                    <div class="flex flex-col items-center justify-center bg-slate-50 border border-slate-300 p-8 rounded-2xl text-center space-y-4 text-lg">
+    
+                        {{-- CASO 1: Logueado y es un Paciente (Recibe beneficio Gratis) --}}
+                        @if(auth()->check() && auth()->user()->role === 'patient')
+                            <div class="space-y-1">
+                                <span class="bg-green-100 text-green-800 text-xs font-bold px-2.5 py-1 rounded-full border border-green-300">
+                                    Beneficio de Bienvenida Activo
+                                </span>
+                                <p class="text-3xl font-black tracking-tight text-slate-900 tabular-nums mt-2">
+                                    $0 <span class="text-sm font-bold text-slate-500 underline decoration-red-500 line-through">$18.500</span>
+                                </p>
+                            </div>
+                            
+                            <a href="{{ route('exams.index') }}" 
+                            class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-base font-black px-6 py-4 rounded-2xl transition shadow-lg shadow-emerald-200 flex items-center justify-center gap-2 group">
+                                Interpretar mi examen GRATIS
+                                <svg class="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path>
+                                </svg>
+                            </a>
+                            <p class="text-slate-500 text-xs font-medium">Sesión iniciada como Paciente</p>
+
+                        {{-- CASO 2: Logueado pero NO es paciente (Doctores, Clínicas, Admins) --}}
+                        @style
+                        @elseif(auth()->check() && auth()->user()->role !== 'patient')
+                            <div class="space-y-1">
+                                <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full border border-blue-300">
+                                    Perfil Profesional / Administrativo
+                                </span>
+                                <p class="text-3xl font-black tracking-tight text-slate-900 tabular-nums mt-2">
+                                    $18.500 <span class="text-sm font-bold text-slate-500">/ examen</span>
+                                </p>
+                            </div>
+                            
+                            <a href="{{ route('exams.index') }}" 
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white text-base font-black px-6 py-4 rounded-2xl transition shadow-lg shadow-blue-200 flex items-center justify-center gap-2 group">
+                                Pruebas de Interpretación
+                                <svg class="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path>
+                                </svg>
+                            </a>
+                            <p class="text-slate-500 text-xs font-medium">Entorno corporativo de {{ ucfirst(auth()->user()->role) }}</p>
+
+                        {{-- CASO 3: Visitante No Autenticado --}}
+                        @else
+                            <div class="space-y-0.5">
+                                <p class="text-3xl font-black tracking-tight text-slate-900 tabular-nums">
+                                    $18.500 <span class="text-sm font-bold text-slate-500">/ examen</span>
+                                </p>
+                            </div>
+                            
+                            <a href="{{ route('exams.index') }}" 
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white text-base font-black px-6 py-4 rounded-2xl transition shadow-lg shadow-blue-200 flex items-center justify-center gap-2 group">
+                                Interpretar mis exámenes ahora
+                                <svg class="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path>
+                                </svg>
+                            </a>
+                            
+                            <p class="text-slate-600 text-xs font-medium flex items-center justify-center gap-1">
+                                Regístrate hoy y obtén tu <a href="{{ route('register') }}" class="text-blue-600 font-bold underline hover:text-blue-800">primer análisis 100% gratis</a>
+                            </p>
+                        @endif
+
                     </div>
+
                 </div>
             </div>
         </section>

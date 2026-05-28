@@ -224,12 +224,32 @@ class AppointmentController extends Controller
             return redirect()->route('search');
         }
 
+        // 1. Extraer los datos estructurados de la sesión
+        $bookingData = session('booking_data');
+        $addressId = $bookingData['address_id'] ?? null;
+
+        // 2. Variable por defecto
+        $isVirtualAddress = false;
+
+        // 3. Consultar la base de datos si existe el ID de la sede
+        if ($addressId) {
+            $address = Address::find($addressId);
+            
+            if ($address) {
+                // Evaluamos la columna de tu tabla. Ajusta según el nombre exacto de tu campo:
+                // Opción A (Booleano): $address->is_virtual
+                // Opción B (Enum/Texto): $address->type === 'virtual'
+                $isVirtualAddress = (bool) $address->is_virtual; 
+            }
+        }
+
         $doctorId = session('current_doctor_id');
         $userId = auth()->id();
         
         $isSelfBooking = ($doctorId === $userId);
         
-        return view('appointments.patient', compact('isSelfBooking'));
+        // 4. Inyectamos la variable a la vista
+        return view('appointments.patient', compact('isSelfBooking', 'isVirtualAddress'));
     }
 
     public function processPatient(Request $request)
@@ -281,15 +301,18 @@ class AppointmentController extends Controller
             } else {
                 $user = auth()->user();
             }
-            
-            $patient = $user->patient;
-            if (!$patient) {
-                $patient = Patient::create([
-                    'user_id' => $user->id,
-                    'identification' => $request->identification ?? '000000' . $user->id,
-                    'phone' => $request->phone ?? '00000000',
-                ]);
-            }
+            // 🛠️ SOLUCIÓN AL DUPLICADO: Buscar por identificación exclusivamente
+            $cleanIdentification = trim($request->identification);
+            $cleanPhone = preg_replace('/[^0-9]/', '', trim($request->phone));
+            $fullPhone = $request->country_code ? $request->country_code . $cleanPhone : '+57' . $cleanPhone;
+
+            $patient = \App\Models\Patient::updateOrCreate(
+                ['identification' => $cleanIdentification], // Si la cédula ya existe, la encuentra
+                [
+                    'user_id' => $user->id, // Vincula o actualiza el usuario actual
+                    'phone'   => $fullPhone,
+                ]
+            );
 
             $doctor = Doctor::with(['settings', 'user'])->where('user_id', $bookingData['doctor_id'])->first();
             if (!$doctor) {
@@ -297,7 +320,6 @@ class AppointmentController extends Controller
                 return redirect()->route('search')->with('error', 'El médico seleccionado ya no se encuentra disponible.');
             }
 
-            // Mapeo avanzado de la Sede con su respectiva relación con la Clínica
             $address = Address::with(['clinic.settings', 'services' => function($q) use ($bookingData) {
                 $q->where('services.id', $bookingData['service_id']);
             }])->find($bookingData['address_id']);
@@ -307,13 +329,11 @@ class AppointmentController extends Controller
             if (!$serviceSpecific || !$serviceSpecific->pivot) {
                 return redirect()->route('search')->with('error', 'El servicio seleccionado ya no está disponible en esta sede.');
             }
-
             $duration = (int) $serviceSpecific->pivot->duration;
             $price = $serviceSpecific->pivot->price;
             $startTime = Carbon::parse($bookingData['date'] . ' ' . $bookingData['hour']);
             $endTime = $startTime->copy()->addMinutes($duration);
 
-            // Validar disponibilidad en el motor core
             $isAvailable = $this->appointmentService->isAvailable(
                 $doctor->id,
                 $bookingData['date'],
@@ -325,12 +345,9 @@ class AppointmentController extends Controller
                 return redirect()->route('search')->with('error', 'Lo sentimos, ese horario acaba de ser reservado por otro paciente.');
             }
             
-            // 🔥 CONTROL INTELIGENTE DE REGLAS DE NEGOCIO (Clínica vs Consulta Privada)
             if ($address->clinic_id) {
-                // Si la sede es de una clínica, heredamos las políticas de la institución
                 $settings = $address->clinic->settings;
             } else {
-                // Si es consulta privada, heredamos las políticas del médico autónomo
                 $settings = $doctor->settings;
             }
 
@@ -342,10 +359,7 @@ class AppointmentController extends Controller
             }
 
             $status = $requiresApproval ? 'pending' : 'confirmed';
-            $appointmentReference = 
                         
-            // 💾 Crear la cita con trazabilidad total en el SaaS [2]
-            // el campo reference se crea en el modelo booted()
             $appointment = Appointment::create([
                 'patient_id' => $patient->id,
                 'doctor_id'  => $doctor->id,
@@ -362,20 +376,19 @@ class AppointmentController extends Controller
                 'notes'      => $request->notes,
             ]);
 
-            // Gestión automatizada de links de Telemedicina
-            if ($serviceSpecific->type === 'virtual') {
+            // Detectar si la sede es virtual leyendo la relación directa
+            if ($address->is_virtual || $serviceSpecific->type === 'virtual') {
                 $appointment->update([
                     'meeting_link' => url('/meet/' . Str::random(10))
                 ]);
             }
 
-            // Limpieza del embudo de reserva en sesión
             session()->forget(['booking_data', 'current_doctor_id']);
 
             return redirect()->route('appointments.preview', ['id' => $appointment->id])
-                ->with('success', $status === 'pending' ? 'Cita solicitada. Esperando aprobación del centro.' : 'Cita agendada exitosamente.');
+                ->with('success', $status === 'pending' ? 'Cita solicitada. Esperando aprobación.' : 'Cita agendada exitosamente.');
         });
-    }
+    }   
 
     /**
      * 🔥 NUEVA FUNCIÓN: Renderiza la pantalla de resumen de la orden médica.
@@ -420,4 +433,17 @@ class AppointmentController extends Controller
 
         return view('appointments.success', compact('appointment'));
     }
+
+    /**
+     * Cancela el flujo de reserva actual y limpia la sesión.
+     */
+    public function cancelFlow()
+    {
+        // Limpiamos los datos del embudo de reserva
+        session()->forget(['booking_data', 'current_doctor_id']);
+
+        return redirect()->route('search')
+            ->with('info', 'Proceso de reserva cancelado. Puedes iniciar una nueva búsqueda.');
+    }
+
 }

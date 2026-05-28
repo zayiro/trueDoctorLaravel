@@ -60,9 +60,11 @@ class RegisterClinicController extends Controller
         $cleanPhone = preg_replace('/[^0-9]/', '', trim($request->phone));
         $cleanNit = str_replace('-', '', trim($request->nit));
 
+        $fullPhone = $request->country_code . $cleanPhone;
+
         try {
             // Estructura transaccional unificada para prevenir inconsistencias en el SaaS
-            DB::transaction(function () use ($request, $cleanNit, $cleanPhone) {
+            DB::transaction(function () use ($request, $cleanNit, $fullPhone) {
                 
                 // 1. Crear el usuario administrador del centro médico
                 $user = User::create([
@@ -82,7 +84,7 @@ class RegisterClinicController extends Controller
                     'name'              => trim($request->name), 
                     'nit'               => $cleanNit,
                     'reps_code'         => trim($request->reps_code), 
-                    'phone'             => $cleanPhone,
+                    'phone'             => $fullPhone,
                     'validation_status' => 'missing', 
                     'active'            => true
                 ]);

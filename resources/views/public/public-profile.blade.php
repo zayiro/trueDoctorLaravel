@@ -52,9 +52,23 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 <!-- COLUMNA IZQUIERDA: Tarjeta Informativa del Socio Médico -->
-                <div class="lg:col-span-1">
+                <div class="lg:col-span-1" x-data="{ open: window.innerWidth >= 1024 }">
                     <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-5 sticky top-10 space-y-5">
-                        <div class="text-center">
+                        
+                        <!-- Contenedor Superior (Siempre Visible) -->
+                        <div class="text-center relative">
+                            
+                            <!-- Botón de Alternancia (Solo visible en móviles/tablets) -->
+                            <button @click="open = !open" 
+                                    type="button"
+                                    class="absolute top-0 right-0 p-2 text-slate-400 hover:text-slate-600 lg:hidden focus:outline-none transition-transform duration-200"
+                                    :class="open ? 'rotate-180' : ''"
+                                    title="Alternar información del perfil">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </button>
+
                             <img src="{{ $partner->user->profile_photo_url ?? asset('images/default-clinic.png') }}" class="w-32 h-32 rounded-full mx-auto border-4 border-indigo-50 shadow-sm object-cover">
                             
                             {{-- Distintivo dinámico de Cabecera --}}
@@ -72,85 +86,100 @@
                                 @include('partials.stars', ['rating' => $partner->rating])
                             </div>
                         </div>
+                        <!-- Bloque Informativo (Colapsable en Móviles / Siempre Abierto en Desktop) -->
+                        <div x-show="open" 
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 -translate-y-2"
+                            x-transition:enter-end="opacity-100 translate-y-0"
+                            class="space-y-5 lg:!block">
 
-                        <div class="p-4 text-xs text-slate-600 bg-indigo-50/60 rounded-2xl text-center border border-indigo-100/30 leading-relaxed font-medium">
-                            @if($profileType === 'clinic')
-                                Agende una cita presencial o virtual en minutos con nuestro personal de salud calificado en la sede y horario que prefiera.
-                            @else
-                                Agende una cita presencial o virtual en minutos con {{ $partner->gender === 'female' ? 'la doctora ' . $partner->user->name : 'el doctor ' . $partner->user->name }} en la sede y horario que mejor se adapte a sus necesidades.
-                            @endif
-                        </div>
-
-                        <div class="bg-slate-50 rounded-2xl p-4 border border-slate-100/70 space-y-4">
-                            <div class="space-y-1">
-                                <h4 class="font-bold text-xs uppercase text-slate-400 tracking-wider">Sobre nosotros</h4>
-                                <div class="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{{ $partner->bio ?? 'Perfil en proceso de actualización.' }}</div>
-                            </div>
-
-                            <div class="space-y-1">
-                                <h4 class="font-bold text-xs uppercase text-slate-400 tracking-wider">Especialidades Habilitadas</h4>
-                                <div class="text-sm text-slate-700 font-semibold">    
-                                    @php
-                                        $partnerSpecialties = $partner->specialties->isNotEmpty() 
-                                            ? $partner->specialties->pluck('name')->toArray() 
-                                            : [];
-                                    @endphp
-                                    {{ !empty($partnerSpecialties) ? implode(', ', $partnerSpecialties) : 'Medicina General' }}                                
-                                </div>
-                            </div>
-                            
-                            <div class="grid grid-cols-2 gap-3 border-t border-slate-200/50 pt-3">
-                                @if($profileType === 'doctor')
-                                    <div class="space-y-0.5">
-                                        <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Licencia Médica</h4>
-                                        <div class="text-xs font-bold text-slate-700">{{ $partner->medical_license ?? 'N/A' }}</div>
-                                    </div>
+                            <div class="p-4 text-xs text-slate-600 bg-indigo-50/60 rounded-2xl text-center border border-indigo-100/30 leading-relaxed font-medium">
+                                @if($profileType === 'clinic')
+                                    Agende una cita presencial o virtual en minutos con nuestro personal de salud calificado en la sede y horario que prefiera.
                                 @else
-                                    <div class="space-y-0.5">
-                                        <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Código REPS</h4>
-                                        <div class="text-xs font-bold text-slate-700">{{ $partner->reps_code ?? 'N/A' }}</div>
-                                    </div>
+                                    Agende una cita presencial o virtual en minutos con {{ $partner->gender === 'female' ? 'la doctora ' . $partner->user->name : 'el doctor ' . $partner->user->name }} en la sede y horario que mejor se adapte a sus necesidades.
                                 @endif
-                                <div class="space-y-0.5">
-                                    <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Trayectoria</h4>
-                                    <div class="text-xs font-bold text-slate-700">{{ $partner->experience_years ? $partner->experience_years . ' años' : 'N/A' }}</div>
-                                </div>
                             </div>
 
-                            @if($profileType === 'doctor')
-                                <div class="space-y-1 border-t border-slate-200/50 pt-3">
-                                    <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Idiomas de atención</h4>
-                                    <div class="text-xs font-semibold text-slate-700">    
+                            <div class="bg-slate-50 rounded-2xl p-4 border border-slate-100/70 space-y-4">
+                                <div class="space-y-2 border-t border-slate-200/50 pt-3">
+                                    <h4 class="font-bold text-[11px] uppercase text-slate-500 tracking-wider">Perfil Médico</h4>
+                                    <div class="flex flex-wrap gap-1.5">                                    
+                                        @if($partner->bio)
+                                            <span>Consulta general y preventiva.</span>
+                                        @else
+                                            <span class="text-xs text-slate-400 italic">Perfil en proceso de actualización.</span>                                        
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="space-y-1">
+                                    <h4 class="font-bold text-[11px] uppercase text-slate-500 tracking-wider border-t border-slate-200/50 pt-3">Especialidades Habilitadas</h4>
+                                    <div class="text-sm text-slate-700 font-semibold mt-1">    
                                         @php
-                                            $langNames = ['es' => 'Español', 'en' => 'Inglés', 'pt' => 'Portugués', 'fr' => 'Francés', 'de' => 'Alemán'];
-                                            $partnerLanguages = is_array($partner->languages) 
-                                                ? array_map(fn($code) => $langNames[$code] ?? strtoupper($code), $partner->languages) 
+                                            $partnerSpecialties = $partner->specialties->isNotEmpty() 
+                                                ? $partner->specialties->pluck('name')->toArray() 
                                                 : [];
                                         @endphp
-                                        {{ !empty($partnerLanguages) ? implode(', ', $partnerLanguages) : 'Español' }}                                
+                                        {{ !empty($partnerSpecialties) ? implode(', ', $partnerSpecialties) : 'Medicina General' }}                                
                                     </div>
                                 </div>
-                            @endif
-
-                            <div class="space-y-2 border-t border-slate-200/50 pt-3">
-                                <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Tratamientos y Servicios Comunes</h4>
-                                <div class="flex flex-wrap gap-1.5">
-                                    @if($profileType === 'doctor' && isset($partner->expertises))
-                                        @forelse($partner->expertises as $expertise)
-                                            <span class="text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-xl border border-slate-200/40 font-medium" title="Síntomas: {{ $expertise->symptoms_keywords }}">
-                                                🔍 {{ $expertise->disease_name }}
-                                            </span>
-                                        @empty
-                                            <span class="text-xs text-slate-400 italic">Consulta general y preventiva.</span>
-                                        @endforelse
+                                
+                                <div class="grid grid-cols-2 gap-3 border-t border-slate-200/50 pt-3">
+                                    @if($profileType === 'doctor')
+                                        <div class="space-y-0.5">
+                                            <h4 class="font-bold text-[11px] uppercase text-slate-500 tracking-wider">Licencia Médica</h4>
+                                            <div class="text-xs font-bold text-slate-700">{{ $partner->medical_license ?? 'N/A' }}</div>
+                                        </div>
                                     @else
-                                        <span class="text-xs text-slate-400 italic">Consulta institucional y especializada.</span>
+                                        <div class="space-y-0.5">
+                                            <h4 class="font-bold text-[11px] uppercase text-slate-500 tracking-wider">Código REPS</h4>
+                                            <div class="text-xs font-bold text-slate-700">{{ $partner->reps_code ?? 'N/A' }}</div>
+                                        </div>
                                     @endif
+                                    <div class="space-y-0.5">
+                                        <h4 class="font-bold text-[11px] uppercase text-slate-500 tracking-wider">Trayectoria</h4>
+                                        <div class="text-xs font-bold text-slate-700">{{ $partner->experience_years ? $partner->experience_years . ' años' : 'N/A' }}</div>
+                                    </div>
                                 </div>
+
+                                @if($profileType === 'doctor')
+                                    <div class="space-y-1 border-t border-slate-200/50 pt-3">
+                                        <h4 class="font-bold text-[11px] uppercase text-slate-500 tracking-wider">Idiomas de atención</h4>
+                                        <div class="text-xs font-semibold text-slate-700">    
+                                            @php
+                                                $langNames = ['es' => 'Español', 'en' => 'Inglés', 'pt' => 'Portugués', 'fr' => 'Francés', 'de' => 'Alemán'];
+                                                $partnerLanguages = is_array($partner->languages) 
+                                                    ? array_map(fn($code) => $langNames[$code] ?? $langNames[$code] ?? strtoupper($code), $partner->languages) 
+                                                    : [];
+                                        @endphp
+                                            {{ !empty($partnerLanguages) ? implode(', ', $partnerLanguages) : 'Español' }}                                
+                                        </div>
+                                    </div>
+                                @endif
+
+                                <div class="space-y-2 border-t border-slate-200/50 pt-3">
+                                    <h4 class="font-bold text-[11px] uppercase text-slate-500 tracking-wider">Tratamientos Comunes</h4>
+                                    <div class="flex flex-wrap gap-1.5 pt-1">
+                                        @if($profileType === 'doctor' && isset($partner->expertises))
+                                            @forelse($partner->expertises as $expertise)
+                                                <span class="text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-xl border border-slate-200/40 font-medium" title="Síntomas: {{ $expertise->symptoms_keywords }}">
+                                                    🔍 {{ $expertise->disease_name }}
+                                                </span>
+                                            @empty
+                                                <span class="text-xs text-slate-400 italic">Consulta general y preventiva.</span>
+                                            @endforelse
+                                        @else
+                                            <span class="text-xs text-slate-400 italic">Consulta institucional y especializada.</span>
+                                        @endif
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
+
                     </div>
                 </div>
+    
                 <!-- COLUMNA DERECHA: MOTOR DE RESERVAS (Sedes, Servicios y Slots) -->
                 <div class="lg:col-span-2 space-y-6">
                     
