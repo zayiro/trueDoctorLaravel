@@ -138,6 +138,58 @@
             </div>
         </div>
 
+        <div x-data="{ showReminder: localStorage.getItem('hide_history_reminder') !== 'true' }"
+            x-show="showReminder"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 transform scale-95"
+            x-transition:enter-end="opacity-100 transform scale-100"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 transform scale-100"
+            x-transition:leave-end="opacity-0 transform scale-95"
+            class="mt-6 rounded-xl border border-blue-100 bg-white p-5 shadow-lg relative dark:bg-slate-800/50 dark:border-slate-700">
+            
+            <div class="flex items-start gap-4">
+                <!-- Ícono con estética médica/clínica -->
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white dark:bg-blue-500">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+
+                <!-- Contenido principal -->
+                <div class="flex-1 space-y-11 pr-6">
+                    <h4 class="text-lg font-semibold text-slate-950 dark:text-white">
+                        ¡Ayúdanos a preparar tu consulta médica!
+                    </h4>
+                    <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                        Para que el profesional de la salud pueda estudiar tu caso con anticipación y optimizar el tiempo de la cita, por favor asegúrate de actualizar tus <span class="font-semibold">**antecedentes, alergias y datos de historial clínico**</span> en tu perfil de paciente.
+                    </p>
+                    
+                    <!-- CTA Link -->
+                    <div class="pt-2">
+                        <a href="{{ route('admin.dashboard') }}" 
+                        class="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 group transition-colors">
+                            <span>Completar mi historial clínico</span>
+                            <svg class="h-4 w-4 transform transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Botón de cierre (Alpine.js) -->
+                <button @click="showReminder = false; localStorage.setItem('hide_history_reminder', 'true')" 
+                        type="button" 
+                        class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                        aria-label="Cerrar recordatorio">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+
         <!-- BOTONES FINALES DE SALIDA Y NOTIFICACIÓN TRANSACCIONAL -->
         <div class="flex flex-col sm:flex-row justify-center items-center gap-3 border-t border-slate-200/40 pt-6">
             <a href="{{ route('patient.appointments.index') }}" class="w-full sm:w-auto px-8 py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl text-xs uppercase tracking-wider transition text-center">

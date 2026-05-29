@@ -24,4 +24,9 @@ class PatientHistory extends Model
     public function doctor() {
         return $this->belongsTo(Doctor::class);
     }
+
+    public function attachments()
+    {
+        return $this->hasMany(PatientHistoryAttachment::class);
+    }
 }

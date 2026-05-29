@@ -149,4 +149,13 @@ class Patient extends Model
     {
         return $this->belongsTo(City::class, 'city_id');
     }
+
+    /**
+     * Obtener todos los reportes y anexos clínicos subidos por el paciente.
+     * Conectado mediante el campo 'patient_id' indexado.
+     */
+    public function attachments()
+    {
+        return $this->hasMany(PatientHistoryAttachment::class, 'patient_id')->latest();
+    }
 }

@@ -8,6 +8,7 @@ use App\Models\Patient;
 use App\Models\PatientAllergy;
 use App\Models\Appointment;
 use App\Models\PatientSurgery;
+use App\Models\PatientHistory;
 use App\Models\PatientFamilyHistory;
 use App\Models\PatientMedication;
 use App\Models\Insurance;
@@ -150,6 +151,25 @@ class PatientController extends Controller
 
         return redirect()->route('patient.patient-identification.index')
             ->with('success', 'Tu perfil médico ha sido actualizado correctamente.');
+    }
+
+    /**
+     * Muestra el perfil de historial clínico para que el paciente lo actualice.
+     * Carga las relaciones declaradas en el modelo Patient de opendoctor.online.
+     */
+    public function history(Request $request)
+    {
+        // 1. Obtenemos el registro del paciente autenticado
+        $patient = $request->user()->patient()
+        ->with(['attachments', 'histories']) // Cargamos la relación indexada
+        ->firstOrFail();
+
+        // 2. Traemos su historial médico usando la relación del modelo (ordenada por las más recientes)
+        $history = $patient->histories()->paginate(10);
+        
+
+        // 3. Pasamos ambas variables a la vista para que no falte ninguna
+        return view('patient.history.index', compact('patient', 'history'));
     }
 
     /**

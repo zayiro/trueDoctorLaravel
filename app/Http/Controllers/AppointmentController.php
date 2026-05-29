@@ -305,11 +305,10 @@ class AppointmentController extends Controller
                         return back()->withErrors(['login_email' => 'Las credenciales no coinciden.'])->withInput();
                     }
                     $user = auth()->user();
-                } else {
-                    $cleanPhone = preg_replace('/[^0-9]/', '', trim($request->phone));
+                } else {                    
                     $cleanIdentification = trim($request->identification);
-
-                    $fullPhone = $request->country_code . $cleanPhone;
+                    $cleanPhone = preg_replace('/[^0-9]/', '', trim($request->phone));
+                    $fullPhone = $request->country_code ? $request->country_code . $cleanPhone : '+57' . $cleanPhone;
 
                     $user = User::create([
                         'name'     => trim($request->name),
@@ -322,14 +321,16 @@ class AppointmentController extends Controller
                     $role = Role::firstOrCreate(['name' => 'patient']);
                     $user->assignRole($role);
 
-                    // Crear el registro en la tabla patients usando solo el ID generado
-                    Patient::updateOrCreate(
-                        ['user_id' => $user->id],
-                        [
-                            'identification' => $cleanIdentification, // Guardamos la cédula de una vez
+                    //aqui valido si tiene patient
+                    $existingPatient = Patient::where('user_id', $user->id)->first();
+                    if (!$existingPatient) {
+                        // Crear el registro en la tabla patients usando solo el ID generado                        
+                        Patient::create([
+                            'user_id' => $user->id,
+                            'identification' => $cleanIdentification,
                             'phone'          => $fullPhone,
-                        ]
-                    );
+                        ]);                        
+                    }
                     
                     Auth::login($user);
                 }
@@ -342,24 +343,7 @@ class AppointmentController extends Controller
                 return back()->with('error', 'Operación cancelada. El usuario autenticado debe tener exclusivamente el rol de paciente.');
             }
 
-            // 🛠️ SOLUCIÓN AL DUPLICADO: Buscar por identificación exclusivamente
-            $cleanIdentification = trim($request->identification);
-            $cleanPhone = preg_replace('/[^0-9]/', '', trim($request->phone));
-            $fullPhone = $request->country_code ? $request->country_code . $cleanPhone : '+57' . $cleanPhone;
-
-            // 3. PROTECCIÓN DE IDENTIFICACIÓN: Evitar que un paciente robe la cédula de un médico/clínica
-            $existingPatient = Patient::where('identification', $cleanIdentification)->first();
-            if ($existingPatient && $existingPatient->user_id !== $user->id) {
-                return back()->withInput()->with('error', 'El número de identificación ingresado ya está asociado a otra cuenta en el sistema.');
-            }
-
-            $patient = Patient::updateOrCreate(
-                ['identification' => $cleanIdentification],
-                [
-                    'user_id' => $user->id, 
-                    'phone'   => $fullPhone,
-                ]
-            );
+            $patient = Patient::where('user_id', $user->id)->first();
 
             $doctor = Doctor::with(['settings', 'user'])->where('user_id', $bookingData['doctor_id'])->first();
             if (!$doctor) {

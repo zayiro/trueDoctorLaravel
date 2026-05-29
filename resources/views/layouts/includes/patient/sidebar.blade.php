@@ -41,7 +41,7 @@ $links = [
         'active' => request()->routeIs('patient.patient-identification.index'),
     ],
     [
-        'name' => 'Historial Médico',
+        'name' => 'Historial Clínico',
         'icon' => 'fa-solid fa-gauge',
         'href' => route('patient.history.index'),
         'active' => request()->routeIs('patient.history.index'),

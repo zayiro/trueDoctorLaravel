@@ -32,6 +32,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DoctorClinicController;
 use App\Http\Controllers\ClinicDoctorController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\PatientHistoryAttachmentController;
 
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\UserManagementController;
@@ -190,6 +191,8 @@ Route::middleware(['auth', 'role:patient'])->group(function () {
     Route::get('/patient/appointments', [PatientController::class, 'appointments'])->name('patient.appointments.index');
     Route::get('/patient/allergies', [PatientController::class, 'indexAllergy'])->name('patient.allergies.index');
     Route::get('/patient/history', [PatientController::class, 'history'])->name('patient.history.index');
+    Route::post('/patient/history-attachments', [PatientHistoryAttachmentController::class, 'store'])->name('patient.attachments.store');
+    Route::get('/patient/history-attachments/{attachment}/view', [PatientHistoryAttachmentController::class, 'viewHistoryAttachment'])->name('patient.attachments.view');
     Route::get('/patient/surgeries', [PatientController::class, 'surgeries'])->name('patient.surgeries.index');
     Route::post('/patient/surgeries', [PatientController::class, 'storeSurgery'])->name('patient.surgeries.store');
     Route::get('/patient/surgeries/{surgery}/edit', [PatientController::class, 'editSurgery'])->name('patient.surgeries.edit');

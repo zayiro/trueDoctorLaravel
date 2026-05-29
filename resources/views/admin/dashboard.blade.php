@@ -38,7 +38,7 @@ $breadcrumbs = [
                         <p class="text-xs text-slate-400 mt-0.5">Gestiona tus citas médicas y controla tus indicadores generales de bienestar.</p>
                     </div>
                     <div class="text-xs font-bold text-slate-500 bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-100 uppercase tracking-wider">
-                        ID Paciente: <span class="text-emerald-600 font-black">#{{ $owner->id }}</span>
+                        ID: <span class="text-emerald-600 font-black">#{{ $owner->identification }}</span>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -90,12 +90,24 @@ $breadcrumbs = [
                     <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-lg">
                         <h4 class="text-sm font-black text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">Próximas citas</h4>
                         @forelse($upcomingAppointments as $appointment)
+                            @php
+                            switch ($appointment->status) {
+                                case 'pending': $appointmentStatusPatient = 'Pendiente';
+                                break;
+                                case 'confirmed': $appointmentStatusPatient = 'Confirmada';
+                                break;
+                                case 'cancelled': $appointmentStatusPatient = 'Cancelada';
+                                break;
+                                case 'completed': $appointmentStatusPatient = 'Completada';
+                                break;
+                            }
+                            @endphp
                             <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-xl mb-2 border border-slate-100">
                                 <div>
                                     <p class="text-xs font-black text-slate-700">Dr. {{ $appointment->doctor->user->name ?? 'Specialist' }}</p>
                                     <p class="text-[11px] text-slate-400">{{ \Carbon\Carbon::parse($appointment->date)->format('d/m/Y h:i A') }}</p>
                                 </div>
-                                <span class="px-2 py-1 text-[9px] font-black rounded-lg uppercase bg-indigo-100 text-indigo-800">{{ $appointment->status }}</span>
+                                <span class="px-2 py-1 text-[9px] font-black rounded-lg uppercase bg-indigo-100 text-indigo-800">{{ $appointmentStatusPatient }}</span>
                             </div>
                         @empty
                             <p class="text-xs text-slate-400 py-4 text-center">No tienes consultas pendientes.</p>
