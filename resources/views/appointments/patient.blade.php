@@ -78,11 +78,11 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label for="email" class="block text-sm font-bold text-gray-700 mb-1">Email</label>
-                                        <input type="email" name="email" id="email" value="{{ old('email') }}" autocomplete="email" class="w-full rounded-xl border-gray-200 focus:ring-blue-500 input-new">
+                                        <input type="email" name="email" id="email" value="{{ old('email') }}" autocomplete="email" placeholder="correo@ejemplo.com" class="w-full rounded-xl border-gray-200 focus:ring-blue-500 input-new">
                                     </div>
                                     <div>
                                         <label for="identification" class="block text-sm font-bold text-gray-700 mb-1">Identificación</label>
-                                        <input type="text" name="identification" id="identification" value="{{ old('identification') }}" autocomplete="identification" oninput="this.value = this.value.replace(/[^0-9]/g, '')" class="w-full rounded-xl border-gray-200 input-new">                                
+                                        <input type="text" name="identification" id="identification" value="{{ old('identification') }}" autocomplete="identification" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="16944752" class="w-full rounded-xl border-gray-200 input-new">
                                     </div>
                                 </div>
                                 
@@ -119,7 +119,13 @@
                                             placeholder="3026433874" 
                                         />
                                     </div>    
+                                    
+                                    <!-- Mensaje de guía inferior para el paciente -->
+                                    <p class="text-[11px] font-medium text-gray-400 uppercase tracking-wider mt-1.5 px-1 leading-relaxed">
+                                        Se utilizará únicamente si el especialista requiere datos extra o para enviarte actualizaciones importantes de tu reserva.
+                                    </p>
                                 </div>
+
                             </div>
 
                             {{-- SECCIÓN: LOGIN (EXISTENTE) --}}
@@ -130,6 +136,9 @@
                                 <div>
                                     <label for="login_email" class="block text-sm font-bold text-gray-700 mb-1">Email</label>
                                     <input type="email" name="login_email" id="login_email" value="{{ old('login_email') }}" autocomplete="email" class="w-full rounded-xl border-gray-200 focus:ring-blue-500 input-exist">
+                                    @error('login_email')
+                                        <span class="text-xs text-red-600 font-bold mt-1 block">{{ $message }}</span>
+                                    @enderror
                                 </div>
                                 <div x-data="{ showPass: false }">
                                     <label for="login_password" class="block text-sm font-bold text-gray-700 mb-1">Contraseña</label>
@@ -168,18 +177,50 @@
                             </div>
                         @endauth
 
-                        <div>
+                        <div x-data="{ notes: '{{ old('notes', '') }}', max: 150 }">
                             <label for="notes" class="block text-sm font-bold text-gray-700 mb-1">Motivo de la consulta</label>
-                            <textarea name="notes" id="notes" autocomplete="notes" rows="4" required 
-                                class="w-full rounded-xl border-gray-200 focus:ring-blue-500"
-                                placeholder="Describe brevemente tus síntomas...">{{ old('notes', '') }}</textarea>
+                            
+                            <!-- Textarea vinculado a Alpine con límite físico de escritura -->
+                            <textarea name="notes" 
+                                    id="notes" 
+                                    autocomplete="notes" 
+                                    rows="4" 
+                                    required 
+                                    x-model="notes"
+                                    :maxlength="max"
+                                    class="w-full rounded-xl border-gray-200 focus:ring-blue-500 text-sm text-gray-700 placeholder-gray-400"
+                                    placeholder="Describe brevemente tus síntomas...">{{ old('notes', '') }}</textarea>
+
+                            <!-- Fila inferior con el mensaje de guía y el contador dinámico -->
+                            <div class="flex justify-between items-center mt-1.5 px-1">
+                                <p class="text-[11px] font-medium text-gray-400 uppercase tracking-wider">
+                                    Máximo 150 caracteres permitidos.
+                                </p>
+                                <p class="text-xs font-bold transition-colors duration-200"
+                                :class="notes.length >= max ? 'text-red-500' : 'text-slate-400'">
+                                    <span x-text="notes.length">0</span> / <span x-text="max">350</span>
+                                </p>
+                            </div>
                         </div>
+
                     </div>
 
                     <div class="mt-8 flex items-center justify-between">
                         <a href="{{ url()->previous() }}" class="text-gray-500 font-bold hover:underline">Volver</a>
-                        <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded shadow-lg">
-                            Continuar
+                        <button type="submit" 
+                                :disabled="loading"
+                                :class="loading ? 'opacity-75 cursor-not-allowed shadow-none' : 'hover:opacity-90'"
+                                class="text-white py-2 px-6 rounded shadow-lg transition-all flex items-center justify-center gap-2 min-w-[130px]"
+                                style="background-color: #3b82f6; color: #ffffff;">
+                            
+                            <!-- Icono Spinner SVG Animado (Solo visible al procesar) -->
+                            <svg x-show="loading" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" style="display: none;">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+
+                            <!-- Texto Dinámico Seguro -->
+                            <span x-text="loading ? 'Validando...' : 'Continuar'" class="text-white font-bold text-sm">Continuar</span>
                         </button>
                     </div>
                 </form>

@@ -23,16 +23,16 @@ class CreateNewUser implements CreatesNewUsers
     {
         // 1. Validaciones estándar por defecto de Fortify
         Validator::make($input, [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'name'     => ['required', 'string', 'max:255'],
+            'email'    => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => $this->passwordRules(),
-            'terms' => Jetstream::hasTermsAndPrivacyPolicyFeature() ? ['accepted', 'required'] : '',
+            'terms'    => Jetstream::hasTermsAndPrivacyPolicyFeature() ? ['accepted', 'required'] : '',
         ])->validate();
 
         // 2. Crear el Usuario base con su rol
         $user = User::create([
-            'name' => trim($input['name']),
-            'email' => strtolower(trim($input['email'])),
+            'name'     => trim($input['name']),
+            'email'    => strtolower(trim($input['email'])),
             'password' => Hash::make($input['password']),
             'role'     => 'patient',  
         ]);

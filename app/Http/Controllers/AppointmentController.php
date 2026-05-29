@@ -6,6 +6,7 @@ use App\Models\Address;
 use App\Models\Appointment;
 use App\Models\Service;
 use App\Models\Patient;
+use Spatie\Permission\Models\Role;
 use App\Models\Doctor;
 use App\Models\Clinic;
 use App\Services\AppointmentService;
@@ -21,6 +22,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\AppointmentConfirmed;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
+use App\Notifications\MailLimitExceededNotification;
 
 class AppointmentController extends Controller
 {
@@ -173,12 +176,12 @@ class AppointmentController extends Controller
             ->with('success', 'Cita agendada. ' . ($service->type === 'virtual' ? 'El link de la reunión está listo.' : ''));
     }
 
-        /**
+    /**
      * Almacena temporalmente en sesión los datos de la cita elegida por el paciente.
      */
     public function storeStepTwo(Request $request) 
     {
-        // 1. Extraemos los identificadores unificados congelados previamente en el PublicProfileController@show() perfil publico del doctor o clinica 
+        // 1. Extraemos los identificadores unificados congelados previamente
         $doctorId = session('current_doctor_id');
         $clinicUserId = session('current_clinic_user_id');
 
@@ -191,20 +194,21 @@ class AppointmentController extends Controller
         }
 
         $clinicId = null;
-        // Si hay una clínica en sesión, resolvemos su ID relacional físico de la tabla 'clinics'
         if ($clinicUserId) {
             $clinicProfile = Clinic::where('user_id', $clinicUserId)->first();
             $clinicId = $clinicProfile?->id;
         }
 
-        // Si la cita es en una clínica pero se eligió un servicio de un médico de su nómina,
-        // el selector de la API del frontend inyectará el doctor_id dentro del request
         $targetDoctorId = $request->input('doctor_id', $doctorId);
-        // 2. Empaquetamos el objeto estructurado de reserva de forma limpia
+
+        // 🛠️ OPTIMIZACIÓN: Limpieza absoluta de intentos de reserva previos
+        session()->forget('booking_data');
+
+        // 2. Empaquetamos el nuevo objeto estructurado de reserva de forma limpia y aislada
         session([
             'booking_data' => [
-                'clinic_id'  => $clinicId, // Almacena el ID físico de la clínica (null si es consulta privada)
-                'doctor_id'  => $targetDoctorId, // Almacena el especialista a cargo (null si es servicio general de clínica)
+                'clinic_id'  => $clinicId, 
+                'doctor_id'  => $targetDoctorId, 
                 'service_id' => $request->service_id,
                 'address_id' => $request->address_id,
                 'date'       => $request->date,
@@ -262,6 +266,13 @@ class AppointmentController extends Controller
         $rules = ['notes' => 'required|string|min:10|max:500'];
         $hasAccount = $request->has_account == 'yes';
 
+        // 1. VALIDACIÓN PREVIA EN CASO DE USUARIO AUTENTICADO
+        if (Auth::check() && auth()->user()->role !== 'patient') {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Tu cuenta actual pertenece al personal del sistema ('.auth()->user()->role.'). No tienes permisos para registrar citas como paciente. Por favor, cierra sesión e intenta de nuevo.');
+        }
+
         if (Auth::guest()) {
             if ($hasAccount) {
                 $rules['login_email'] = 'required|email|exists:users,email';
@@ -269,47 +280,83 @@ class AppointmentController extends Controller
             } else {
                 $rules['name'] = 'required|string|min:3|max:100';
                 $rules['email'] = 'required|email|unique:users,email';
-                $rules['identification'] = 'required|numeric';
+                // Añadimos validación única para evitar usar una identificación existente de personal
+                $rules['identification'] = 'required|numeric|unique:patients,identification';
                 $rules['phone'] = 'required|numeric';
             }
         }
         
-        $request->validate($rules);        
+        $request->validate($rules);
                                         
-        return DB::transaction(function () use ($request, $bookingData) {
-            $hasAccount = $request->has_account == 'yes';
+        return DB::transaction(function () use ($request, $bookingData, $hasAccount) {
             
             if (Auth::guest()) {
                 if ($hasAccount) {
                     $login_email = trim(strtolower($request->login_email));
                     $login_password = $request->login_password;
                     
+                    // Buscar el usuario antes del login para verificar su rol
+                    $targetUser = User::where('email', $login_email)->first();
+                    if ($targetUser && $targetUser->role !== 'patient') {
+                        return back()->withErrors(['login_email' => 'Esta cuenta pertenece al personal del sistema y no puede agendar citas como paciente.'])->withInput();
+                    }
+
                     if (!Auth::attempt(['email' => $login_email, 'password' => $login_password])) {
                         return back()->withErrors(['login_email' => 'Las credenciales no coinciden.'])->withInput();
                     }
                     $user = auth()->user();
                 } else {
+                    $cleanPhone = preg_replace('/[^0-9]/', '', trim($request->phone));
+                    $cleanIdentification = trim($request->identification);
+
+                    $fullPhone = $request->country_code . $cleanPhone;
+
                     $user = User::create([
-                        'name' => $request->name,
-                        'email' => $request->email,
-                        'password' => Hash::make($request->identification),
+                        'name'     => trim($request->name),
+                        'email'    => trim($request->email),
+                        'password' => Hash::make($cleanIdentification),
+                        'role'     => 'patient',
                     ]);
 
-                    $user->assignRole('patient');
+                    // ESTO ES LO QUE LE ASIGNA EL ROL EN SPATIE:
+                    $role = Role::firstOrCreate(['name' => 'patient']);
+                    $user->assignRole($role);
+
+                    // Crear el registro en la tabla patients usando solo el ID generado
+                    Patient::updateOrCreate(
+                        ['user_id' => $user->id],
+                        [
+                            'identification' => $cleanIdentification, // Guardamos la cédula de una vez
+                            'phone'          => $fullPhone,
+                        ]
+                    );
+                    
                     Auth::login($user);
                 }
             } else {
                 $user = auth()->user();
             }
+
+            // 2. CONTROL EXTRA DE SEGURIDAD POST-AUTENTICACIÓN
+            if ($user->role !== 'patient') {
+                return back()->with('error', 'Operación cancelada. El usuario autenticado debe tener exclusivamente el rol de paciente.');
+            }
+
             // 🛠️ SOLUCIÓN AL DUPLICADO: Buscar por identificación exclusivamente
             $cleanIdentification = trim($request->identification);
             $cleanPhone = preg_replace('/[^0-9]/', '', trim($request->phone));
             $fullPhone = $request->country_code ? $request->country_code . $cleanPhone : '+57' . $cleanPhone;
 
-            $patient = \App\Models\Patient::updateOrCreate(
-                ['identification' => $cleanIdentification], // Si la cédula ya existe, la encuentra
+            // 3. PROTECCIÓN DE IDENTIFICACIÓN: Evitar que un paciente robe la cédula de un médico/clínica
+            $existingPatient = Patient::where('identification', $cleanIdentification)->first();
+            if ($existingPatient && $existingPatient->user_id !== $user->id) {
+                return back()->withInput()->with('error', 'El número de identificación ingresado ya está asociado a otra cuenta en el sistema.');
+            }
+
+            $patient = Patient::updateOrCreate(
+                ['identification' => $cleanIdentification],
                 [
-                    'user_id' => $user->id, // Vincula o actualiza el usuario actual
+                    'user_id' => $user->id, 
                     'phone'   => $fullPhone,
                 ]
             );
@@ -329,6 +376,7 @@ class AppointmentController extends Controller
             if (!$serviceSpecific || !$serviceSpecific->pivot) {
                 return redirect()->route('search')->with('error', 'El servicio seleccionado ya no está disponible en esta sede.');
             }
+            
             $duration = (int) $serviceSpecific->pivot->duration;
             $price = $serviceSpecific->pivot->price;
             $startTime = Carbon::parse($bookingData['date'] . ' ' . $bookingData['hour']);
@@ -376,7 +424,6 @@ class AppointmentController extends Controller
                 'notes'      => $request->notes,
             ]);
 
-            // Detectar si la sede es virtual leyendo la relación directa
             if ($address->is_virtual || $serviceSpecific->type === 'virtual') {
                 $appointment->update([
                     'meeting_link' => url('/meet/' . Str::random(10))
@@ -388,8 +435,8 @@ class AppointmentController extends Controller
             return redirect()->route('appointments.preview', ['id' => $appointment->id])
                 ->with('success', $status === 'pending' ? 'Cita solicitada. Esperando aprobación.' : 'Cita agendada exitosamente.');
         });
-    }   
-
+    }
+   
     /**
      * 🔥 NUEVA FUNCIÓN: Renderiza la pantalla de resumen de la orden médica.
      * Recibe el ID de la URL y precarga las dependencias del SaaS.
@@ -403,23 +450,30 @@ class AppointmentController extends Controller
         return view('appointments.preview', compact('appointment'));
     }
 
-        /**
+    /**
      * Muestra la pantalla de confirmación exitosa de la cita médica validando la tenencia del recurso.
      */
     public function success(Appointment $appointment)
     {
         $activeUser = auth()->user();
 
-        // 🔒 FILTRO DE SEGURIDAD MAESTRO: Si es paciente, solo puede ver sus propias citas
-        if ($activeUser->role === 'patient') {
-            $patientProfile = $activeUser->patient;
-            
-            if (!$patientProfile || $appointment->patient_id !== $patientProfile->id) {
-                abort(403, 'Acceso no autorizado a este recibo de consulta médica.');
+        // 🔒 BLINDAJE DE EMERGENCIA: Si el usuario actual coincide con el creador del registro del usuario
+        // de la cita, le permitimos el acceso directo saltando la caché de relaciones de Spatie/Eloquent.
+        if ($activeUser && $appointment->patient && $appointment->patient->user_id === $activeUser->id) {
+            // Acceso concedido automáticamente por propiedad directa
+        } else {
+            // Si no es el dueño directo en caliente, ejecutamos los filtros SaaS tradicionales de forma fresca
+            $activeUser = $activeUser->fresh(['patient', 'doctor', 'clinic']);
+
+            if ($activeUser->role === 'patient') {
+                $patientProfile = $activeUser->patient;
+                if (!$patientProfile || $appointment->patient_id !== $patientProfile->id) {
+                    abort(403, 'Acceso no autorizado a este recibo de consulta médica.');
+                }
             }
         }
 
-        // 🔒 FILTRO DE SEGURIDAD SAAS: Si es médico o clínica, solo ven citas de su propio ecosistema
+        // Filtros para médicos y clínicas permanecen igual...
         if ($activeUser->role === 'doctor' && $appointment->doctor_id !== $activeUser->doctor?->id) {
             abort(403, 'No tienes privilegios para auditar esta transacción.');
         }
@@ -428,7 +482,6 @@ class AppointmentController extends Controller
             abort(403, 'Esta cita no corresponde al registro transaccional de tu institución.');
         }
 
-        // Carga previa en memoria (Eager Loading) de las relaciones de co-propiedad
         $appointment->load(['doctor.user', 'clinic', 'service', 'address.city']);
 
         return view('appointments.success', compact('appointment'));

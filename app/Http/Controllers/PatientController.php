@@ -224,35 +224,63 @@ class PatientController extends Controller
      */
     public function appointments()
     {        
-        // 🛠️ REPARACIÓN DE EMERGENCIA PARA SPATIE
         $user = auth()->user();
         if (!$user->hasRole('patient')) {
-            // Crea el rol en Spatie si no existe en la base de datos
             \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'patient']);
-            // Vincula al usuario actual con el rol en la tabla 'model_has_roles'
             $user->assignRole('patient');
         }
         
-        $user = auth()->user();
         $patient = $user->patient;
 
-        // 1. Obtiene las citas próximas (Pendientes o Confirmadas) ordenadas de la más cercana a la más lejana
+        if (!$patient) {
+            return redirect()->route('profile.show')->with('error', 'No se encontró un perfil de paciente asociado a tu cuenta.');
+        }
+
+        // ⏱️ Tomamos la fecha y hora exacta de este microsegundo (28 de Mayo de 2026)
+        $now = now(); 
+
+        // 1. Capturamos el estado seleccionado en el filtro (si existe)
+        $statusFilter = request('status');
+
+        // 1A. Filtramos de forma dinámica las próximas consultas
         $upcomingAppointments = Appointment::where('patient_id', $patient->id)
-            ->whereDate('date', '>=', now()->toDateString())
-            ->whereIn('status', ['confirmed', 'pending'])
-            ->with('doctor.user', 'address') // Carga el médico y la sede de atención
+            ->where(function($query) use ($now) {
+                $query->whereDate('date', '>', $now->toDateString())
+                    ->orWhere(function($q) use ($now) {
+                        $q->whereDate('date', $now->toDateString())
+                            ->where('start_time', '>=', $now->toTimeString());
+                    });
+            })
+            // 🛠️ SOLUCIÓN: Si el usuario eligió un estado, filtra por ese. Si no, trae ambos por defecto.
+            ->when($statusFilter, function($query) use ($statusFilter) {
+                return $query->where('status', $statusFilter);
+            }, function($query) {
+                return $query->whereIn('status', ['confirmed', 'pending']);
+            })
+            ->with(['doctor.user', 'address.city'])
             ->orderBy('date', 'asc')
+            ->orderBy('start_time', 'asc')
             ->get();
 
-        // 2. Obtiene el historial histórico de consultas (Completadas, Canceladas, Asistidas)
+        // 2. HISTORIAL: Todo lo que ya pasó de tiempo O que explícitamente se canceló/completó
         $pastAppointments = Appointment::where('patient_id', $patient->id)
-            ->where(function($query) {
-                $query->whereDate('date', '<', now()->toDateString())
-                    ->orWhereIn('status', ['completed', 'cancelled']);
+            ->where(function($query) use ($now) {
+                // Opción A: La fecha ya es del pasado (ayer o antes)
+                $query->whereDate('date', '<', $now->toDateString())
+                // Opción B: Era hoy, pero la hora de atención ya pasó
+                      ->orWhere(function($q) use ($now) {
+                          $q->whereDate('date', $now->toDateString())
+                            ->where('start_time', '<', $now->toTimeString());
+                      })
+                // Opción C: No importa la fecha, si ya está completada o cancelada va al historial
+                      ->orWhereIn('status', ['completed', 'cancelled']);
             })
-            ->with('doctor.user', 'address')
+            ->with(['doctor.user', 'address.city'])
             ->orderBy('date', 'desc')
-            ->paginate(10); // Paginación de 10 en 10 para no sobrecargar la vista
+            ->orderBy('start_time', 'desc')
+            ->paginate(10);
+
+        //dd($upcomingAppointments, $pastAppointments);
 
         return view('patient.appointments.index', compact('upcomingAppointments', 'pastAppointments'));
     }

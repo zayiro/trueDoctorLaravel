@@ -21,7 +21,9 @@ $breadcrumbs = [
     <div>        
         @if($isAdmin || (($isDoctor || $isClinic) && $validationStatus === 'approved'))
             <div class="mb-5">
-                <a href="{{ route('partner.public.profile', ['slug' => $owner->slug]) }}" target="_blank" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-indigo-700 transition-colors">Ver perfil publico</a>
+                @if($user->role !== 'patient' && isset($owner->slug))
+                    <a href="{{ route('partner.public.profile', ['slug' => $owner->slug]) }}" target="_blank" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-indigo-700 transition-colors">Ver perfil publico</a>
+                @endif
             </div>
             <x-appointment-search-form class="mb-6 p-4 bg-white rounded-lg shadow" />
         @endif

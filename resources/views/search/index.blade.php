@@ -26,7 +26,12 @@
         @endif
 
         <!-- BARRA DE FILTROS NATIVA (INMUNE A LIVEWIRE) -->
-        <form action="{{ route('search') }}" method="GET" class="bg-white mt-8 p-4 rounded-[1.5rem] shadow-md flex flex-wrap items-center gap-4 mb-8 border border-slate-100">
+        <form x-data="{ loading: false }" 
+            x-on:submit="loading = true"
+            action="{{ route('search') }}" 
+            method="GET" 
+            class="bg-white mt-8 p-4 rounded-[1.5rem] shadow-md flex flex-wrap items-center gap-4 mb-8 border border-slate-100">
+            
             <div class="flex-1 min-w-[200px]">
                 <label for="specialty" class="block text-[10px] font-black text-slate-400 uppercase ml-1 mb-1 tracking-wider">Especialidad</label>
                 <select name="specialty" id="specialty" class="w-full border-0 focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 px-4 text-sm">
@@ -49,9 +54,21 @@
                 </select>
             </div>           
 
+            <!-- Botón Buscar Dinámico con Alpine.js -->
             <div class="pt-5">
-                <button type="submit" class="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-bold text-sm hover:bg-indigo-700 transition shadow-md shadow-indigo-100 uppercase tracking-wider">
-                    Buscar
+                <button type="submit" 
+                        :disabled="loading"
+                        :class="loading ? 'opacity-75 cursor-not-allowed bg-indigo-500 shadow-none' : 'bg-indigo-600 hover:bg-indigo-700'"
+                        class="text-white px-8 py-3 rounded-2xl font-bold text-sm transition shadow-md shadow-indigo-100 uppercase tracking-wider flex items-center justify-center gap-2 min-w-[140px]">
+                    
+                    <!-- Icono Spinner SVG Animado (Solo visible al cargar) -->
+                    <svg x-show="loading" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" style="display: none;">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+
+                    <!-- Texto Dinámico -->
+                    <span x-text="loading ? 'Buscando...' : 'Buscar'">Buscar</span>
                 </button>
             </div>
         </form>
@@ -162,12 +179,24 @@
                             <!-- COLUMNA ACCIONES Y RESERVA DIRECTA -->                            
                             <div class="flex flex-col justify-center gap-2.5 min-w-[180px] border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6 px-2">
                                 @if($doctor->addresses->isNotEmpty())
-                                    <!-- 🔒 CORREGIDO: Redirección usando el parámetro explícito 'slug' -->
-                                    <a href="{{ route('partner.public.profile', ['slug' => $doctor->slug]) }}" 
-                                       class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase tracking-wider text-center py-3 px-4 rounded-xl shadow-md shadow-indigo-100 transition-all transform hover:-translate-y-0.5">
-                                        Reservar Cita
-                                    </a>
-                                    <p class="text-[9px] text-center text-slate-400 font-bold uppercase tracking-wider">Citas Médicas en Línea</p>
+                                    <div x-data="{ redireccionando: false }" class="flex flex-col gap-1">
+                                        <a href="{{ route('partner.public.profile', ['slug' => $doctor->slug]) }}" 
+                                            @click="redireccionando = true"
+                                            :class="redireccionando ? 'opacity-75 cursor-not-allowed bg-indigo-500 pointer-events-none transform-none' : 'bg-indigo-600 hover:bg-indigo-700 hover:-translate-y-0.5'"
+                                            class="text-white font-bold text-xs uppercase tracking-wider text-center py-3 px-4 rounded-xl shadow-md shadow-indigo-100 transition-all transform flex items-center justify-center gap-2 min-h-[40px]">
+                                            
+                                            <!-- Icono Spinner SVG Animado (Solo visible al hacer clic) -->
+                                            <svg x-show="redireccionando" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" style="display: none;">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+
+                                            <!-- Texto Dinámico -->
+                                            <span x-text="redireccionando ? 'Analizando...' : 'Reservar Cita'">Reservar Cita</span>
+                                        </a>
+                                        
+                                        <p class="text-[9px] text-center text-slate-400 font-bold uppercase tracking-wider mt-1">Citas Médicas en Línea</p>
+                                    </div>
                                 @else
                                     <span class="px-2 py-2 bg-amber-50 text-amber-700 text-[10px] font-black text-center rounded-xl uppercase tracking-wide border border-amber-100">
                                         Agenda por configurar

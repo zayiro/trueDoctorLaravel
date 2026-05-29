@@ -1,5 +1,6 @@
 <?php
 
+namespace App\Models; // Asegúrate de importar el modelo User para las notificaciones
 namespace App\Observers;
 
 use App\Models\User;
@@ -7,7 +8,9 @@ use App\Mail\WelcomePatientMail;
 use App\Mail\WelcomeDoctorMail;
 use App\Mail\WelcomeClinicMail;
 use App\Mail\WelcomeAdminMail;
+use App\Notifications\MailLimitExceededNotification;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 
 class UserObserver
 {
@@ -17,29 +20,42 @@ class UserObserver
      */
     public function created(User $user): void
     {
-        // Evaluamos el rol del enum de tu tabla 'users'
-        //enviamos el correo de bienvenida al usuario segun el role
         $userEmail = $user->email;
 
-        //para test o cuando SES este en sandbox
-        $userEmail = "ocampotecnologo@gmail.com";
-        
-        switch ($user->role) {
-            case 'doctor':
-                Mail::to($userEmail)->send(new WelcomeDoctorMail($user));
-                break;
+        try {
+            // Evaluamos el rol del enum de tu tabla 'users'
+            // Enviamos el correo de bienvenida al usuario según el rol
+            switch ($user->role) {
+                case 'doctor':
+                    Mail::to($userEmail)->send(new WelcomeDoctorMail($user));
+                    break;
 
-            case 'patient':
-                Mail::to($userEmail)->send(new WelcomePatientMail($user));
-                break;
+                case 'patient':
+                    Mail::to($userEmail)->send(new WelcomePatientMail($user));
+                    break;
 
-            case 'clinic':
-                Mail::to($userEmail)->send(new WelcomeClinicMail($user));
-                break;
-            
-            case 'admin':
-                Mail::to($userEmail)->send(new WelcomeAdminMail($user));
-                break;
+                case 'clinic':
+                    Mail::to($userEmail)->send(new WelcomeClinicMail($user));
+                    break;
+                
+                case 'admin':
+                    Mail::to($userEmail)->send(new WelcomeAdminMail($user));
+                    break;
+            }
+        } catch (\Throwable $e) {
+            // 1. Registramos el fallo técnico detallado en el log (storage/logs/laravel.log)
+            Log::error("Fallo crítico al enviar correo de bienvenida al rol [{$user->role}] ({$userEmail}): " . $e->getMessage());
+
+            // 2. Buscamos de forma segura a todos los administradores globales del sistema
+            $admins = User::where('role', 'admin')->get();
+
+            // 3. Despachamos de manera interna la notificación en la base de datos para el staff
+            foreach ($admins as $admin) {
+                // Evitamos que un admin se notifique a sí mismo si fue él quien disparó el evento
+                if ($admin->id !== $user->id) {
+                    $admin->notify(new MailLimitExceededNotification($e->getMessage(), $userEmail));
+                }
+            }
         }
     }
 

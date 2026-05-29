@@ -1,5 +1,8 @@
 @php
-$appointmentDate = \Carbon\Carbon::parse($appointment->date)->format('Y-m-d');
+    $appointmentDate = \Carbon\Carbon::parse($appointment->date)->format('Y-m-d');
+    // Combinamos la fecha y la hora de inicio de la cita en un solo string
+    $appointmentFullDateTime = \Carbon\Carbon::parse($appointmentDate . ' ' . $appointment->start_time, 'America/Bogota');
+    $now = \Carbon\Carbon::now('America/Bogota');
 @endphp
 <x-guest-layout>
     <div class="max-w-4xl mx-auto py-12 px-4 mt-6">
@@ -77,7 +80,13 @@ $appointmentDate = \Carbon\Carbon::parse($appointment->date)->format('Y-m-d');
                         </span>
                         <!-- Tiempo restante dinámico adaptativo -->
                         <span class="text-[10px] text-indigo-600 font-bold block mt-1 bg-indigo-50 px-2 py-0.5 rounded-md inline-block border border-indigo-100/50">
-                            {{ \Carbon\Carbon::parse($appointmentDate, 'America/Bogota')->diffForHumans(\Carbon\Carbon::now('America/Bogota'), false, false, 2) }}
+                            @if($now->lessThan($appointmentFullDateTime))
+                                {{-- Si la cita es en el futuro, muestra el tiempo restante exacto --}}
+                                {{ $appointmentFullDateTime->diffForHumans($now, [
+                                    'syntax' => \Carbon\CarbonInterface::DIFF_RELATIVE_TO_NOW,
+                                    'parts' => 2
+                                ]) }}
+                            @endif                            
                         </span>
                     </div>
                 </div>

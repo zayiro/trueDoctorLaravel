@@ -75,7 +75,7 @@ class DashboardController extends Controller
                 'bmi_status' => $owner->imc_status,
                 'age' => $owner->age,
                 'blood_type' => $owner->blood_type ?? 'No registrada'
-            ];
+            ];            
 
             return view('admin.dashboard', compact(
                 'user', 'owner', 'upcomingAppointments', 'pastAppointments', 'healthMetrics'
@@ -186,7 +186,7 @@ class DashboardController extends Controller
             $locationLabels[] = Str::limit($location->name, 20, '...');
             $locationRevenueData[] = (float) $location->ingresos;
         }
-
+        
         return view('admin.dashboard', compact(
             'user', 'owner', 'appointmentsToday', 'upcomingAppointmentsCount', 
             'monthlyRevenue', 'cancellationRate', 'modalities', 

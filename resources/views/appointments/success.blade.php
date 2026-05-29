@@ -1,9 +1,11 @@
-<x-guest-layout>
-    @php
-        $isPending = $appointment->status === 'pending';
-        $appointmentDate = \Carbon\Carbon::parse($appointment->date)->format('Y-m-d');
-    @endphp
-
+@php
+    $isPending = $appointment->status === 'pending';
+    $appointmentDate = \Carbon\Carbon::parse($appointment->date)->format('Y-m-d');
+    // Combinamos la fecha y la hora de inicio de la cita en un solo string
+    $appointmentFullDateTime = \Carbon\Carbon::parse($appointmentDate . ' ' . $appointment->start_time, 'America/Bogota');
+    $now = \Carbon\Carbon::now('America/Bogota');
+@endphp
+<x-guest-layout>    
     <div class="max-w-4xl mx-auto py-12 px-4 text-center">
         
         <!-- 1. ICONO, TITULO Y SUBTITULO CONDICIONALES POR ESTADO -->
@@ -42,10 +44,13 @@
                 </div>
             @endif
             <div class="p-8 {{ $isPending ? 'pt-6' : 'pt-10' }}">
-                <div class="flex flex-col md:flex-row justify-between gap-6">
-                    
+                <div class="flex flex-col md:flex-row justify-between gap-6">                            
                     <!-- Información del Médico, Servicio y Centro Médico -->
                     <div class="space-y-4 flex-1">
+                        <div class="font-mono text-base font-black text-slate-800 tracking-medium uppercase selection:bg-indigo-100">
+                            <span class="text-[11px] font-black text-indigo-600 uppercase tracking-widest block mb-1">Referencia</span>
+                            {{ $appointment->reference ?? 'REF-PENDIENTE' }}
+                        </div>
                         <div>
                             <span class="text-[11px] font-black text-indigo-600 uppercase tracking-widest block mb-1">Prestador de Salud</span>
                             
@@ -79,7 +84,13 @@
                                 {{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }}
                             </p>
                             <span class="text-[10px] text-indigo-600 font-bold block mt-1.5 bg-indigo-50 px-2.5 py-0.5 rounded-md inline-block border border-indigo-100/50">
-                                {{ \Carbon\Carbon::parse($appointmentDate)->diffForHumans(null, false, false, 2) }}
+                                @if($now->lessThan($appointmentFullDateTime))
+                                    {{-- Si la cita es en el futuro, muestra el tiempo restante exacto --}}
+                                    {{ $appointmentFullDateTime->diffForHumans($now, [
+                                        'syntax' => \Carbon\CarbonInterface::DIFF_RELATIVE_TO_NOW,
+                                        'parts' => 2
+                                    ]) }}
+                                @endif
                             </span>
                         </div>
                     </div>
@@ -137,14 +148,14 @@
                 // 🔒 CORREGIDO: Resolvemos el teléfono y nombre de forma dinámica por tipo de Proveedor
                 $providerPhone = $appointment->doctor ? $appointment->doctor->phone : ($appointment->clinic->phone ?? '');
                 $providerName = $appointment->doctor ? "Doctor(a) " . $appointment->doctor->user->name : ($appointment->clinic->name ?? 'Socio Médico');
-                
                 $cleanPhone = preg_replace('/[^0-9]/', '', $providerPhone);
-                $formattedDate = \Carbon\Carbon::parse($appointmentDate)->translatedFormat('dddd, d \d\e F \d\e Y');
+                $formattedDate = \Carbon\Carbon::parse($appointmentDate)->locale('es')->translatedFormat('l, d \d\e F \d\e Y');
                 $formattedTime = \Carbon\Carbon::parse($appointment->start_time)->format('g:i A');
                 $whatsappHeader = $isPending ? "SOLICITUD DE CITA EN ESPERA DE APROBACIÓN" : "NUEVA CITA MÉDICA CONFIRMADA";
 
                 $whatsappMessage = "Hola " . $providerName . ",\n\n"
                         . "====== " . $whatsappHeader . " ======\n\n"
+                        . "Referencia: " . $appointment->reference . "\n"
                         . "Paciente: " . $appointment->patient->user->name . "\n"
                         . "Servicio: " . $appointment->service->name . "\n"
                         . "Fecha: " . ucfirst($formattedDate) . "\n"
@@ -152,7 +163,7 @@
                         . "Modalidad: " . ($appointment->service->type === 'virtual' ? 'Virtual (Telemedicina)' : 'Presencial en ' . $appointment->address->name) . "\n\n"
                         . ($isPending ? "Por favor, ingrese a su panel de administración para APROBAR o RECHAZAR esta reservación." : "La cita ha quedado debidamente agendada en el sistema.");
 
-                $whatsappEndpoint = "https://wa.me{$cleanPhone}?text=" . urlencode($whatsappMessage);                
+                $whatsappEndpoint = "https://wa.me/{$cleanPhone}?text=" . urlencode($whatsappMessage);                
             @endphp
             
             <a href="{{ $whatsappEndpoint }}" target="_blank" class="w-full sm:w-auto px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-100 transition flex items-center justify-center gap-2">

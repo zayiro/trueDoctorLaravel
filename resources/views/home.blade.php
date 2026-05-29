@@ -13,7 +13,11 @@
 
             <!-- Buscador Flotante -->
             <div class="max-w-4xl mx-auto">
-                <form wire:submit.prevent="{{ route('search') }}" action="{{ route('search') }}" method="GET" class="bg-white p-4 rounded-3xl shadow-2xl border border-slate-100 flex flex-col md:flex-row gap-4">
+                <form x-data="{ loading: false }" 
+                    x-on:submit="loading = true"
+                    action="{{ route('search') }}" 
+                    method="GET" 
+                    class="bg-white p-4 rounded-3xl shadow-2xl border border-slate-100 flex flex-col md:flex-row gap-4">
                     
                     <!-- Selector de Especialidad -->
                     <div class="flex-1">
@@ -37,15 +41,26 @@
                         </select>
                     </div>
 
-                    <!-- Botón Buscar -->
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-black px-10 py-4 rounded-2xl transition shadow-lg shadow-blue-200 flex items-center justify-center gap-2" wire:loading.attr="disabled">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        Buscar
+                    <!-- Botón Buscar Dinámico con Alpine.js -->
+                    <button type="submit" 
+                            :disabled="loading"
+                            :class="loading ? 'opacity-75 cursor-not-allowed bg-blue-500' : 'bg-blue-600 hover:bg-blue-700'"
+                            class="text-white font-black px-10 py-4 rounded-2xl transition shadow-lg shadow-blue-200 flex items-center justify-center gap-2 min-w-[160px]">
+                        
+                        <!-- Icono de Lupa (Oculto al cargar) -->
+                        <svg x-show="!loading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+
+                        <!-- Icono Spinner SVG Animado (Solo visible al cargar) -->
+                        <svg x-show="loading" class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" style="display: none;">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+
+                        <!-- Texto Dinámico -->
+                        <span x-text="loading ? 'Buscando...' : 'Buscar'">Buscar</span>
                     </button>
-                    <!-- Spinner: solo visible cuando Livewire está procesando -->
-                    <div wire:loading>
-                        <i class="fa fa-spinner fa-spin"></i> Buscando...
-                    </div>
                 </form>
             </div>
 
@@ -72,23 +87,45 @@
 
             <!-- Buscador Flotante -->
             <div class="max-w-4xl mx-auto mb-4">
-                <form wire:submit.prevent="{{ route('search.symptom.view') }}" action="{{ route('search.symptom.view') }}" method="GET" class="bg-white p-4 rounded-3xl shadow-2xl border border-slate-100 flex flex-col md:flex-row gap-4">
+                <form x-data="{ loading: false }" 
+                    x-on:submit="loading = true"
+                    action="{{ route('search.symptom.view') }}" 
+                    method="GET" 
+                    class="bg-white p-4 rounded-3xl shadow-2xl border border-slate-100 flex flex-col md:flex-row gap-4">
                     
-                    <!-- Selector de Especialidad -->
+                    <!-- Input de Síntomas -->
                     <div class="flex-1">
-                        <label for="symptom" class="block text-[10px] font-black text-slate-700 uppercase ml-3 mb-1">¿Qué sintomas tienes?</label>
-                        <input type="search" name="symptom" id="symptom" value="{{ request('symptom') }}" placeholder="Ej: Siento que la habitación me da vueltas al acostarme..." required minlength="3" class="w-full border-0 focus:ring-0 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 px-4 placeholder-black-900" placeholder="Me duele mucho la cabeza y veo borroso">                        
+                        <label for="symptom" class="block text-[10px] font-black text-slate-700 uppercase ml-3 mb-1">¿Qué síntomas tienes?</label>
+                        <input type="search" 
+                            name="symptom" 
+                            id="symptom" 
+                            value="{{ request('symptom') }}" 
+                            placeholder="Ej: Siento que la habitación me da vueltas al acostarme..." 
+                            required 
+                            minlength="3" 
+                            class="w-full border-0 focus:ring-0 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 px-4 placeholder-slate-400">                        
                     </div>
 
-                    <!-- Botón Buscar -->
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-black px-10 py-4 rounded-2xl transition shadow-lg shadow-blue-200 flex items-center justify-center gap-2" wire:loading.attr="disabled">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        Buscar
+                    <!-- Botón Buscar Dinámico con Alpine.js -->
+                    <button type="submit" 
+                            :disabled="loading"
+                            :class="loading ? 'opacity-75 cursor-not-allowed bg-blue-500' : 'bg-blue-600 hover:bg-blue-700'"
+                            class="text-white font-black px-10 py-4 rounded-2xl transition shadow-lg shadow-blue-200 flex items-center justify-center gap-2 min-w-[160px]">
+                        
+                        <!-- Icono de Lupa (Oculto al cargar) -->
+                        <svg x-show="!loading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+
+                        <!-- Icono Spinner SVG Animado (Solo visible al cargar) -->
+                        <svg x-show="loading" class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" style="display: none;">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+
+                        <!-- Texto Dinámico -->
+                        <span x-text="loading ? 'Buscando...' : 'Buscar'">Buscar</span>
                     </button>
-                    <!-- Spinner: solo visible cuando Livewire está procesando -->
-                    <div wire:loading>
-                        <i class="fa fa-spinner fa-spin"></i> Buscando...
-                    </div>                    
                 </form>
             </div>
         </div>

@@ -135,10 +135,50 @@
 
                     <!-- Estado Vacío (Opcional pero recomendado) -->
                     <template x-if="busquedaRealizada && medicos.length === 0 && !cargando">
-                        <div class="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200 p-8">
-                            <p class="text-slate-500 font-medium">No se encontraron especialistas disponibles para este criterio.</p>
+                        <div class="text-center py-16 bg-white rounded-3xl border-2 border-dashed border-slate-100 p-8 max-w-5xl mx-auto shadow-sm">
+                            <!-- Icono de advertencia amigable -->
+                            <div class="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4 text-amber-500">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+
+                            <!-- Mensaje Principal -->
+                            <h3 class="text-lg font-black text-slate-800 mb-2">No encontramos especialistas con estos filtros</h3>
+                            <p class="text-sm text-slate-500 font-medium max-w-sm mx-auto mb-8">
+                                Es posible que no haya turnos disponibles en la ciudad seleccionada para esta semana o el término de búsqueda sea muy específico.
+                            </p>
+
+                            <!-- Opciones de Guía / Alternativas de Acción -->
+                            <div class="grid grid-col-1 gap-3 text-left bg-slate-50 p-5 rounded-2xl border border-slate-100 mb-6">
+                                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">¿Qué puedes hacer ahora?</h4>
+                                
+                                <!-- Opción 1: Buscar en todas las ciudades -->
+                                <button @click="document.getElementById('city').value = ''; window.scrollTo({top: 0, behavior: 'smooth'});" 
+                                        class="flex items-center gap-3 text-xs font-bold text-blue-600 hover:text-blue-700 transition">
+                                    <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                                    Ampliar la búsqueda a todas las ciudades
+                                </button>
+
+                                <!-- Opción 2: Telemedicina / Virtual -->
+                                <button @click="document.getElementById('specialty').value = ''; window.scrollTo({top: 0, behavior: 'smooth'});" 
+                                        class="flex items-center gap-3 text-xs font-bold text-slate-600 hover:text-slate-800 transition">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    Ver médicos con atención virtual (Telemedicina)
+                                </button>
+                            </div>
+
+                            <!-- Botón de Limpieza Rápida -->
+                            <a href="{{ route('search') }}" 
+                            class="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs uppercase tracking-wider px-6 py-3 rounded-xl transition">
+                                <svg xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                </svg>
+                                Restablecer todos los filtros
+                            </a>
                         </div>
                     </template>
+
                 </div>
 
             </div>
