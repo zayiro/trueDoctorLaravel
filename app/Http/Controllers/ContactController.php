@@ -49,21 +49,11 @@ class ContactController extends Controller
         $contactRecord = ContactMessage::create($validated);
 
         try {
-            // 4. CORREGIDO: Usamos send() en lugar de queue() para el envío inmediato en tiempo real
-            //$email = config('mail.from.address', 'ocampotecnologo@gmail.com');
-            $email = trim($request->email);
-
-            Mail::to($email)->send(new ContactNotification($contactRecord));               
+            Mail::to('ocampotecnologo@gmail.com')->send(new ContactNotification($contactRecord));               
         } catch (Throwable $e) {
-            // 1. Registramos el fallo técnico detallado en el log (storage/logs/laravel.log)
-            Log::error("Fallo crítico al enviar el correo en el modulo de contactenos: " . $e->getMessage());
-
-            // 2. Buscamos de forma segura a todos los administradores globales del sistema
             $admins = User::where('role', 'admin')->get();
-
-            // 3. Despachamos de manera interna la notificación en la base de datos para el staff
             foreach ($admins as $admin) {
-                $admin->notify(new MailLimitExceededNotification($e->getMessage(), $email));
+                $admin->notify(new MailLimitExceededNotification($e->getMessage(), $request->email));
             }
         }
 

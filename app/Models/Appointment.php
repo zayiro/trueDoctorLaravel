@@ -30,6 +30,7 @@ class Appointment extends Model
         'zoom_meeting_id',  // ID identificador de Zoom
         'zoom_start_url',   // Enlace de inicio para el Doctor
         'notes',
+        'email_sent',
     ];
 
     /**

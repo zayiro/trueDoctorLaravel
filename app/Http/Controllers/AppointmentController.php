@@ -22,6 +22,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\AppointmentConfirmed;
 use Carbon\Carbon;
+use App\Notifications\MailLimitExceededNotification;
+use Illuminate\Support\Facades\Notification;
 
 class AppointmentController extends Controller
 {
@@ -200,14 +202,14 @@ class AppointmentController extends Controller
 
         if (!$targetClinicId) {
             // Si no viene en el request, evaluar el address_id seleccionado para ver si le pertenece a una clínica aliada
-            $address = \App\Models\Address::find($request->address_id);
+            $address = Address::find($request->address_id);
             if ($address && $address->clinic_id) {
                 $targetClinicId = $address->clinic_id;
             } else {
                 // Si la sede es privada pero existía un rastro de sesión institucional, resolverlo por su user_id
                 $sessionClinicUserId = session('current_clinic_user_id');
                 if ($sessionClinicUserId) {
-                    $clinicProfile = \App\Models\Clinic::where('user_id', $sessionClinicUserId)->first();
+                    $clinicProfile = Clinic::where('user_id', $sessionClinicUserId)->first();
                     $targetClinicId = $clinicProfile?->id;
                 }
             }
@@ -459,7 +461,7 @@ class AppointmentController extends Controller
                     'meeting_link' => url('/meet/' . Str::random(10))
                 ]);
             }
-
+            
             // Limpieza absoluta de los mapas temporales de sesión
             session()->forget(['booking_data', 'current_doctor_id']);
 
@@ -513,6 +515,24 @@ class AppointmentController extends Controller
         if ($activeUser->role === 'clinic' && $appointment->clinic_id !== $activeUser->clinic?->id) {
             abort(403, 'Esta cita no corresponde al registro transaccional de tu institución.');
         }
+        
+        // Buscamos el ID que tenga 'email_sent' en false
+        $sendEmail = Appointment::where('id', $appointment->id)
+            ->where('email_sent', false)
+            ->first();
+
+        if ($sendEmail) {
+            try {
+                // 1. Envío el correo de confirmacion
+                Mail::to($activeUser->email)->send(new AppointmentConfirmed($appointment));
+
+                // 2. Actualizo el estado
+                $sendEmail->update(['email_sent' => true]);
+            } catch (Throwable $e) {
+                $admins = User::where('role', 'admin')->get();
+                Notification::send($admins, new MailLimitExceededNotification($e->getMessage(), $activeUser->email));
+            }
+        }    
 
         $appointment->load(['doctor.user', 'clinic', 'service', 'address.city']);
 

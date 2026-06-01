@@ -33,6 +33,7 @@ return new class extends Migration
             $table->enum('status', ['pending', 'confirmed', 'cancelled', 'completed'])->default('pending');
             $table->enum('channel', ['app', 'web', 'whatsapp'])->default('web');
             $table->text('notes')->nullable();
+            $table->boolean('email_sent')->default(false);
             $table->timestamps();
 
             // Índice compuesto para validación de disponibilidad
