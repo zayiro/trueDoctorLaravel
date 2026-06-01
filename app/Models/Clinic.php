@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Clinic extends Model {
     protected $fillable = [
+        'slug',
         'user_id', 
         'slug',
         'name', 
@@ -79,22 +80,35 @@ class Clinic extends Model {
         return 'slug';
     }
 
-    /**
-     * Disparadores automáticos del ciclo de vida del modelo corporativo.
+        /**
+     * Disparadores automáticos del ciclo de vida del modelo corporativo (Model Booting).
      */
     protected static function booted()
     {
         static::creating(function ($clinic) {
-            $cleanId = Str::slug($clinic->nit);
-            $name = $clinic->user ? $clinic->user->name : 'centro-medico';
-            $clinic->slug = Str::slug($name) . '-' . $cleanId;
+            $name = 'centro-medico';
+            
+            if ($clinic->user) {
+                $name = $clinic->user->name;
+            } elseif ($clinic->user_id) {
+                $name = User::find($clinic->user_id)?->name ?? 'clinica';
+            }
+            
+            do {
+                $code = Str::slug($name) . '-' . strtoupper(Str::random(4));
+            } while (self::where('slug', $code)->exists()); // Evita duplicados en el ecosistema
+
+            // 🔒 SOLUCIÓN DE RAÍZ: Asignar el código generado a la propiedad física del modelo
+            $clinic->slug = $code; 
         });
 
         static::updated(function ($clinic) {
             if ($clinic->wasChanged('phone')) {
-                // Sincroniza el teléfono exclusivamente en su dirección virtual institucional
+                // 🔒 SEGURIDAD MULTI-TENANT: Sincroniza el teléfono EXCLUSIVAMENTE en la dirección virtual de la clínica.
+                // Evitamos alterar los registros de los doctores independientes adscritos (doctor_id debe ser null)
                 $clinic->addresses()
                     ->where('type', 'virtual')
+                    ->whereNull('doctor_id') 
                     ->update(['phone' => $clinic->phone]);
             }
         });

@@ -110,7 +110,8 @@
                             required 
                             maxlength="10"
                             pattern="[0-9]{10}"
-                            placeholder="3026433874" 
+                            placeholder="3026433874"
+                            autocomplete="phone" 
                         />
                     </div>
                 </div>

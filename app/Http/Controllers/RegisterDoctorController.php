@@ -32,7 +32,7 @@ class RegisterDoctorController extends Controller
         ]);
 
         $cleanPhone = preg_replace('/[^0-9]/', '', trim($request->phone));
-        $cleanIdentification = str_replace('-', '', trim($request->nit));
+        $cleanIdentification = str_replace('-', '', trim($request->identification));
 
         $fullPhone = $request->country_code . $cleanPhone;
 

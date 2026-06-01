@@ -17,6 +17,7 @@
                 <a href="{{ route('privacy.show') }}" class="hover:text-indigo-600 transition-colors">Política de Privacidad</a>
                 <a href="{{ route('support.show') }}" class="hover:text-indigo-600 transition-colors">Soporte Técnico</a>
                 <a href="{{ route('plans.index') }}" class="hover:text-indigo-600 transition-colors">Planes</a>
+                <a href="https://www.websispro-gov.co" class="hover:text-indigo-600 transition-colors" target="_blank">ReTHUS</a>
             </div>
 
             <!-- Lado Derecho: Estado del Sistema / Redes -->
@@ -31,7 +32,7 @@
         
         <!-- Línea inferior de copyright formal -->
         <div class="mt-6 pt-6 border-t border-slate-100 text-center text-xs text-slate-400">
-            Todos los derechos reservados. Desarrollado para <a href="https://opendoctor.online" class="font-semibold hover:text-indigo-600 transition-colors">opendoctor.online</a>.
+            Todos los derechos reservados. Desarrollado para <a href="https://opendoctor.online" class="font-semibold hover:text-indigo-600 transition-colors">opendoctor.online</a>
         </div>
     </div>
 </footer>

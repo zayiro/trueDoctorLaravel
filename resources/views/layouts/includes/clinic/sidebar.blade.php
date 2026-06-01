@@ -1,75 +1,114 @@
 @php
+    $user = auth()->user();
+
     $links = [
         [
             'header' => 'Administrar página',        
         ],
         [
             'name' => 'Dashboard',
-            'icon' => 'fa-solid fa-gauge',
+            'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z"/></svg>',
             'href' => route('admin.dashboard'),
             'active' => request()->routeIs('admin.dashboard'),
         ],
         [
             'name' => 'Nómina de Especialistas',
-            'icon' => 'fa-solid fa-gauge',
+            'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A4.49 4.49 0 0 1 8.323 14.5m8.034 4.22a9.09 9.09 0 0 0 1.94-2.22c.19-.344.257-.74.257-1.136a4.49 4.49 0 0 0-1.66-3.355m-.104 6.126-2.315-2.222M10.5 7.5a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm6.75 2.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm-12.75 9c0-1.336 1.054-2.424 2.38-2.44a11.958 11.958 0 0 1 9.74 0c1.326.015 2.38 1.104 2.38 2.441 0 .641-.12 1.253-.337 1.817H4.087C3.87 19.818 3.75 19.206 3.75 18.563Z"/></svg>',
             'href' => route('partner.clinic_doctors.index'),
-            'active' => request()->routeIs('partner.clinic_doctors.*'), // Corregido: removido el prefijo 'partner.'
+            'active' => request()->routeIs('partner.clinic_doctors.*'),
         ],        
     ];
 
-    // 🔒 CORRECCIÓN DEL BUG: Cambiado de 'doctor' a 'clinic' usando el operador seguro (?->)
-    $validation = auth()->user()->clinic?->validation_status ?? 'missing';
+    // 🔒 Tu corrección del bug usando operador seguro
+    $validation = $user->clinic?->validation_status ?? 'missing';
 
-    if ($validation != 'approved')
-    {
+    if ($validation != 'approved') {
         $links = [
             [
                 'header' => 'Validando documentos...',        
             ],
         ];
     }
-@endphp
 
-<aside id="top-bar-sidebar" class="fixed top-0 left-0 z-40 w-64 h-full transition-transform -translate-x-full sm:translate-x-0" aria-label="Sidebar">
-    <div class="h-full px-3 py-4 overflow-y-auto bg-white border-e border-default">
-        <a href="https://flowbite.com/" class="flex items-center ps-2.5 mb-5">
-            <img src="https://flowbite.com/docs/images/logo.svg" class="h-6 me-3" alt="Flowbite Logo" />
-            <span class="self-center text-lg text-heading font-semibold whitespace-nowrap">Flowbite</span>
-        </a>
-        <ul class="pt-5 space-y-2 font-medium">
+    $userRole = match ($user->role) {
+        'admin' => 'Administrador',
+        'doctor' => 'Especialista',
+        'clinic' => 'Clínica',
+        'patient' => 'Paciente',
+    };
+@endphp
+<aside id="top-bar-sidebar" class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform -translate-x-full border-r bg-slate-50 border-slate-200 sm:translate-x-0 dark:bg-slate-900 dark:border-slate-800" aria-label="Sidebar">
+    <div class="flex flex-col h-full px-4 py-5 overflow-y-auto bg-slate-50 dark:bg-slate-900">
+        <!-- Pie del Sidebar: Datos de la Clínica Activa -->
+        @if($user)
+            <div class="pt-4 pb-4 mt-10 mb-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-3 truncate">
+                    <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm">
+                        {{ substr($user->name, 0, 2) }}
+                    </div>
+                    <div class="truncate">
+                        <p class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate max-w-[140px]">
+                            {{ $user->name }}
+                        </p>
+                        <p class="text-[10px] uppercase font-bold text-indigo-500 tracking-wider">
+                            {{ $userRole }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        @endif
+        <!-- Identidad Institucional (Clínicas) -->
+        <div class="flex items-center ps-2 mb-6">
+            <span class="self-center text-xl font-bold tracking-tight text-slate-800 dark:text-white">
+                open<span class="text-blue-600 dark:text-blue-400">doctor</span>
+            </span>
+            <span class="bg-indigo-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded ml-2 shadow-sm uppercase tracking-wider">
+                Partner
+            </span>
+        </div>
+        <!-- Listado de Enlaces Corporativos -->
+        <ul class="space-y-1.5 font-medium flex-1">
             @foreach ($links as $link)
                 <li>
                     @isset($link['header'])
-                        <div class="px-2 py-2 text-xs font-semibold text-gray-500 uppercase">
-                            {{  $link['header'] }}
+                        <div class="px-2 pt-4 pb-1 text-[11px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
+                            {{ $link['header'] }}
                         </div>
                     @else
                         @isset($link['submenu'])
-                            <button type="button" class="flex items-center w-full justify-between px-2 py-1.5 text-body rounded-base hover:bg-neutral-tertiary hover:text-fg-brand group" aria-controls="dropdown-example" data-collapse-toggle="dropdown-example">
-                                <span class="w-6 h-6 inline-flex justify-center items-center text-gray-500">
-                                    <i class="{{  $link['icon'] }}"></i>
+                            <div x-data="{ open: {{ $link['active'] ? 'true' : 'false' }} }">
+                                <button @click="open = !open" type="button" class="flex items-center justify-between w-full p-2.5 text-sm font-semibold rounded-lg transition-all duration-150 group {{ $link['active'] ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 dark:bg-slate-800 dark:text-blue-400' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800' }}">
+                                    <div class="flex items-center">
+                                        <span class="{{ $link['active'] ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 group-hover:text-blue-600' }} transition-colors duration-150">
+                                            {!! $link['icon'] !!}
+                                        </span>
+                                        <span class="ms-3 text-left">{{ $link['name'] }}</span>
+                                    </div>
+                                    <svg :class="open ? 'rotate-180 text-blue-600' : ''" class="w-4 h-4 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </button>
+                                <ul x-show="open" x-collapse class="py-1.5 space-y-1 pl-6">
+                                    @foreach ($link['submenu'] as $item)
+                                        <li>
+                                            <a href="{{ $item['href'] }}" class="block p-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors duration-150">
+                                                {{ $item['name'] }}
+                                            </a>
+                                        </li>                            
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @else
+                            <a href="{{ $link['href'] }}" class="flex items-center p-2.5 text-sm font-medium rounded-lg transition-all duration-150 group {{ $link['active'] ? 'bg-blue-50 text-blue-700 font-semibold border-l-4 border-blue-600 dark:bg-slate-800 dark:text-blue-400 dark:border-blue-500' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800' }}">
+                                <span class="{{ $link['active'] ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 group-hover:text-blue-600' }} transition-colors duration-150">
+                                    {!! $link['icon'] !!}
                                 </span>
                                 <span class="ms-3">{{ $link['name'] }}</span>
-                                <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 9-7 7-7-7"/></svg>
-                            </button>
-                            <ul id="dropdown-example" class="hidden py-2 space-y-2">
-                                @foreach ($link['submenu'] as $item)
-                                    <li>
-                                        <a href="{{  $item['href'] }}" class="pl-10 flex items-center px-2 py-1.5 text-body rounded-base hover:bg-neutral-tertiary hover:text-fg-brand group">{{  $item['name'] }}</a>
-                                    </li>                            
-                                @endforeach
-                            </ul>
-                        @else
-                            <a href="{{  $link['href'] }}" class="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group {{ $link['active'] ? 'bg-gray-100' : '' }}">
-                                <span class="w-6 h-6 inline-flex justify-center items-center text-gray-500">
-                                    <i class="{{  $link['icon'] }}"></i>
-                                </span>
-                                <span class="ms-3">{{  $link['name'] }}</span>
                             </a>
                         @endisset
                     @endisset
                 </li>            
             @endforeach
-        </ul>
+        </ul>        
     </div>
 </aside>

@@ -6,6 +6,9 @@ use App\Models\Doctor;
 use App\Models\Specialty;
 use App\Models\City;
 use App\Models\Clinic;
+use App\Models\Address;
+use App\Models\Appointment;
+use App\Models\Unavailability;
 use App\Models\IndexedSymptom;
 
 use Illuminate\Http\Request;
@@ -14,6 +17,9 @@ use OpenAI\Laravel\Facades\OpenAI;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class SearchController extends Controller
 {
@@ -55,86 +61,239 @@ class SearchController extends Controller
         ]);
     }
     
-    /**
-     * Vista principal del buscador global de opendoctor.online (Priorización por Plan Premium y Calificación).
+        /**
+     * Vista principal del buscador global híbrido y compacto de opendoctor.online.
      */
     public function index(Request $request)
     { 
-        $specialties = Specialty::orderBy('name', 'asc')->get();
-        $cities = City::orderBy('name', 'asc')->get();                        
+        $specialties = Specialty::where('status', true)->orderBy('name', 'asc')->get();
+        $cities = City::where('state', true)->orderBy('name', 'asc')->get();                        
         
-        // 1. Iniciamos la consulta base sobre el modelo maestro Doctor sin JOINS conflictivos
-        $searchQuery = Doctor::with([
-            'user',
-            'specialties',
-            'clinics.addresses' => function ($query) use ($request) {
-                $query->where('status', true)->where('type', 'physical')->with('city');
-                if ($request->filled('city')) {
-                    $query->whereHas('city', function ($q) use ($request) {
-                        $q->where('slug', $request->city);
-                    });
-                }
+        $now = Carbon::now();
+        $currentDate = $now->toDateString();
+        $currentTime = $now->toTimeString();
+
+        // 1. Consulta base sobre el modelo maestro Address (Sedes unificadas)
+        $searchQuery = Address::with([
+            'city',
+            'doctor' => function ($q) {
+                $q->where('active', true)->where('validation_status', 'approved')->with(['user', 'specialties']);
             },
-            'addresses.city',
-            'addresses' => function ($query) use ($request) {
-                $query->where('status', true);
-                if ($request->filled('city')) {
-                    $query->whereHas('city', function ($q) use ($request) {
-                        $q->where('slug', $request->city);
-                    });
-                }
-                $query->with(['services' => function ($q) {
-                    $q->where('services.active', true);
-                }]);
+            'clinic' => function ($q) {
+                $q->where('active', true)->where('validation_status', 'approved')->with(['user', 'doctors.specialties']);
             }
         ])
-        // 🔒 SOLUCIÓN ANTI-SYNTAX ERROR: Rescatamos el precio del plan vía Subquery limpia
-        ->addSelect(['plan_price' => function ($subQuery) {
-            $subQuery->select('plans.price')
-                ->from('plans')
-                ->join('doctor_settings', 'plans.id', '=', 'doctor_settings.plan_id')
-                ->whereColumn('doctor_settings.doctor_id', 'doctors.id')
-                ->limit(1);
-        }])
-        ->where('doctors.active', true) 
-        ->where('doctors.validation_status', 'approved');
-        // El médico debe contar con servicios activos en el ecosistema (Sedes propias o de clínicas)
-        $searchQuery->where(function ($mainFilter) {
-            $mainFilter->whereHas('addresses.services', function ($query) {
-                $query->where('services.active', true);
-            })->orWhereHas('clinics.addresses.services', function ($query) {
-                $query->where('services.active', true);
+        // 🔒 SUBQUERIES LIMPIAS: Rescatamos el precio del plan del dueño para ordenar por Premium primero
+        ->addSelect([
+            'owner_plan_price' => function ($subQuery) {
+                $subQuery->select('plans.price')
+                    ->from('plans')
+                    ->leftJoin('clinic_settings', 'plans.id', '=', 'clinic_settings.plan_id')
+                    ->leftJoin('doctor_settings', 'plans.id', '=', 'doctor_settings.plan_id')
+                    ->where(function ($query) {
+                        $query->whereColumn('clinic_settings.clinic_id', 'addresses.clinic_id')
+                              ->orWhereColumn('doctor_settings.doctor_id', 'addresses.doctor_id');
+                    })
+                    ->limit(1);
+            },
+            // Unificamos la calificación (Rating) del dueño de la sede para la ordenación estricta
+            'owner_rating' => function ($subQuery) {
+                $subQuery->selectRaw('COALESCE(clinics.rating, doctors.rating)')
+                    ->from('addresses as addr')
+                    ->leftJoin('clinics', 'clinics.id', '=', 'addr.clinic_id')
+                    ->leftJoin('doctors', 'doctors.id', '=', 'addr.doctor_id')
+                    ->whereColumn('addr.id', 'addresses.id')
+                    ->limit(1);
+            }
+        ])
+        ->where('addresses.status', true)
+        ->whereNull('addresses.deleted_at')
+        // Asegurar que la sede pertenezca a una entidad válida y aprobada
+        ->where(function ($query) {
+            $query->whereHas('clinic', function ($q) {
+                $q->where('active', true)->where('validation_status', 'approved');
+            })->orWhereHas('doctor', function ($q) {
+                $q->where('active', true)->where('validation_status', 'approved');
             });
         });
-        
-        // Filtro condicional por Especialidad Médica (Slug)
+
+        // Filtro condicional por Especialidad Médica (Slug de la tabla specialties)
         $searchQuery->when($request->specialty, function ($query) use ($request) {
-            $query->whereHas('specialties', function ($q) use ($request) {
-                $q->where('slug', $request->specialty);
-            });
-        });
-        
-        // Filtro condicional por Búsqueda de Ciudad
-        $searchQuery->when($request->city, function ($query) use ($request) {
-            $query->where(function ($cityFilter) use ($request) {
-                $cityFilter->whereHas('addresses.city', function ($q) use ($request) {
-                    $q->where('slug', $request->city);
-                })->orWhereHas('clinics.addresses.city', function ($q) use ($request) {
-                    $q->where('slug', $request->city);
+            $query->where(function ($sub) use ($request) {
+                $sub->whereHas('doctor.specialties', function ($q) use ($request) {
+                    $q->where('specialties.slug', $request->specialty);
+                })
+                ->orWhereHas('clinic.doctors.specialties', function ($q) use ($request) {
+                    $q->where('specialties.slug', $request->specialty);
                 });
             });
         });
-        
-        // 🔥 ORDENACIÓN ALGORÍTMICA TOTALMENTE COMPATIBLE CON MYSQL STRICT
-        $doctors = $searchQuery->orderBy('plan_price', 'desc') // 1. Prioridad del Plan (Subquery)
-            ->orderBy('doctors.rating', 'desc')                 // 2. Estrellas de Reputación
-            ->orderBy('doctors.reviews_count', 'desc')           // 3. Volumen de Testimonios
-            ->paginate(10);
-        
-        // Conservamos los filtros en los enlaces de la paginación de la vista
-        $doctors->appends($request->all());
 
-        return view('search.index', compact('doctors', 'specialties', 'cities'));
+        // Filtro condicional por Búsqueda de Ciudad (Slug de la tabla cities)
+        $searchQuery->when($request->city, function ($query) use ($request) {
+            $query->whereHas('city', function ($q) use ($request) {
+                $q->where('slug', $request->city);
+            });
+        });
+        // 🔥 EJECUCIÓN CON ORDENACIÓN ALGORÍTMICA TOTALMENTE COMPATIBLE
+        $addresses = $searchQuery->orderBy('owner_plan_price', 'desc') 
+            ->orderBy('owner_rating', 'desc')                          
+            ->get();
+
+        // 2. PROCESAMIENTO HÍBRIDO CON AGRUPACIÓN COMPACTA (REGLA DE ORO)
+        $groupedResults = collect();
+
+                foreach ($addresses as $address) {
+            $isClinic = !is_null($address->clinic_id);
+
+            if ($isClinic) {
+                $clinic = $address->clinic;
+                
+                // Evitamos duplicar la tarjeta si la clínica ya fue registrada en otra sede
+                $existingClinicKey = $groupedResults->search(function ($item) use ($clinic) {
+                    return $item['type'] === 'clinic' && $item['id'] === $clinic->id;
+                });
+
+                if ($existingClinicKey !== false) {
+                    continue;
+                }
+
+                $doctorsQuery = $clinic->doctors();
+                $clinicBadgeText = "Especialistas en sede";
+
+                if ($request->filled('specialty')) {
+                    $doctorsQuery->whereHas('specialties', function ($q) use ($request) {
+                        $q->where('slug', $request->specialty);
+                    });
+
+                    // 🔒 REGLA DE ORO CLÍNICAS: Buscamos el nombre real de la especialidad buscada para el subtítulo institucional
+                    $specialtyModel = \App\Models\Specialty::where('slug', $request->specialty)->first();
+                    if ($specialtyModel) {
+                        $clinicBadgeText = "Especialistas en {$specialtyModel->name} en sede";
+                    }
+                }
+
+                $doctorIds = $doctorsQuery->pluck('doctors.id')->toArray();
+                $specialistsCount = count($doctorIds);
+
+                $nextAvailableTurn = $this->calculateNextTurn($address->id, $doctorIds, $now, $currentTime);
+
+                $groupedResults->push([
+                    'type'        => 'clinic',
+                    'id'          => $clinic->id,
+                    'title'       => $clinic->name,
+                    'subtitle'    => "Sede Principal: {$address->name} • {$address->address}",
+                    'slug'        => $clinic->slug,
+                    'rating'      => $clinic->rating,
+                    'address_id'  => $address->id,
+                    'badge_text'  => "{$specialistsCount} {$clinicBadgeText}", // Muestra: 5 Especialistas en Alergología en sede
+                    'next_turn'   => $nextAvailableTurn,
+                    'user'        => $clinic->user
+                ]);
+            }
+            else {
+                $doctor = $address->doctor;
+
+                // 🔒 BLINDAJE ANTI-REPETIDOS: Buscamos si el doctor ya fue ingresado por otro consultorio previo
+                $existingDoctorKey = $groupedResults->search(function ($item) use ($doctor) {
+                    return $item['type'] === 'doctor' && $item['id'] === $doctor->id;
+                });
+
+                $nextAvailableTurn = $this->calculateNextTurn($address->id, [$doctor->id], $now, $currentTime);
+
+                // 🔒 REGLA DE ORO DOCTORES: Si hay una búsqueda activa de especialidad, fijamos ese nombre en su badge
+                if ($request->filled('specialty')) {
+                    $doctorBadgeText = $request->specialty;                    
+                } else {
+                    $doctorBadgeText = $doctor->specialties->first()->name ?? 'Consultorio Privado';
+                }
+
+                if ($existingDoctorKey !== false) {
+                    // Si el doctor ya existe en la lista, evaluamos si esta sucursal física tiene un turno más veloz
+                    $currentDoctorItem = $groupedResults->get($existingDoctorKey);
+                    
+                    if ($nextAvailableTurn && (is_null($currentDoctorItem['next_turn']) || $nextAvailableTurn < $currentDoctorItem['next_turn'])) {
+                        $currentDoctorItem['next_turn'] = $nextAvailableTurn;
+                        $currentDoctorItem['subtitle'] = "Consultorio: {$address->name} • {$address->address}";
+                        $currentDoctorItem['address_id'] = $address->id; // El botón enrutará a la sede con el turno más rápido
+                        $groupedResults->put($existingDoctorKey, $currentDoctorItem);
+                    }
+                } else {
+                    // Es la primera vez que mapeamos al especialista en el listado de forma compacta
+                    $groupedResults->push([
+                        'type'        => 'doctor',
+                        'id'          => $doctor->id,
+                        'title'       => ($doctor->gender === 'female' ? 'Dra. ' : 'Dr. ') . ucfirst($doctor->user->name),
+                        'subtitle'    => "Consultorio: {$address->name} • {$address->address}",
+                        'slug'        => $doctor->slug,
+                        'rating'      => $doctor->rating,
+                        'address_id'  => $address->id,
+                        'badge_text'  => $doctorBadgeText, // Inyección contextual exacta del fitro superior
+                        'next_turn'   => $nextAvailableTurn,
+                        'user'        => $doctor->user
+                    ]);
+                }
+            }
+        } // Cierre definitivo del bucle foreach
+        
+        // 3. PAGINACIÓN MANUAL SOBRE LA COLECCIÓN COMPACTADA (10 elementos por página)
+        $page = LengthAwarePaginator::resolveCurrentPage();
+        $perPage = 10;
+        
+        // 🔒 SOLUCIÓN: Agregamos la palabra clave 'new' obligatoria para instanciar la clase
+        $resultsPage = new LengthAwarePaginator(
+            $groupedResults->forPage($page, $perPage)->values(),
+            $groupedResults->count(),
+            $perPage,
+            $page,
+            ['path' => LengthAwarePaginator::resolveCurrentPath()]
+        );
+
+        $resultsPage->appends($request->all());
+
+        return view('search.index', [
+            'results'     => $resultsPage,
+            'specialties' => $specialties,
+            'cities'      => $cities
+        ]);
+    }
+
+    /**
+     * Función auxiliar privada para encapsular el cálculo de turnos en tiempo real.
+     */
+    private function calculateNextTurn($addressId, array $doctorIds, $now, $currentTime)
+    {
+        for ($dayOffset = 0; $dayOffset < 7; $dayOffset++) {
+            $evalDate = Carbon::now()->addDays($dayOffset);
+            $evalDayOfWeek = $evalDate->dayOfWeekIso; // 1 = Lunes, 7 = Domingo
+
+            $schedules = DB::table('schedules')->where('address_id', $addressId)->where('day', $evalDayOfWeek)->get();
+
+            foreach ($schedules as $sched) {
+                $startTime = Carbon::parse($sched->start_time);
+                if ($dayOffset === 0 && $startTime->toTimeString() < $currentTime) {
+                    continue;
+                }
+
+                $isBooked = Appointment::where('address_id', $addressId)
+                    ->whereIn('doctor_id', $doctorIds)
+                    ->where('date', $evalDate->toDateString())
+                    ->where('start_time', $sched->start_time)
+                    ->whereIn('status', ['pending', 'confirmed', 'completed'])
+                    ->exists();
+
+                $isUnavailable = Unavailability::whereIn('doctor_id', $doctorIds)
+                    ->where('start_date', '<=', $evalDate->toDateString())
+                    ->where('end_date', '>=', $evalDate->toDateString())
+                    ->exists();
+
+                if (!$isBooked && !$isUnavailable) {
+                    return $evalDate->translatedFormat('l d \d\e F') . ' — ' . $startTime->format('g:i A');
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -323,5 +482,29 @@ class SearchController extends Controller
                 'medicos' => []
             ], 500);
         }
+    }
+
+    /**
+     * Almacena de forma persistente las coordenadas e información geográfica del dispositivo en la sesión.
+     */
+    public function saveDeviceLocationToSession(Request $request)
+    {
+        $validated = $request->validate([
+            'latitude'  => 'required|numeric',
+            'longitude' => 'required|numeric',
+            'city'      => 'nullable|string|max:150',
+        ]);
+
+        // Almacenar en la sesión nativa de Laravel para su uso posterior en cualquier controlador
+        session([
+            'patient_latitude'  => $validated['latitude'],
+            'patient_longitude' => $validated['longitude'],
+            'patient_city_name' => $validated['city'] ?? 'Unknown'
+        ]);
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Device coordinates and location successfully frozen in session data.'
+        ]);
     }
 }

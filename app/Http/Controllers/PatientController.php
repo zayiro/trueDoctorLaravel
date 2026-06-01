@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use App\Models\Patient;
@@ -14,6 +15,9 @@ use App\Models\PatientMedication;
 use App\Models\Insurance;
 use App\Models\Department;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Log;
+use Throwable;
+use Carbon\Carbon; 
 
 class PatientController extends Controller
 {
@@ -240,11 +244,13 @@ class PatientController extends Controller
     }
 
     /**
-     * Muestra el listado completo de citas médicas del paciente autenticado.
+     * Muestra el listado completo de citas médicas del paciente autenticado (Soporte Híbrido).
      */
     public function appointments()
     {        
         $user = auth()->user();
+        
+        // Asegurar que el usuario tenga asignado el rol correspondiente en Spatie
         if (!$user->hasRole('patient')) {
             \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'patient']);
             $user->assignRole('patient');
@@ -256,73 +262,367 @@ class PatientController extends Controller
             return redirect()->route('profile.show')->with('error', 'No se encontró un perfil de paciente asociado a tu cuenta.');
         }
 
-        // ⏱️ Tomamos la fecha y hora exacta de este microsegundo (28 de Mayo de 2026)
-        $now = now(); 
-
-        // 1. Capturamos el estado seleccionado en el filtro (si existe)
+        $now = \Carbon\Carbon::now('America/Bogota'); 
         $statusFilter = request('status');
 
-        // 1A. Filtramos de forma dinámica las próximas consultas
+        // 1. 🔮 PRÓXIMAS CONSULTAS: Citas futuras estrictamente activas (confirmed o pending)
         $upcomingAppointments = Appointment::where('patient_id', $patient->id)
             ->where(function($query) use ($now) {
                 $query->whereDate('date', '>', $now->toDateString())
                     ->orWhere(function($q) use ($now) {
                         $q->whereDate('date', $now->toDateString())
-                            ->where('start_time', '>=', $now->toTimeString());
+                          ->where('start_time', '>=', $now->toTimeString());
                     });
             })
-            // 🛠️ SOLUCIÓN: Si el usuario eligió un estado, filtra por ese. Si no, trae ambos por defecto.
+            // 🔒 BLINDAJE ANTI-DUPLICADOS: Excluimos citas canceladas o completadas aunque tengan fecha futura
+            ->whereIn('status', ['confirmed', 'pending'])
             ->when($statusFilter, function($query) use ($statusFilter) {
                 return $query->where('status', $statusFilter);
-            }, function($query) {
-                return $query->whereIn('status', ['confirmed', 'pending']);
             })
-            ->with(['doctor.user', 'address.city'])
+            // Cargamos la relación 'clinic' para evitar consultas lentas N+1 en la tarjeta
+            ->with(['doctor.user', 'clinic', 'service', 'address.city'])
             ->orderBy('date', 'asc')
             ->orderBy('start_time', 'asc')
             ->get();
 
-        // 2. HISTORIAL: Todo lo que ya pasó de tiempo O que explícitamente se canceló/completó
+        // 2. 📜 HISTORIAL DE CONSULTAS: Todo lo que ya expiró en tiempo O que explícitamente se cerró
         $pastAppointments = Appointment::where('patient_id', $patient->id)
             ->where(function($query) use ($now) {
-                // Opción A: La fecha ya es del pasado (ayer o antes)
-                $query->whereDate('date', '<', $now->toDateString())
-                // Opción B: Era hoy, pero la hora de atención ya pasó
-                      ->orWhere(function($q) use ($now) {
-                          $q->whereDate('date', $now->toDateString())
-                            ->where('start_time', '<', $now->toTimeString());
-                      })
-                // Opción C: No importa la fecha, si ya está completada o cancelada va al historial
-                      ->orWhereIn('status', ['completed', 'cancelled']);
+                // Caso A: La fecha ya pasó cronológicamente
+                $query->where(function($sub) use ($now) {
+                    $sub->whereDate('date', '<', $now->toDateString())
+                        ->orWhere(function($q) use ($now) {
+                            $q->whereDate('date', $now->toDateString())
+                              ->where('start_time', '<', $now->toTimeString());
+                        });
+                })
+                // Caso B: Citas explícitamente terminadas (independientemente de su fecha)
+                ->orWhereIn('status', ['completed', 'cancelled']);
             })
-            ->with(['doctor.user', 'address.city'])
+            ->with(['doctor.user', 'clinic', 'service', 'address.city'])
             ->orderBy('date', 'desc')
             ->orderBy('start_time', 'desc')
             ->paginate(10);
-
-        //dd($upcomingAppointments, $pastAppointments);
 
         return view('patient.appointments.index', compact('upcomingAppointments', 'pastAppointments'));
     }
     
     /**
-     * Procesa la cancelación de una consulta médica solicitada por el paciente.
+     * Procesa la cancelación de una consulta médica solicitada por el paciente (Seguridad Tenant & Políticas de Tiempo).
      */
     public function cancelWeb(Request $request, $id)
     {
+        // 1. Extraer de forma segura el perfil del paciente logueado
         $patient = auth()->user()->patient;
+        if (!$patient) {
+            abort(403, 'Perfil de paciente no encontrado en el sistema.');
+        }
 
-        // Busca la cita asegurando que pertenezca estrictamente a este paciente (Seguridad Tenant)
-        $appointment = Appointment::where('id', $id)
+        // 2. Buscar la cita asegurando que pertenezca estrictamente a este paciente (Seguridad Inversa IDOR)
+        $appointment = Appointment::with(['doctor.settings', 'clinic.settings'])
+            ->where('id', $id)
             ->where('patient_id', $patient->id)
             ->firstOrFail();
 
-        // Actualiza el estado a cancelado
+        // 3. 🛡️ CONTROL POLÍTICO DE TIEMPO: Validar si la cita ya expiró o si viola las horas de aviso previo
+        $now = Carbon::now('America/Bogota');
+
+        $appointmentDate = Carbon::parse($appointment->date)->format('Y-m-d');
+        $appointmentDateTime = \Carbon\Carbon::parse($appointmentDate . ' ' . $appointment->start_time, 'America/Bogota');
+
+        if ($now->greaterThanOrEqualTo($appointmentDateTime)) {
+            return redirect()->back()->with('error', 'No es posible cancelar una consulta médica que ya se encuentra en desarrollo o que pertenece al pasado.');
+        }
+
+        // Resolver las horas mínimas de aviso previo configuradas por el proveedor (Clínica o Particular)
+        $settings = $appointment->clinic_id ? $appointment->clinic?->settings : $appointment->doctor?->settings;
+        $cancellationNoticeHours = $settings ? (int) $settings->cancellation_notice_hours : 2; // 2 horas por defecto en el SaaS
+
+        // Calcular la diferencia en horas entre este instante y el bloque de atención médica
+        $hoursDifference = $now->diffInHours($appointmentDateTime, false);
+
+        if ($hoursDifference < $cancellationNoticeHours) {
+            return redirect()->back()->with('error', "Las políticas de este centro médico o especialista exigen un mínimo de {$cancellationNoticeHours} horas de anticipación para cancelar el turno. Por favor, comunícate con soporte.");
+        }
+
+        // 4. Capturar de forma limpia el rastro de auditoría e inyectar el motivo
+        $request->validate([
+            'cancellation_reason' => 'nullable|string|max:255'
+        ]);
+
+        $reason = $request->filled('cancellation_reason') 
+            ? 'Cancelado por el paciente. Motivo: ' . trim($request->cancellation_reason)
+            : 'Cancelado de forma autónoma por el paciente desde la plataforma web.';
+
+        // 5. Actualizar la cita y liberar de forma paralela la pasarela y la franja de horarios
         $appointment->update([
-            'status' => 'cancelled'
+            'status' => 'cancelled',
+            'notes'  => $appointment->notes . "\n\n[Auditoría: " . $reason . "]"
         ]);
 
         return redirect()->route('patient.appointments.index')
-            ->with('success', 'La cita médica ha sido cancelada exitosamente.');
+            ->with('success', 'La consulta médica ha sido cancelada exitosamente y el espacio horario ha sido devuelto a la disponibilidad pública.');
+    }
+
+    /**
+     * Genera y descarga el reporte consolidado e indexado de la Historia Clínica en PDF.
+     */
+    public function downloadClinicalHistory(Patient $patient)
+    {
+        // 1. Control de accesos Multi-tenant (Spatie / Esquema de co-propiedad)
+        $user = Auth::user();
+        
+        // Bloqueo preventivo de seguridad: Validar que el actor pertenezca al ecosistema
+        if (!$user->hasRole(['patient'])) {
+            abort(403, 'No tienes autorización para acceder a expedientes médicos.');
+        }
+
+        try {
+            // 2. CARGA COMPLETA Y OPTIMIZADA DE LAS 6 TABLAS (Evita el problema N+1)
+            $patient->load([
+                'allergies',
+                'surgeries',
+                'familyHistories',
+                'medications',
+                'histories.doctor.user',
+                'attachments'
+            ]);
+
+            // 3. Variables de auditoría para validez legal e institucional del documento
+            $generatedBy = $user->name . " (" . ucfirst($user->role) . ")";
+            $generationDate = now()->format('d/m/Y H:i');
+
+            // 4. Compilar y renderizar la plantilla HTML a memoria interna
+            $pdf = Pdf::loadView('dashboard.patients.reports.clinical_history', compact(
+                'patient', 
+                'generatedBy', 
+                'generationDate'
+            ));
+
+            // 5. Configuración del papel (Carta, Vertical)
+            $pdf->setPaper('letter', 'portrait');
+
+            // 6. Nombre de archivo estandarizado, libre de espacios o caracteres especiales
+            $safeName = preg_replace('/[^A-Za-z0-9\-]/', '', str_replace(' ', '_', $patient->name));
+            $fileName = 'HC_' . $safeName . '_' . now()->format('Ymd') . '.pdf';
+
+            // 7. Despacho y descarga directa en el navegador
+            return $pdf->download($fileName);
+
+        } catch (Throwable $e) {
+            Log::error("Fallo crítico al generar la Historia Clínica en PDF para el Paciente ID {$patient->id}: " . $e->getMessage(), [
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
+
+            return redirect()->back()->with('error', __('Ocurrió un error inesperado al procesar la descarga de la historia clínica.'));
+        }
+    }
+
+    /**
+     * Muestra las medicaciones del paciente autenticado actual.
+     */
+    public function indexMedication()
+    {
+        // 1. Obtener el usuario de la sesión actual
+        $user = auth()->user();
+
+        // 2. Control de accesos: Asegurar que el usuario logueado sea un paciente
+        if ($user->role !== 'patient') {
+            abort(403, 'Este portal es exclusivo para pacientes.');
+        }        
+
+        try {
+            // 3. Obtener el perfil del paciente asociado a ese usuario
+            $patient = $user->patient;
+            
+            if (!$patient) {
+                abort(404, 'No se encontró un perfil médico asociado a tu cuenta.');
+            }
+            
+            // 4. Carga optimizada de sus medicamentos (activos primero)
+            $medications = $patient->medications()->orderBy('active', 'desc')->get();
+
+            // 5. Retornamos la vista pasando al paciente y sus medicinas
+            return view('patient.medications.index', compact('patient', 'medications'));
+
+        } catch (Throwable $e) {
+            Log::error("Error en indexMedication del portal del paciente: " . $e->getMessage());
+            return redirect()->back()->with('error', __('No se pudieron cargar tus medicamentos.'));
+        }
+    }
+
+    /**
+     * Almacena un nuevo medicamento asociado de forma segura al paciente autenticado.
+     */
+    public function storeMedication(Request $request)
+    {
+        // 1. Control de accesos: Asegurar que quien guarda sea un paciente legítimo
+        $user = Auth::user();
+        if ($user->role !== 'patient') {
+            abort(403, 'Operación no autorizada para este perfil de usuario.');
+        }
+
+        // 2. Extraer el perfil clínico del paciente desde la sesión
+        $patient = $user->patient;
+        if (!$patient) {
+            return redirect()->back()->with('error', __('No se encontró tu perfil médico en el sistema.'));
+        }
+
+        // 3. Validar minuciosamente los datos recibidos del formulario
+        $validated = $request->validate([
+            'name' => 'required|string|max:150',
+            'dosage' => 'nullable|string|max:100',
+            'frequency' => 'nullable|string|max:100',
+            'notes' => 'nullable|string|max:500', // Evitamos textos excesivos
+            'active' => 'required|boolean',
+        ]);
+
+        try {
+            // 4. Crear el registro farmacológico inyectando el patient_id de forma interna
+            PatientMedication::create([
+                'patient_id' => $patient->id,
+                'name' => strip_tags($validated['name']), // Sanitización básica contra XSS
+                'dosage' => strip_tags($validated['dosage']),
+                'frequency' => strip_tags($validated['frequency']),
+                'notes' => strip_tags($validated['notes']),
+                'active' => $validated['active'],
+            ]);
+
+            // 5. Redirección con mensaje de éxito estandarizado
+            return redirect()->route('patient.medications.index')
+                ->with('success', __('El medicamento ha sido registrado correctamente en tu historial.'));
+
+        } catch (Throwable $e) {
+            // Registro silencioso del fallo para el equipo de desarrollo
+            Log::error("Fallo crítico al guardar medicamento para el Paciente ID {$patient->id}: " . $e->getMessage());
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', __('Ocurrió un problema interno al intentar guardar el medicamento. Por favor, reintenta.'));
+        }
+    }
+
+    /**
+     * Actualiza un medicamento específico en el historial del paciente autenticado.
+     */
+    public function updateMedication(Request $request, $id)
+    {
+        // 1. Control de accesos: Validar perfil de paciente
+        $user = Auth::user();
+        if ($user->role !== 'patient') {
+            abort(403, 'Operación no autorizada para este perfil de usuario.');
+        }
+
+        // 2. Extraer el perfil del paciente logueado
+        $patient = $user->patient;
+        if (!$patient) {
+            return redirect()->back()->with('error', __('No se encontró tu perfil médico en el sistema.'));
+        }
+
+        // 3. Buscar el medicamento y validar propiedad estricta (Multi-tenancy por sesión)
+        $medication = PatientMedication::where('id', $id)
+            ->where('patient_id', $patient->id)
+            ->first();
+
+        if (!$medication) {
+            Log::warning("Intento de manipulación de medicamento ID {$id} por el Paciente ID {$patient->id}");
+            abort(403, 'No tienes autorización para modificar este registro.');
+        }
+
+        // 4. Validar minuciosamente los datos recibidos del formulario
+        $validated = $request->validate([
+            'name' => 'required|string|max:150',
+            'dosage' => 'nullable|string|max:100',
+            'frequency' => 'nullable|string|max:100',
+            'notes' => 'nullable|string|max:500',
+            'active' => 'required|boolean',
+        ]);
+
+        try {
+            // 5. Actualizar el registro sanitizando las cadenas de texto
+            $medication->update([
+                'name' => strip_tags($validated['name']),
+                'dosage' => strip_tags($validated['dosage']),
+                'frequency' => strip_tags($validated['frequency']),
+                'notes' => strip_tags($validated['notes']),
+                'active' => $validated['active'],
+            ]);
+
+            // 6. Redirección con mensaje de éxito estandarizado
+            return redirect()->route('patient.medications.index')
+                ->with('success', __('El medicamento ha sido actualizado correctamente.'));
+
+        } catch (Throwable $e) {
+            Log::error("Error crítico al actualizar el medicamento ID {$id} para el Paciente ID {$patient->id}: " . $e->getMessage());
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', __('Ocurrió un problema interno al intentar guardar los cambios.'));
+        }
+    }
+
+    /**
+     * Muestra los antecedentes familiares hereditarios del paciente autenticado actual.
+     */
+    public function indexFamilyHistory()
+    {
+        // 1. Control de accesos: Asegurar que quien consulta sea un paciente legítimo
+        $user = Auth::user();
+        if ($user->role !== 'patient') {
+            abort(403, 'Este portal es exclusivo para el perfil de paciente.');
+        }
+
+        try {
+            // 2. Extraer el perfil clínico del paciente desde la sesión de co-propiedad
+            $patient = $user->patient;
+
+            if (!$patient) {
+                abort(404, 'No se encontró un perfil médico asociado a tu cuenta.');
+            }
+
+            // 3. Carga optimizada de sus antecedentes familiares ordenados cronológicamente
+            $familyHistories = $patient->familyHistories()->latest()->get();
+
+            // 4. Retornamos la vista pasando al paciente y sus antecedentes familiares
+            return view('dashboard.patients.family_histories.index', compact('patient', 'familyHistories'));
+
+        } catch (Throwable $e) {
+            Log::error("Error crítico en indexFamilyHistory del portal del paciente: " . $e->getMessage());
+            
+            return redirect()->back()->with('error', __('No se pudieron cargar tus antecedentes familiares.'));
+        }
+    }
+
+    /**
+     * Muestra el historial de cirugías del paciente autenticado actual.
+     */
+    public function surgeries()
+    {
+        // 1. Control de accesos: Asegurar que quien consulta sea un paciente legítimo
+        $user = Auth::user();
+        if ($user->role !== 'patient') {
+            abort(403, 'Este portal es exclusivo para el perfil de paciente.');
+        }
+
+        try {
+            // 2. Extraer el perfil clínico del paciente desde la sesión de co-propiedad
+            $patient = $user->patient;
+
+            if (!$patient) {
+                abort(404, 'No se encontró un perfil médico asociado a tu cuenta.');
+            }
+
+            // 3. Carga optimizada de sus antecedentes quirúrgicos (Cirugías más recientes primero)
+            $surgeries = $patient->surgeries()->orderBy('year', 'desc')->get();
+
+            // 4. Retornamos la vista pasando al paciente y sus cirugías
+            return view('dashboard.patients.surgeries.index', compact('patient', 'surgeries'));
+
+        } catch (Throwable $e) {
+            Log::error("Error crítico en el método surgeries del portal del paciente: " . $e->getMessage());
+            
+            return redirect()->back()->with('error', __('No se pudo cargar tu historial de cirugías.'));
+        }
     }
 }

@@ -128,6 +128,7 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     // ========================================================
     // BLOQUEOS TEMPORALES Y MANEJO DE AUSENCIAS
     // ========================================================
+    Route::get('/partner/unavailabilities', [UnavailabilityController::class, 'index'])->name('partner.unavailabilities.index');
     Route::post('/partner/unavailabilities', [UnavailabilityController::class, 'store'])->name('partner.unavailabilities.store');
     Route::delete('/partner/unavailabilities/{unavailability}', [UnavailabilityController::class, 'destroy'])->name('partner.unavailabilities.destroy');
 
@@ -193,6 +194,7 @@ Route::middleware(['auth', 'role:patient'])->group(function () {
     Route::get('/patient/history', [PatientController::class, 'history'])->name('patient.history.index');
     Route::post('/patient/history-attachments', [PatientHistoryAttachmentController::class, 'store'])->name('patient.attachments.store');
     Route::get('/patient/history-attachments/{attachment}/view', [PatientHistoryAttachmentController::class, 'viewHistoryAttachment'])->name('patient.attachments.view');
+    Route::delete('/patient/history-attachments/{attachment}', [PatientHistoryAttachmentController::class, 'destroy'])->name('patient.attachments.destroy');
     Route::get('/patient/surgeries', [PatientController::class, 'surgeries'])->name('patient.surgeries.index');
     Route::post('/patient/surgeries', [PatientController::class, 'storeSurgery'])->name('patient.surgeries.store');
     Route::get('/patient/surgeries/{surgery}/edit', [PatientController::class, 'editSurgery'])->name('patient.surgeries.edit');
@@ -277,7 +279,7 @@ Route::get('/search-symptom', [SearchController::class, 'searchSymptomView'])->n
 
 Route::get('/{partner_slug}/{campaign_slug}.html', PublicLanding::class)->name('landing.public');
 
-// Ruta para ver el perfil del doctor en la busqueda
+// Ruta pública unificada para perfiles de médicos y clínicas
 Route::get('/medical-partner/{slug}', [PublicProfileController::class, 'show'])->name('partner.public.profile');
 
 // Ruta API para que FullCalendar cargue los huecos libres
@@ -315,6 +317,9 @@ Route::get('/api/departments/{department}/cities', function ($deptId) {
 
 // Ruta pública para que Google rastree todos tus enlaces indexables
 Route::get('/sitemap.xml', [SearchController::class, 'generateSitemap'])->name('seo.sitemap');
+
+// Ruta pública para congelar la geolocalización del paciente en la sesión de Laravel
+Route::post('/api/session/location', [SearchController::class, 'saveDeviceLocationToSession'])->name('api.session.location');
 
 //Páginas de Síntomas Indexables Automáticas
 

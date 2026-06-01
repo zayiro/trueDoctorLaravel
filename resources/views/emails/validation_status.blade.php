@@ -4,6 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Actualización de Cuenta - OpenDoctor</title>
+    <!-- ========================================== -->
+    <!-- ETIQUETAS ENRIQUECIDAS (SCHEMA.ORG / JSON-LD) -->
+    <!-- ========================================== -->
+    @if($status === 'approved')
+        <!-- Botón directo en la bandeja de entrada para ingresar al panel -->
+        <script type="application/ld+json">
+        {
+          "@context": "http://schema.org",
+          "@type": "EmailMessage",
+          "description": "Tu cuenta médica ha sido aprobada. Ingresa ahora.",
+          "potentialAction": {
+            "@type": "ViewAction",
+            "target": "https://opendoctor.online/login",
+            "name": "Ingresar al Panel"
+          }
+        }
+        </script>
+    @else
+        <!-- Botón directo en la bandeja de entrada para ir a WhatsApp si fue rechazado -->
+        <script type="application/ld+json">
+        {
+          "@context": "http://schema.org",
+          "@type": "EmailMessage",
+          "description": "Se requieren verificaciones adicionales en tu perfil.",
+          "potentialAction": {
+            "@type": "ViewAction",
+            "target": "{{ $whatsappLink }}",
+            "name": "Contactar Soporte"
+          }
+        }
+        </script>
+    @endif
+    <!-- ========================================== -->
     <style>
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; background-color: #f4f6f8; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
         .wrapper { width: 100%; table-layout: fixed; background-color: #f4f6f8; padding-bottom: 40px; padding-top: 40px; }
@@ -36,7 +69,7 @@
 
         <!-- Contenido Principal -->
         <div class="content">
-            <p>Estimado(a) **Dr(a). {{ $user->name }}**,</p>
+            <p>Estimado(a) **{{ $user->name }}**,</p>
             <p>Le escribimos para notificarle el estado actual de su solicitud de validación de perfil médico en nuestra plataforma.</p>
 
             @if($status === 'approved')
@@ -47,7 +80,7 @@
                 </div>
                 <p>A partir de este momento, su perfil es visible para los pacientes. Ya tiene acceso completo para configurar sus horarios de consulta, historias clínicas y canales de atención médica.</p>
                 <div style="text-align: center;">
-                    <a href="{{ url('/dashboard') }}" class="btn btn-success">Ingresar al Panel de Control</a>
+                    <a href="https://opendoctor.online/login" class="btn btn-success">Ingresar al Panel de Control</a>
                 </div>
             @else
                 <!-- CASO 2: DOCTOR RECHAZADO -->

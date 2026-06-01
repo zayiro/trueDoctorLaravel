@@ -11,6 +11,7 @@ use App\Mail\WelcomeAdminMail;
 use App\Notifications\MailLimitExceededNotification;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class UserObserver
 {
@@ -23,7 +24,7 @@ class UserObserver
         $userEmail = $user->email;
 
         try {
-            // Evaluamos el rol del enum de tu tabla 'users'
+            // Evaluamos el rol del enum de la tabla 'users'
             // Enviamos el correo de bienvenida al usuario según el rol
             switch ($user->role) {
                 case 'doctor':
@@ -42,7 +43,7 @@ class UserObserver
                     Mail::to($userEmail)->send(new WelcomeAdminMail($user));
                     break;
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // 1. Registramos el fallo técnico detallado en el log (storage/logs/laravel.log)
             Log::error("Fallo crítico al enviar correo de bienvenida al rol [{$user->role}] ({$userEmail}): " . $e->getMessage());
 

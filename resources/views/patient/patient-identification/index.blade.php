@@ -45,18 +45,18 @@ $breadcrumbs = [
                 <!-- SECCIÓN 1: Información Básica -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Identificación</label>
-                        <input type="text" name="identification" value="{{ old('identification', $patient->identification ?? '') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <label for="identification" class="block text-sm font-medium text-gray-700">Identificación</label>
+                        <input type="text" name="identification" id="identification" value="{{ old('identification', $patient->identification ?? '') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Fecha de Nacimiento</label>
-                        <input type="date" name="birth_date" value="{{ old('birth_date', $patient->birth_date ?? '') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <label for="birth_date" class="block text-sm font-medium text-gray-700">Fecha de Nacimiento</label>
+                        <input type="date" name="birth_date" id="birth_date" value="{{ old('birth_date', $patient->birth_date->format('Y-m-d') ?? '') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Tipo de Sangre</label>
-                        <select name="blood_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <label for="blood_type" class="block text-sm font-medium text-gray-700">Tipo de Sangre</label>
+                        <select name="blood_type" id="blood_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                             <option value="">Seleccione...</option>
                             @foreach(['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'] as $type)
                                 <option value="{{ $type }}" {{ old('blood_type', $patient->blood_type ?? '') == $type ? 'selected' : '' }}>{{ $type }}</option>
@@ -66,18 +66,18 @@ $breadcrumbs = [
 
                     <!-- Datos Clínicos Rápidos -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Peso (kg)</label>
-                        <input type="number" step="0.01" name="weight" value="{{ $patient->weight ?? old('weight') }}" class="mt-1 w-full border-gray-300 rounded-md shadow-sm">
+                        <label for="weight" class="block text-sm font-medium text-gray-700">Peso (kg)</label>
+                        <input type="number" step="0.01" name="weight" id="weight" value="{{ $patient->weight ?? old('weight') }}" class="mt-1 w-full border-gray-300 rounded-md shadow-sm">
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Estatura (ej: 1.72)</label>
-                        <input type="number" step="0.01" name="height" value="{{ $patient->height ?? old('height') }}" class="mt-1 w-full border-gray-300 rounded-md shadow-sm">
+                        <label for="height" class="block text-sm font-medium text-gray-700">Estatura (ej: 1.72)</label>
+                        <input type="number" step="0.01" name="height" id="height" value="{{ $patient->height ?? old('height') }}" class="mt-1 w-full border-gray-300 rounded-md shadow-sm">
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Género</label>
-                        <select name="gender" class="mt-1 w-full border-gray-300 rounded-md shadow-sm">
+                        <label for="gender" class="block text-sm font-medium text-gray-700">Género</label>
+                        <select name="gender" id="gender" class="mt-1 w-full border-gray-300 rounded-md shadow-sm">
                             <option value="male" {{ (isset($patient) && $patient->gender == 'male') ? 'selected' : '' }}>Masculino</option>
                             <option value="female" {{ (isset($patient) && $patient->gender == 'female') ? 'selected' : '' }}>Femenino</option>
                         </select>
@@ -86,7 +86,7 @@ $breadcrumbs = [
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Departamento</label>
+                        <label for="department_select" class="block text-sm font-medium text-gray-700">Departamento</label>
                         <select id="department_select" name="department_id" class="mt-1 w-full rounded border-gray-300">
                             <option value="">Seleccione...</option>
                             @foreach($departments as $dept)
@@ -98,7 +98,7 @@ $breadcrumbs = [
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Ciudad / Municipio</label>
+                        <label for="city_select" class="block text-sm font-medium text-gray-700">Ciudad / Municipio</label>
                         <select id="city_select" name="city_id" class="mt-1 w-full rounded border-gray-300">
                             <option value="">Seleccione Depto...</option>
                         </select>
@@ -106,24 +106,24 @@ $breadcrumbs = [
                 </div>
 
                 <div class="mt-6">
-                    <label class="block text-sm font-medium text-gray-700">Condiciones Permanentes</label>
-                    <textarea name="permanent_conditions" rows="3" class="mt-1 w-full border-gray-300 rounded-md shadow-sm">{{ $patient->permanent_conditions ?? old('permanent_conditions') }}</textarea>
+                    <label for="permanent_conditions" class="block text-sm font-medium text-gray-700">Condiciones Permanentes</label>
+                    <textarea name="permanent_conditions" id="permanent_conditions" rows="3" class="mt-1 w-full border-gray-300 rounded-md shadow-sm">{{ $patient->permanent_conditions ?? old('permanent_conditions') }}</textarea>
                 </div>
 
                 <!-- SECCIÓN 2: Ubicación y Socioeconomía -->
                 <h3 class="text-lg font-semibold mb-4 text-gray-800 mt-4">Ubicación y Datos Socioeconómicos</h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Zona de Residencia</label>
-                        <select name="residence_zone" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <label for="residence_zone" class="block text-sm font-medium text-gray-700">Zona de Residencia</label>
+                        <select name="residence_zone" id="residence_zone" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                             <option value="Urbana" {{ old('residence_zone', $patient->residence_zone ?? '') == 'Urbana' ? 'selected' : '' }}>Urbana</option>
                             <option value="Rural" {{ old('residence_zone', $patient->residence_zone ?? '') == 'Rural' ? 'selected' : '' }}>Rural</option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Ocupación</label>
-                        <select name="occupation" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <label for="occupation" class="block text-sm font-medium text-gray-700">Ocupación</label>
+                        <select name="occupation" id="occupation" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                             <option value="">Seleccione ocupación...</option>
                             @php
                                 $ocupaciones = [
@@ -151,8 +151,8 @@ $breadcrumbs = [
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Estado Civil</label>
-                        <select name="civil_status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <label for="civil_status" class="block text-sm font-medium text-gray-700">Estado Civil</label>
+                        <select name="civil_status" id="civil_status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                             <option value="">Seleccione...</option>
                             @foreach(['Soltero/a', 'Casado/a', 'Unión Libre', 'Divorciado/a', 'Viudo/a'] as $status)
                                 <option value="{{ $status }}" {{ old('civil_status', $patient->civil_status ?? '') == $status ? 'selected' : '' }}>{{ $status }}</option>
@@ -161,26 +161,59 @@ $breadcrumbs = [
                     </div>
 
                     <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700">Etnia</label>
-                        <select name="ethnicity" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <label for="ethnicity" class="block text-sm font-medium text-gray-700">Etnia</label>
+                        <select name="ethnicity" id="ethnicity" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                             @foreach(['Indígena', 'Rrom (Gitano)', 'Raizal (San Andrés y Providencia)', 'Palenquero (San Basilio de Palenque)', 'Negro, Mulato, Afrocolombiano', 'Ninguna de las anteriores (Mestizo/Blanco)'] as $eth)
                                 <option value="{{ $eth }}" {{ old('ethnicity', $patient->ethnicity ?? 'Ninguna de las anteriores (Mestizo/Blanco)') == $eth ? 'selected' : '' }}>{{ $eth }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <!-- Teléfono -->
+
+                    <!-- CAMPO CELULAR BLINDADO A 10 NÚMEROS -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Teléfono</label>
-                        <input type="text" name="phone" value="{{ $patient->phone ?? old('phone') }}" class="mt-1 w-full border-gray-300 rounded-md shadow-sm">
+                        <label for="phone" class="block text-sm font-medium text-gray-700">Teléfono</label>
+                        <div class="flex mt-1 rounded-xl shadow-sm border border-slate-200 bg-white focus-within:ring-2 focus-within:ring-blue-500 overflow-hidden">
+                            <!-- Selector de Indicativo de País (Comienza por Colombia y Suramérica) -->
+                            <select name="country_code" id="country_code" required 
+                                    class="bg-slate-50 text-slate-700 text-sm border-0 border-r border-slate-200 rounded-l-xl focus:ring-0 px-5 cursor-pointer">
+                                <option value="+57" {{ old('country_code') == '+57' ? 'selected' : '' }}>🇨🇴 +57</option>
+                                <option value="+54" {{ old('country_code') == '+54' ? 'selected' : '' }}>🇦🇷 +54</option>
+                                <option value="+591" {{ old('country_code') == '+591' ? 'selected' : '' }}>🇧🇴 +591</option>
+                                <option value="+55" {{ old('country_code') == '+55' ? 'selected' : '' }}>🇧🇷 +55</option>
+                                <option value="+56" {{ old('country_code') == '+56' ? 'selected' : '' }}>🇨🇱 +56</option>
+                                <option value="+593" {{ old('country_code') == '+593' ? 'selected' : '' }}>🇪🇨 +593</option>
+                                <option value="+595" {{ old('country_code') == '+595' ? 'selected' : '' }}>🇵🇾 +595</option>
+                                <option value="+51" {{ old('country_code') == '+51' ? 'selected' : '' }}>🇵🇪 +51</option>
+                                <option value="+598" {{ old('country_code') == '+598' ? 'selected' : '' }}>🇺🇾 +598</option>
+                                <option value="+58" {{ old('country_code') == '+58' ? 'selected' : '' }}>🇻🇪 +58</option>
+                                <option value="+592" {{ old('country_code') == '+592' ? 'selected' : '' }}>🇬🇾 +592</option>
+                                <option value="+597" {{ old('country_code') == '+597' ? 'selected' : '' }}>🇸🇷 +597</option>
+                            </select>
+
+                            <!-- Input del Teléfono Blindado sin bordes nativos -->
+                            <input 
+                                id="phone" 
+                                class="block w-full border-0 focus:ring-0 p-2.5 text-sm text-slate-900 rounded-r-xl" 
+                                type="tel" 
+                                name="phone" 
+                                value="{{ $patient->phone ?? old('phone') }}" 
+                                required 
+                                maxlength="10"
+                                pattern="[0-9]{10}"
+                                placeholder="3026433874" 
+                                autocomplete="phone"
+                            />
+                        </div>
                     </div>
+
                 </div>
 
                 <!-- SECCIÓN 3: Seguridad Social (Ley 100) -->
                 <h3 class="text-lg font-semibold mb-4 text-gray-800">Seguridad Social</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Tipo de Afiliación</label>
-                        <select name="affiliation_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <label for="affiliation_type" class="block text-sm font-medium text-gray-700">Tipo de Afiliación</label>
+                        <select name="affiliation_type" id="affiliation_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                             <option value="">Seleccione...</option>
                             @foreach(['Contributivo', 'Subsidiado', 'Vinculado', 'Particular', 'Otro'] as $aff)
                                 <option value="{{ $aff }}" {{ old('affiliation_type', $patient->affiliation_type ?? '') == $aff ? 'selected' : '' }}>{{ $aff }}</option>
@@ -189,8 +222,8 @@ $breadcrumbs = [
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Régimen</label>
-                        <select name="regime_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <label for="regime_type" class="block text-sm font-medium text-gray-700">Régimen</label>
+                        <select name="regime_type" id="regime_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                             <option value="General" {{ old('regime_type', $patient->regime_type ?? '') == 'General' ? 'selected' : '' }}>General</option>
                             <option value="Especial" {{ old('regime_type', $patient->regime_type ?? '') == 'Especial' ? 'selected' : '' }}>Especial</option>
                             <option value="Excepción" {{ old('regime_type', $patient->regime_type ?? '') == 'Excepción' ? 'selected' : '' }}>Excepción</option>
@@ -198,8 +231,8 @@ $breadcrumbs = [
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">EPS (Aseguradora)</label>
-                        <select name="insurance_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <label for="insurance_id" class="block text-sm font-medium text-gray-700">EPS (Aseguradora)</label>
+                        <select name="insurance_id" id="insurance_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                             <option value="">Seleccione EPS...</option>
                             @foreach($insurances as $insurance)
                                 <option value="{{ $insurance->id }}" {{ old('insurance_id', $patient->insurance_id ?? '') == $insurance->id ? 'selected' : '' }}>{{ $insurance->name }}</option>
@@ -208,8 +241,8 @@ $breadcrumbs = [
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Nivel SISBÉN (IV)</label>
-                        <select name="sisben_level" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <label for="sisben_level" class="block text-sm font-medium text-gray-700">Nivel SISBÉN (IV)</label>
+                        <select name="sisben_level" id="sisben_level" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                             <option value="">No aplica / No tiene</option>
                             
                             <optgroup label="Grupo A: Pobreza extrema">
@@ -244,18 +277,49 @@ $breadcrumbs = [
                 <h3 class="text-lg font-semibold mb-4 text-red-600">Contacto de Emergencia / Responsable</h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 bg-red-50 p-4 rounded-lg">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Nombre Completo</label>
-                        <input type="text" name="emergency_contact_name" value="{{ old('emergency_contact_name', $patient->emergency_contact_name ?? '') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <label for="emergency_contact_name" class="block text-sm font-medium text-gray-700">Nombre Completo</label>
+                        <input type="text" name="emergency_contact_name" id="emergency_contact_name" value="{{ old('emergency_contact_name', $patient->emergency_contact_name ?? '') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Teléfono</label>
-                        <input type="text" name="emergency_contact_phone" value="{{ old('emergency_contact_phone', $patient->emergency_contact_phone ?? '') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <label for="emergency_contact_phone" class="block text-sm font-medium text-gray-700">Teléfono</label>
+                        <div class="flex mt-1 rounded-xl shadow-sm border border-slate-200 bg-white focus-within:ring-2 focus-within:ring-blue-500 overflow-hidden">
+                            <!-- Selector de Indicativo de País (Comienza por Colombia y Suramérica) -->
+                            <select name="country_code_contact" id="country_code_contact" required 
+                                    class="bg-slate-50 text-slate-700 text-sm border-0 border-r border-slate-200 rounded-l-xl focus:ring-0 px-5 cursor-pointer">
+                                <option value="+57" {{ old('country_code') == '+57' ? 'selected' : '' }}>🇨🇴 +57</option>
+                                <option value="+54" {{ old('country_code') == '+54' ? 'selected' : '' }}>🇦🇷 +54</option>
+                                <option value="+591" {{ old('country_code') == '+591' ? 'selected' : '' }}>🇧🇴 +591</option>
+                                <option value="+55" {{ old('country_code') == '+55' ? 'selected' : '' }}>🇧🇷 +55</option>
+                                <option value="+56" {{ old('country_code') == '+56' ? 'selected' : '' }}>🇨🇱 +56</option>
+                                <option value="+593" {{ old('country_code') == '+593' ? 'selected' : '' }}>🇪🇨 +593</option>
+                                <option value="+595" {{ old('country_code') == '+595' ? 'selected' : '' }}>🇵🇾 +595</option>
+                                <option value="+51" {{ old('country_code') == '+51' ? 'selected' : '' }}>🇵🇪 +51</option>
+                                <option value="+598" {{ old('country_code') == '+598' ? 'selected' : '' }}>🇺🇾 +598</option>
+                                <option value="+58" {{ old('country_code') == '+58' ? 'selected' : '' }}>🇻🇪 +58</option>
+                                <option value="+592" {{ old('country_code') == '+592' ? 'selected' : '' }}>🇬🇾 +592</option>
+                                <option value="+597" {{ old('country_code') == '+597' ? 'selected' : '' }}>🇸🇷 +597</option>
+                            </select>
+
+                            <!-- Input del Teléfono Blindado sin bordes nativos -->
+                            <input 
+                                id="emergency_contact_phone" 
+                                class="block w-full border-0 focus:ring-0 p-2.5 text-sm text-slate-900 rounded-r-xl" 
+                                type="tel" 
+                                name="emergency_contact_phone" 
+                                value="{{ old('emergency_contact_phone', $patient->emergency_contact_phone ?? '') }}" 
+                                required 
+                                maxlength="10"
+                                pattern="[0-9]{10}"
+                                placeholder="3026433874" 
+                                autocomplete="emergency_contact_phone"
+                            />
+                        </div>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Parentesco</label>
-                        <select name="emergency_contact_relationship" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <label for="emergency_contact_relationship" class="block text-sm font-medium text-gray-700">Parentesco</label>
+                        <select name="emergency_contact_relationship" id="emergency_contact_relationship" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                             <option value="">Seleccione parentesco...</option>
                             @php
                                 $parentescos = [

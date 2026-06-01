@@ -1,5 +1,5 @@
 <x-guest-layout>    
-    <!-- Inyección exclusiva para el HEAD (SEO Estructurado Avanzado) -->
+    <!-- Inyección exclusiva para el HEAD (SEO Estructurado Avanzado Híbrido) -->
     <x-slot:seo>
         <meta name="title" content="{{ $seoTitle }}">
         <meta name="description" content="{{ $seoDescription }}">
@@ -7,7 +7,7 @@
         @php
             $isClinicProfile = $profileType === 'clinic';
             
-            // 1. Construimos el mapa relacional plano adaptado por rol comercial
+            // Construimos el mapa relacional plano adaptado por rol comercial en el SaaS
             $schemaData = [
                 "@context" => "https://schema.org",
                 "@type" => $isClinicProfile ? "MedicalBusiness" : "Physician",
@@ -19,7 +19,7 @@
                 "description" => $partner->bio ? str(strip_tags($partner->bio))->limit(160, '...')->toString() : 'Servicios profesionales de salud dedicados a mantener y recuperar el bienestar humano.'
             ];
 
-            // 2. Acoplamos las calificaciones de reputación corporativa
+            // Acoplamos las calificaciones de reputación corporativa de forma unificada
             if ($partner->reviews_count > 0) {
                 $schemaData["aggregateRating"] = [
                     "@type" => "AggregateRating",
@@ -32,15 +32,14 @@
         <script type="application/ld+json">
             {!! json_encode($schemaData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) !!}
         </script>        
-   </x-slot:seo> 
-    
-    <!-- Inicialización del ecosistema con las cuotas máximas de reserva -->
+   </x-slot:seo>
+    <!-- Inicialización del ecosistema con las cuotas máximas de reserva y control Multi-tenant -->
     <div class="mt-5 bg-gray-100 min-h-screen py-12" x-data="bookingSystem({{ $partner->id }}, '{{ $profileType }}', {{ $partner->settings->max_advance_days ?? 30 }})">    
         
         <!-- Overlay de Carga Atómico Global (Pantalla de Espera) -->
         <div id="loading-overlay" style="display:none;" class="fixed inset-0 bg-white/95 z-[9999] flex flex-col items-center justify-center backdrop-blur-sm">            
             <div class="flex flex-col items-center">
-                <svg class="animate-spin h-16 w-16 text-indigo-600 mb-4" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24">
+                <svg class="animate-spin h-16 w-16 text-indigo-600 mb-4" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
@@ -48,6 +47,7 @@
                 <p id="getHourText" class="text-sm text-slate-400 font-medium hidden">Buscando los mejores espacios horarios libres para ti</p>
             </div>
         </div>
+
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
@@ -57,21 +57,12 @@
                         
                         <!-- Contenedor Superior (Siempre Visible) -->
                         <div class="text-center relative">
-                            
-                            <!-- Botón de Alternancia (Solo visible en móviles/tablets) -->
-                            <button @click="open = !open" 
-                                    type="button"
-                                    class="absolute top-0 right-0 p-2 text-slate-400 hover:text-slate-600 lg:hidden focus:outline-none transition-transform duration-200"
-                                    :class="open ? 'rotate-180' : ''"
-                                    title="Alternar información del perfil">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                                </svg>
+                            <button @click="open = !open" type="button" class="absolute top-0 right-0 p-2 text-slate-400 hover:text-slate-600 lg:hidden focus:outline-none transition-transform duration-200" :class="open ? 'rotate-180' : ''" title="Alternar información del perfil">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
                             </button>
 
                             <img src="{{ $partner->user->profile_photo_url ?? asset('images/default-clinic.png') }}" class="w-32 h-32 rounded-full mx-auto border-4 border-indigo-50 shadow-sm object-cover">
                             
-                            {{-- Distintivo dinámico de Cabecera --}}
                             <div class="font-black text-xs text-indigo-600 uppercase tracking-widest mt-4">
                                 @if($profileType === 'clinic') Centro Médico @else {{ $partner->gender === 'female' ? 'Doctora' : 'Doctor' }} @endif
                             </div>
@@ -86,25 +77,21 @@
                                 @include('partials.stars', ['rating' => $partner->rating])
                             </div>
                         </div>
-                        <!-- Bloque Informativo (Colapsable en Móviles / Siempre Abierto en Desktop) -->
-                        <div x-show="open" 
-                            x-transition:enter="transition ease-out duration-200"
-                            x-transition:enter-start="opacity-0 -translate-y-2"
-                            x-transition:enter-end="opacity-100 translate-y-0"
-                            class="space-y-5 lg:!block">
 
+                        <!-- Bloque Informativo Colapsable (Móviles / Desktop Abierto) -->
+                        <div x-show="open" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 -translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-5 lg:!block">
                             <div class="p-4 text-xs text-slate-600 bg-indigo-50/60 rounded-2xl text-center border border-indigo-100/30 leading-relaxed font-medium">
                                 @if($profileType === 'clinic')
-                                    Agende una cita presencial o virtual en minutos con nuestro personal de salud calificado en la sede y horario que prefiera.
+                                    Agende una cita presencial o virtual en minutos con nuestro personal de salud calificado en la sede que prefiera.
                                 @else
-                                    Agende una cita presencial o virtual en minutos con {{ $partner->gender === 'female' ? 'la doctora ' . $partner->user->name : 'el doctor ' . $partner->user->name }} en la sede y horario que mejor se adapte a sus necesidades.
+                                    Agende una cita presencial o virtual en minutos con {{ $partner->gender === 'female' ? 'la doctora ' . $partner->user->name : 'el doctor ' . $partner->user->name }} en la sede que mejor se adapte a sus necesidades.
                                 @endif
                             </div>
-
-                            <div class="bg-slate-50 rounded-2xl p-4 border border-slate-100/70 space-y-4">
-                                <div class="space-y-2 border-t border-slate-200/50 pt-3">
-                                    <h4 class="font-bold text-[11px] uppercase text-slate-500 tracking-wider">Perfil Médico</h4>
-                                    <div class="flex flex-wrap gap-1.5">                                    
+                            <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100/70 space-y-4">    
+                                <!-- Perfil Médico -->
+                                <div class="space-y-1">
+                                    <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Perfil Médico</h4>
+                                    <div class="text-sm text-slate-600 leading-relaxed">                                    
                                         @if($partner->bio)
                                             <span>Consulta general y preventiva.</span>
                                         @else
@@ -112,57 +99,59 @@
                                         @endif
                                     </div>
                                 </div>
-                                <div class="space-y-1">
-                                    <h4 class="font-bold text-[11px] uppercase text-slate-500 tracking-wider border-t border-slate-200/50 pt-3">Especialidades Habilitadas</h4>
-                                    <div class="text-sm text-slate-700 font-semibold mt-1">    
+
+                                <!-- Especialidades Habilitadas -->
+                                <div class="space-y-1 border-t border-slate-200/50 pt-3">
+                                    <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Especialidades Habilitadas</h4>
+                                    <div class="text-sm text-slate-800 font-semibold">    
                                         @php
-                                            $partnerSpecialties = $partner->specialties->isNotEmpty() 
-                                                ? $partner->specialties->pluck('name')->toArray() 
-                                                : [];
+                                            $partnerSpecialties = $partner->specialties->isNotEmpty() ? $partner->specialties->pluck('name')->toArray() : [];
                                         @endphp
                                         {{ !empty($partnerSpecialties) ? implode(', ', $partnerSpecialties) : 'Medicina General' }}                                
                                     </div>
                                 </div>
                                 
-                                <div class="grid grid-cols-2 gap-3 border-t border-slate-200/50 pt-3">
+                                <!-- Código Legal y Trayectoria -->
+                                <div class="grid grid-cols-2 gap-4 border-t border-slate-200/50 pt-3">
                                     @if($profileType === 'doctor')
                                         <div class="space-y-0.5">
-                                            <h4 class="font-bold text-[11px] uppercase text-slate-500 tracking-wider">Licencia Médica</h4>
-                                            <div class="text-xs font-bold text-slate-700">{{ $partner->medical_license ?? 'N/A' }}</div>
+                                            <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Licencia Médica</h4>
+                                            <div class="text-sm font-semibold text-slate-800">{{ $partner->medical_license ?? 'N/A' }}</div>
                                         </div>
                                     @else
                                         <div class="space-y-0.5">
-                                            <h4 class="font-bold text-[11px] uppercase text-slate-500 tracking-wider">Código REPS</h4>
-                                            <div class="text-xs font-bold text-slate-700">{{ $partner->reps_code ?? 'N/A' }}</div>
+                                            <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Código REPS</h4>
+                                            <div class="text-sm font-semibold text-slate-800">{{ $partner->reps_code ?? 'N/A' }}</div>
                                         </div>
                                     @endif
+                                    
                                     <div class="space-y-0.5">
-                                        <h4 class="font-bold text-[11px] uppercase text-slate-500 tracking-wider">Trayectoria</h4>
-                                        <div class="text-xs font-bold text-slate-700">{{ $partner->experience_years ? $partner->experience_years . ' años' : 'N/A' }}</div>
+                                        <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Trayectoria</h4>
+                                        <div class="text-sm font-semibold text-slate-800">{{ $partner->experience_years ? $partner->experience_years . ' años' : 'N/A' }}</div>
                                     </div>
                                 </div>
 
+                                <!-- Idiomas de Atención (Exclusivo Doctores) -->
                                 @if($profileType === 'doctor')
                                     <div class="space-y-1 border-t border-slate-200/50 pt-3">
-                                        <h4 class="font-bold text-[11px] uppercase text-slate-500 tracking-wider">Idiomas de atención</h4>
-                                        <div class="text-xs font-semibold text-slate-700">    
+                                        <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Idiomas de atención</h4>
+                                        <div class="text-sm font-medium text-slate-700">    
                                             @php
                                                 $langNames = ['es' => 'Español', 'en' => 'Inglés', 'pt' => 'Portugués', 'fr' => 'Francés', 'de' => 'Alemán'];
-                                                $partnerLanguages = is_array($partner->languages) 
-                                                    ? array_map(fn($code) => $langNames[$code] ?? $langNames[$code] ?? strtoupper($code), $partner->languages) 
-                                                    : [];
-                                        @endphp
+                                                $partnerLanguages = is_array($partner->languages) ? array_map(fn($code) => $langNames[$code] ?? strtoupper($code), $partner->languages) : [];
+                                            @endphp
                                             {{ !empty($partnerLanguages) ? implode(', ', $partnerLanguages) : 'Español' }}                                
                                         </div>
                                     </div>
                                 @endif
 
+                                <!-- Experiencias y Tratamientos -->
                                 <div class="space-y-2 border-t border-slate-200/50 pt-3">
-                                    <h4 class="font-bold text-[11px] uppercase text-slate-500 tracking-wider">Tratamientos Comunes</h4>
-                                    <div class="flex flex-wrap gap-1.5 pt-1">
+                                    <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Tratamientos Comunes</h4>
+                                    <div class="flex flex-wrap gap-1.5 pt-0.5">
                                         @if($profileType === 'doctor' && isset($partner->expertises))
                                             @forelse($partner->expertises as $expertise)
-                                                <span class="text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-xl border border-slate-200/40 font-medium" title="Síntomas: {{ $expertise->symptoms_keywords }}">
+                                                <span class="text-xs bg-white text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200/70 font-medium shadow-2xs transition-colors hover:border-slate-300" title="Síntomas: {{ $expertise->symptoms_keywords }}">
                                                     🔍 {{ $expertise->disease_name }}
                                                 </span>
                                             @empty
@@ -173,80 +162,67 @@
                                         @endif
                                     </div>
                                 </div>
-
                             </div>
                         </div>
 
                     </div>
                 </div>
-    
                 <!-- COLUMNA DERECHA: MOTOR DE RESERVAS (Sedes, Servicios y Slots) -->
                 <div class="lg:col-span-2 space-y-6">
                     
-                    <!-- 1. SELECTOR INTELIGENTE DE SEDES (Privadas + Clínicas) -->
+                    <!-- 1. SELECTOR INTELIGENTE DE SEDES (Amarrado y Bloqueado si viene de Clínica) -->
                     <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-4">
                         <div class="border-b border-slate-100 pb-3">
                             <h2 class="text-lg font-black text-slate-800 tracking-tight">1. Selecciona el Consultorio o Sede</h2>
-                            <p class="text-xs text-slate-400">Elige la ubicación física institucional o la modalidad virtual.</p>
+                            @if(isset($fromClinicId) && $fromClinicId)
+                                <p class="text-xs text-indigo-600 font-bold flex items-center gap-1 mt-0.5">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39 1.593 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"/></svg>
+                                    Ubicación corporativa fijada por la clínica seleccionada.
+                                </p>
+                            @else
+                                <p class="text-xs text-slate-400">Elige la ubicación física institucional o la modalidad virtual.</p>
+                            @endif
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             @php
-                                if ($profileType === 'clinic') {
-                                    // Si es una clínica, consultamos estrictamente las sedes de esa institución
-                                    $allAddresses = \App\Models\Address::where('status', true)
-                                        ->where('clinic_id', $partner->id)
-                                        ->get();
-                                } else {
-                                    // Si es un doctor, consultamos sus sedes privadas y las sedes de sus clínicas aliadas
-                                    $clinicIds = $partner->clinics->pluck('id')->toArray();
-                                    $allAddresses = \App\Models\Address::where('status', true)
-                                        ->where(function($query) use ($partner, $clinicIds) {
-                                            $query->where('doctor_id', $partner->id)
-                                                ->orWhereIn('clinic_id', $clinicIds);
-                                        })
-                                        ->get();
-                                }
+                                // 🔒 SOLUCIÓN: Si la sede viene pre-seleccionada desde la clínica, la congelamos en una colección,
+                                // de lo contrario, iteramos de forma directa la relación cargada en el modelo maestro $partner.
+                                $activeAddresses = isset($preSelectedAddress) && $preSelectedAddress 
+                                    ? collect([$preSelectedAddress]) 
+                                    : $partner->addresses;
                             @endphp
 
-                            @foreach($allAddresses as $address)
+                            @foreach($activeAddresses as $address) {{-- 🔒 REEMPLAZADO $addresses POR $activeAddresses --}}
                                 <label class="cursor-pointer block select-none group">
                                     <input type="radio" name="address_id" value="{{ $address->id }}" 
                                         x-on:change="selectAddress({{ $address->id }}, '{{ $address->type }}')" 
+                                        {{ (isset($preSelectedAddress) && $preSelectedAddress && $preSelectedAddress->id === $address->id) ? 'checked' : '' }}
                                         class="sr-only peer">
                                     
                                     <div class="p-4 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 peer-checked:bg-indigo-50/70 peer-checked:border-indigo-600 peer-checked:ring-2 peer-checked:ring-indigo-600/20 transition-all shadow-sm flex flex-col justify-between h-full">
                                         <div class="space-y-0.5">
-                                            <span class="font-extrabold text-slate-800 text-sm block group-hover:text-indigo-600 transition-colors">
-                                                {{ $address->name }}
-                                            </span>
-                                            <span class="text-xs text-slate-500 block leading-tight">
-                                                {{ $address->address }}{{ $address->type === 'virtual' ? '' : ', ' . ($address->city->name ?? '') }}
-                                            </span>
+                                            <span class="font-extrabold text-slate-800 text-sm block group-hover:text-indigo-600 transition-colors">{{ $address->name }}</span>
+                                            <span class="text-xs text-slate-500 block leading-tight">{{ $address->address }}{{ $address->type === 'virtual' ? '' : ', ' . ($address->city->name ?? '') }}</span>
                                         </div>
 
                                         <div class="mt-3 border-t border-slate-100 pt-2 flex items-center justify-between">
                                             @if($address->clinic_id)
-                                                <span class="text-[9px] font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100/30">
-                                                    🏢 {{ $address->clinic->name }}
-                                                </span>
+                                                <span class="text-[9px] font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100/30">🏢 {{ $address->clinic->name ?? 'Clínica Aliada' }}</span>
                                             @else
-                                                <span class="text-[9px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100/30">
-                                                    👨‍⚕️ Consulta Privada
-                                                </span>
+                                                <span class="text-[9px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100/30">👨‍⚕️ Consulta Privada</span>
                                             @endif
-                                            <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                                                {{ $address->type === 'virtual' ? 'Online' : 'Presencial' }}
-                                            </span>
+                                            <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400">{{ $address->type === 'virtual' ? 'Online' : 'Presencial' }}</span>
                                         </div>
                                     </div>
                                 </label>
                             @endforeach
                         </div>
+
                     </div>
 
                     <!-- 2. SELECTOR DE SERVICIOS (Filtrado por Sede vía Alpine.js) -->
-                    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-4" x-show="selectedAddress !== null" x-transition>
+                    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-4" x-show="selectedAddress !== null" x-init="@if(isset($preSelectedAddress) && $preSelectedAddress) $nextTick(() => { selectAddress({{ $preSelectedAddress->id }}, '{{ $preSelectedAddress->type }}') }); @endif" x-transition>
                         <div class="border-b border-slate-100 pb-3">
                             <h2 class="text-lg font-black text-slate-800 tracking-tight">2. Elige el Servicio Médico</h2>
                             <p class="text-xs text-slate-400">Los valores y tiempos varían según la sede seleccionada.</p>
@@ -255,27 +231,21 @@
                         <div class="space-y-2" x-show="availableServices.length > 0">
                             <template x-for="service in availableServices" :key="service.id">
                                 <label class="cursor-pointer block select-none">
-                                    <input type="radio" name="service_id" :value="service.id" 
-                                        x-on:change="selectService(service.id, service.duration)" 
-                                        class="sr-only peer">
+                                    <input type="radio" name="service_id" :value="service.id" x-on:change="selectService(service.id, service.duration)" class="sr-only peer">
                                     <div class="p-4 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 peer-checked:bg-indigo-50/50 peer-checked:border-indigo-600 transition-all flex items-center justify-between gap-4 shadow-sm">
                                         <div class="flex flex-col">
                                             <span class="font-bold text-slate-800 text-sm" x-text="service.name"></span>
                                             <span class="text-xs text-slate-400 mt-0.5" x-text="'⏱ Duración: ' + service.duration + ' min'"></span>
                                         </div>
-                                        <span class="text-base font-black text-green-600" 
-                                            x-text="'$' + new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(service.price)">
-                                        </span>
+                                        <span class="text-base font-black text-green-600" x-text="'$' + new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(service.price)"></span>
                                     </div>
                                 </label>
                             </template>
                         </div>
-
+                        <!-- Estado Vacío Condicional del Catálogo de Servicios -->
                         <div class="p-6 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl text-center flex flex-col items-center justify-center py-8" x-show="availableServices.length === 0" x-transition>
                             <div class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-3 border border-slate-200/50 shadow-inner">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                                </svg>
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
                             </div>
                             <h4 class="text-slate-800 font-extrabold text-sm uppercase tracking-wider">Catálogo No Disponible</h4>
                             <p class="text-slate-500 text-xs mt-1 max-w-sm mx-auto leading-relaxed">
@@ -283,6 +253,7 @@
                             </p>
                         </div>
                     </div>
+
                     <!-- 3. CALENDARIO Y SLOTS DE ATENCIÓN (Alpine.js) -->
                     <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-4" x-show="selectedService !== null" x-transition>
                         <div class="border-b border-slate-100 pb-3">
@@ -292,9 +263,7 @@
 
                         <!-- Selector de Fecha Nativo con Bloqueo de Pasado -->
                         <div>
-                            <input type="date" x-model="selectedDate" x-on:change="fetchAvailableSlots()"
-                                   min="{{ now()->toDateString() }}" 
-                                   class="w-full bg-slate-50 border-slate-200 rounded-2xl p-4 text-base font-bold focus:ring-2 focus:ring-indigo-500 shadow-inner text-slate-700">
+                            <input type="date" x-model="selectedDate" x-on:change="fetchAvailableSlots()" min="{{ \Carbon\Carbon::now()->toDateString() }}" class="w-full bg-slate-50 border-slate-200 rounded-2xl p-4 text-base font-bold focus:ring-2 focus:ring-indigo-500 shadow-inner text-slate-700">
                         </div>
 
                         <!-- Grilla Dinámica de Bloques Horarios (Slots Libres) -->
@@ -306,41 +275,39 @@
 
                             <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
                                 <template x-for="slot in availableSlots" :key="slot.time">
-                                    <button type="button" 
-                                            x-on:click="confirmBooking(slot.time)"
-                                            class="p-3 text-center bg-white border border-slate-200 rounded-xl font-bold text-xs text-slate-700 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm">
+                                    <button type="button" x-on:click="confirmBooking(slot.time)" class="p-3 text-center bg-white border border-slate-200 rounded-xl font-bold text-xs text-slate-700 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm">
                                         <span x-text="slot.time"></span>
                                     </button>
                                 </template>
                             </div>
 
                             <!-- Estado Vacío del Calendario -->
-                            <div class="p-6 bg-slate-50 border border-dashed rounded-2xl text-center text-xs font-bold text-slate-400" 
-                                 x-show="availableSlots.length === 0 && !loadingSlots && selectedDate">
+                            <div class="p-6 bg-slate-50 border border-dashed rounded-2xl text-center text-xs font-bold text-slate-400" x-show="availableSlots.length === 0 && !loadingSlots && selectedDate">
                                 No hay turnos de atención disponibles o configurados para la fecha seleccionada. Por favor, elige otro día.
                             </div>
                         </div>
                     </div>
 
-                </div>
-            </div>
-        </div>
-    </div>
-
+                </div> <!-- Cierre .lg:col-span-2 -->
+            </div> <!-- Cierre .grid -->
+        </div> <!-- Cierre .max-w-7xl -->
     <!-- ======================================================== -->
     <!-- ARQUITECTURA REACTIVA CON ALPINE.JS (MÁQUINA DE ESTADOS) -->
     <!-- ======================================================== -->
-        <script>
+    <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('bookingSystem', (partnerId, profileType, maxAdvanceDays) => ({
                 selectedAddress: null,
                 addressType: null,
                 selectedService: null,
                 serviceDuration: null,
-                selectedDate: '{{ now()->toDateString() }}',
+                selectedDate: '{{ \Carbon\Carbon::now()->toDateString() }}',
                 availableServices: [],
                 availableSlots: [],
                 loadingSlots: false,
+
+                // Capturar el ID global de la clínica aliada si proviene de derivación corporativa
+                fromClinicId: '{{ $fromClinicId ?? "" }}',
 
                 selectAddress(id, type) {
                     this.selectedAddress = id;
@@ -355,12 +322,13 @@
                     this.serviceDuration = duration;
                     this.fetchAvailableSlots();
                 },
+
                 async fetchServices() {
                     try {
                         const response = await fetch(`/api/addresses/${this.selectedAddress}/services`);
                         this.availableServices = await response.json();
                     } catch (error) {
-                        console.error("Error cargando sedes:", error);
+                        console.error("Error cargando servicios:", error);
                     }
                 },
 
@@ -380,6 +348,7 @@
                         this.loadingSlots = false;
                     }
                 },
+
                 async confirmBooking(time) {
                     document.getElementById('loading-overlay').style.display = 'flex';
                     try {
@@ -390,7 +359,9 @@
                                 service_id: this.selectedService,
                                 address_id: this.selectedAddress,
                                 date: this.selectedDate,
-                                hour: time
+                                hour: time,
+                                // Sincronizamos el ID de la clínica en el payload para no perder la Co-propiedad
+                                clinic_id: this.fromClinicId ? this.fromClinicId : null
                             })
                         });
                         const res = await response.json();
@@ -408,4 +379,6 @@
             }));
         });
     </script>
+
+    </div> <!-- Cierre del div del fondo .bg-gray-100 -->
 </x-guest-layout>

@@ -7,7 +7,7 @@ use App\Models\Plan;
 use App\Models\DoctorSetting;
 
 class DoctorObserver
-{
+{    
     /**
      * Handle the Doctor "created" event.
      * Se ejecuta después de que el doctor es creado.

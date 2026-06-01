@@ -52,7 +52,7 @@ $breadcrumbs = [
 
                 <!-- Teléfono -->
                 <div>
-                    <label class="block text-sm font-medium">Teléfono</label>
+                    <label class="block text-sm font-medium">Teléfono --</label>
                     <input type="text" name="phone" value="{{ $patient->phone ?? old('phone') }}" class="w-full border-gray-300 rounded-md shadow-sm">
                 </div>
 

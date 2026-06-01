@@ -71,4 +71,29 @@ class PatientHistoryAttachmentController extends Controller
         // Retorna el archivo con los headers correctos para ser renderizado nativamente (inline)
         return Storage::disk('private')->response($attachment->file_path);
     }
+
+    /**
+     * Elimina físicamente el archivo del storage privado y el registro de la base de datos.
+     * Valida de forma estricta que solo el paciente propietario pueda borrarlo.
+     */
+    public function destroy(PatientHistoryAttachment $attachment)
+    {
+        // Validamos con la tabla users usando el patient_id del paciente
+        $isOwner = auth()->id() === $attachment->patient_id;
+        $hasAuthorizedRole = auth()->user()->hasAnyRole(['patient']);
+
+        if (!$isOwner && !$hasAuthorizedRole) {
+            abort(403, 'No tienes autorización para eliminar este documento médico.');
+        }
+
+        // 1. Borrar el archivo físico del almacenamiento privado si existe
+        if (Storage::disk('private')->exists($attachment->file_path)) {
+            Storage::disk('private')->delete($attachment->file_path);
+        }
+
+        // 2. Eliminar el registro en la base de datos
+        $attachment->delete();
+
+        return redirect()->back()->with('success', 'El reporte médico ha sido eliminado correctamente de tu historial.');
+    }
 }

@@ -22,7 +22,7 @@
         .benefits-list { margin: 0; padding-left: 20px; font-size: 14px; color: #14532d; }
         .benefits-list li { margin-bottom: 6px; }
         .btn { display: inline-block; padding: 14px 28px; background-color: #28a745; color: #ffffff !important; border-radius: 6px; text-decoration: none; font-weight: bold; margin-top: 10px; text-align: center; }
-        .footer { margin-top: 30px; font-size: 13px; color: #777777; text-align: center; border-top: 1px solid #e1e5e8; padding-top: 20px; }
+        .footer { margin-top: 30px; font-size: 13px; color: #777777; text-align: center; border-top: 1px solid #e1e5e8; padding-bottom: 20px; }
         .footer a { color: #28a745; text-decoration: none; }
     </style>
 </head>
@@ -47,7 +47,7 @@
                         <span class="step-number">1.</span> Ingresa a la plataforma usando tu cuenta con el botón de abajo.
                     </div>
                     <div class="step-item">
-                        <span class="step-number">2.</span> Explora el directorio de especialistas filtrando por ciudad, precio o especialidad médica.
+                        <span class="step-number">2.</span> Explora el directorio de especialistas filtrando por especialidad médica, ciudad o ingresa los sintomas directamente.
                     </div>
                     <div class="step-item">
                         <span class="step-number">3.</span> Selecciona el día y la hora de tu preferencia en la agenda en tiempo real del doctor.
@@ -58,7 +58,7 @@
                 </div>
 
                 <div style="text-align: center; margin-bottom: 25px;">
-                    <a href="{{ url('/') }}" class="btn">Buscar Médicos Especialistas</a>
+                    <a href="https://opendoctor.online" target="_blank" class="btn">Buscar Médicos Especialistas</a>
                 </div>
 
                 <!-- BENEFICIOS DE LA PLATAFORMA -->
@@ -79,11 +79,9 @@
 
             <!-- PIE DE PÁGINA REQUERIDO -->
             <div class="footer">
-                Conoce más sobre los planes de cobertura y beneficios de nuestra red en: <br>
-                <a href="https://opendoctor.online" target="_blank">https://opendoctor.online</a>
-                <br><br>
+                <br>
                 Atentamente,<br>
-                <strong>Equipo de Atención al Paciente</strong> — opendoctor.online
+                <strong>Equipo de Atención al Paciente</strong> — opendoctor.online<br><br>
             </div>
 
         </div>

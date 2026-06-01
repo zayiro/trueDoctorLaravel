@@ -199,9 +199,8 @@ $hasStatusFilter = filled(request('status'));
 
                                         @if($canCancelVisually)
                                             <form action="{{ route('patient.appointments.cancel', $appointment->id) }}" method="POST" 
-                                                onsubmit="return confirm('¿Estás seguro de que deseas cancelar esta consulta médica?');" class="w-full">
+                                                onsubmit="return confirm('¿Estás seguro de que deseas cancelar esta consulta médica?');" class="w-full mt-3">
                                                 @csrf
-                                                @method('PUT')
                                                 <button type="submit" 
                                                         class="w-full px-4 py-2 border border-slate-200 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-500 rounded-xl text-xs font-bold transition-colors">
                                                     Cancelar Cita
@@ -239,8 +238,10 @@ $hasStatusFilter = filled(request('status'));
                 
                 <ul class="space-y-4">
                     @forelse($pastAppointments as $appointment)
-                        @php
+                        @php                        
                         switch ($appointment->status) {
+                            case 'confirmed': $statusText = 'Confirmada'; break;
+                            case 'pending': $statusText = 'Pendiente'; break;
                             case 'cancelled': $statusText = 'Cancelada'; break;
                             case 'completed': $statusText = 'Completada'; break;
                             default: $statusText = ucfirst($appointment->status); break;

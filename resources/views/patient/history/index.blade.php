@@ -152,8 +152,7 @@ $breadcrumbs = [
                     @foreach($patient->attachments as $attachment)
                         <div class="group relative flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all shadow-sm">
                 
-                <!-- Contenedor Clickable para Previsualizar -->
-                <!-- Extraemos la lógica pesada de Blade fuera del string de Alpine usando variables de datos nativas (data-*) -->
+                <!-- Contenedor Clickable para Previsualizar -->                
                 <div class="cursor-pointer flex flex-col items-center text-center flex-1 w-full"
                     data-url="{{ route('patient.attachments.view', $attachment) }}"
                     data-type="{{ $attachment->file_type }}"
@@ -178,6 +177,21 @@ $breadcrumbs = [
                         </p>
                     </div>
                 </div>
+
+                <!-- Formulario Seguro de Eliminación con Confirmación Alpine.js -->
+                <form action="{{ route('patient.attachments.destroy', $attachment) }}" 
+                    method="POST" 
+                    @submit.prevent="if (confirm('¿Estás seguro de que deseas eliminar este reporte médico? Esta acción no se puede deshacer.')) $el.submit()">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" 
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 transition-all dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                            title="Eliminar reporte">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                </form>
 
             </div>
 

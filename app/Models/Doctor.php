@@ -18,6 +18,7 @@ class Doctor extends Model
      * Los atributos que son asignables masivamente.
      */
     protected $fillable = [
+        'slug',
         'user_id', 
         'medical_license',
         'phone',
@@ -94,8 +95,8 @@ class Doctor extends Model
         return 'slug';
     }
 
-    /**
-     * Disparadores automáticos del ciclo de vida del modelo.
+        /**
+     * Disparadores automáticos del ciclo de vida del modelo (Model Booting).
      */
     protected static function booted()
     {
@@ -110,12 +111,15 @@ class Doctor extends Model
             
             do {
                 $code = Str::slug($name) . '-' . strtoupper(Str::random(4));
-            } while (self::where('slug', $code)->exists()); // Evita duplicados
+            } while (self::where('slug', $code)->exists()); // Evita duplicados en el ecosistema
+
+            // 🔒 SOLUCIÓN DE RAÍZ: Asignar el código generado a la propiedad física del modelo
+            $doctor->slug = $code; 
         });
 
         static::updated(function ($doctor) {
             if ($doctor->wasChanged('phone')) {
-                // 🔥 CORREGIDO: Aseguramos que solo altere el teléfono de SU sede virtual particular
+                // 🔥 Aseguramos que solo altere el teléfono de SU sede virtual particular
                 $doctor->addresses()
                     ->where('type', 'virtual')
                     ->whereNull('clinic_id')

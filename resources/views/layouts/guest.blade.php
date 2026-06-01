@@ -42,8 +42,65 @@
 
         @livewireScripts
 
-        @wireUiScripts
+        @wireUiScripts       
 
         <script src="https://cdn.jsdelivr.net/npm/flowbite@4.0.1/dist/flowbite.min.js"></script>
+
+            <!-- ======================================================== -->
+            <!-- CAPTURA DE GEOLOCALIZACIÓN -->
+            <!-- ======================================================== -->
+            <script>
+                document.addEventListener('DOMContentLoaded', () => {
+                    // 1. Validar si el usuario ya otorgó o rechazó el permiso en sesiones anteriores
+                    const locationDecision = localStorage.getItem('opendoctor_location_consent');
+                    
+                    // Si no hay decisión previa y el dispositivo soporta geolocalización, solicitamos coordenadas
+                    if (!locationDecision && navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                            async (position) => {
+                                // Guardar consentimiento afirmativo en el navegador del cliente
+                                localStorage.setItem('opendoctor_location_consent', 'allowed');
+                                
+                                const latitude = position.coords.latitude;
+                                const longitude = position.coords.longitude;
+                                let detectedCityName = 'Unknown';
+
+                                try {
+                                    // 2. Consulta inversa rápida a OpenStreetMap para extraer el nombre de la ciudad
+                                    const reverseResponse = await fetch(`https://openstreetmap.org{latitude}&lon=${longitude}&zoom=10&addressdetails=1`);
+                                    if (reverseResponse.ok) {
+                                        const data = await reverseResponse.json();
+                                        detectedCityName = data.address.city || data.address.town || data.address.municipality || 'Unknown';
+                                    }
+
+                                    // 3. 🔐 PERSISTENCIA EN EL BACKEND: Despachar la data hacia la sesión de Laravel
+                                    await fetch("/api/session/location", {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "application/json",
+                                            // Capturar el token CSRF global de la página
+                                            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}'
+                                        },
+                                        body: JSON.stringify({
+                                            latitude: latitude,
+                                            longitude: longitude,
+                                            city: detectedCityName
+                                        })
+                                    });
+
+                                } catch (error) {
+                                    console.error("Error silencioso procesando la geolocalización en el servidor:", error);
+                                }
+                            },
+                            (error) => {
+                                // El usuario rechazó el permiso nativo o el dispositivo falló; no lo volvemos a molestar
+                                console.warn("Acceso a la geolocalización denegado por el usuario o dispositivo.");
+                                localStorage.setItem('opendoctor_location_consent', 'denied');
+                            },
+                            { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
+                        );
+                    }
+                });
+            </script>
     </body>
 </html>
