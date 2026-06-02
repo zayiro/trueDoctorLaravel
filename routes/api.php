@@ -19,4 +19,6 @@ Route::post('/appointments', [AppointmentController::class, 'store'])->name('api
 Route::put('/appointments/{id}/cancel', [AppointmentController::class, 'cancel'])->name('api.appointments.cancel');
 
 // Ruta oficial para recibir las notificaciones de la API de Zoom
-Route::post('/zoom-notification', [ZoomWebhookController::class, 'handleNotification'])->name('zoom.webhook');
+//Route::post('/webhooks/zoom', [ZoomWebhookController::class, 'handle'])->name('zoom.webhook');
+Route::any('/webhooks/zoom', [ZoomWebhookController::class, 'handle']);
+Route::get('/appointments/{id}/status', [AppointmentController::class, 'getStatus']);

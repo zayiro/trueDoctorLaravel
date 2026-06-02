@@ -25,7 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'role.redirect' => \App\Http\Middleware\RedirectByUserRole::class,
         ]);
         $middleware->validateCsrfTokens(except: [
-            'api/zoom-notification', // Excluir la URL exacta del CSRF
+            'api/webhooks/zoom',
+            'webhooks/zoom',
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\SeoOptimizationMiddleware::class,

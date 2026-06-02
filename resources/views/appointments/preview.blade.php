@@ -73,7 +73,7 @@
                             <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Ubicación y Sede</h3>
                             @if($appointment->service->type === 'virtual')
                                 <p class="text-base font-black text-slate-800">Consulta Virtual / Telemedicina</p>
-                                <p class="text-purple-700 font-semibold text-sm bg-purple-50 px-2 py-0.5 rounded-md inline-block mt-1 border border-purple-100/50">El canal digital se despachará en tu perfil y correo electrónico.</p>
+                                <p class="text-purple-700 font-semibold text-sm bg-purple-50 px-2 py-0.5 rounded-md inline-block mt-1 border border-purple-100/50">¡Todo listo! El enlace para tu videoconsulta se enviara a tu correo. También puedes ingresar directamente desde tu perfil en la sección Mis Citas.</p>
                             @else
                                 <p class="text-base font-black text-slate-800">{{ $appointment->address->name }}</p>
                                 <p class="text-sm text-slate-500 font-medium">

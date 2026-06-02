@@ -2,56 +2,55 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Controller; 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use App\Models\Appointment;
+use Illuminate\Support\Facades\Log;
 
 class ZoomWebhookController extends Controller
 {
-    /**
-     * Procesa las notificaciones y webhooks enviados por Zoom
-     */
-    public function handleNotification(Request $request)
+    public function handle(Request $request)
     {
-        $payload = $request->all();
-        $event = $request->input('event');
+        // 🟢 BLINDAJE: Si entran por navegador (GET), retornamos un mensaje amigable en vez de un error
+        if ($request->isMethod('get')) {
+            return response()->json([
+                'status' => 'online',
+                'message' => 'El endpoint de telemedicina de OpenDoctor está activo. Solo se permiten peticiones POST de Zoom.'
+            ], 200);
+        }
+        
+        // 🟢 1. VALIDACIÓN CRC (Esto procesa el POST de validación de Zoom)
+        if ($request->input('event') === 'endpoint.url_validation') {
+            $plainToken = $request->input('payload.plainToken');
+            
+            // ⚠️ COPIA AQUÍ TU SECRET TOKEN REAL DE LA PESTAÑA FEATURE DE ZOOM:
+            $secretToken = env('ZOOM_WEBHOOK_SECRET_TOKEN', 'sN36U7zuSVaigcJL0FmUBw');
+            //$secretToken = env('ZOOM_WEBHOOK_SECRET_TOKEN');
 
-        Log::info("Webhook de Zoom recibido. Evento: {$event}", $payload);
+            // Generamos la encriptación SHA256 exigida por Zoom
+            $encryptedToken = hash_hmac('sha256', $plainToken, $secretToken);
 
-        // 👇 REQUISITO OBLIGATORIO DE ZOOM: Validación del Endpoint al activar el Webhook
-        if ($event === 'endpoint.url_validation') {
-            $plainToken = $payload['data']['plainToken'] ?? '';
-            $secretToken = env('ZOOM_SECRET_TOKEN', 'McBdMTGJToCf0EFgQ5JQxQ'); // El token que tenías en tus comentarios
-
-            // Encriptamos el token usando HMAC SHA256 como exige Zoom
-            $hash = hash_hmac('sha256', $plainToken, $secretToken);
-
+            // Retornamos la estructura JSON cruda exacta que Zoom espera para validar
             return response()->json([
                 'plainToken' => $plainToken,
-                'encryptedToken' => $hash
+                'encryptedToken' => $encryptedToken
             ], 200);
         }
 
-        // Procesar otros eventos de negocio (Ejemplo: Reunión eliminada desde la App de Zoom)
-        switch ($event) {
-            case 'meeting.deleted':
-                $meetingId = $payload['data']['object']['id'] ?? null;
-                if ($meetingId) {
-                    // Si el doctor borra la cita desde su Zoom personal, la cancelamos en nuestro SaaS
-                    Appointment::where('zoom_meeting_id', $meetingId)->update([
-                        'status' => 'cancelled'
-                    ]);
-                    Log::info("Cita cancelada localmente debido a eliminación en Zoom de la reunión: {$meetingId}");
-                }
-                break;
+        // 🔵 2. LOGICA NORMAL PARA PROCESAR EL CIERRE DE REUNIONES
+        if ($request->input('event') === 'meeting.ended') {
+            $payload = $request->input('payload.object');
+            $meetingId = $payload['id'] ?? null;
 
-            case 'meeting.participant_joined':
-                // Aquí puedes meter la lógica si deseas contar participantes (Seguridad Doctor-Paciente)
-                break;
+            if ($meetingId) {
+                $appointment = Appointment::where('zoom_meeting_id', $meetingId)->first();
+                if ($appointment && $appointment->status !== 'completed') {
+                    $appointment->update(['status' => 'completed']);
+                    Log::info("OpenDoctor Webhook: Cita Ref: {$appointment->reference} completada.");
+                }
+            }
         }
 
-        // Siempre responder con un estado 200 para confirmar la recepción a Zoom
         return response()->json(['status' => 'success'], 200);
     }
 }

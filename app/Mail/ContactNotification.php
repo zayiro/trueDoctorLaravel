@@ -10,9 +10,15 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ContactNotification extends Mailable
+class ContactNotification extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
+
+    // Número máximo de veces que se intentará enviar el correo si falla
+    public $tries = 3;
+
+    // Segundos de espera entre cada intento (Ej: espera 60 segundos antes de reintentar)
+    public $backoff = 60;
 
     // Al ser pública, estará disponible en la vista automáticamente
     public $contactMessage;
@@ -50,5 +56,13 @@ class ContactNotification extends Mailable
     public function attachments(): array
     {
         return [];
+    }
+
+    /**
+     * El trabajo falló definitivamente después de todos los intentos.
+     */
+    public function failed(Throwable $exception): void
+    {
+        Log::critical("El correo de contacto #{$this->contactMessage->id} falló definitivamente: " . $exception->getMessage());
     }
 }

@@ -10,6 +10,8 @@ use Spatie\Permission\Models\Role;
 use App\Models\Doctor;
 use App\Models\Clinic;
 use App\Services\AppointmentService;
+use App\Models\ZoomCreationFailure;
+use Illuminate\Support\Facades\Crypt;
 use App\Services\ZoomService;
 use App\Models\User;
 use App\Events\AppointmentCancelled;
@@ -24,6 +26,9 @@ use App\Mail\AppointmentConfirmed;
 use Carbon\Carbon;
 use App\Notifications\MailLimitExceededNotification;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Http\JsonResponse;
+use Throwable;
 
 class AppointmentController extends Controller
 {
@@ -435,8 +440,12 @@ class AppointmentController extends Controller
             if ($acceptsPayments) {
                 $requiresApproval = false; 
             }
-
+            
+            //esta regla es del plan
             $status = $requiresApproval ? 'pending' : 'confirmed';
+
+            //se coloca pending hasta que el usuario no confirme la cita en el paso de review
+            $status = 'pending';
                         
             // 💾 GUARDADO FÍSICO DE LA CITA EN TU TABLA APPOINTMENTS
             $appointment = Appointment::create([
@@ -454,13 +463,6 @@ class AppointmentController extends Controller
                 'channel'    => 'web',
                 'notes'      => trim($request->notes),
             ]);
-
-            // 🔒 CORRECCIÓN DE COLUMNA: Mapeamos con tu columna real 'type === virtual' de la migración
-            if ($address->type === 'virtual' || (isset($serviceSpecific->type) && $serviceSpecific->type === 'virtual')) {
-                $appointment->update([
-                    'meeting_link' => url('/meet/' . Str::random(10))
-                ]);
-            }
             
             // Limpieza absoluta de los mapas temporales de sesión
             session()->forget(['booking_data', 'current_doctor_id']);
@@ -486,13 +488,15 @@ class AppointmentController extends Controller
 
     /**
      * Muestra la pantalla de confirmación exitosa de la cita médica validando la tenencia del recurso.
-     */
+     */    
     public function success(Appointment $appointment)
     {
         $activeUser = auth()->user();
 
-        // 🔒 BLINDAJE DE EMERGENCIA: Si el usuario actual coincide con el creador del registro del usuario
-        // de la cita, le permitimos el acceso directo saltando la caché de relaciones de Spatie/Eloquent.
+        // 1. Cargar todas las relaciones necesarias desde el inicio para evitar consultas N+1
+        $appointment->load(['doctor.user', 'clinic', 'service', 'address.city', 'patient']);
+
+        // 🔒 BLINDAJE DE SEGURIDAD SaaS
         if ($activeUser && $appointment->patient && $appointment->patient->user_id === $activeUser->id) {
             // Acceso concedido automáticamente por propiedad directa
         } else {
@@ -507,7 +511,6 @@ class AppointmentController extends Controller
             }
         }
 
-        // Filtros para médicos y clínicas permanecen igual...
         if ($activeUser->role === 'doctor' && $appointment->doctor_id !== $activeUser->doctor?->id) {
             abort(403, 'No tienes privilegios para auditar esta transacción.');
         }
@@ -515,27 +518,57 @@ class AppointmentController extends Controller
         if ($activeUser->role === 'clinic' && $appointment->clinic_id !== $activeUser->clinic?->id) {
             abort(403, 'Esta cita no corresponde al registro transaccional de tu institución.');
         }
-        
-        // Buscamos el ID que tenga 'email_sent' en false
-        $sendEmail = Appointment::where('id', $appointment->id)
-            ->where('email_sent', false)
-            ->first();
 
-        if ($sendEmail) {
+        // 2. GENERACIÓN AUTOMÁTICA DE ZOOM (Basada en tu validación de servicio)
+        if ($appointment->service->type === 'virtual' && !$appointment->hasZoom()) {
+            
+            // Fusionamos fecha y hora en el formato ISO requerido por Zoom
+            $onlyDate = substr($appointment->date, 0, 10); 
+            $startDateTime = Carbon::parse("{$onlyDate} {$appointment->start_time}")
+                ->format('Y-m-d\TH:i:s');
+                
+            $topic = "Teleconferencia Médica - Ref: " . $appointment->reference;
+
+            $zoomMeeting = $this->zoomService->createMeeting($topic, $startDateTime, $appointment->duration);
+
+            if ($zoomMeeting) {
+                // Actualizamos la instancia directamente para que la vista reciba los cambios
+                $appointment->update([
+                    'zoom_meeting_id'       => $zoomMeeting['meeting_id'],                    
+                    'zoom_start_url'        => Crypt::encryptString($zoomMeeting['url_partner']),   // Llave real de tu ZoomService
+                    'meeting_link'          => Crypt::encryptString($zoomMeeting['url_patient']), // Llave real de tu ZoomService    
+                    'meeting_link_password' => Crypt::encryptString($zoomMeeting['password']),                
+                ]);
+            } else {
+                Log::error('ZoomService Error: ' . $appointment->reference);                
+                // Usamos firstOrCreate para evitar duplicados si el usuario reintenta manualmente
+                ZoomCreationFailure::firstOrCreate(
+                    ['appointment_id' => $appointment->id],
+                    [
+                        'attempts' => 0,
+                        'status' => 'pending',
+                        'last_error' => '[' . now()->toDateTimeString() . '] Error inicial en ZoomService al crear el link.'
+                    ]
+                );
+            }
+        }
+
+        $appointment->update(['status' => 'confirmed']);
+
+        $appointment = $appointment->fresh(['doctor.user', 'clinic', 'service', 'address.city', 'patient']);
+
+        // 3. ENVÍO DE CORREO ELECTRÓNICO
+        if (!$appointment->email_sent) {
             try {
-                // 1. Envío el correo de confirmacion
+                // Al enviar $appointment, el correo ya incluirá los links generados arriba descifrados por tus Accessors
                 Mail::to($activeUser->email)->send(new AppointmentConfirmed($appointment));
-
-                // 2. Actualizo el estado
-                $sendEmail->update(['email_sent' => true]);
+                $appointment->update(['email_sent' => true]);
             } catch (Throwable $e) {
                 $admins = User::where('role', 'admin')->get();
                 Notification::send($admins, new MailLimitExceededNotification($e->getMessage(), $activeUser->email));
             }
-        }    
-
-        $appointment->load(['doctor.user', 'clinic', 'service', 'address.city']);
-
+        }            
+        
         return view('appointments.success', compact('appointment'));
     }
 
@@ -549,7 +582,7 @@ class AppointmentController extends Controller
 
         if ($appointmentId) {
             // Buscamos la cita médica con su relación de paciente
-            $appointment = \App\Models\Appointment::with('patient')->find($appointmentId);
+            $appointment = Appointment::with('patient')->find($appointmentId);
             
             if ($appointment) {
                 // 🛡️ BARRERA DE SEGURIDAD EXCLUSIVA DEL SAAS:
@@ -571,5 +604,115 @@ class AppointmentController extends Controller
 
         return redirect()->route('search')
             ->with('info', 'Proceso de reserva cancelado con éxito. El horario ha sido liberado.');
+    }
+
+    /**
+     * Renderiza la sala de telemedicina incrustada dentro de OpenDoctor
+     */
+    public function joinRoom(Appointment $appointment, ZoomService $zoomService)
+    {
+        // 1. Validar que la cita tenga un ID de reunión generado
+        if (!$appointment->zoom_meeting_id) {
+            return redirect()->route('dashboard')->with('error', 'Esta cita no tiene una videollamada activa.');
+        }
+
+        try {
+            // 2. Extraemos el ID y desencriptamos la contraseña de la base de datos
+            $meetingId = $appointment->zoom_meeting_id;
+
+            // CONTROL DE CONTINGENCIA: Intentamos desencriptar de forma segura
+            try {
+                $password = Crypt::decryptString($appointment->meeting_link_password);
+            } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
+                // Si el payload es inválido (texto plano viejo), usamos el valor de la BD directo
+                $password = $appointment->meeting_link_password; 
+            }
+            
+            // 3. Generamos la firma segura para el SDK (Rol: 0 para paciente/asistente)
+            $signature = $zoomService->generateSdkSignature($meetingId, 0);
+
+            // 4. Inyectamos las variables exactas que la vista "room" necesita recibir
+            return view('appointments.room', [
+                'appointment' => $appointment,
+                'meetingId'   => $meetingId,
+                'password'    => $password,
+                'signature'   => $signature,
+                'sdkKey'      => config('services.zoom.client_id'),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Error en joinRoom de Zoom SDK (Cita ID {$appointment->id}): " . $e->getMessage());
+            return redirect()->route('admin.dashboard')->with('error', 'No se pudieron recuperar las llaves de acceso del consultorio virtual.');
+        }
+    }
+
+    /**
+     * Termina de forma abrupta la reunión en vivo de Zoom cuando el contador llega a cero.
+     */
+    public function forceEndMeeting(Appointment $appointment)
+    {
+        // Validar que la cita tenga un ID de reunión activo
+        if (!$appointment->zoom_meeting_id) {
+            return response()->json(['status' => 'ignored', 'message' => 'La cita no posee una sala de Zoom activa.'], 400);
+        }
+
+        try {
+            // Ejecutamos tu método del servicio para expulsar a los usuarios y cerrar la sala
+            $success = $this->zoomService->endMeeting($appointment->zoom_meeting_id);
+
+            if ($success) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'La reunión de Zoom ha sido finalizada con éxito por expiración de tiempo.'
+                ], 200);
+            }
+
+            return response()->json(['status' => 'error', 'message' => 'Zoom no pudo procesar la orden de cierre.'], 500);
+
+        } catch (\Exception $e) {
+            Log::error("Error forzando cierre de Zoom para cita {$appointment->id}: " . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Ocurrió un fallo en el servidor.'], 500);
+        }
+    }
+
+    /**
+     * Devuelve el estado actual de la cita (Invocado cada 5 segundos por el Polling de Alpine)
+     */
+    public function getStatus(Appointment $appointment): JsonResponse
+    {
+        return response()->json([
+            'status' => $appointment->status, // pending, completed, etc.
+        ]);
+    }
+
+    /**
+     * Fuerza el cierre de la reunión en los servidores de Zoom cuando el tiempo expira
+     */
+    public function endZoomMeeting(Appointment $appointment, ZoomService $zoomService): JsonResponse
+    {
+        // 1. Validar que la cita tenga un ID de reunión de Zoom registrado
+        if (!$appointment->zoom_meeting_id) {
+            return response()->json(['message' => 'La cita no tiene una reunión activa.'], 422);
+        }
+
+        // 2. Llamamos al método oficial de tu ZoomService para expulsar a los usuarios y cerrar la sala
+        $closedInZoom = $zoomService->endMeeting($appointment->zoom_meeting_id);
+
+        if ($closedInZoom) {
+            // 3. Actualizamos el estado de la cita en nuestra base de datos como completada o terminada
+            $appointment->update([
+                'status' => 'completed'
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'La videollamada fue finalizada con éxito por expiración de tiempo.'
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'No se pudo cerrar la sesión en los servidores de Zoom.'
+        ], 500);
     }
 }

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Crypt;
 
 class Appointment extends Model
 {
@@ -61,6 +62,36 @@ class Appointment extends Model
     public function hasZoom(): bool
     {
         return !is_null($this->zoom_meeting_id);
+    }
+
+    /**
+     * Descifra de forma segura el enlace de inicio del doctor
+     */
+    public function getZoomStartUrlAttribute($value)
+    {
+        if (!$value) return null;
+
+        try {
+            return Crypt::decryptString($value);
+        } catch (DecryptException $e) {
+            // 💡 Si falla porque era texto plano viejo, retorna el valor original sin romper la app
+            return $value; 
+        }
+    }
+
+    /**
+     * Descifra de forma segura el enlace de acceso del paciente
+     */
+    public function getMeetingLinkAttribute($value)
+    {
+        if (!$value) return null;
+
+        try {
+            return Crypt::decryptString($value);
+        } catch (DecryptException $e) {
+            // 💡 Si falla porque era texto plano viejo, retorna el valor original sin romper la app
+            return $value; 
+        }
     }
 
     /**

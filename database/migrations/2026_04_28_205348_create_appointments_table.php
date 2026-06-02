@@ -28,8 +28,9 @@ return new class extends Migration
             // Links de Video-conferencia
             $table->text('meeting_link')->nullable()->comment('Enlace genérico o exclusivo para el Paciente');            
             $table->string('zoom_meeting_id')->nullable()->comment('ID numérico de la reunión en Zoom');
+            $table->text('meeting_link_password')->nullable()->comment('Contraseña cifrada de la sala de Zoom para el Meeting SDK');
             $table->text('zoom_start_url')->nullable()->comment('Enlace exclusivo para que el Doctor inicie como Anfitrión');
-
+             
             $table->enum('status', ['pending', 'confirmed', 'cancelled', 'completed'])->default('pending');
             $table->enum('channel', ['app', 'web', 'whatsapp'])->default('web');
             $table->text('notes')->nullable();

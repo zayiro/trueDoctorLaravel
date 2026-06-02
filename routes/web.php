@@ -36,7 +36,7 @@ use App\Http\Controllers\PatientHistoryAttachmentController;
 
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\UserManagementController;
-
+use Spatie\Honeypot\ProtectAgainstSpam; 
 
 // URL central del DashboardController analítico
 Route::middleware([
@@ -117,7 +117,6 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::post('/partner/schedules', [ScheduleController::class, 'store'])->name('partner.schedules.store');
     Route::delete('/partner/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('partner.schedules.destroy');
 
-    Route::get('/appointments', [PartnerAppointmentController::class, 'index'])->name('partner.appointments.index');
     Route::get('/partner/appointments', [PartnerAppointmentController::class, 'index'])->name('partner.appointments.index');
     Route::patch('/partner/appointments/{appointment}/complete', [PartnerAppointmentController::class, 'complete'])->name('partner.appointments.complete');
     Route::patch('/partner/appointments/{appointment}/cancel', [PartnerAppointmentController::class, 'cancel'])->name('partner.appointments.cancel');
@@ -242,6 +241,12 @@ Route::middleware(['auth'])->group(function () {
     
     // Ruta de actualización parcial de estado con variables en inglés
     Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])->name('appointments.updateStatus');
+
+    //ruta para el sdk de zoom
+    Route::get('/appointments/{appointment}/room', [AppointmentController::class, 'joinRoom'])->name('appointments.room');
+
+    // Ruta para forzar el cierre desde el reloj de la interfaz
+    Route::post('/api/appointments/{appointment}/end-zoom', [AppointmentController::class, 'forceEndMeeting']);
 });
 
 // ========================================================
@@ -251,7 +256,7 @@ Route::middleware(['auth'])->group(function () {
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
 Route::get('/contact', [ContactController::class, 'showContact'])->name('contact.show');
-Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
+Route::post('/contact', [ContactController::class, 'submit'])->middleware(ProtectAgainstSpam::class)->name('contact.submit');
 
 Route::get('/terms', [ContactController::class, 'showTerms'])->name('terms.show');
 Route::get('/privacy', [ContactController::class, 'showPrivacy'])->name('privacy.show');

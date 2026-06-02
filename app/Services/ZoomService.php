@@ -4,21 +4,23 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class ZoomService
 {
     protected $accountId;
     protected $clientId;
     protected $clientSecret;
-    protected $baseUrl = 'https://zoom.us';
+    protected $apiBaseUrl = 'https://api.zoom.us/v2';
+    protected $hostEmail;
 
     public function __construct()
     {
-        // Extrae los valores correctamente desde el archivo .env
-        // (Por seguridad, ya no escribas tus tokens directamente aquí)
-        $this->accountId = env('ZOOM_ACCOUNT_ID');
-        $this->clientId = env('ZOOM_CLIENT_ID');
-        $this->clientSecret = env('ZOOM_CLIENT_SECRET');
+        // Usamos config() si ya están mapeados, o un fallback directo en caso de caché en AWS
+        $this->accountId    = config('services.zoom.account_id');
+        $this->clientId     = config('services.zoom.client_id');
+        $this->clientSecret = config('services.zoom.client_secret');
+        $this->hostEmail    = config('services.zoom.host_email');
     }
 
     /**
@@ -26,8 +28,11 @@ class ZoomService
      */
     private function getAccessToken()
     {
-        // Endpoint oficial de Zoom para flujo Server-to-Server
-        $url = "https://zoom.us";
+        if (Cache::has('zoom_s2s_access_token')) {
+            return Cache::get('zoom_s2s_access_token');
+        }
+
+        $url = "https://zoom.us/oauth/token";
 
         $response = Http::asForm()
             ->withHeaders([
@@ -38,35 +43,41 @@ class ZoomService
             ]);
 
         if ($response->failed()) {
-            Log::error('Error de autenticación con la API de Zoom: ' . $response->body());
+            Log::error('ZoomService Auth Error: Falló la obtención del token.', [
+                'status' => $response->status(),
+                'body'   => $response->body()
+            ]);
             return null;
         }
 
-        return $response->json()['access_token'] ?? null;
+        $data = $response->json();
+        $token = $data['access_token'] ?? null;
+
+        if ($token) {
+            Cache::put('zoom_s2s_access_token', $token, now()->addMinutes(55));
+        }
+
+        return $token;
     }
 
     /**
      * Envía la solicitud a Zoom para crear una nueva videollamada única
-     * 
-     * @param string $topic Nombre de la cita (ej: Consulta con Dr. House)
-     * @param string $startDateTime Fecha y hora en formato ISO 8601 (YYYY-MM-DDTHH:MM:SS)
-     * @param int $durationMinutes Duración del servicio en minutos
-     * @return array|null Retorna un arreglo con las URLs de doctor y paciente, o null si falla
+     * Configurada con contraseña obligatoria para compatibilidad con el SDK.
      */
     public function createMeeting($topic, $startDateTime, $durationMinutes)
     {
         $token = $this->getAccessToken();
 
         if (!$token) {
+            Log::error('ZoomService Error: No se pudo proceder sin un token válido.', []);
             return null;
         }
 
-        // Endpoint correcto para crear reuniones al usuario dueño de la App
-        $url = "{$this->baseUrl}/users/me/meetings";
+        $url = "{$this->apiBaseUrl}/users/{$this->hostEmail}/meetings";
 
         $response = Http::withToken($token)->post($url, [
             'topic'      => $topic,
-            'type'       => 2, // 2 = Reunión agendada
+            'type'       => 2, 
             'start_time' => $startDateTime,
             'duration'   => $durationMinutes,
             'timezone'   => config('app.timezone', 'America/Bogota'),
@@ -76,30 +87,72 @@ class ZoomService
                 'join_before_host'   => false, 
                 'jbh_custom_minutes' => 0, 
                 'mute_upon_entry'    => false,
-                'waiting_room'       => true, // Seguridad 1 a 1: El doctor admite manualmente al paciente
+                'waiting_room'       => true, 
+                'meeting_authentication' => false // Evita que pida login de cuentas Zoom personales
             ]
         ]);
 
-        if ($response->failed()) {
-            Log::error('Fallo al crear la reunión en la API de Zoom: ' . $response->body());
+        if ($response->status() !== 201) {
+            Log::error('ZoomService Meeting Error: La API no devolvió el código 201.', [
+                'status' => $response->status(),
+                'body'   => $response->body()
+            ]);
             return null;
         }
 
         $data = $response->json();
 
-        // Retornamos ambos enlaces esenciales para el flujo de telemedicina
+        // Verificación estricta incluyendo la llave 'password' que exige el SDK
+        if (!is_array($data) || !isset($data['id']) || !isset($data['start_url']) || !isset($data['join_url'])) {
+            Log::error('ZoomService Payload Error: El JSON no contiene las llaves requeridas.', [
+                'payload' => is_array($data) ? $data : 'Formato corrupto'
+            ]);
+            return null;
+        }
+
         return [
-            'meeting_id'  => $data['id'] ?? null,
-            'url_doctor'  => $data['start_url'] ?? null, // Enlace de inicio (Anfitrión)
-            'url_paciente'=> $data['join_url'] ?? null,  // Enlace de invitado
+            'meeting_id'   => $data['id'],
+            'password'     => $data['password'] ?? '', // Almacenamos la clave autogenerada de la sala
+            'url_partner'   => $data['start_url'], 
+            'url_patient' => $data['join_url'],  
         ];
     }
 
     /**
-     * Elimina una reunión existente en la API de Zoom
+     * Genera la firma segura (JWT) requerida por el SDK de Zoom en el Frontend
      * 
-     * @param string|int $meetingId ID de la reunión de Zoom
-     * @return bool Retorna true si se eliminó con éxito o false si falló
+     * @param string|int $meetingNumber ID de la reunión de Zoom
+     * @param int $role 0 para Paciente (Asistente), 1 para Médico (Anfitrión)
+     * @return string
+     */
+    public function generateSdkSignature($meetingNumber, $role = 0)
+    {
+        $iat = time() - 30;
+        $exp = $iat + 7200; // Válida por 2 horas de consulta
+
+        $header = json_encode(['alg' => 'HS256', 'typ' => 'JWT']);
+        
+        $payload = json_encode([
+            'sdkKey'   => $this->clientId,
+            'mn'       => $meetingNumber,
+            'role'     => $role,
+            'iat'      => $iat,
+            'exp'      => $exp,
+            'tokenExp' => $exp
+        ]);
+
+        // Algoritmo manual Base64Url compatible con JWT estándar
+        $base64UrlHeader = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
+        $base64UrlPayload = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($payload));
+
+        $signature = hash_hmac('sha256', $base64UrlHeader . "." . $base64UrlPayload, $this->clientSecret, true);
+        $base64UrlSignature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
+
+        return $base64UrlHeader . "." . $base64UrlPayload . "." . $base64UrlSignature;
+    }
+
+    /**
+     * Elimina una reunión existente en la API de Zoom
      */
     public function deleteMeeting($meetingId)
     {
@@ -109,16 +162,38 @@ class ZoomService
             return false;
         }
 
-        // Endpoint oficial de Zoom para eliminar reuniones
-        $url = "{$this->baseUrl}/meetings/{$meetingId}";
+        $url = "{$this->apiBaseUrl}/meetings/{$meetingId}";
 
         $response = Http::withToken($token)->delete($url);
 
         if ($response->failed()) {
-            Log::error("Fallo al eliminar la reunión {$meetingId} en la API de Zoom: " . $response->body());
+            Log::error('ZoomService Delete Error: No se pudo eliminar la reunión.', [
+                'meeting_id' => $meetingId,
+                'status'     => $response->status(),
+                'body'       => $response->body()
+            ]);
             return false;
         }
 
         return true;
+    }
+
+    /**
+     * Fuerza el cierre de una reunión en vivo en Zoom.
+     * @param string|int $meetingId
+     */
+    public function endMeeting($meetingId)
+    {
+        $token = $this->getAccessToken();
+        if (!$token || !$meetingId) return false;
+
+        // Endpoint oficial para modificar el estado de una reunión en vivo
+        $url = "{$this->apiBaseUrl}/meetings/{$meetingId}/status";
+
+        $response = Http::withToken($token)->put($url, [
+            'action' => 'end' // Fuerza la expulsión de todos y cierra la sala
+        ]);
+
+        return $response->successful();
     }
 }

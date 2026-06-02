@@ -37,6 +37,12 @@
                                 </tr>
                                 <tr>
                                     <td style="padding: 14px 0; border-bottom: 1px dashed #e2e8f0;">
+                                        <span style="display: block; font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700;">Referencia</span>
+                                        <span style="font-size: 15px; color: #334155; font-weight: 500;">{{ $appointment->reference }}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 14px 0; border-bottom: 1px dashed #e2e8f0;">
                                         <span style="display: block; font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700;">Servicio</span>
                                         <span style="font-size: 15px; color: #334155; font-weight: 500;">{{ $appointment->service->name }}</span>
                                     </td>
@@ -62,8 +68,13 @@
                                         <span style="display: block; font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 4px;">Modalidad de atención</span>
                                         <div style="font-size: 14px; color: #334155;">
                                             @if($appointment->service->type === 'virtual')
-                                                <span style="display: inline-block; background-color: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 6px; margin-bottom: 8px;">Telemedicina (Virtual)</span>
-                                                <div style="margin-top: 6px;"><a href="{{ $appointment->meeting_link }}" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 8px;">Ingresar a la videoconsulta</a></div>
+                                                <span style="display: inline-block; background-color: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 6px; margin-bottom: 8px;">Telemedicina (Virtual)</span>                                                
+                                                <div style="margin-top: 6px;">
+                                                    <a href="{{ route('appointments.room', ['appointment' => $appointment->id]) }}" 
+                                                    style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 8px;">
+                                                        Ingresar a la videoconsulta
+                                                    </a>
+                                                </div>
                                             @else
                                                 <span style="display: inline-block; background-color: #f1f5f9; color: #475569; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 6px; margin-bottom: 4px;">Consulta Presencial</span>
                                                 <p style="margin: 4px 0 0 0; font-size: 14px; color: #334155; font-weight: 500;">{{ $appointment->address->address }} <span style="color: #64748b; font-weight: 400;">({{ $appointment->address->name }})</span></p>

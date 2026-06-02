@@ -25,6 +25,7 @@
                 <form action="{{ route('contact.submit') }}" method="POST" x-data="{ loading: false, messageText: '{{ old('message', '') }}', maxLength: 150 }" x-on:submit="loading = true">
                     @csrf
 
+                    @honeypot
                     <!-- Nombre -->
                     <div class="mt-4">
                         <x-label for="name" value="Nombre" />
@@ -32,7 +33,8 @@
                                 required 
                                 minlength="3" 
                                 value="{{ old('name') }}"
-                                placeholder="Ej. Juan Pérez" />
+                                placeholder="Ej. Juan Pérez"
+                                autocomplete="name" />
                     </div>
 
                     <!-- Email -->
@@ -41,7 +43,8 @@
                         <x-input id="email" name="email" type="email" class="block mt-1 w-full" 
                                 required 
                                 value="{{ old('email') }}"
-                                placeholder="juan@ejemplo.com" />
+                                placeholder="juan@ejemplo.com"
+                                autocomplete="email" />
                     </div>
 
                     <!-- Mensaje -->

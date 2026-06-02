@@ -10,6 +10,7 @@ use App\Models\Appointment;
 use App\Models\Unavailability;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\JsonResponse;
 
 class AppointmentController extends Controller
 {
@@ -219,5 +220,15 @@ class AppointmentController extends Controller
             'message' => 'Appointment cancelled successfully.',
             'data'    => $appointment
         ], 200);
+    }
+
+    /**
+     * Devuelve el estado actual de la cita (Invocado cada 5 segundos por el Polling de Alpine)
+     */
+    public function getStatus(Appointment $appointment): JsonResponse
+    {
+        return response()->json([
+            'status' => $appointment->status, // pending, completed, etc.
+        ]);
     }
 }
