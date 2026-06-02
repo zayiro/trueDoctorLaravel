@@ -18,6 +18,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 use Carbon\Carbon; 
+use App\Events\AppointmentCancelled;
 
 class PatientController extends Controller
 {
@@ -359,6 +360,11 @@ class PatientController extends Controller
             'status' => 'cancelled',
             'notes'  => $appointment->notes . "\n\n[Auditoría: " . $reason . "]"
         ]);
+
+        // 8. 🔥 DISPARAR EL EVENTO ASÍNCRONO 🔥
+            // El core de Laravel retendrá el evento un instante y lo despachará a Redis/Database 
+            // tan pronto como la transacción de la base de datos haga el COMMIT exitoso.
+        event(new AppointmentCancelled($appointment));
 
         return redirect()->route('patient.appointments.index')
             ->with('success', 'La consulta médica ha sido cancelada exitosamente y el espacio horario ha sido devuelto a la disponibilidad pública.');

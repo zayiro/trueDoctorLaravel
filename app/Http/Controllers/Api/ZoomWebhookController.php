@@ -24,8 +24,7 @@ class ZoomWebhookController extends Controller
             $plainToken = $request->input('payload.plainToken');
             
             // ⚠️ COPIA AQUÍ TU SECRET TOKEN REAL DE LA PESTAÑA FEATURE DE ZOOM:
-            $secretToken = env('ZOOM_WEBHOOK_SECRET_TOKEN', 'sN36U7zuSVaigcJL0FmUBw');
-            //$secretToken = env('ZOOM_WEBHOOK_SECRET_TOKEN');
+            $secretToken = config('services.zoom.webhook_secret_token');
 
             // Generamos la encriptación SHA256 exigida por Zoom
             $encryptedToken = hash_hmac('sha256', $plainToken, $secretToken);

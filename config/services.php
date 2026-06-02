@@ -36,10 +36,11 @@ return [
     ],
 
     'zoom' => [
-        'account_id'    => env('ZOOM_ACCOUNT_ID'),
-        'client_id'     => env('ZOOM_CLIENT_ID'),
-        'client_secret' => env('ZOOM_CLIENT_SECRET'),
-        'host_email'    => env('ZOOM_HOST_EMAIL'),
+        'account_id'           => env('ZOOM_ACCOUNT_ID'),
+        'client_id'            => env('ZOOM_CLIENT_ID'),
+        'client_secret'        => env('ZOOM_CLIENT_SECRET'),
+        'host_email'           => env('ZOOM_HOST_EMAIL'),
+        'webhook_secret_token' => env('ZOOM_WEBHOOK_SECRET_TOKEN'),
     ],
 
 ];

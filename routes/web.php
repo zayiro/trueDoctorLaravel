@@ -295,7 +295,7 @@ Route::get('/api/{partner}/availability', [PublicProfileController::class, 'getA
 });
 
 // Endpoint unificado y ultra-seguro para el cálculo de slots en el calendario (Web y Reagendamiento)
-Route::get('/api/slots', [PartnerAppointmentController::class, 'getSlots'])->name('api.slots.index');
+Route::get('/slots', [PartnerAppointmentController::class, 'getSlots'])->name('slots.index');
 
 // Catálogo dinámico de servicios por sede
 Route::get('/api/addresses/{address}/services', [PartnerAppointmentController::class, 'getServices'])->name('api.addresses.services');

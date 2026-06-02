@@ -339,7 +339,7 @@
 
                     try {
                         const param = profileType === 'clinic' ? `clinic_id=${partnerId}` : `doctor_id=${partnerId}`;
-                        const url = `/api/slots?date=${this.selectedDate}&duration=${this.serviceDuration}&address_id=${this.selectedAddress}&${param}&is_virtual=${this.addressType === 'virtual' ? 'true' : 'false'}`;
+                        const url = `/slots?date=${this.selectedDate}&duration=${this.serviceDuration}&address_id=${this.selectedAddress}&${param}&is_virtual=${this.addressType === 'virtual' ? 'true' : 'false'}`;
                         const response = await fetch(url);
                         this.availableSlots = await response.json();
                     } catch (error) {

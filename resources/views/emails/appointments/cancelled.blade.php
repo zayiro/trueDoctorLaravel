@@ -4,6 +4,7 @@
 Le informamos que una cita médica agendada en su plataforma ha sido **cancelada por el paciente**. El espacio horario ha quedado libre en su agenda nuevamente.
 
 ## Detalles de la Cita Cancelada:
+*   **Referencia:** {{ $appointment->reference }}
 *   **Paciente:** {{ $appointment->patient->user->name }}
 *   **Servicio:** {{ $appointment->service->name }}
 *   **Fecha:** {{ \Carbon\Carbon::parse($appointment->date)->translatedFormat('l d \d\e F, Y') }}

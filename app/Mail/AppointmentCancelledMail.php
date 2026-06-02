@@ -24,7 +24,7 @@ class AppointmentCancelledMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Cita Cancelada por el Paciente - ' . $this->appointment->patient->user->name,
+            subject: 'Cita Cancelada - Ref: ' . $this->appointment->reference,
         );
     }
 
