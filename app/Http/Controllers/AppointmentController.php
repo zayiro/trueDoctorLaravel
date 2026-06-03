@@ -51,64 +51,76 @@ class AppointmentController extends Controller
     }
 
     /**
-     * Busca una reservación por su referencia filtrando según el rol del usuario.
+     * Busca una reservación por su referencia filtrando según el rol del usuario (Lectura Pura para AJAX).
+     * Responde de forma asíncrona al componente x-appointment-search-form.
      */
     public function searchByReference(Request $request)
     {
-        // 1. Validar la entrada
+        // 1. Validar la entrada de forma estricta
         $request->validate([
             'reference' => 'required|string|max:20',
         ]);
 
         $user = Auth::user();
-        $reference = strtoupper(trim($request->reference));
 
-        // 2. Consulta base con relaciones optimizadas
+        // Limpiamos espacios y forzamos mayúsculas (Ej: 26060121-YHK)
+        $reference = strtoupper(trim($request->query('reference')));
+
+        // 2. Consulta base con relaciones optimizadas para el reporte de la ficha médica
         $query = Appointment::where('reference', $reference)
-            ->with(['address.clinic', 'address.doctor', 'service', 'user']);
+            ->with(['address', 'service', 'patient.user', 'doctor.user', 'clinic']);
 
         // 3. Aplicar reglas de seguridad por Rol (Multi-tenancy & Multi-profile)
         switch ($user->role) {
             case 'clinic':
-                $query->whereHas('address', function ($q) use ($user) {
-                    $q->where('clinic_id', $user->clinic->id);
-                });
+                // La cita debe pertenecer estrictamente al Tenant de la clínica autenticada
+                $query->where('clinic_id', $user->clinic->id);
                 break;
 
             case 'doctor':
-                $query->whereHas('address', function ($q) use ($user) {
-                    $q->where('doctor_id', $user->doctor->id);
-                });
+                // La cita debe pertenecer estrictamente al médico independiente autenticado
+                $query->where('doctor_id', $user->doctor->id);
                 break;
 
             case 'patient':
-                $query->where('user_id', $user->id);
+                // El paciente solo puede auto-consultar su propio historial
+                $query->where('patient_id', $user->patient->id);
                 break;
 
             case 'admin':
-                // El administrador global no tiene filtros, puede ver todo.
+                // El administrador global del SaaS tiene pase libre para auditorías
                 break;
 
             default:
-                abort(403, 'Rol no autorizado.');
+                return response()->json(['error' => 'Rol de usuario no autorizado en la plataforma.'], 403);
         }
 
-        // 4. Ejecutar la consulta
+        // 4. Ejecutar la consulta en la base de datos
         $appointment = $query->first();
 
-        // 5. Validar existencia y pertenencia
+        // 5. Validar existencia y pertenencia (Retorno semántico HTTP 404 para interceptar en el catch de Alpine)
         if (!$appointment) {
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'No se encontró la reservación o no tiene permisos para verla.');
+            return response()->json([
+                'error' => "No se encontró ninguna cita médica con la referencia '{$reference}' o no cuentas con los permisos de co-propiedad requeridos."
+            ], 404);
         }
 
-        // 6. Redirección a vistas según el perfil
-        if (in_array($user->role, ['doctor', 'clinic', 'admin'])) {
-            return view('appointments.show-internal', compact('appointment'));
-        }
-
-        return view('admin.appointments.show', compact('appointment', 'user'));
+        // 6. CONTROL DE LECTURA PURA: Retornamos el payload JSON estructurado para pintar en el modal
+        return response()->json([
+            'reference'   => $appointment->reference,
+            'patient'     => $appointment->patient->user->name ?? 'Paciente no registrado',
+            'doctor'      => $appointment->doctor->user->name ?? 'Profesional no asignado',
+            'clinic'      => $appointment->clinic->name ?? null,
+            'service'     => $appointment->service->name ?? 'Consulta General',
+            'type'        => $appointment->service->type ?? 'physical', // virtual o physical
+            'date'        => Carbon::parse($appointment->date)->format('d/m/Y'),
+            'time'        => Carbon::parse($appointment->start_time)->format('g:i A'),
+            'duration'    => $appointment->duration,
+            'price'       => number_format($appointment->price, 2) . ' COP',
+            'status'      => $appointment->status,
+            'address'     => $appointment->address->name ?? 'Sede Virtual / Telemedicina',
+            'notes'       => $appointment->notes ?? 'El paciente no registró síntomas o notas adicionales en esta consulta.'
+        ], 200);
     }
 
     /**

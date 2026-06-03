@@ -23,7 +23,8 @@ class DoctorSettingController extends Controller
     }
 
     /**
-     * Procesar y guardar los cambios
+     * Procesar y guardar los cambios de la configuración.
+     * Blindado contra inyección maliciosa de características deshabilitadas.
      */
     public function update(Request $request)
     {
@@ -60,14 +61,11 @@ class DoctorSettingController extends Controller
             $data[$field] = $request->has($field);
         }
 
-        // 2. 👇 CANDADO DE SEGURIDAD: Regla de Exclusión Mutua para Pasarela de Pagos
-        // Si el médico exige pago en línea inmediato, forzamos a que NO requiera aprobación manual.
-        // Si el médico entra a su panel y marca el interruptor de "Activar Pagos Online" y también el de "Aprobación Manual", 
-        // al presionar guardar, el backend priorizará el cobro inmediato. La base de datos guardará requires_approval = 0, 
-        // lo que garantiza que las citas cobradas entren directamente confirmadas para el paciente.
-        if ($data['accepts_online_payments'] === true && $data['requires_approval'] === true) {
-            $data['requires_approval'] = false;
-        }
+        // 2. 👇 CANDADO DE SEGURIDAD ABSOLUTO (SOBREESCRITURA FORZADA)
+        // Sin importar lo que el cliente intente inyectar o modificar alterando el HTML,
+        // el backend neutraliza estas dos columnas obligándolas a guardarse siempre apagadas (0 / false).
+        $data['accepts_online_payments'] = false;
+        $data['requires_approval']        = false;
 
         // 3. Persistencia segura en la base de datos
         $doctor->settings()->update($data);
@@ -76,4 +74,5 @@ class DoctorSettingController extends Controller
         return redirect()->route('partner.settings.edit')
             ->with('success', 'Configuraciones de la consulta actualizadas correctamente.');
     }
+
 }

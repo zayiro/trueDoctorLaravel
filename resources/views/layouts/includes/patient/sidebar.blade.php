@@ -84,81 +84,85 @@ $userRole = match ($user->role) {
         'patient' => 'Paciente',
     };
 @endphp
+
 <aside id="top-bar-sidebar" class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform -translate-x-full border-r bg-slate-50 border-slate-200 sm:translate-x-0 dark:bg-slate-900 dark:border-slate-800" aria-label="Sidebar">
-    <div class="flex flex-col h-full px-4 py-5 overflow-y-auto overflow-x-auto bg-slate-50 dark:bg-slate-900">
-        <div class="min-w-full flex-1 flex flex-col">
-            <!-- Pie del Sidebar: Información de Cuenta paciente -->
-            @if($user)
-                <div class="pt-4 pb-4 mt-10 mb-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                    <div class="flex items-center space-x-3 truncate">
-                        <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm">
-                            {{ substr($user->name, 0, 2) }}
-                        </div>
-                        <div class="truncate">
-                            <p class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate max-w-[140px]">
-                                {{ $user->name }}
-                            </p>
-                            <p class="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
-                                {{ $userRole }}
-                            </p>
-                        </div>
+    <!-- SE REMOVIÓ 'overflow-y-auto' y 'overflow-x-auto' PARA CONGELAR LOS ENCABEZADOS -->
+    <div class="h-full px-4 pb-12 overflow-y-auto bg-slate-50 dark:bg-slate-900 block">
+        
+        <!-- Pie del Sidebar: Información de Cuenta paciente (Fijo arriba) -->
+        @if($user)
+            <div class="pt-4 pb-4 mb-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between" style="margin-top: 5rem;">
+                <div class="flex items-center space-x-3 truncate">
+                    <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm">
+                        {{ substr($user->name, 0, 2) }}
+                    </div>
+                    <div class="truncate">
+                        <p class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate max-w-[140px]">
+                            {{ $user->name }}
+                        </p>
+                        <p class="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
+                            {{ $userRole }}
+                        </p>
                     </div>
                 </div>
-            @endif
-            <!-- Identidad del SaaS -->
-            <div class="flex items-center ps-2 mb-6 whitespace-nowrap">
-                <span class="self-center text-xl font-bold tracking-tight text-slate-800 dark:text-white">
-                    open<span class="text-blue-600 dark:text-blue-400">doctor</span>
-                </span>
-                <span class="bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded ml-2 border border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-900">
-                    PORTAL
-                </span>
             </div>
-            <!-- Listado de Enlaces Dinámicos -->
-            <ul class="space-y-1.5 font-medium flex-1">
-                @foreach ($links as $link)
-                    <li>
-                        @isset($link['header'])
-                            <div class="px-2 pt-4 pb-1 text-[11px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
-                                {{ $link['header'] }}
+        @endif
+
+        <!-- Identidad del SaaS (Portal - Fijo arriba) -->
+        <div class="flex items-center ps-2 mb-6 whitespace-nowrap">
+            <span class="self-center text-xl font-bold tracking-tight text-slate-800 dark:text-white">
+                open<span class="text-blue-600 dark:text-blue-400">doctor</span>
+            </span>
+            <span class="bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded ml-2 border border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-900">
+                PORTAL
+            </span>
+        </div>
+
+        <!-- Listado de Enlaces Dinámicos: AQUÍ SE APLICA EL SCROLL INDEPENDIENTE -->
+        <!-- Ocupa todo el alto restante de forma nativa con flex-1, overflow-y-auto y espaciado pr-1 -->
+        <ul class="space-y-1.5 font-medium flex-1 overflow-y-auto pr-1 scrollbar-thin" style="height: 60dvh; overflow-y: auto;">
+            @foreach ($links as $link)
+                <li>
+                    @isset($link['header'])
+                        <div class="px-2 pt-4 pb-1 text-[11px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
+                            {{ $link['header'] }}
+                        </div>
+                    @else
+                        @isset($link['submenu'])
+                            <div x-data="{ open: {{ $link['active'] ? 'true' : 'false' }} }">
+                                <button @click="open = !open" type="button" class="flex items-center justify-between w-full p-2.5 text-sm font-semibold rounded-lg transition-all duration-150 group {{ $link['active'] ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 dark:bg-slate-800 dark:text-blue-400' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800' }}">
+                                    <div class="flex items-center">
+                                        <span class="{{ $link['active'] ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 group-hover:text-blue-600' }} transition-colors duration-150">
+                                            {!! $link['icon'] !!}
+                                        </span>
+                                        <span class="ms-3 text-left">{{ $link['name'] }}</span>
+                                    </div>
+                                    <svg :class="open ? 'rotate-180 text-blue-600' : ''" class="w-4 h-4 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </button>
+                                <ul x-show="open" x-collapse class="py-1.5 space-y-1 pl-6">
+                                    @foreach ($link['submenu'] as $item)
+                                        <li>
+                                            <a href="{{ $item['href'] }}" class="block p-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors duration-150">
+                                                {{ $item['name'] }}
+                                            </a>
+                                        </li>                            
+                                    @endforeach
+                                </ul>
                             </div>
                         @else
-                            @isset($link['submenu'])
-                                <div x-data="{ open: {{ $link['active'] ? 'true' : 'false' }} }">
-                                    <button @click="open = !open" type="button" class="flex items-center justify-between w-full p-2.5 text-sm font-semibold rounded-lg transition-all duration-150 group {{ $link['active'] ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 dark:bg-slate-800 dark:text-blue-400' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800' }}">
-                                        <div class="flex items-center">
-                                            <span class="{{ $link['active'] ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 group-hover:text-blue-600' }} transition-colors duration-150">
-                                                {!! $link['icon'] !!}
-                                            </span>
-                                            <span class="ms-3 text-left">{{ $link['name'] }}</span>
-                                        </div>
-                                        <svg :class="open ? 'rotate-180 text-blue-600' : ''" class="w-4 h-4 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                        </svg>
-                                    </button>
-                                    <ul x-show="open" x-collapse class="py-1.5 space-y-1 pl-6">
-                                        @foreach ($link['submenu'] as $item)
-                                            <li>
-                                                <a href="{{ $item['href'] }}" class="block p-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors duration-150">
-                                                    {{ $item['name'] }}
-                                                </a>
-                                            </li>                            
-                                        @endforeach
-                                    </ul>
-                                </div>
-                            @else
-                                <a href="{{ $link['href'] }}" class="flex items-center p-2.5 text-sm font-medium rounded-lg transition-all duration-150 group {{ $link['active'] ? 'bg-blue-50 text-blue-700 font-semibold border-l-4 border-blue-600 dark:bg-slate-800 dark:text-blue-400' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800' }}">
-                                    <span class="{{ $link['active'] ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 group-hover:text-blue-600' }} transition-colors duration-150">
-                                        {!! $link['icon'] !!}
-                                    </span>
-                                    <span class="ms-3">{{ $link['name'] }}</span>
-                                </a>
-                            @endisset
+                            <a href="{{ $link['href'] }}" class="flex items-center p-2.5 text-sm font-medium rounded-lg transition-all duration-150 group {{ $link['active'] ? 'bg-blue-50 text-blue-700 font-semibold border-l-4 border-blue-600 dark:bg-slate-800 dark:text-blue-400 dark:border-blue-500' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800' }}">
+                                <span class="{{ $link['active'] ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 group-hover:text-blue-600' }} transition-colors duration-150">
+                                    {!! $link['icon'] !!}
+                                </span>
+                                <span class="ms-3">{{ $link['name'] }}</span>
+                            </a>
                         @endisset
-                    </li>            
-                @endforeach
-            </ul>
-        </div>
+                    @endisset
+                </li>            
+            @endforeach
+        </ul>
         
     </div>
 </aside>

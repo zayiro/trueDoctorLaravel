@@ -196,4 +196,56 @@ class ZoomService
 
         return $response->successful();
     }
+
+    /**
+     * 👇 BLOQUE NUEVO 1: REAGENDAR O RECREAR LA REUNIÓN EXISTENTE
+     * Intenta actualizar la sala de Zoom actual. Si el ID ya no existe en Zoom (404),
+     * automáticamente genera una sala nueva para evitar atascar el flujo del paciente.
+     */
+    public function updateMeeting($meetingId, $topic, $startDateTime, $durationMinutes)
+    {
+        $token = $this->getAccessToken();
+
+        if (!$token || !$meetingId) {
+            Log::error('ZoomService Error: No se pudo actualizar sin un token válido.');
+            return null;
+        }
+
+        $url = "{$this->apiBaseUrl}/meetings/{$meetingId}";
+
+        // Intentar actualizar la reunión existente en la API de Zoom (PATCH)
+        $response = Http::withToken($token)->patch($url, [
+            'topic'      => $topic,
+            'start_time' => $startDateTime,
+            'duration'   => $durationMinutes,
+            'timezone'   => config('app.timezone', 'America/Bogota')
+        ]);
+
+        // Caso Exitoso 204 No Content: La sala fue reprogramada correctamente
+        if ($response->status() === 204) {
+            return [
+                'action'     => 'updated',
+                'meeting_id' => $meetingId // El ID original sigue siendo totalmente válido
+            ];
+        }
+
+        // Plan B: Si la reunión fue eliminada manualmente en Zoom o ya expiró por tiempo
+        if ($response->status() === 404) {
+            Log::warning("ZoomService Warning: La reunión ID {$meetingId} no existe. Creando una nueva.");
+            
+            $newMeeting = $this->createMeeting($topic, $startDateTime, $durationMinutes);
+            
+            if ($newMeeting) {
+                return array_merge(['action' => 'recreated'], $newMeeting);
+            }
+        }
+
+        // Si falla por otra razón (ej: 400 Bad Request, límites de cuenta)
+        Log::error('ZoomService Update Error: Falló la modificación de la reunión.', [
+            'status' => $response->status(),
+            'body'   => $response->body()
+        ]);
+        
+        return null;
+    }
 }

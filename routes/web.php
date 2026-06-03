@@ -143,7 +143,10 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     // Vista para seleccionar el nuevo horario
     Route::get('/partner/appointments/{appointment}/reschedule', [AppointmentController::class, 'rescheduleView'])->name('partner.appointments.reschedule');
     // Acción para procesar el cambio
-    Route::put('/partner/appointments/{appointment}/reschedule/process', [AppointmentController::class, 'rescheduleProcess'])->name('partner.appointments.reschedule.process');
+    Route::put('/partner/appointments/{appointment}/reschedule/process', [PartnerAppointmentController::class, 'rescheduleProcess'])->name('partner.appointments.reschedule.process');
+
+    // Ruta agregada para la actualización de estados (Cancelar, Completar, etc.)
+    Route::put('/appointments/{appointment}/status', [PartnerAppointmentController::class, 'updateStatus'])->name('partner.appointments.update-status');
 
     // Ruta para cancelar la cita (la que está causando el error)
     Route::delete('/partner/appointments/{appointment}', [AppointmentController::class, 'destroy'])->name('partner.appointments.destroy');
@@ -213,6 +216,9 @@ Route::middleware(['auth', 'role:patient'])->group(function () {
     Route::patch('/patient/medications/{medication}/toggle', [PatientController::class, 'toggleStatusMedication'])->name('patient.medications.toggle');
     Route::get('/patient/pdf/clinical-history/{patient}', [PatientController::class, 'downloadClinicalHistory'])->name('patient.pdf.clinical-history');
 
+    // Reagendamiento estricto controlado por el paciente (NUEVO CONTROLADOR)
+    Route::put('/appointments/{appointment}/reschedule', [PatientController::class, 'reschedule'])->name('patient.appointments.reschedule');
+
     // Ruta para que el paciente ejecute la cancelación desde la web
     Route::post('/patient/appointments/{id}/cancel', [PatientController::class, 'cancelWeb'])->name('patient.appointments.cancel');
 
@@ -235,9 +241,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/partner/verify-documents', [VerificationController::class, 'store'])->name('partner.verify.store');
 
     // Buscador de citas por referencia
-    Route::get('/appointments/search', [AppointmentController::class, 'searchByReference'])->name('appointments.search');
-
-    Route::get('/appointments/search', [AppointmentController::class, 'searchByReference'])->name('appointments.search');
+    Route::get('/appointments/search-reference', [AppointmentController::class, 'searchByReference'])->name('appointments.search');
     
     // Ruta de actualización parcial de estado con variables en inglés
     Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])->name('appointments.updateStatus');

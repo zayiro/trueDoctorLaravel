@@ -78,14 +78,14 @@ class SendCancellationEmail implements ShouldQueue
             // 2. ENVIAR AL DOCTOR
             if ($appointment->doctor?->user?->email) {
                 Mail::to($appointment->doctor->user->email)
-                    ->send(new AppointmentCancelledMail($appointment));
+                    ->send(new AppointmentCancelledMail($appointment, 'partner'));
             }
 
             // 3. ENVIAR AL PACIENTE
             // Accedemos a la relación 'patient', luego a su 'user' y extraemos el 'email'
             if ($appointment->patient?->user?->email) {
                 Mail::to($appointment->patient->user->email)
-                    ->send(new AppointmentCancelledMail($appointment));
+                    ->send(new AppointmentCancelledMail($appointment, 'patient'));
             }
 
         } catch (\Exception $e) {

@@ -11,11 +11,15 @@ use App\Models\Appointment;
 use App\Models\PatientSurgery;
 use App\Models\PatientHistory;
 use App\Models\PatientFamilyHistory;
+use App\Models\Schedule;
+use App\Models\Unavailability;
+use App\Models\DoctorSetting;
 use App\Models\PatientMedication;
 use App\Models\Insurance;
 use App\Models\Department;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 use Carbon\Carbon; 
 use App\Events\AppointmentCancelled;
@@ -630,5 +634,128 @@ class PatientController extends Controller
             
             return redirect()->back()->with('error', __('No se pudo cargar tu historial de cirugías.'));
         }
+    }
+
+    /**
+     * Procesa el reagendamiento estricto solicitado desde el dashboard del paciente.
+     */
+    public function reschedule(Request $request, Appointment $appointment)
+    {
+        // 1. Validar que la cita pertenezca al paciente autenticado
+        if ($appointment->patient_id !== auth()->user()->patient->id) {
+            abort(403, 'No autorizado.');
+        }
+
+        // 2. Cargar configuración dinámica según el Tenant (Clínica o Doctor Independiente)
+        $settings = $appointment->clinic_id 
+            ? ClinicSetting::where('clinic_id', $appointment->clinic_id)->first()
+            : DoctorSetting::where('doctor_id', $appointment->doctor_id)->first();
+
+        if (!$settings) {
+            return back()->with('error', 'La configuración de la agenda médica no está disponible.');
+        }
+
+        // 3. Regla de Negocio: Verificar si el tenant permite cambios autónomos
+        if (!$settings->allow_patient_rescheduling) {
+            return back()->with('error', 'Este profesional o centro médico no permite reprogramar citas en línea.');
+        }
+
+        // 4. Regla de Negocio: Validar anticipación mínima exigida (cancellation_notice_hours)
+        // Extraemos solo la fecha (YYYY-MM-DD) para evitar que arrastre los ceros de la hora de la base de datos
+        $cleanDate = Carbon::parse($appointment->date)->format('Y-m-d');
+        $cleanTime = Carbon::parse($appointment->start_time)->format('H:i:s');
+        
+        $appointmentDateTime = Carbon::parse($cleanDate . ' ' . $cleanTime, 'America/Bogota');
+        
+        if (now('America/Bogota')->diffInHours($appointmentDateTime, false) < $settings->cancellation_notice_hours) {
+            return back()->with('error', "Debes reprogramar con al menos {$settings->cancellation_notice_hours} horas de anticipación.");
+        }
+
+        // 5. Validar inputs requeridos del formulario modal
+        $validated = $request->validate([
+            'new_date' => 'required|date|after_or_equal:today',
+            'new_start_time' => 'required|date_format:H:i',
+        ]);
+
+        $newDate = $validated['new_date'];
+        $newStartTime = Carbon::parse($validated['new_start_time'])->format('H:i:s');
+
+        // 6. Regla de Negocio: Validar límite máximo de días hacia el futuro (max_advance_days)
+        $maxDateAllowed = Carbon::today('America/Bogota')->addDays($settings->max_advance_days);
+        if (Carbon::parse($newDate)->greaterThan($maxDateAllowed)) {
+            return back()->with('error', "Solo se permiten reprogramaciones hasta el " . $maxDateAllowed->format('d/m/Y'));
+        }
+
+        // 7. Calcular nueva hora de finalización usando tu columna nativa 'duration'
+        $newEndTime = Carbon::parse($newStartTime)->addMinutes($appointment->duration)->format('H:i:s');
+        
+        // Extender rango con el buffer médico para la validación de colisiones
+        $endTimeWithBuffer = Carbon::parse($newEndTime)->addMinutes($settings->buffer_time_minutes)->format('H:i:s');
+
+        // 8. Validación 1: Verificar el horario de atención semanal (`schedules`)
+        $dayOfWeekIso = Carbon::parse($newDate)->dayOfWeekIso; // 1 (Lunes) a 7 (Domingo)
+        $hasSchedule = Schedule::where('address_id', $appointment->address_id)
+            ->where('day', $dayOfWeekIso)
+            ->where('start_time', '<=', $newStartTime)
+            ->where('end_time', '>=', $newEndTime)
+            ->exists();
+
+        if (!$hasSchedule) {
+            return back()->with('error', 'El médico no atiende en esta sede en el día u horario seleccionado.');
+        }
+
+        // 9. Validación 2: Verificar inasistencias o bloqueos temporales (`unavailabilities`)
+        $isUnavailable = Unavailability::where('doctor_id', $appointment->doctor_id)
+            ->where(function ($query) use ($appointment) {
+                $query->whereNull('address_id')->orWhere('address_id', $appointment->address_id);
+            })
+            ->where('start_date', '<=', $newDate)
+            ->where('end_date', '>=', $newDate)
+            ->where(function ($query) use ($newStartTime, $newEndTime) {
+                $query->whereNull('start_time')
+                    ->orWhere(function ($q) use ($newStartTime, $newEndTime) {
+                        $q->where('start_time', '<', $newEndTime)->where('end_time', '>', $newStartTime);
+                    });
+            })
+            ->exists();
+
+        if ($isUnavailable) {
+            return back()->with('error', 'El médico no estará disponible en la fecha seleccionada por motivos de agenda.');
+        }
+
+        // 10. Validación 3: Prevenir Double-Booking usando tu índice compuesto optimizado
+        $isSlotOccupied = Appointment::where('doctor_id', $appointment->doctor_id)
+            ->where('date', $newDate)
+            ->where('id', '!=', $appointment->id)
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->where(function ($query) use ($newStartTime, $endTimeWithBuffer) {
+                $query->where(function ($q) use ($newStartTime, $endTimeWithBuffer) {
+                    $q->where('start_time', '<=', $newStartTime)->where('end_time', '>', $newStartTime);
+                })->orWhere(function ($q) use ($newStartTime, $endTimeWithBuffer) {
+                    $q->where('start_time', '<', $endTimeWithBuffer)->where('end_time', '>=', $endTimeWithBuffer);
+                });
+            })
+            ->exists();
+
+        if ($isSlotOccupied) {
+            return back()->with('error', 'El horario seleccionado o su tiempo de descanso ya se encuentra reservado.');
+        }
+
+        // 11. Ejecución de la transacción atómica
+        DB::transaction(function () use ($appointment, $newDate, $newStartTime, $newEndTime, $settings) {
+            $appointment->update([
+                'date' => $newDate,
+                'start_time' => $newStartTime,
+                'end_time' => $newEndTime,
+                'status' => $settings->requires_approval ? 'pending' : 'confirmed',
+                'email_sent' => false, // Resetea flag para obligar la re-notificación
+            ]);
+        });
+
+        $message = $settings->requires_approval 
+            ? 'Tu solicitud de cambio fue enviada y está sujeta a la aprobación de la clínica.' 
+            : 'Tu cita ha sido reprogramada exitosamente.';
+
+        return back()->with('success', $message);
     }
 }

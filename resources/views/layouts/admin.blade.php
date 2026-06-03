@@ -30,13 +30,13 @@
         @livewireStyles
     </head>
     <body class="font-sans antialiased" style="background-color: #FCFCFC;">       
-        @if(auth()->user()->role == 'doctor')
+        @if(auth()->user()->role === 'doctor')
             @include('layouts.includes.admin.navigation')
             @include('layouts.includes.admin.sidebar')
-        @elseif(auth()->user()->role == 'admin')
+        @elseif(auth()->user()->role === 'admin')
             @include('layouts.includes.administrator.navigation')
             @include('layouts.includes.administrator.sidebar')
-        @elseif(auth()->user()->role == 'clinic')
+        @elseif(auth()->user()->role === 'clinic')
             @include('layouts.includes.clinic.navigation')
             @include('layouts.includes.clinic.sidebar')
         @else

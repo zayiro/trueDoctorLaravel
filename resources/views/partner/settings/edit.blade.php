@@ -57,20 +57,31 @@ $breadcrumbs = [
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">💳 Pagos y Facturación</h2>
                 <div class="space-y-4">
-                    <div class="flex items-center justify-between">
+                    <div class="flex items-center justify-between opacity-60">
                         <div>
-                            <label class="font-medium text-gray-700 block">Activar Pagos Online</label>
-                            <span class="text-xs text-gray-500">Exige el pago de la consulta inmediatamente después de seleccionar el horario.</span>
+                            <div class="flex items-center gap-2">
+                                <label class="font-medium text-gray-400 block">Activar Pagos Online</label>
+                                <!-- Badge estético de Deshabilitado / Próximamente -->
+                                <span class="bg-gray-100 text-gray-500 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider border border-gray-200">
+                                    Inactivo
+                                </span>
+                            </div>
+                            <span class="text-xs text-gray-400 block mt-0.5">Exige el pago de la consulta inmediatamente después de seleccionar el horario.</span>
                         </div>
+                        
+                        <!-- Botón visualmente deshabilitado (removidos eventos de Alpine.js y cursor pointer) -->
                         <button type="button" 
-                            @click="acceptsPayments = !acceptsPayments; if(acceptsPayments) requiresApproval = false" 
-                            :class="acceptsPayments ? 'bg-blue-600' : 'bg-gray-200'" 
-                            class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out">
+                            disabled
+                            class="relative inline-flex h-6 w-11 shrink-0 cursor-not-allowed rounded-full bg-gray-200 transition-colors duration-200 ease-in-out">
                             
-                            <input type="hidden" name="accepts_online_payments" :value="acceptsPayments ? 1 : 0">
-                            <span :class="acceptsPayments ? 'translate-x-5' : 'translate-x-0'" class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out mt-0.5 ml-0.5"></span>
+                            <!-- Fijamos el valor estrictamente en 0 para que viaje al controlador de Laravel como desactivado -->
+                            <input type="hidden" name="accepts_online_payments" value="0">
+                            
+                            <!-- El switch se queda fijo a la izquierda (desactivado) -->
+                            <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out mt-0.5 ml-0.5 translate-x-0"></span>
                         </button>
                     </div>
+
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4" x-show="acceptsPayments" x-transition>
                         <div>
@@ -125,23 +136,32 @@ $breadcrumbs = [
                     </div>
                 </div>
 
-                <!-- Bloque de Aprobación Manual -->
-                <div class="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                <!-- Bloque de Aprobación Manual Deshabilitado de Forma Segura -->
+                <div class="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between opacity-60">
                     <div>
-                        <label class="font-medium text-gray-700 block">Requiere aprobación manual</label>
-                        <span class="text-xs text-gray-500">Las citas ingresarán en estado 'pendiente' hasta que las confirmes en tu panel.</span>
+                        <div class="flex items-center gap-2">
+                            <label class="font-medium text-gray-400 block">Requiere aprobación manual</label>
+                            <!-- Badge estético de Inactivo -->
+                            <span class="bg-gray-100 text-gray-500 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider border border-gray-200">
+                                Inactivo
+                            </span>
+                        </div>
+                        <span class="text-xs text-gray-400 block mt-0.5">Las citas ingresarán en estado 'pendiente' hasta que las confirmes en tu panel.</span>
                     </div>
                     
-                    <!-- Switch con exclusión mutua interactiva -->
+                    <!-- Switch inmóvil y bloqueado visualmente -->
                     <button type="button" 
-                        @click="requiresApproval = !requiresApproval; if(requiresApproval) acceptsPayments = false" 
-                        :class="requiresApproval ? 'bg-blue-600' : 'bg-gray-200'" 
-                        class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out">
+                        disabled
+                        class="relative inline-flex h-6 w-11 shrink-0 cursor-not-allowed rounded-full bg-gray-200 transition-colors duration-200 ease-in-out">
                         
-                        <input type="hidden" name="requires_approval" :value="requiresApproval ? 1 : 0">
-                        <span :class="requiresApproval ? 'translate-x-5' : 'translate-x-0'" class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out mt-0.5 ml-0.5"></span>
+                        <!-- Forzamos el envío de un 0 constante a las tablas de configuraciones en Laravel -->
+                        <input type="hidden" name="requires_approval" value="0">
+                        
+                        <!-- El pin del switch queda fijo a la izquierda (desactivado) -->
+                        <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out mt-0.5 ml-0.5 translate-x-0"></span>
                     </button>
                 </div>
+
             </div>
 
             <!-- SECCIÓN 3: Cancelaciones -->

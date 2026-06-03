@@ -1,143 +1,174 @@
-@php
-    // Esta vista es para la versión móvil de la tabla de citas, se muestra cada cita como una tarjeta individual adaptativa.
-    $ahora = now();
-    $appointmentStart = \Carbon\Carbon::parse($app->date . ' ' . $app->start_time);
+<div x-data="{ 
+        openReschedule: false, 
+        selectedDate: '', 
+        slots: [], 
+        loadingSlots: false,
+        fetchSlots() {
+            if (!this.selectedDate) return;
+            this.loadingSlots = true;
+            this.slots = [];
+            
+            // Consumimos tu endpoint unificado /slots inyectando los datos de la cita actual
+            fetch(`/slots?date=${this.selectedDate}&doctor_id={{ $app->doctor_id }}&address_id={{ $app->address_id }}`)
+                .then(res => res.json())
+                .then(data => {
+                    this.slots = Array.isArray(data) ? data : (data.slots || Object.values(data));
+                    this.loadingSlots = false;
+                })
+                .catch(err => {
+                    console.error('Error cargando agendas médicos móvil:', err);
+                    this.loadingSlots = false;
+                });
+        }
+     }" 
+     class="p-5 bg-white space-y-3 relative">
     
-    // Usamos copy() para no alterar el objeto $appointmentStart original por referencia
-    $canStart = $ahora->greaterThanOrEqualTo($appointmentStart->copy()->subMinutes(15));
-    $isVirtual = $app->service->type === 'virtual';
-    
-    // Definimos el enlace correcto para el DOCTOR (Prioriza Zoom Start URL si existe)
-    $doctorMeetingUrl = $app->zoom_start_url ?? $app->meeting_link;
-@endphp
-
-<div class="p-5 flex flex-col gap-4 border-b border-gray-100 last:border-0 active:bg-gray-50/50 transition-colors bg-white">
-    
-    <!-- Fila Superior: Hora y Estado -->
-    <div class="flex justify-between items-start">
-        <div class="flex flex-col">
-            <span class="text-xl font-black text-gray-900 leading-none">
+    <!-- Fila 1: Hora, Duración y Estado -->
+    <div class="flex items-center justify-between gap-4">
+        <div>
+            <span class="text-sm font-black text-slate-800">
                 {{ \Carbon\Carbon::parse($app->start_time)->format('g:i A') }}
             </span>
-            <span class="text-[11px] font-bold text-indigo-500 mt-1.5 uppercase tracking-wider">
-                {{ \Carbon\Carbon::parse($app->date)->translatedFormat('d M, Y') }} • {{ $app->duration }} MINUTOS
+            <span class="text-xs font-bold text-slate-400 ml-1">
+                ({{ $app->duration }} min)
             </span>
         </div>
         
-        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tight {{ $app->status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
-            {{ $app->status === 'confirmed' ? 'Confirmado' : ucfirst($app->status) }}
+        <!-- Badge de Estado -->
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-black border uppercase tracking-wider
+            @if($app->status === 'confirmed') bg-green-50 text-green-700 border-green-200
+            @elseif($app->status === 'pending') bg-amber-50 text-amber-700 border-amber-200
+            @elseif($app->status === 'completed') bg-gray-50 text-gray-700 border-gray-200
+            @else bg-red-50 text-red-700 border-red-200 @endif">
+            {{ $app->status === 'confirmed' ? 'Confirmada' : ($app->status === 'pending' ? 'Pendiente' : ($app->status === 'completed' ? 'Completada' : 'Cancelada')) }}
         </span>
     </div>
 
-    <!-- Información del Paciente -->
-    <div class="flex items-center gap-3 bg-slate-50/50 p-3 rounded-2xl border border-slate-100/50">
-        <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-black text-sm uppercase flex-shrink-0">
-            {{ substr($app->patient->user->name, 0, 2) }}
-        </div>
-        <div class="flex flex-col">
-            <h4 class="text-sm font-extrabold text-gray-800 leading-tight">
-                {{ $app->patient->user->name }}
-            </h4>
-            <span class="text-[11px] text-gray-400 font-medium mt-0.5 block">ID: {{ $app->patient->identification }}</span>
-            <a href="{{ route('partner.patients.show', $app->patient->id) }}" class="text-xs text-indigo-600 font-bold mt-1 flex items-center gap-0.5 hover:text-indigo-800">
-                Ver historial médico →
-            </a>
-        </div>
+    <!-- Fila 2: Información Médica y Paciente -->
+    <div class="space-y-1">
+        <div class="text-xs font-bold text-slate-400 font-mono">Ref: {{ $app->reference }}</div>
+        <h4 class="text-base font-black text-slate-900">{{ $app->patient->user->name ?? 'Paciente' }}</h4>
+        <p class="text-xs font-black text-indigo-600">{{ $app->service->name }}</p>
     </div>
 
-    <!-- 🔥 EXCLUSIVO CLÍNICAS: Identificación del especialista a cargo desde el celular -->
-    @if(auth()->user()->role === 'clinic')
-        <div class="flex items-center gap-2 bg-indigo-50/60 p-3 rounded-2xl border border-indigo-100/50">
-            <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-            </div>
-            <div class="flex flex-col">
-                <span class="text-[9px] text-indigo-500 font-black uppercase tracking-wider leading-none">Especialista asignado</span>
-                <span class="text-xs font-bold text-indigo-900 mt-0.5">Dr/a. {{ $app->doctor->user->name ?? 'Sin asignar' }}</span>
-            </div>
-        </div>
-    @endif
-
-    <!-- Detalles del Servicio -->
-    <div class="bg-gray-50 rounded-2xl p-3 flex items-center justify-between border border-gray-100/40">
-        <div class="flex flex-col">
-            <span class="text-[10px] text-gray-500 font-bold uppercase leading-none mb-1">Servicio</span>
-            <span class="text-xs font-semibold text-gray-700">{{ $app->service->name }}</span>
-        </div>
-        
-        @if($isVirtual)
-            <span class="bg-purple-100 text-purple-700 border border-purple-200 text-[10px] px-2 py-1 rounded-md font-black flex items-center gap-1 uppercase tracking-wide">
-                💻 Virtual @if($app->zoom_meeting_id) (ZOOM) @endif
-            </span>
+    <!-- Fila 3: Canal y Sede -->
+    <div class="flex flex-wrap items-center gap-2 pt-1">
+        @if($app->service && $app->service->type === 'virtual')
+            <span class="bg-purple-50 text-purple-700 text-[9px] font-black px-2 py-0.5 rounded-lg border border-purple-200 uppercase tracking-wider">💻 Telemedicina</span>
         @else
-            <span class="bg-blue-100 text-blue-700 border border-blue-200 text-[10px] px-2 py-1 rounded-md font-black uppercase tracking-wide">🏥 Presencial</span>
+            <span class="bg-emerald-50 text-emerald-700 text-[9px] font-black px-2 py-0.5 rounded-lg border border-emerald-200 uppercase tracking-wider">📍 Presencial</span>
         @endif
     </div>
-    <!-- Acciones Rápidas y Gestión de Estado Móvil -->    
-    <div class="flex flex-col gap-2 mt-2">
-        <div class="flex gap-2">
-            <!-- Botón Ver Notas -->
-            <button onclick="openNoteModal({{ json_encode($app->notes ?? 'No hay notas para esta cita.') }})"
-                    type="button"
-                    class="flex-1 bg-slate-100 text-slate-700 py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-xs uppercase tracking-wider transition-all">
-                Notas
+    <!-- Fila 4: Botonera de Acción Táctil -->
+    <div class="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100">
+        <!-- Ver Notas (Llama a tu función JavaScript global) -->
+        <button type="button" @click="openNoteModal('{{ addslashes($app->notes) }}')" 
+                class="inline-flex justify-center items-center text-center text-xs font-bold text-amber-600 bg-amber-50 hover:bg-amber-100 py-2.5 rounded-xl transition">
+            👁️ Notas
+        </button>
+
+        <!-- Botón Reagendar Móvil -->
+        @if(in_array($app->status, ['pending', 'confirmed']))
+            <button type="button" @click="openReschedule = true" 
+                    class="inline-flex justify-center items-center text-center text-xs font-black text-indigo-600 bg-indigo-50 hover:bg-indigo-100 py-2.5 rounded-xl transition uppercase tracking-wider">
+                🔄 Reagendar
             </button>
+        @else
+            <div class="h-10"></div>
+        @endif
 
-            <!-- Flujo de Telemedicina Online -->
-            @if($isVirtual && $app->status === 'confirmed')
-                @if($app->zoom_meeting_id)
-                    @if($canStart)
-                        <a href="{{ $doctorMeetingUrl }}" 
-                           target="_blank" 
-                           class="flex-1 bg-purple-600 text-white py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-xs uppercase tracking-wider shadow-md transition-transform">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"/>
-                            </svg>
-                            Iniciar Cita
-                        </a>
-                    @else
-                        <button disabled 
-                                class="flex-1 bg-slate-100 text-slate-400 py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-[10px] border border-slate-200 cursor-not-allowed">
-                            🔒 Zoom Listo (15m antes)
-                        </button>
-                    @endif
-                @else
-                    <span class="flex-1 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center text-[10px] font-bold border border-purple-100/60 p-3">
-                        Consulta Virtual
-                    </span>
-                @endif
-            @endif
-        </div>
+        <!-- BOTÓN CANCELAR CITA MÓVIL -->
+        @if(in_array($app->status, ['pending', 'confirmed']))
+            <form action="{{ route('partner.appointments.update-status', $app->id) }}" method="POST" 
+                  onsubmit="return confirm('¿Estás seguro de que deseas cancelar esta consulta médica?');" 
+                  class="flex-1 min-w-[100px]">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="status" value="cancelled">
+                
+                <button type="submit" 
+                        class="w-full inline-flex justify-center items-center text-center text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 py-2.5 rounded-xl transition uppercase tracking-wider">
+                    ❌ Cancelar
+                </button>
+            </form>
+        @endif
+    </div>
 
-        <!-- BOTONES DE CAMBIO DE ESTADO TÁCTILES -->
-        @if ($app->status !== 'completed' && $app->status !== 'cancelled')
-            <div class="flex gap-2 border-t border-slate-100/60 pt-2.5">
-                <!-- Formulario Completar Cita -->
-                <form action="{{ route('partner.appointments.complete', $app) }}" method="POST" class="flex-1">
-                    @csrf
-                    @method('PATCH')
-                    <button type="submit" onclick="return confirm('¿Deseas marcar esta cita como completada?')" 
-                            class="w-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/50 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        Completar
-                    </button>
-                </form>
+    <!-- 👇 MODAL INTERACTIVO DE REAGENDAMIENTO MÓVIL (Aislado para esta Tarjeta) -->
+    <div x-show="openReschedule" 
+         @click.self="openReschedule = false; selectedDate = ''; slots = []"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         x-cloak>
+        
+        <div @click.stop class="bg-white w-full max-w-md p-6 rounded-2xl shadow-xl border border-slate-100 mx-4 text-left whitespace-normal">
+            <!-- Cabecera -->
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider">Reprogramación Médica</h3>
+                <button type="button" @click="openReschedule = false; selectedDate = ''; slots = []" class="text-slate-400 hover:text-slate-600 transition font-bold text-lg">&times;</button>
+            </div>
 
-                <!-- Formulario Cancelar Cita -->
-                <form action="{{ route('partner.appointments.cancel', $app) }}" method="POST" class="flex-1">
-                    @csrf
-                    @method('PATCH')
-                    <button type="submit" onclick="return confirm('¿Estás seguro de que deseas cancelar esta cita médica?')" 
-                            class="w-full bg-red-50 text-red-700 hover:bg-red-100 border border-red-200/50 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+            <!-- Formulario -->
+            <form action="{{ route('partner.appointments.reschedule.process', $app->id) }}" method="POST" class="mt-4 space-y-4">
+                @csrf
+                @method('PUT')
+
+                <p class="text-xs text-slate-600 leading-relaxed font-medium">
+                    Cambio de horario para el paciente <span class="font-bold text-slate-900">{{ $app->patient->user->name }}</span>.
+                </p>
+
+                <!-- Input 1: Fecha -->
+                <div>
+                    <label class="block text-[10px] font-black text-slate-700 uppercase tracking-wider mb-1">Nueva Fecha</label>
+                    <input type="date" name="new_date" min="{{ date('Y-m-d') }}" x-model="selectedDate" @change="fetchSlots()" required
+                           class="w-full text-xs font-bold text-slate-700 border-slate-200 rounded-xl shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 bg-white">
+                </div>
+
+                <!-- Input 2: Slots -->
+                <div>
+                    <label class="block text-[10px] font-black text-slate-700 uppercase tracking-wider mb-1">Turnos Libres</label>
+                    
+                    <div x-show="loadingSlots" class="text-xs font-bold text-indigo-600 py-2.5 flex items-center gap-2" x-cloak>
+                        <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        Consultando matriz...
+                    </div>
+
+                    <select name="new_start_time" x-show="!loadingSlots && slots.length > 0" required
+                            class="w-full text-xs font-bold text-slate-700 border-slate-200 rounded-xl shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 bg-white">
+                        <option value="">Selecciona una opción...</option>
+                        <template x-for="slot in slots" :key="slot.time">
+                            <option :value="(() => {
+                                        let [time, modifier] = slot.time.split(' ');
+                                        let [hours, minutes] = time.split(':');
+                                        if (hours === '12') hours = '00';
+                                        if (modifier === 'PM') hours = parseInt(hours, 10) + 12;
+                                        return `${hours.toString().padStart(2, '0')}:${minutes}:00`;
+                                    })()" x-text="slot.time"></option>
+                        </template>
+                    </select>
+
+                    <div x-show="!loadingSlots && selectedDate && slots.length === 0" class="text-xs font-bold text-red-600 bg-red-50 border border-red-100 p-2.5 rounded-xl" x-cloak>
+                        ⚠️ Agenda completa o sin turnos para este día.
+                    </div>
+                </div>
+
+                <!-- Botones de Control -->
+                <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button type="button" @click="openReschedule = false; selectedDate = ''; slots = []" 
+                            class="px-3 py-2 text-xs font-black text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-xl transition tracking-wider uppercase">
                         Cancelar
                     </button>
-                </form>
-            </div>
-        @else
-            <div class="w-full text-center bg-slate-50 text-slate-400 py-2.5 rounded-xl border border-slate-200/50 text-xs italic font-medium">
-                Esta consulta médica ha finalizado
-            </div>
-        @endif
+                    <button type="submit" x-bind:disabled="slots.length === 0"
+                            class="px-4 py-2 text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition shadow-sm tracking-wider uppercase disabled:opacity-50 disabled:cursor-not-allowed">
+                        Confirmar Cambio
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>

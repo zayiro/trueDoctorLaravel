@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Doctor;
 use App\Models\Appointment;
 use App\Models\Address;
+use App\Models\ClinicSetting;
+use App\Models\DoctorSetting;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -166,5 +169,89 @@ class PartnerAppointmentController extends Controller
         $appointment->delete();
 
         return back()->with('success', 'La cita ha sido eliminada exitosamente del historial.');
+    }
+
+    /**
+     * Procesa el reagendamiento táctico desde el dashboard médico/clínica.
+     * Cumple con el endpoint: partner.appointments.reschedule.process
+     */
+    public function rescheduleProcess(Request $request, Appointment $appointment)
+    {
+        $user = auth()->user();
+
+        // 1. CONTROL DE ACCESO MULTI-TENANT (Abstracción del Owner)
+        if ($user->role === 'clinic') {
+            if ($appointment->clinic_id !== $user->clinic->id) {
+                abort(403, 'No autorizado. Esta cita no pertenece a tu centro clínico.');
+            }
+            $settings = ClinicSetting::where('clinic_id', $user->clinic->id)->first();
+        } else {
+            if ($appointment->doctor_id !== $user->doctor->id) {
+                abort(403, 'No autorizado. Esta cita pertenece a otra agenda médica.');
+            }
+            $settings = DoctorSetting::where('doctor_id', $user->doctor->id)->first();
+        }
+
+        if (!$settings) {
+            return back()->with('error', 'La configuración de la agenda no está disponible.');
+        }
+
+        // 2. VALIDAR INPUTS (Recibe los segundos :00 del select reactivo)
+        $validated = $request->validate([
+            'new_date'       => 'required|date|after_or_equal:today',
+            'new_start_time' => 'required|date_format:H:i:s',
+        ]);
+
+        $newDate      = $validated['new_date'];
+        $newStartTime = $validated['new_start_time']; // Ejemplo: "17:40:00"
+
+        // 3. CALCULAR HORA DE FIN (Basado en la duración original y el buffer del médico)
+        $newEndTime = Carbon::parse($newStartTime)->addMinutes($appointment->duration)->format('H:i:s');
+        $endTimeWithBuffer = Carbon::parse($newEndTime)->addMinutes($settings->buffer_time_minutes ?? 0)->format('H:i:s');
+
+        // 4. VALIDACIÓN DE CRUCES (Evitar Double-Booking con el mismo doctor)
+        $isSlotOccupied = Appointment::where('doctor_id', $appointment->doctor_id)
+            ->where('date', $newDate)
+            ->where('id', '!=', $appointment->id)
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->where(function ($query) use ($newStartTime, $endTimeWithBuffer) {
+                $query->where(function ($q) use ($newStartTime, $endTimeWithBuffer) {
+                    $q->where('start_time', '<=', $newStartTime)->where('end_time', '>', $newStartTime);
+                })->orWhere(function ($q) use ($newStartTime, $endTimeWithBuffer) {
+                    $q->where('start_time', '<', $endTimeWithBuffer)->where('end_time', '>=', $endTimeWithBuffer);
+                });
+            })
+            ->exists();
+
+        if ($isSlotOccupied) {
+            return back()->with('error', 'Operación cancelada. El horario seleccionado colisiona con otra cita médica vigente.');
+        }
+
+        // 5. PERSISTENCIA ATÓMICA ADMINISTRATIVA (Auto-confirma de inmediato)
+        DB::transaction(function () use ($appointment, $newDate, $newStartTime, $newEndTime) {
+            $appointment->update([
+                'date'       => $newDate,
+                'start_time' => $newStartTime,
+                'end_time'   => $newEndTime,
+                'status'     => 'confirmed',
+                'email_sent' => false, // Fuerza el reenvío de las notificaciones con los datos correctos
+            ]);
+        });
+
+        return back()->with('success', 'La consulta médica ha sido reprogramada y confirmada exitosamente.');
+    }
+
+    public function updateStatus(Request $request, Appointment $appointment)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:confirmed,pending,completed,cancelled'
+        ]);
+
+        $appointment->update([
+            'status' => $validated['status'],
+            'email_sent' => false
+        ]);
+
+        return back()->with('success', 'El estado de la consulta ha sido actualizado correctamente.');
     }
 }

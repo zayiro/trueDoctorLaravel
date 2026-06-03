@@ -1,11 +1,16 @@
 @component('mail::message')
+@if($userAction == 'partner')
 # Hola, Dr. {{ $appointment->doctor->user->name }}
 
 Le informamos que una cita médica agendada en su plataforma ha sido **cancelada por el paciente**. El espacio horario ha quedado libre en su agenda nuevamente.
+@else
+# Hola, {{ $appointment->patient->user->name }}
+
+Le informamos que la cita médica ha sido **cancelada** correctamente.
+@endif
 
 ## Detalles de la Cita Cancelada:
 *   **Referencia:** {{ $appointment->reference }}
-*   **Paciente:** {{ $appointment->patient->user->name }}
 *   **Servicio:** {{ $appointment->service->name }}
 *   **Fecha:** {{ \Carbon\Carbon::parse($appointment->date)->translatedFormat('l d \d\e F, Y') }}
 *   **Hora:** {{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }}

@@ -37,11 +37,14 @@
         'patient' => 'Paciente',
     };
 @endphp
+
 <aside id="top-bar-sidebar" class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform -translate-x-full border-r bg-slate-50 border-slate-200 sm:translate-x-0 dark:bg-slate-900 dark:border-slate-800" aria-label="Sidebar">
-    <div class="flex flex-col h-full px-4 py-5 overflow-y-auto bg-slate-50 dark:bg-slate-900">
-        <!-- Pie del Sidebar: Datos de la Clínica Activa -->
+    <!-- SE ELIMINÓ 'overflow-y-auto' DE AQUÍ: Mantiene fijos el usuario y la marca de la clínica -->
+    <div class="h-full px-4 pb-12 overflow-y-auto bg-slate-50 dark:bg-slate-900 block">
+        
+        <!-- Pie del Sidebar: Datos de la Clínica Activa (Fijo arriba) -->
         @if($user)
-            <div class="pt-4 pb-4 mt-10 mb-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div class="pt-4 pb-4 mb-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between" style="margin-top: 5rem;">
                 <div class="flex items-center space-x-3 truncate">
                     <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm">
                         {{ substr($user->name, 0, 2) }}
@@ -57,7 +60,8 @@
                 </div>
             </div>
         @endif
-        <!-- Identidad Institucional (Clínicas) -->
+        
+        <!-- Identidad Institucional (Clínicas - Fijo arriba) -->
         <div class="flex items-center ps-2 mb-6">
             <span class="self-center text-xl font-bold tracking-tight text-slate-800 dark:text-white">
                 open<span class="text-blue-600 dark:text-blue-400">doctor</span>
@@ -66,8 +70,10 @@
                 Partner
             </span>
         </div>
-        <!-- Listado de Enlaces Corporativos -->
-        <ul class="space-y-1.5 font-medium flex-1">
+        
+        <!-- Listado de Enlaces Corporativos: AQUÍ SE ACTIVA EL SCROLL INDEPENDIENTE -->
+        <!-- Se añaden 'overflow-y-auto', padding derecho 'pr-1' para espaciar la barra, y 'scrollbar-thin' -->
+        <ul class="space-y-1.5 font-medium flex-1 overflow-y-auto pr-1 scrollbar-thin" style="height: 60dvh; overflow-y: auto;">
             @foreach ($links as $link)
                 <li>
                     @isset($link['header'])

@@ -44,11 +44,14 @@
         'patient' => 'Paciente',
     };
 @endphp
+
 <aside id="top-bar-sidebar" class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform -translate-x-full border-r bg-slate-50 border-slate-200 sm:translate-x-0 dark:bg-slate-900 dark:border-slate-800" aria-label="Sidebar">
-    <div class="flex flex-col h-full px-4 py-5 overflow-y-auto bg-slate-50 dark:bg-slate-900">
-        <!-- Pie de página del Sidebar: Datos de Root User -->
+    <!-- Se eliminó overflow-y-auto de este contenedor principal para mantener la estructura fija -->
+    <div class="h-full px-4 pb-12 overflow-y-auto bg-slate-50 dark:bg-slate-900 block">
+        
+        <!-- Pie de página del Sidebar: Datos de Root User (Se mantiene arriba fijo) -->
         @if($user)
-            <div class="pt-4 pb-4 mt-10 mb-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div class="pt-4 pb-4 mb-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between survival-header-1" style="margin-top: 5rem;">
                 <div class="flex items-center space-x-3 truncate">
                     <div class="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm">
                         {{ substr($user->name, 0, 2) }}
@@ -65,8 +68,8 @@
             </div>
         @endif
 
-        <!-- Identidad del Sistema Central -->
-        <div class="flex items-center ps-2 mb-6">
+        <!-- Identidad del Sistema Central (Se mantiene arriba fijo) -->
+        <div class="flex items-center ps-2 mb-6 survival-header-2">
             <span class="self-center text-xl font-bold tracking-tight text-slate-800 dark:text-white">
                 open<span class="text-blue-600 dark:text-blue-400">doctor</span>
             </span>
@@ -74,8 +77,10 @@
                 ADMIN
             </span>
         </div>
-        <!-- Listado de Enlaces Core -->
-        <ul class="space-y-1.5 font-medium flex-1">
+
+        <!-- Listado de Enlaces Core: AQUÍ SE APLICA EL SCROLL INDEPENDIENTE -->
+        <!-- Se añade 'flex-1', 'overflow-y-auto' y clases para ocultar o estilizar la barra si lo deseas -->
+        <ul class="space-y-1.5 font-medium flex-1 overflow-y-auto pr-1 scrollbar-thin" style="height: 60dvh; overflow-y: auto;">
             @foreach ($links as $link)
                 <li>
                     @isset($link['header'])
