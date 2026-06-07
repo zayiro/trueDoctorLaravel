@@ -139,7 +139,7 @@ $breadcrumbs = [
                         </svg>
                     </div>
                     <h5 class="text-base font-bold text-slate-800">No hay citas registradas</h5>
-                    <p class="text-gray-500 text-sm mt-1 max-w-sm mx-auto">No se encontraron reservas de pacientes para los filtros o la fecha seleccionada en el cuadrante.</p>
+                    <p class="text-gray-500 text-sm mt-1 max-w-sm mx-auto">No se encontrarón reservas de pacientes para los filtros o la fecha seleccionada en el cuadrante.</p>
                 </div>
             @endforelse
         </div>

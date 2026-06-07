@@ -19,6 +19,7 @@
         "livewire/livewire": "^4.2",
         "openai-php/laravel": "^0.19.1",
         "power-components/livewire-powergrid": "^6.9",
+        "spatie/laravel-backup": "^10.2",
         "spatie/laravel-honeypot": "^4.7",
         "spatie/laravel-permission": "^7.4",
         "spatie/laravel-webhook-client": "^3.6",

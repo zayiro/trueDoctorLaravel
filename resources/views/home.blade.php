@@ -7,7 +7,7 @@
                     Encuentra a tu <span class="text-blue-600">médico ideal</span>
                 </h1>
                 <p class="text-lg text-slate-600 max-w-2xl mx-auto">
-                    Reserva citas con los mejores especialistas de tu ciudad de forma rápida y sencilla.
+                    Reserva tu <span class="font-medium">Cita Médica en Línea</span> con los mejores especialistas de tu ciudad, de forma rápida, sencilla y sin esperas.
                 </p>
             </div>
 
@@ -47,7 +47,7 @@
                     
                     <!-- Input de Síntomas -->
                     <div class="flex-1">
-                        <label for="symptom" class="block text-[10px] font-black text-slate-400 uppercase ml-3 mb-1">¿Qué síntomas tienes?</label>
+                        <label for="symptom" class="block text-xs font-black text-slate-400 uppercase ml-3 mb-1">¿Qué síntomas tienes?</label>
                         <input type="search" 
                             name="symptom" 
                             id="symptom" 

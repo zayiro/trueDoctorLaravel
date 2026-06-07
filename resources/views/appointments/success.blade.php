@@ -141,7 +141,7 @@
                             <h4 class="font-extrabold text-purple-950 text-sm">Tu link de telemedicina está listo:</h4>
                             <p class="text-xs text-purple-800 leading-normal">Ingresa 5 minutos antes de la hora programada para verificar audio y cámara.</p>
                         </div>
-                        <a href="{{ $appointment->meeting_link }}" target="_blank" class="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white font-black px-5 py-3 rounded-xl text-xs uppercase tracking-wider transition-all text-center shadow-md shadow-purple-100 focus:outline-none">
+                        <a href="{{ route('appointments.room', ['appointment' => $appointment->id]) }}" target="_blank" class="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white font-black px-5 py-3 rounded-xl text-xs uppercase tracking-wider transition-all text-center shadow-md shadow-purple-100 focus:outline-none">
                             Acceder a la Sala
                         </a>
                     </div>
@@ -173,7 +173,7 @@
                     <h4 class="text-base font-black text-slate-800 tracking-tight">
                         ¡Ayúdanos a preparar tu consulta médica!
                     </h4>
-                    <p class="text-xs leading-relaxed text-slate-500 font-medium">
+                    <p class="text-sm leading-relaxed text-slate-500 font-medium">
                         Para que el profesional de la salud pueda estudiar tu caso con anticipación y optimizar el tiempo de la cita, por favor asegúrate de actualizar tus <span class="font-bold text-slate-700">antecedentes, alergias y datos de historial clínico</span> en tu perfil de paciente.
                     </p>
                     
@@ -229,7 +229,7 @@
                         . "Fecha: " . ucfirst($formattedDate) . "\n"
                         . "Hora Pactada: " . $formattedTime . "\n"
                         . "Modalidad: " . ($appointment->service->type === 'virtual' ? 'Virtual (Telemedicina)' : 'Presencial en ' . $appointment->address->name) . "\n\n"
-                        . ($isPending ? "Por favor, ingrese a su panel de administración para APROBAR o RECHAZAR esta reservación lo antes posible." : "La cita ha quedado debidamente asentada e inscrita en el sistema digital.");
+                        . ($isPending ? "Por favor, ingrese a su panel de administración para APROBAR o RECHAZAR esta reservación lo antes posible." : "Cita agendada correctamente.");
 
                 // Enlace final hacia la API nativa de WhatsApp
                 $whatsappEndpoint = "https://wa.me/{$cleanPhone}?text=" . urlencode($whatsappMessage);                

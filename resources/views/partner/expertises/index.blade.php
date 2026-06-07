@@ -11,114 +11,149 @@ $breadcrumbs = [
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-    <div class="container mx-auto px-4 py-8">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="container mx-auto px-4 py-10 max-w-7xl">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             
-            <!-- Columna Izquierda: Formulario de Registro -->
-            <div class="md:col-span-1">
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="bg-blue-600 px-6 py-4">
-                        <h5 class="text-lg font-semibold text-white">Agregar Enfermedad o Dolencia</h5>
+            <!-- Columna Izquierda: Formulario de Registro Premium -->
+            <div class="lg:col-span-1">
+                <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-xl shadow-gray-100/40 dark:shadow-none border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <!-- Cabecera de Tarjeta -->
+                    <div class="bg-blue-600 px-6 py-5">
+                        <h5 class="text-lg font-black text-white tracking-tight">Agregar Enfermedad o Dolencia</h5>
+                        <p class="text-xs text-blue-100 mt-1">Alimenta tu motor de búsqueda FullText.</p>
                     </div>
-                    <div class="p-6">
+                    
+                    <div class="p-6 md:p-8">
                         <form action="{{ route('partner.expertises.store') }}" method="POST" id="expertise-form">
                             @csrf
                             
-                            <div class="mb-4">
-                                <label for="disease_name" class="block text-sm font-medium text-gray-700 mb-1">Nombre de la Enfermedad</label>
-                                <input type="text" name="disease_name" id="disease_name" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="Ej: Migraña, Gastritis, Escoliosis" required>
+                            <!-- Campo: Nombre de la Enfermedad -->
+                            <div class="mb-5">
+                                <label for="disease_name" class="block text-xs font-black uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">Nombre de la Enfermedad</label>
+                                <input type="text" name="disease_name" id="disease_name" 
+                                    class="w-full rounded-xl border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white transition duration-150 text-sm py-3 px-4 shadow-sm" 
+                                    placeholder="Ej: Migraña, Gastritis, Escoliosis" required>
                             </div>
 
-                            <div class="mb-4">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Palabras clave o Síntomas cotidianos</label>
+                            <!-- Campo: Síntomas y Tags Dinámicos -->
+                            <div class="mb-6">
+                                <label class="block text-xs font-black uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">Palabras clave o Síntomas cotidianos</label>
                                 
-                                <!-- Input visual de escritura -->
-                                <input type="text" id="tag-input" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 mb-1" placeholder="Escribe un síntoma y presiona Enter o Coma">
-                                <p class="text-xs text-gray-500 mb-3">Piensa en cómo lo buscaría el paciente. Ej: "dolor de cabeza".</p>
+                                <input type="text" id="tag-input" 
+                                    class="w-full rounded-xl border-gray-200 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white transition duration-150 text-sm py-3 px-4 shadow-sm mb-2" 
+                                    placeholder="Escribe un síntoma y presiona Enter o Coma">
                                 
-                                <!-- Contenedor dinámico de tags visuales -->
-                                <div id="tags-container" class="flex flex-wrap gap-1.5 p-2 bg-gray-50 rounded-md border border-gray-200 min-h-[60px]"></div>
+                                <p class="text-[11px] text-gray-400 dark:text-gray-500 mb-3 flex items-center gap-1">
+                                    <span>💡</span> Piensa en cómo lo buscaría el paciente. Ej: "dolor de cabeza".
+                                </p>
                                 
-                                <!-- Campo oculto para Laravel -->
+                                <!-- Contenedor Dinámico Flotante de Tags -->
+                                <div id="tags-container" class="flex flex-wrap gap-2 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700 min-h-[70px] content-start transition duration-150"></div>
+                                
+                                <!-- Campo Oculto para Laravel -->
                                 <input type="hidden" name="symptoms_keywords" id="hidden-symptoms-input">
                             </div>
 
-                            <!-- 💡 NUEVO: Bloque de Texto de Ayuda / Buenas Prácticas para el Médico -->
-                            <div class="mb-5 bg-blue-50 border border-blue-100 rounded-md p-4">
-                                <div class="flex items-start gap-2">
-                                    <span class="text-blue-500 text-base mt-0.5">💡</span>
+                            <!-- Sugerencias de Buenas Prácticas UX Premium -->
+                            <div class="mb-6 bg-gradient-to-br from-blue-50 to-indigo-50/50 dark:from-blue-950/20 dark:to-transparent border border-blue-100/70 dark:border-blue-900/30 rounded-2xl p-4 md:p-5">
+                                <div class="flex items-start gap-3">
+                                    <div class="flex-shrink-0 w-8 h-8 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center font-bold text-sm">
+                                        💡
+                                    </div>
                                     <div>
-                                        <h6 class="text-xs font-bold text-blue-900 uppercase tracking-wider mb-2">¿Cómo escribir palabras clave efectivas?</h6>
-                                        <ul class="text-xs text-blue-800 space-y-1.5 list-disc pl-4">
-                                            <li><strong>Evita tecnicismos:</strong> El paciente no buscará <em>"Cefalea"</em>, buscará <em>"dolor de cabeza"</em>. El sistema los conectará por ti.</li>
-                                            <li><strong>Usa lenguaje común:</strong> Registra términos populares como <em>"agrieras"</em>, <em>"reflujo"</em>, <em>"ardor en el pecho"</em> o <em>"vómito"</em>.</li>
-                                            <li><strong>Describe dolores físicos:</strong> Piensa en cómo lo explicarían en consulta: <em>"hinchazón de pies"</em>, <em>"falta de aire"</em> o <em>"mareos"</em>.</li>
-                                            <li><strong>Evita tildes si es posible:</strong> Aunque el buscador es inteligente, escribir <em>"presion alta"</em> o <em>"alergia"</em> simplifica el proceso de coincidencia.</li>
+                                        <h6 class="text-xs font-black text-blue-900 dark:text-blue-400 uppercase tracking-wider mb-2">¿Cómo escribir palabras clave efectivas?</h6>
+                                        <ul class="text-xs text-blue-800/90 dark:text-gray-400 space-y-2 list-none">
+                                            <li class="flex items-start gap-1.5"><span class="text-blue-500 font-bold">•</span><span><strong>Evita tecnicismos:</strong> El paciente buscará <em>"dolor de cabeza"</em>, no <em>"Cefalea"</em>.</span></li>
+                                            <li class="flex items-start gap-1.5"><span class="text-blue-500 font-bold">•</span><span><strong>Usa lenguaje común:</strong> Registra términos populares como <em>"agrieras"</em> o <em>"reflujo"</em>.</span></li>
+                                            <li class="flex items-start gap-1.5"><span class="text-blue-500 font-bold">•</span><span><strong>Describe dolores físicos:</strong> Piensa en frases de consulta: <em>"falta de aire"</em> o <em>"mareos"</em>.</span></li>
+                                            <li class="flex items-start gap-1.5"><span class="text-blue-500 font-bold">•</span><span><strong>Evita tildes si es posible:</strong> Escribir <em>"presion alta"</em> simplifica las coincidencias.</span></li>
                                         </ul>
                                     </div>
                                 </div>
                             </div>
 
-                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-md transition duration-150 ease-in-out">
+                            <!-- Botón de Acción con Animación Táctil -->
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[12px] tracking-wider py-3.5 px-4 rounded-xl transition duration-200 shadow-md shadow-blue-500/10 active:scale-[0.99] focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30">
                                 Guardar Conocimiento
                             </button>
                         </form>
                     </div>
                 </div>
             </div>
-
             <!-- Columna Derecha: Tabla de Registros Actuales -->
-            <div class="md:col-span-2">
+            <div class="lg:col-span-2 space-y-4">
                 @if(session('success'))
-                    <div class="mb-4 bg-green-50 border border-green-200 text-green-800 p-4 rounded-md flex justify-between items-center" role="alert">
-                        <span>{{ session('success') }}</span>
-                        <button type="button" class="text-green-600 hover:text-green-800 font-bold" onclick="this.parentElement.remove()">✕</button>
+                    <div class="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 text-emerald-800 dark:text-emerald-400 p-4 rounded-2xl flex justify-between items-center text-sm font-semibold transition duration-150" role="alert">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base">✓</span>
+                            <span>{{ session('success') }}</span>
+                        </div>
+                        <button type="button" class="text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-300 font-bold transition-colors" onclick="this.parentElement.remove()">✕</button>
                     </div>
                 @endif
 
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="bg-white border-b border-gray-200 px-6 py-4">
-                        <h5 class="text-lg font-semibold text-gray-900">Mis Enfermedades y Síntomas Registrados</h5>
+                <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-xl shadow-gray-100/40 dark:shadow-none border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <div class="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-6 py-5">
+                        <h5 class="text-lg font-black text-gray-900 dark:text-white tracking-tight">Mis Enfermedades y Síntomas Registrados</h5>
                     </div>
                     
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
-                                <tr class="bg-gray-50 text-gray-600 text-xs uppercase font-semibold border-b border-gray-200">
-                                    <th class="px-6 py-3">Enfermedad</th>
-                                    <th class="px-6 py-3">Palabras Clave / Síntomas asociados</th>
-                                    <th class="px-6 py-3 text-right">Acciones</th>
+                                <tr class="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-[11px] uppercase font-black tracking-wider border-b border-gray-100 dark:border-gray-700">
+                                    <th class="px-6 py-4">Enfermedad</th>
+                                    <th class="px-6 py-4">Palabras Clave / Síntomas asociados</th>
+                                    <th class="px-6 py-4 text-right">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-200 text-sm text-gray-700">
+                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700 text-sm text-gray-700 dark:text-gray-300">
                                 @forelse($expertises as $expertise)
-                                    <tr class="hover:bg-gray-50 transition duration-150">
-                                        <td class="px-6 py-4 font-bold text-gray-900">{{ $expertise->disease_name }}</td>
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-900/40 transition duration-150">
+                                        <td class="px-6 py-4 font-bold text-gray-900 dark:text-white">{{ $expertise->disease_name }}</td>
                                         <td class="px-6 py-4">
-                                            <div class="flex flex-wrap gap-1">
+                                            <div class="flex flex-wrap gap-1.5">
                                                 @foreach(explode(',', $expertise->symptoms_keywords) as $keyword)
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+                                                    <span class="inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-bold bg-gray-50 text-gray-600 border border-gray-200/60 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 shadow-sm">
                                                         {{ trim($keyword) }}
                                                     </span>
                                                 @endforeach
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 text-right">
-                                            <div class="flex justify-end gap-3">
-                                                <a href="{{ route('partner.expertises.edit', $expertise->id) }}" class="text-gray-600 hover:text-gray-900 font-medium">Editar</a>
+                                            <div class="flex justify-end items-center gap-2">
+                                                <!-- Botón Editar Premium -->
+                                                <a href="{{ route('partner.expertises.edit', $expertise->id) }}" 
+                                                   class="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 rounded-xl border border-gray-100 dark:border-gray-600 text-xs font-bold transition duration-150 shadow-sm">
+                                                    <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"/>
+                                                    </svg>
+                                                    Editar
+                                                </a>
                                                 
-                                                <form action="{{ route('partner.expertises.destroy', $expertise->id) }}" method="POST" onsubmit="return confirm('¿Seguro que deseas eliminar este registro?');" class="inline">
+                                                <!-- Formulario y Botón Eliminar Premium -->
+                                                <form action="{{ route('partner.expertises.destroy', $expertise->id) }}" method="POST" onsubmit="return confirm('¿Seguro que deseas eliminar este conocimiento médico?');" class="inline">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-900 font-medium">Eliminar</button>
+                                                    <button type="submit" 
+                                                            class="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-xl border border-red-100 dark:border-red-900/30 text-xs font-bold transition duration-150 shadow-sm">
+                                                        <svg class="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.34 9m-4.74 0L9.36 9m12 1.5c0 2.112-.754 4.135-2.115 5.593A5.436 5.436 0 0 1 15 17.5H9a5.436 5.436 0 0 1-4.245-1.407C3.394 14.635 2.64 12.612 2.64 10.5m18.72 0H2.64m18.72 0a2.25 2.25 0 0 0-2.25-2.25H4.89a2.25 2.25 0 0 0-2.25 2.25m18.72 0V5.75A2.25 2.25 0 0 0 16.5 3.5h-9A2.25 2.25 0 0 0 5.25 5.75V10.5"/>
+                                                        </svg>
+                                                        Eliminar
+                                                    </button>
                                                 </form>
                                             </div>
                                         </td>
                                     </tr>
                                 @empty
+                                    <!-- UX Ilustrada para Estado Vacío -->
                                     <tr>
-                                        <td colspan="3" class="text-center py-12 text-gray-500">
-                                            Aún no has registrado enfermedades. Usa el formulario para comenzar.
+                                        <td colspan="3" class="text-center py-16 px-4">
+                                            <div class="mx-auto w-12 h-12 bg-gray-50 dark:bg-gray-900 text-gray-400 rounded-full flex items-center justify-center mb-3">
+                                                🔍
+                                            </div>
+                                            <p class="text-sm font-bold text-gray-800 dark:text-gray-200">Aún no has registrado enfermedades</p>
+                                            <p class="text-xs text-gray-400 mt-0.5 max-w-sm mx-auto">Usa el formulario lateral para alimentar tus palabras clave de síntomas cotidianos y optimizar tus búsquedas.</p>
                                         </td>
                                     </tr>
                                 @endforelse
@@ -130,7 +165,7 @@ $breadcrumbs = [
 
         </div>
     </div>
-
+    <!-- Motor JavaScript Refactorizado y Blindado -->
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             const tagInput = document.getElementById("tag-input");
@@ -138,69 +173,63 @@ $breadcrumbs = [
             const hiddenInput = document.getElementById("hidden-symptoms-input");
             const form = document.getElementById("expertise-form");
 
-            // Arreglo global para almacenar los strings de los tags
             let tagsArray = [];
 
-            // Si el input oculto ya contiene datos (caso de la vista Editar), los cargamos al iniciar
-            if (hiddenInput.value.trim() !== "") {
+            if (hiddenInput && hiddenInput.value.trim() !== "") {
                 tagsArray = hiddenInput.value.split(",").map(tag => tag.trim()).filter(tag => tag !== "");
                 renderTags();
             }
 
-            // Escuchar cuando el usuario escribe en el input de texto
             tagInput.addEventListener("keydown", function (e) {
-                // Captura las teclas 'Enter' (13) o 'Coma' (188 o e.key === ',')
                 if (e.key === "Enter" || e.key === ",") {
-                    e.preventDefault(); // Evitamos que el formulario se envíe al presionar Enter
+                    e.preventDefault(); 
                     
-                    let value = tagInput.value.trim().replace(/,/g, ""); // Limpiamos espacios y comas sobrantes
+                    let value = tagInput.value.trim().replace(/,/g, ""); 
                     
-                    // Validamos que no esté vacío y que no esté repetido el síntoma
-                    if (value !== "" && !tagsArray.includes(value)) {
+                    if (value !== "" && !tagsArray.some(t => t.toLowerCase() === value.toLowerCase())) {
                         tagsArray.push(value);
                         renderTags();
-                        tagInput.value = ""; // Limpiamos el input de escritura
+                        tagInput.value = ""; 
                     }
                 }
             });
 
-            // Función para dibujar los tags en la pantalla y actualizar el input oculto
             function renderTags() {
-                tagsContainer.innerHTML = ""; // Limpiamos el contenedor
+                tagsContainer.innerHTML = ""; 
                 
                 tagsArray.forEach((tag, index) => {
-                    // Creamos el diseño visual del tag estilo Bootstrap 5
                     const tagElement = document.createElement("span");
-                    tagElement.className = "inline-flex items-center gap-1.5 bg-blue-600 text-white text-sm py-1 px-3 rounded-full shadow-sm";
+                    tagElement.className = "inline-flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold py-1.5 px-3 rounded-xl shadow-sm transition duration-150 select-none";
                     tagElement.innerHTML = `
-                        ${tag}
-                        <button type="button" class="text-blue-200 hover:text-white font-bold ml-1 focus:outline-none" style="line-height: 1;" data-index="${index}">✕</button>
+                        <span>${tag}</span>
+                        <button type="button" 
+                                class="tag-close-btn text-blue-200 hover:text-white font-bold ml-1 transition-colors focus:outline-none" 
+                                style="line-height: 1;" 
+                                data-index="${index}">✕</button>
                     `;
 
                     tagsContainer.appendChild(tagElement);
                 });
 
-                // Sincronizamos el array con el input oculto separados por comas para Laravel
                 hiddenInput.value = tagsArray.join(", ");
             }
 
-            // Escuchar los clics en los botones de cerrar (X) para eliminar etiquetas
             tagsContainer.addEventListener("click", function (e) {
-                if (e.target.classList.contains("btn-close")) {
-                    const indexToRemove = e.target.getAttribute("data-index");
-                    tagsArray.splice(indexToRemove, 1); // Lo removemos del arreglo interno
-                    renderTags(); // Redibujamos la lista actualizada
+                if (e.target.classList.contains("tag-close-btn")) {
+                    const indexToRemove = parseInt(e.target.getAttribute("data-index"), 10);
+                    tagsArray.splice(indexToRemove, 1); 
+                    renderTags(); 
+                    tagInput.focus();
                 }
             });
 
-            // Validación final de seguridad antes de enviar el formulario a la base de datos
             form.addEventListener("submit", function (e) {
                 if (tagsArray.length === 0) {
                     e.preventDefault();
-                    alert("Por favor, introduce al menos un síntoma o palabra clave presionando Enter.");
+                    alert("Por favor, introduce al menos un síntoma o palabra clave presionando Enter para alimentar el motor FullText.");
                     tagInput.focus();
                 }
             });
         });
     </script>
-</x-admin-layout>    
+</x-admin-layout>

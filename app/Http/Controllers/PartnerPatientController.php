@@ -23,7 +23,7 @@ class PartnerPatientController extends Controller
         });
 
         // 2. Aplicar Restricción según Plan
-        if ($plan->can_search_patients && $querySearch) {
+        if ($plan?->can_search_patients && $querySearch) {
             $query->where(function ($q) use ($querySearch) {
                 // Buscamos el nombre en la tabla USERS vinculada
                 $q->whereHas('user', function ($qu) use ($querySearch) {
@@ -42,7 +42,7 @@ class PartnerPatientController extends Controller
 
         // 3. Ejecutar con paginación y límite del plan
         $patients = $query->with(['user', 'appointments']) // Eager loading para evitar el problema N+1
-            ->limit($plan->max_patients_list)
+            ->limit($plan?->max_patients_list)
             ->paginate(15);
         
         return view('partner.patients.index', compact('patients', 'plan'));

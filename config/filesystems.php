@@ -67,6 +67,12 @@ return [
             'report' => false,
         ],
 
+        'db_backups' => [
+            'driver' => 'local',
+            'root' => '/var/www/html/db/backup',
+            'throw' => false,
+        ],
+
     ],
 
     /*

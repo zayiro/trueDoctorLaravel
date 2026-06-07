@@ -61,11 +61,11 @@ class SearchController extends Controller
         ]);
     }
     
-        /**
+    /**
      * Vista principal del buscador global híbrido y compacto de opendoctor.online.
      */
     public function index(Request $request)
-    { 
+    {         
         $specialties = Specialty::where('status', true)->orderBy('name', 'asc')->get();
         $cities = City::where('state', true)->orderBy('name', 'asc')->get();                        
         
@@ -92,7 +92,7 @@ class SearchController extends Controller
                     ->leftJoin('doctor_settings', 'plans.id', '=', 'doctor_settings.plan_id')
                     ->where(function ($query) {
                         $query->whereColumn('clinic_settings.clinic_id', 'addresses.clinic_id')
-                              ->orWhereColumn('doctor_settings.doctor_id', 'addresses.doctor_id');
+                            ->orWhereColumn('doctor_settings.doctor_id', 'addresses.doctor_id');
                     })
                     ->limit(1);
             },
@@ -108,15 +108,23 @@ class SearchController extends Controller
         ])
         ->where('addresses.status', true)
         ->whereNull('addresses.deleted_at')
-        // Asegurar que la sede pertenezca a una entidad válida y aprobada
+        
+        // 🚀 INYECCIÓN CRÍTICA SAAS: Asegurar entidad válida y excluir médicos institucionales sin plan propio
         ->where(function ($query) {
+            // Condición A: La sede es de una clínica aprobada
             $query->whereHas('clinic', function ($q) {
                 $q->where('active', true)->where('validation_status', 'approved');
-            })->orWhereHas('doctor', function ($q) {
-                $q->where('active', true)->where('validation_status', 'approved');
+            })
+            // Condición B: La sede es de un médico, pero el médico DEBE tener un plan individual contratado
+            ->orWhere(function ($sub) {
+                $sub->whereHas('doctor', function ($q) {
+                    $q->where('active', true)->where('validation_status', 'approved');
+                })
+                ->whereHas('doctor.settings', function ($q) {
+                    $q->whereNotNull('plan_id'); // 🔒 Oculta de inmediato al staff con plan_id = NULL
+                });
             });
         });
-
         // Filtro condicional por Especialidad Médica (Slug de la tabla specialties)
         $searchQuery->when($request->specialty, function ($query) use ($request) {
             $query->where(function ($sub) use ($request) {
@@ -135,6 +143,7 @@ class SearchController extends Controller
                 $q->where('slug', $request->city);
             });
         });
+
         // 🔥 EJECUCIÓN CON ORDENACIÓN ALGORÍTMICA TOTALMENTE COMPATIBLE
         $addresses = $searchQuery->orderBy('owner_plan_price', 'desc') 
             ->orderBy('owner_rating', 'desc')                          
@@ -143,7 +152,7 @@ class SearchController extends Controller
         // 2. PROCESAMIENTO HÍBRIDO CON AGRUPACIÓN COMPACTA (REGLA DE ORO)
         $groupedResults = collect();
 
-                foreach ($addresses as $address) {
+        foreach ($addresses as $address) {
             $isClinic = !is_null($address->clinic_id);
 
             if ($isClinic) {
@@ -167,7 +176,7 @@ class SearchController extends Controller
                     });
 
                     // 🔒 REGLA DE ORO CLÍNICAS: Buscamos el nombre real de la especialidad buscada para el subtítulo institucional
-                    $specialtyModel = \App\Models\Specialty::where('slug', $request->specialty)->first();
+                    $specialtyModel = Specialty::where('slug', $request->specialty)->first();
                     if ($specialtyModel) {
                         $clinicBadgeText = "Especialistas en {$specialtyModel->name} en sede";
                     }
@@ -186,12 +195,12 @@ class SearchController extends Controller
                     'slug'        => $clinic->slug,
                     'rating'      => $clinic->rating,
                     'address_id'  => $address->id,
-                    'badge_text'  => "{$specialistsCount} {$clinicBadgeText}", // Muestra: 5 Especialistas en Alergología en sede
+                    'badge_text'  => "{$specialistsCount} {$clinicBadgeText}", 
                     'next_turn'   => $nextAvailableTurn,
                     'user'        => $clinic->user
                 ]);
             }
-            else {
+                    else {
                 $doctor = $address->doctor;
 
                 // 🔒 BLINDAJE ANTI-REPETIDOS: Buscamos si el doctor ya fue ingresado por otro consultorio previo
@@ -203,7 +212,8 @@ class SearchController extends Controller
 
                 // 🔒 REGLA DE ORO DOCTORES: Si hay una búsqueda activa de especialidad, fijamos ese nombre en su badge
                 if ($request->filled('specialty')) {
-                    $doctorBadgeText = $request->specialty;                    
+                    $specialtyModel = Specialty::where('slug', $request->specialty)->first();
+                    $doctorBadgeText = $specialtyModel ? $specialtyModel->name : ucfirst($request->specialty);                    
                 } else {
                     $doctorBadgeText = $doctor->specialties->first()->name ?? 'Consultorio Privado';
                 }
@@ -215,11 +225,11 @@ class SearchController extends Controller
                     if ($nextAvailableTurn && (is_null($currentDoctorItem['next_turn']) || $nextAvailableTurn < $currentDoctorItem['next_turn'])) {
                         $currentDoctorItem['next_turn'] = $nextAvailableTurn;
                         $currentDoctorItem['subtitle'] = "Consultorio: {$address->name} • {$address->address}";
-                        $currentDoctorItem['address_id'] = $address->id; // El botón enrutará a la sede con el turno más rápido
+                        $currentDoctorItem['address_id'] = $address->id; 
                         $groupedResults->put($existingDoctorKey, $currentDoctorItem);
                     }
                 } else {
-                    // Es la primera vez que mapeamos al especialista en el listado de forma compacta
+                    // Es la primera vez que mapeamos al especialista de forma compacta en la lista general
                     $groupedResults->push([
                         'type'        => 'doctor',
                         'id'          => $doctor->id,
@@ -228,7 +238,7 @@ class SearchController extends Controller
                         'slug'        => $doctor->slug,
                         'rating'      => $doctor->rating,
                         'address_id'  => $address->id,
-                        'badge_text'  => $doctorBadgeText, // Inyección contextual exacta del fitro superior
+                        'badge_text'  => $doctorBadgeText, 
                         'next_turn'   => $nextAvailableTurn,
                         'user'        => $doctor->user
                     ]);
@@ -240,7 +250,6 @@ class SearchController extends Controller
         $page = LengthAwarePaginator::resolveCurrentPage();
         $perPage = 10;
         
-        // 🔒 SOLUCIÓN: Agregamos la palabra clave 'new' obligatoria para instanciar la clase
         $resultsPage = new LengthAwarePaginator(
             $groupedResults->forPage($page, $perPage)->values(),
             $groupedResults->count(),

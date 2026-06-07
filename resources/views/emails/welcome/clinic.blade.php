@@ -47,7 +47,7 @@
                         <span class="step-number">1.</span> Ingrese a su panel de administración institucional utilizando las credenciales corporativas registradas.
                     </div>
                     <div class="step-item">
-                        <span class="step-number">2.</span> Diríjase a la sección de perfil y suba la <strong>documentación requerida</strong> (Identificación oficial y Tarjeta Profesional).
+                        <span class="step-number">2.</span> Diríjase a la sección de perfil y suba la <strong>documentación requerida</strong> (Identificación oficial (RUT) y el Registro REPS).
                     </div>
                     <div class="step-item">
                         <span class="step-number">3.</span> Nuestro equipo validará sus credenciales en un lapso menor a 24 horas.

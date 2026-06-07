@@ -83,7 +83,7 @@
 
         <!-- CANCELAR CITA (Solo para citas pendientes o confirmadas) -->
         @if(in_array($app->status, ['pending', 'confirmed']))
-            <form action="{{ route('partner.appointments.update-status', $app->id) }}" method="POST" 
+            <form action="{{ route('appointments.updateStatus', $app->id) }}" method="POST" 
                   onsubmit="return confirm('¿Estás seguro de que deseas cancelar esta consulta médica de forma definitiva? En el SaaS se liberará el cupo de inmediato.');" 
                   class="inline-block">
                 @csrf

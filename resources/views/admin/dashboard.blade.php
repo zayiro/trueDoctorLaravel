@@ -1,20 +1,23 @@
 @php
-$isPatient = $user->role === 'patient';
-$isDoctor = $user->role === 'doctor';
-$isClinic = $user->role === 'clinic';
-$isAdmin = $user->role === 'admin';
+    $isPatient = $user->role === 'patient';
+    $isDoctor = $user->role === 'doctor';
+    $isClinic = $user->role === 'clinic';
+    $isAdmin = $user->role === 'admin';
 
-$validationStatus = 'approved';
-if ($isDoctor) {
-    $validationStatus = $user->doctor?->validation_status ?? 'missing';
-} elseif ($isClinic) {
-    $validationStatus = $user->clinic?->validation_status ?? 'missing';
-}
+    $validationStatus = 'approved';
+    if ($isDoctor) {
+        $validationStatus = $user->doctor?->validation_status ?? 'missing';
+    } elseif ($isClinic) {
+        $validationStatus = $user->clinic?->validation_status ?? 'missing';
+    }
 
-$breadcrumbs = [
-    ['name' => 'Dashboard', 'href' => route('admin.dashboard')],
-    ['name' => $isPatient ? 'Mi Panel de Salud' : 'Consola Analítica de Negocio']
-];
+    $breadcrumbs = [
+        ['name' => 'Dashboard', 'href' => route('admin.dashboard')],
+        ['name' => $isPatient ? 'Mi Panel de Salud' : 'Consola Analítica de Negocio']
+    ];
+
+    $doctorSettings = $user->doctorSettings;
+    $hasIndividualPlan = $doctorSettings && $doctorSettings->plan_id !== null;
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">    
@@ -176,7 +179,8 @@ $breadcrumbs = [
                     @endif
 
                     <!-- CUADRÍCULA DE KPIs FINANCIEROS Y OPERATIVOS -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">                        
+                        @if ($hasIndividualPlan)
                         <div class="bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100 flex items-center justify-between gap-4">
                             <div>
                                 <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Ingresos Mensuales</span>
@@ -244,7 +248,14 @@ $breadcrumbs = [
                                 <canvas id="locationDistributionChart"></canvas>
                             </div>
                         </div>
-
+                        @else
+                        <div class="bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100 flex items-center justify-between gap-4">
+                            <div>
+                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Consultas de Hoy</span>
+                                <h3 class="text-2xl font-black text-slate-800">{{ $appointmentsToday }}</h3>
+                            </div>
+                        </div>
+                        @endif
                     </div>
                 @endif
 

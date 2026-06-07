@@ -48,6 +48,8 @@ class RegisterClinicController extends Controller
             'phone' => ['required', 'string', 'regex:/^[0-9]{10}$/'], 
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'min:8', 'confirmed'],
+            'specialties' => 'required|array|min:1',
+            'specialties.*' => 'exists:specialties,id',
         ], [
             'nit.regex' => 'El formato del NIT debe ser solo números o incluir el dígito de verificación (ej: 12345678-9).',
             'nit.unique' => 'Este NIT ya está registrado en nuestra plataforma.',
@@ -89,17 +91,14 @@ class RegisterClinicController extends Controller
                     'active'            => true
                 ]);
                 
-                // 4. Sincronizar el catálogo de especialidades médicas seleccionadas
-                if ($request->has('specialties')) {
-                    $clinic->specialties()->sync($request->specialties);
-                }
+                // 4. Guardar las especialidades en la tabla pivote clinic_specialty
+                $clinic->specialties()->attach($request->specialties);
             });
 
             return redirect()->route('login')
                 ->with('success', 'Clínica registrada correctamente. Ya puedes iniciar sesión para administrar tu centro médico.');
 
-        } catch (\Exception $e) {
-            // Retorno elegante para no romper el servidor con un dd() en producción
+        } catch (\Exception $e) {            
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Error durante el registro transaccional de la clínica: ' . $e->getMessage());

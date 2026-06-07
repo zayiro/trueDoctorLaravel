@@ -84,7 +84,10 @@
         </div>
 
         <!-- CONTENEDOR GRID DE TARJETAS -->
-        <div class="space-y-6">
+        <div
+            x-data="{ redirecting: false }" 
+            class="space-y-6"    
+        >
             @forelse($results as $result)
                 <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 flex flex-col md:flex-row gap-6 hover:shadow-md transition duration-200">
                     <!-- Foto / Icono Lateral Izquierdo -->
@@ -164,24 +167,50 @@
                             </div>
                         @endif
                     </div>
-                    <!-- Columna de Botones (Acciones Unificadas) -->
+                    
+                    <!-- Columna de Botones (Acciones Unificadas e Inteligentes con Bifurcación Semántica) -->
                     <div class="flex flex-col justify-center gap-2.5 min-w-[200px] border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6 px-2">
-                        <div x-data="{ redireccionando: false }" class="flex flex-col gap-2 w-full">
-                            <a href="{{ route('partner.public.profile', ['slug' => $result['slug'], 'address_id' => $result['address_id']]) }}" 
-                                @click="redireccionando = true"
-                                :class="redireccionando ? 'opacity-75 cursor-not-allowed bg-indigo-500 pointer-events-none transform-none' : 'bg-indigo-600 hover:bg-indigo-700 hover:-translate-y-0.5'"
-                                class="text-white font-bold text-xs uppercase tracking-wider text-center py-3 px-4 rounded-xl shadow-md shadow-indigo-100 transition-all transform flex items-center justify-center gap-2 min-h-[44px]">
+                        <div x-data="{ redirecting: false }" class="flex flex-col gap-2 w-full">
+                            
+                            <!-- BOTÓN ADAPTATIVO: Detecta el tipo de inquilino (Tenant) para cambiar el destino y los parámetros -->
+                            <a href="{{ $result['type'] === 'clinic' 
+                                            ? route('partner.clinic.public.decision', [
+                                                'slug'       => $result['slug'], 
+                                                'specialty_slug'  => request('specialty'), 
+                                                'city'       => request('city')
+                                            ]) 
+                                            : route('partner.public.profile', [
+                                                'slug'       => $result['slug'], 
+                                                'clinic_id'  => null, 
+                                                'address_id' => $result['address_id'], 
+                                                'specialty'  => request('specialty')
+                                            ]) }}" 
+                                @click="redirecting = true"
+                                :class="redirecting ? 'opacity-80 cursor-not-allowed bg-blue-700 pointer-events-none transform-none' : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.99] hover:-translate-y-0.5'"
+                                class="w-full sm:w-auto text-white font-black text-[11px] uppercase tracking-wider text-center py-3.5 px-6 rounded-xl shadow-md shadow-blue-500/10 transition-all transform flex items-center justify-center gap-2.5 min-h-[46px] select-none">
                                 
-                                <svg x-show="redireccionando" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" style="display: none;"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                <span x-text="redireccionando ? 'Abriendo agenda...' : '{{ $result['type'] === 'clinic' ? 'Ver Especialistas' : 'Agendar Cita' }}'">
+                                <!-- Spinner reactivo de Alpine.js -->
+                                <svg x-show="redirecting" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" style="display: none;" x-cloak xmlns="http://w3.org">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+
+                                <!-- Icono de Calendario Vectorial -->
+                                <svg x-show="!redirecting" class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://w3.org">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/>
+                                </svg>
+
+                                <!-- Textos reactivos controlados por el tipo de registro -->
+                                <span class="mt-1" x-text="redirecting ? 'Abriendo agenda...' : '{{ $result['type'] === 'clinic' ? 'Ver Especialistas' : 'Agendar Cita' }}'">
                                     {{ $result['type'] === 'clinic' ? 'Ver Especialistas' : 'Agendar Cita' }}
                                 </span>
                             </a>
+
+
                             <p class="text-[9px] text-center text-slate-400 font-bold uppercase tracking-wider">Reserva directa garantizada</p>
                         </div>
                     </div>
-
-                </div> <!-- Cierra el div de la card individual (.bg-white.rounded-[2rem]) -->
+                </div>
             @empty
                 <!-- ESTADO VACÍO EN CASO DE NO COINCIDIR FILTROS -->
                 <div class="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-slate-200 p-6 shadow-inner">

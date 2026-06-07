@@ -11,3 +11,7 @@ Artisan::command('inspire', function () {
 
 // Le dice a Laravel que ejecute el Job cada 10 minutos
 Schedule::job(new ProcessPendingZoomMeetings)->everyTenMinutes();
+
+// Realiza un backup de la DB diariamente a las 12:00 AM y limpia los antiguos
+Schedule::command('backup:clean')->daily()->at('00:00');
+Schedule::command('backup:run --only-db')->daily()->at('00:05');

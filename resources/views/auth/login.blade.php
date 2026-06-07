@@ -26,8 +26,20 @@
             </div>
         @endif
 
+        <!-- Ubicación Ideal: Mensaje de invitación Multiperfil -->
+        <div class="text-center mb-6 border-b border-gray-100 pb-4">
+            <h2 class="text-lg font-bold text-gray-800">Conectando salud en tiempo real</h2>
+            <p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                Inicia sesión para gestionar tus datos médicos, agendar pacientes o administrar tu clínica en OpenDoctor.
+            </p>
+            <h2 class="text-lg font-bold text-gray-800">
+                <span class="bg-success-soft text-fg-success-strong text-xs font-medium px-1.5 py-0.5 rounded">Pacientes</span>
+                <span class="bg-success-soft text-fg-success-strong text-xs font-medium px-1.5 py-0.5 rounded">Especialistas</span>
+                <span class="bg-success-soft text-fg-success-strong text-xs font-medium px-1.5 py-0.5 rounded">Clínicas</span>
+            </h2>
+        </div>
 
-        <form method="POST" action="{{ route('login') }}" x-data="{ showPass: false }">
+        <form method="POST" action="{{ route('login') }}" x-data="{ showPass: false, loading: false }" @submit="loading = true">
             @csrf
 
             <div>
@@ -73,9 +85,17 @@
                     </a>
                 @endif
 
-                <x-button class="ms-4">
-                    {{ __('Log in') }}
+                <x-button class="ms-4 inline-flex items-center" ::disabled="loading">
+                    <!-- Spinner Animado de Tailwind CSS (se muestra solo al cargar) -->
+                    <svg x-show="loading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" x-cloak>
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+
+                    <!-- Texto que cambia dinámicamente -->
+                    <span x-text="loading ? 'Validando...' : '{{ __('Log in') }}'"></span>
                 </x-button>
+
             </div>
         </form>
     </x-authentication-card>

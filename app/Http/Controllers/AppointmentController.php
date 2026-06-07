@@ -122,49 +122,6 @@ class AppointmentController extends Controller
             'notes'       => $appointment->notes ?? 'El paciente no registró síntomas o notas adicionales en esta consulta.'
         ], 200);
     }
-
-    /**
-     * Actualiza el estado de una cita validando los permisos del rol.
-     */
-    public function updateStatus(Request $request, Appointment $appointment)
-    {
-        // 1. Validar que el estado enviado sea uno permitido
-        $request->validate([
-            'status' => 'required|in:pending,confirmed,completed,cancelled',
-        ]);
-
-        $user = Auth::user();
-        $newStatus = $request->status;
-
-        // 2. CONTROL DE SEGURIDAD INTERNA Y PERMISOS POR ROL
-        if ($user->role === 'patient') {
-            // Un paciente SOLO puede cancelar su propia cita
-            if ($appointment->user_id !== $user->id) {
-                abort(403, 'Acción no autorizada.');
-            }
-            if ($newStatus !== 'cancelled') {
-                return redirect()->back()->with('error', 'Los pacientes solo pueden cancelar citas.');
-            }
-        } elseif (in_array($user->role, ['doctor', 'clinic'])) {
-            // Doctores y Clínicas solo pueden modificar citas de sus sedes (Tenancy)
-            $ownerId = $user->role === 'clinic' ? $user->clinic->id : $user->doctor->id;
-            $foreignKey = $user->role === 'clinic' ? 'clinic_id' : 'doctor_id';
-
-            if ($appointment->address->$foreignKey !== $ownerId) {
-                abort(403, 'Acción no autorizada.');
-            }
-        } elseif ($user->role !== 'admin') {
-            abort(403, 'Rol no autorizado.');
-        }
-
-        // 3. Ejecutar la actualización del estado
-        $appointment->update([
-            'status' => $newStatus
-        ]);
-
-        return redirect()->route('appointments.search', ['reference' => $appointment->reference])
-            ->with('success', 'El estado de la reservación ha sido actualizado a: ' . __($newStatus));
-    }
     
     public function store(Request $request)
     {
@@ -569,11 +526,12 @@ class AppointmentController extends Controller
 
         $appointment = $appointment->fresh(['doctor.user', 'clinic', 'service', 'address.city', 'patient']);
 
-        // 3. ENVÍO DE CORREO ELECTRÓNICO
-        if (!$appointment->email_sent) {
-            try {
-                // Al enviar $appointment, el correo ya incluirá los links generados arriba descifrados por tus Accessors
-                Mail::to($activeUser->email)->send(new AppointmentConfirmed($appointment));
+        // 3. ENVÍO DE CORREO ELECTRÓNICO AL PACIENTE Y AL PARTNER SI ES UNA CONSULTA PRESENCIAL
+        if (!$appointment->email_sent && $appointment->service->type === 'physical') {
+            try {                
+                Mail::to($activeUser->email)->send(new AppointmentConfirmed($appointment, 'patient'));                
+                Mail::to($appointment->doctor?->user?->email)->send(new AppointmentConfirmed($appointment, 'partner'));
+
                 $appointment->update(['email_sent' => true]);
             } catch (Throwable $e) {
                 $admins = User::where('role', 'admin')->get();

@@ -58,13 +58,16 @@ class ProfileDoctorController extends Controller
             'specialties.required' => 'Debes seleccionar al menos una especialidad médica.',
         ]);
 
+        $cleanPhone = preg_replace('/[^0-9]/', '', trim($request->phone));
+        $fullPhone = $request->country_code ? $request->country_code . $cleanPhone : '+57' . $cleanPhone;
+
         // 3. Persistencia de datos de forma masiva
         // Nota: Laravel se encarga de convertir el array 'languages' en una cadena JSON de forma automática 
         // debido al cast que añadimos previamente en el modelo Doctor.
         $doctor->update([
             'identification'   => $request->identification,
             'medical_license'  => $request->medical_license,
-            'phone'            => $request->phone,
+            'phone'            => $fullPhone,
             'experience_years' => $request->experience_years,
             'gender'           => $request->gender,
             'languages'        => $request->languages, 

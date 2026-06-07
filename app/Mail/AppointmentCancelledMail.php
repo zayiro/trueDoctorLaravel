@@ -21,7 +21,7 @@ class AppointmentCancelledMail extends Mailable
     public function __construct(Appointment $appointment, $userAction)
     {
         $this->appointment = $appointment;
-        $this->userAction = $userAction;
+        $this->userAction  = $userAction;
     }
 
     public function envelope(): Envelope

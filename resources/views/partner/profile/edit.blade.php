@@ -1,13 +1,16 @@
 @php
-$breadcrumbs = [
-    [
-        'name' => 'Doctor',
-        'href' => route('partner.addresses.index'),
-    ],
-    [
-        'name' => 'Perfil',
-    ]
-];
+    $breadcrumbs = [
+        [
+            'name' => 'Doctor',
+            'href' => route('partner.addresses.index'),
+        ],
+        [
+            'name' => 'Perfil',
+        ]
+    ];
+
+    $doctorSettings = $doctor->settings;
+    $hasIndividualPlan = $doctorSettings && $doctorSettings->plan_id !== null;
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">  
@@ -54,6 +57,7 @@ $breadcrumbs = [
                 </div>
             </div>
 
+            @if ($hasIndividualPlan)
             <div class="mt-5 md:mt-0 md:col-span-2">
                 <div class="shadow overflow-hidden sm:rounded-2xl bg-white p-6 border border-gray-100">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -101,6 +105,56 @@ $breadcrumbs = [
                     </div>
                 </div>
             </div>
+                        @else
+            <div class="mt-5 md:mt-0 md:col-span-2">
+                <div class="shadow overflow-hidden sm:rounded-2xl bg-white p-8 border border-gray-100 text-center max-w-xl mx-auto">
+                    <!-- Icono Corporativo Premium -->
+                    <div class="mx-auto w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-4 ring-4 ring-blue-100/50">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h18"/>
+                        </svg>
+                    </div>
+
+                    <!-- Mensaje Principal -->
+                    <h3 class="text-lg font-black text-gray-900 mb-1">Perfil Médico Institucional</h3>
+                    <p class="text-sm text-gray-500 max-w-md mx-auto mb-6">
+                        Tu cuenta está vinculada a una institución de salud. Actualmente tus beneficios de cuotas, sedes y citas están cubiertos de forma corporativa.
+                    </p>
+
+                    <!-- Beneficios Heredados del Plan de la Clínica -->
+                    <div class="grid grid-cols-2 gap-3 text-left mb-6">
+                        <div class="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-2.5">
+                            <span class="text-blue-600">✓</span>
+                            <span class="text-xs font-bold text-gray-700">Sedes de la Clínica</span>
+                        </div>
+                        <div class="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-2.5">
+                            <span class="text-blue-600">✓</span>
+                            <span class="text-xs font-bold text-gray-700">Servicios Institucionales</span>
+                        </div>
+                        <div class="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-2.5">
+                            <span class="text-blue-600">✓</span>
+                            <span class="text-xs font-bold text-gray-700">Agenda Protegida SaaS</span>
+                        </div>
+                        <div class="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-2.5">
+                            <span class="text-blue-600">✓</span>
+                            <span class="text-xs font-bold text-gray-700">Historial Clínico Seguro</span>
+                        </div>
+                    </div>
+
+                    <!-- Información Adicional y Acción de Soporte -->
+                    <div class="pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-left">
+                        <div>
+                            <h4 class="text-xs font-black text-gray-800">¿Deseas trabajar de forma particular?</h4>
+                            <p class="text-[11px] text-gray-500 max-w-xs mt-0.5">Contacta con el soporte de OpenDoctor para evaluar tu migración a un plan independiente.</p>
+                        </div>
+                        <a href="{{ route('contact.show') }}" 
+                           class="w-full sm:w-auto text-center px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white font-bold text-xs rounded-xl transition duration-150 shadow-sm">
+                            Contactar Soporte
+                        </a>
+                    </div>
+                </div>
+            </div>
+            @endif
         </div>
 
         <!-- DIVIDER VISUAL -->
@@ -127,41 +181,69 @@ $breadcrumbs = [
                     <div class="shadow overflow-hidden sm:rounded-2xl bg-white border border-gray-100">
                         <div class="px-4 py-5 bg-white sm:p-6 space-y-6">
                             
-                            <!-- Grid de Datos Base -->
-                            <div class="grid grid-cols-6 gap-6">
-                                <div class="col-span-6 sm:col-span-3">
-                                    <label for="identification" class="block text-sm font-medium text-gray-700">Documento de Identidad</label>
-                                    <input type="text" name="identification" id="identification" value="{{ old('identification', $doctor->identification) }}" 
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                            <!-- Grid de Datos Base (UX e Identidad Unificada OpenDoctor) -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                
+                                <!-- Documento de Identidad -->
+                                <div class="flex flex-col">
+                                    <x-label for="identification" value="Documento de Identidad" class="mb-1 text-slate-500 font-bold text-xs" />
+                                    <input type="text" name="identification" id="identification" 
+                                        value="{{ old('identification', $doctor->identification) }}" required
+                                        placeholder="Número de cédula o ID"
+                                        class="w-full rounded-2xl border-slate-200 py-4 px-5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-inner text-slate-800">
                                 </div>
 
-                                <div class="col-span-6 sm:col-span-3">
-                                    <label for="medical_license" class="block text-sm font-medium text-gray-700">Licencia Médica / Registro</label>
-                                    <input type="text" name="medical_license" id="medical_license" value="{{ old('medical_license', $doctor->medical_license) }}" 
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                <!-- Licencia Médica -->
+                                <div class="flex flex-col">
+                                    <x-label for="medical_license" value="Licencia Médica / Registro Oficial" class="mb-1 text-slate-500 font-bold text-xs" />
+                                    <input type="text" name="medical_license" id="medical_license" 
+                                        value="{{ old('medical_license', $doctor->medical_license) }}" required
+                                        placeholder="Ej: Registro ReTHUS"
+                                        class="w-full rounded-2xl border-slate-200 py-4 px-5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-inner text-slate-800">
                                 </div>
 
-                                <div class="col-span-6 sm:col-span-3">
-                                    <label for="phone" class="block text-sm font-medium text-gray-700">Teléfono corporativo, donde recibiras información de reservas y de contacto con el paciente</label>
-                                    <input type="text" name="phone" id="phone" value="{{ old('phone', $doctor->phone) }}" 
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                <!-- Número Celular Expandido (Corregido sin ciclos indexados) -->
+                                <div class="flex flex-col">
+                                    <x-label for="phone" value="Número celular de notificación" class="mb-1 text-slate-500 font-bold text-xs" />
+                                    <div class="flex rounded-2xl border border-slate-200 bg-white focus-within:ring-2 focus-within:ring-indigo-500 overflow-hidden shadow-inner">
+                                        <select name="country_code" required class="bg-slate-50 text-slate-600 text-xs border-0 border-r border-slate-200 focus:ring-0 px-5 cursor-pointer outline-none">
+                                            <option value="+57" {{ old('country_code', substr($doctor->phone, 0, 3)) == '+57' ? 'selected' : '' }}>🇨🇴 +57</option>
+                                            <option value="+54" {{ old('country_code', substr($doctor->phone, 0, 3)) == '+54' ? 'selected' : '' }}>🇦🇷 +54</option>
+                                            <option value="+591" {{ old('country_code', substr($doctor->phone, 0, 4)) == '+591' ? 'selected' : '' }}>🇧🇴 +591</option>
+                                            <option value="+55" {{ old('country_code', substr($doctor->phone, 0, 3)) == '+55' ? 'selected' : '' }}>🇧🇷 +55</option>
+                                            <option value="+56" {{ old('country_code', substr($doctor->phone, 0, 3)) == '+56' ? 'selected' : '' }}>🇨🇱 +56</option>
+                                            <option value="+593" {{ old('country_code', substr($doctor->phone, 0, 4)) == '+593' ? 'selected' : '' }}>🇪🇨 +593</option>
+                                        </select>
+                                        {{-- Limpiamos el número quitando el indicativo si ya viene guardado en la BD --}}
+                                        <input type="tel" name="phone" id="phone" required maxlength="10" pattern="[0-9]{10}" 
+                                            placeholder="3001234567" 
+                                            value="{{ old('phone', strlen($doctor->phone) > 10 ? substr($doctor->phone, -10) : $doctor->phone) }}"
+                                            class="w-full border-0 focus:ring-0 p-4 text-sm text-slate-800 rounded-r-2xl">
+                                    </div>
                                 </div>
 
-                                <div class="col-span-6 sm:col-span-3">
-                                    <label for="experience_years" class="block text-sm font-medium text-gray-700">Años de Experiencia</label>
-                                    <input type="number" name="experience_years" id="experience_years" value="{{ old('experience_years', $doctor->experience_years) }}" 
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                <!-- Años de Experiencia -->
+                                <div class="flex flex-col">
+                                    <x-label for="experience_years" value="Años de Experiencia Profesional" class="mb-1 text-slate-500 font-bold text-xs" />
+                                    <input type="number" name="experience_years" id="experience_years" min="0" max="100"
+                                        value="{{ old('experience_years', $doctor->experience_years) }}" required
+                                        placeholder="Ej: 8"
+                                        class="w-full rounded-2xl border-slate-200 py-4 px-5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-inner text-slate-800">
                                 </div>
 
-                                <div class="col-span-6">
-                                    <label for="gender" class="block text-sm font-medium text-gray-700">Género</label>
-                                    <select id="gender" name="gender" class="mt-1 block w-full rounded-md border border-gray-300 bg-white py-2 px-3 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm">
+                                <!-- Género (Expandido a ancho completo para balancear la grilla) -->
+                                <div class="flex flex-col md:col-span-2">
+                                    <x-label for="gender" value="Género" class="mb-1 text-slate-500 font-bold text-xs" />
+                                    <select id="gender" name="gender" required 
+                                        class="w-full rounded-2xl border-slate-200 py-4 px-5 text-sm text-slate-500 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-inner">
                                         <option value="male" {{ old('gender', $doctor->gender) == 'male' ? 'selected' : '' }}>Masculino</option>
                                         <option value="female" {{ old('gender', $doctor->gender) == 'female' ? 'selected' : '' }}>Femenino</option>
                                         <option value="other" {{ old('gender', $doctor->gender) == 'other' ? 'selected' : '' }}>Otro / Prefiero no decirlo</option>
                                     </select>
                                 </div>
+
                             </div>
+
 
                             <!-- Módulo de Idiomas (Matriz de Checkboxes) -->
                             <div class="pt-4 border-t border-gray-100">
@@ -226,13 +308,12 @@ $breadcrumbs = [
                                 @error('specialties') <span class="text-xs text-red-500 mt-2 block">{{ $message }}</span> @enderror
                             </div>
 
-
-                            <!-- Cuadro de Biografía Clínica -->
-                            <div class="pt-4 border-t border-gray-100">
-                                <label for="bio" class="block text-sm font-medium text-gray-700 mb-1">Perfil / Biografía Médica</label>
-                                <textarea id="bio" name="bio" rows="4" 
+                            <!-- Cuadro de Biografía Clínica (UX e Identidad Unificada OpenDoctor) -->
+                            <div class="pt-6 border-t border-slate-100 mt-5">
+                                <x-label for="bio" value="Perfil / Biografía Médica" class="mb-2 text-slate-700 font-bold text-sm tracking-tight" />
+                                <textarea id="bio" name="bio" rows="5" 
                                     placeholder="Escribe sobre tus enfoques clínicos, estudios o un saludo de confianza para los pacientes..."
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm placeholder-gray-400">{{ old('bio', $doctor->bio) }}</textarea>
+                                    class="w-full rounded-[2rem] border-slate-200 p-5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-inner text-slate-800 placeholder-slate-400/80 leading-relaxed">{{ old('bio', $doctor->bio) }}</textarea>
                             </div>
 
                         </div>

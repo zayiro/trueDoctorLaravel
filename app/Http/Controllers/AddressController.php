@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Address;
 use App\Models\City;
+use App\Models\Department;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -40,8 +41,11 @@ class AddressController extends Controller
             ->withCount('schedules')
             ->get();
 
+        // Cargar departamentos DIVIPOLA para el formulario de alta
+        $departments = Department::orderBy('name')->get();            
+
         // Enviamos la variable genérica $owner para validar canAddMoreAddresses() en la misma vista Blade
-        return view('partner.addresses.index', compact('addresses', 'owner'));
+        return view('partner.addresses.index', compact('addresses', 'owner', 'departments'));
     }
 
     public function toggleStatus(Address $address)
@@ -68,8 +72,11 @@ class AddressController extends Controller
             return redirect()->route('partner.addresses.index')
                 ->with('error', "Tu plan {$owner->plan->name} solo permite {$limite} sedes.");
         }
+
+        // Cargar departamentos DIVIPOLA para el formulario de alta
+        $departments = Department::orderBy('name')->get();   
         
-        return view('partner.addresses.create', compact('cities'));
+        return view('partner.addresses.create', compact('departments', 'cities'));
     }
 
     /**
@@ -137,7 +144,10 @@ class AddressController extends Controller
         $this->authorizeOwner($address);
         $cities = City::all();
 
-        return view('partner.addresses.edit', compact('address', 'cities'));
+        // Cargar departamentos DIVIPOLA para el formulario de alta
+        $departments = Department::orderBy('name')->get();   
+
+        return view('partner.addresses.edit', compact('address', 'departments', 'cities'));
     }
 
     /**

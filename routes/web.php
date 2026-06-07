@@ -16,6 +16,7 @@ use App\Http\Controllers\RegisterClinicController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\PublicProfileController;
+use App\Http\Controllers\PublicClinicController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PartnerAppointmentController;
 use App\Http\Controllers\ContactController;
@@ -33,6 +34,13 @@ use App\Http\Controllers\DoctorClinicController;
 use App\Http\Controllers\ClinicDoctorController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\PatientHistoryAttachmentController;
+
+use App\Http\Controllers\ClinicAddressController;
+use App\Http\Controllers\ClinicServiceController;
+use App\Http\Controllers\ClinicScheduleController;
+use App\Http\Controllers\ClinicAppointmentController;
+
+use App\Http\Controllers\AppointmentStateController;
 
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\UserManagementController;
@@ -145,9 +153,6 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     // Acción para procesar el cambio
     Route::put('/partner/appointments/{appointment}/reschedule/process', [PartnerAppointmentController::class, 'rescheduleProcess'])->name('partner.appointments.reschedule.process');
 
-    // Ruta agregada para la actualización de estados (Cancelar, Completar, etc.)
-    Route::put('/appointments/{appointment}/status', [PartnerAppointmentController::class, 'updateStatus'])->name('partner.appointments.update-status');
-
     // Ruta para cancelar la cita (la que está causando el error)
     Route::delete('/partner/appointments/{appointment}', [AppointmentController::class, 'destroy'])->name('partner.appointments.destroy');
 
@@ -180,11 +185,35 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
 
 // Grupo exclusivo para la administración de nóminas de centros médicos
 Route::middleware(['auth', 'role:clinic'])->group(function () {    
-    Route::get('/clinic/doctors', [ClinicDoctorController::class, 'index'])->name('partner.clinic_doctors.index');
-    Route::post('/clinic/doctors', [ClinicDoctorController::class, 'store'])->name('partner.clinic_doctors.store');
-    Route::patch('/clinic/doctors/{doctor}/toggle', [ClinicDoctorController::class, 'toggleStatus'])->name('partner.clinic_doctors.toggle');
-    Route::delete('/clinic/doctors/{id}', [ClinicDoctorController::class, 'destroy'])->name('partner.clinic_doctors.destroy');
-    Route::post('/clinic/doctors/{doctor}/resend-invitation', [ClinicDoctorController::class, 'resendInvitation'])->name('partner.clinic_doctors.resend-invitation');
+    Route::get('/clinic/doctors', [ClinicDoctorController::class, 'index'])->name('partner.clinic.doctors.index');
+    Route::post('/clinic/doctors', [ClinicDoctorController::class, 'store'])->name('partner.clinic.doctors.store');
+    Route::patch('/clinic/doctors/{doctor}/toggle', [ClinicDoctorController::class, 'toggleStatus'])->name('partner.clinic.doctors.toggle');
+    Route::delete('/clinic/doctors/{id}', [ClinicDoctorController::class, 'destroy'])->name('partner.clinic.doctors.destroy');
+    Route::post('/clinic/doctors/{doctor}/resend-invitation', [ClinicDoctorController::class, 'resendInvitation'])->name('partner.clinic.doctors.resend-invitation');
+
+    // 👇 EXTENSIÓN PREMIUM: Módulo Core de Sedes Institucionales (Addresses)
+    Route::get('/clinic/addresses', [ClinicAddressController::class, 'index'])->name('partner.clinic.addresses.index');
+    Route::post('/clinic/addresses', [ClinicAddressController::class, 'store'])->name('partner.clinic.addresses.store');
+    Route::patch('/clinic/addresses/{address}/toggle', [ClinicAddressController::class, 'toggleStatus'])->name('partner.clinic.addresses.toggle');
+    Route::delete('/clinic/addresses/{address}', [ClinicAddressController::class, 'destroy'])->name('partner.clinic.addresses.destroy');
+    
+    // Módulo de Servicios Completo (Index, Create, Store, Edit, Destroy)
+    Route::get('/clinic/services', [ClinicServiceController::class, 'index'])->name('partner.clinic.services.index');
+    Route::get('/clinic/services/create', [ClinicServiceController::class, 'create'])->name('partner.clinic.services.create');
+    Route::post('/clinic/services', [ClinicServiceController::class, 'store'])->name('partner.clinic.services.store');
+    Route::get('/clinic/services/{address}/{service}/edit', [ClinicServiceController::class, 'edit'])->name('partner.clinic.services.edit');
+    Route::delete('/clinic/services/{address}/{service}', [ClinicServiceController::class, 'destroy'])->name('partner.clinic.services.destroy');
+
+    // Módulo Core: Horarios de Atención Semanales y Disponibilidad (Schedules)
+    Route::get('/clinic/schedules', [ClinicScheduleController::class, 'index'])->name('partner.clinic.schedules.index');
+    Route::post('/clinic/schedules', [ClinicScheduleController::class, 'store'])->name('partner.clinic.schedules.store');
+    Route::delete('/clinic/schedules/{schedule}', [ClinicScheduleController::class, 'destroy'])->name('partner.clinic.schedules.destroy');
+
+    // Ruta dinámica para procesar la cancelación desde la modal interactiva de Alpine
+    Route::post('/clinic/appointments/{id}/cancel', [ClinicAppointmentController::class, 'cancel'])->name('partner.clinic.appointments.cancel');
+
+    // API Interna para carga dinámica de ciudades DIVIPOLA
+    Route::get('/clinic/api/departments/{department}/cities', [ClinicAddressController::class, 'getCitiesByDepartment'])->name('partner.clinic.api.cities');
 });
 
 // Rutas Privadas (patient)
@@ -244,7 +273,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/appointments/search-reference', [AppointmentController::class, 'searchByReference'])->name('appointments.search');
     
     // Ruta de actualización parcial de estado con variables en inglés
-    Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])->name('appointments.updateStatus');
+    Route::patch('/appointments/{appointment}/status', [AppointmentStateController::class, 'updateStatus'])->name('appointments.updateStatus');
 
     //ruta para el sdk de zoom
     Route::get('/appointments/{appointment}/room', [AppointmentController::class, 'joinRoom'])->name('appointments.room');
@@ -288,8 +317,11 @@ Route::get('/search-symptom', [SearchController::class, 'searchSymptomView'])->n
 
 Route::get('/{partner_slug}/{campaign_slug}.html', PublicLanding::class)->name('landing.public');
 
-// Ruta pública unificada para perfiles de médicos y clínicas
+// Ruta pública unificada para perfiles de médicos y los medicos (staff) de la clínica 
 Route::get('/medical-partner/{slug}', [PublicProfileController::class, 'show'])->name('partner.public.profile');
+
+// Embudo Público: Vista intermedia de decisión de la clínica (Inmediatez vs Especialista de Turno)
+Route::get('/clinic/{slug}/specialty/{specialty_slug?}', [PublicClinicController::class, 'showClinicStaff'])->name('partner.clinic.public.decision');
 
 // Ruta API para que FullCalendar cargue los huecos libres
 Route::get('/api/{partner}/availability', [PublicProfileController::class, 'getAvailability'])
@@ -317,7 +349,7 @@ Route::get('/plans/show', [PlanController::class, 'showPlans'])->name('plans.ind
 Route::post('/plans/{plan}/subscribe', [PlanController::class, 'subscribe'])->name('plans.subscribe');
 
 // routes/api.php o routes/web.php
-Route::get('/api/departments/{department}/cities', function ($deptId) {
+Route::get('/departments/{department}/cities', function ($deptId) {
     return City::where('department_id', $deptId)
         ->where('state', true)
         ->orderBy('name')

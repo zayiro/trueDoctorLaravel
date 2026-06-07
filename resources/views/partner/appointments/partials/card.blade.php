@@ -79,7 +79,7 @@
 
         <!-- BOTÓN CANCELAR CITA MÓVIL -->
         @if(in_array($app->status, ['pending', 'confirmed']))
-            <form action="{{ route('partner.appointments.update-status', $app->id) }}" method="POST" 
+            <form action="{{ route('appointments.updateStatus', $app->id) }}" method="POST" 
                   onsubmit="return confirm('¿Estás seguro de que deseas cancelar esta consulta médica?');" 
                   class="flex-1 min-w-[100px]">
                 @csrf

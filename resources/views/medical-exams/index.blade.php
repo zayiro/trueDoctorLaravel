@@ -7,6 +7,7 @@
                 <p class="text-sm text-slate-500">Sube tus reportes y obtén una interpretación médica guiada por Inteligencia Artificial.</p>
             </div>
 
+            @if(auth()->check() && auth()->user()->role === 'patient')
             <!-- Alertas de Errores Dinámicas de JavaScript y Laravel -->
             <div id="js-error-container" class="hidden mb-5 bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-xl text-xs font-semibold"></div>
 
@@ -69,14 +70,15 @@
                 </div>
 
                 <!-- Botón de Envío con Estado de Carga -->
-                <div class="pt-2">
-                    <button type="submit" id="submit-btn" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-100 hover:shadow-indigo-200/80 active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2 shadow-lg">
-                        <span id="btn-text">Proceder al pago seguro</span>
+                <div class="pt-2">                    
+                    {{-- CASO 1: El usuario es un Paciente Autenticado (Envía el formulario de inmediato) --}}
+                    <button type="submit" id="submit-btn" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-100 hover:shadow-emerald-200/80 active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2">
+                        <span id="btn-text">Interpretar mi examen GRATIS</span>
                         <svg id="btn-icon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path>
                         </svg>
                     </button>
-                </div>
+                </div>                
             </form>
         </div>
 
@@ -139,5 +141,14 @@
                 });
             });
         </script>
+        @else
+            {{-- CASO 2: Visitantes o No Registrados (Redirección Persuasiva al Registro) --}}
+            <a href="{{ route('register') }}" id="register-redirect-btn" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-100 hover:shadow-indigo-200/80 active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2 text-center decoration-none">
+                <span>Regístrate para obtener tu examen GRATIS</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path>
+                </svg>
+            </a>
+        @endif
     </div>
 </x-guest-layout>

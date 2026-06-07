@@ -13,28 +13,46 @@
                     <tr>
                         <td style="padding: 32px 32px 24px 32px; text-align: center; border-bottom: 1px solid #f1f5f9;">
                             <div style="font-size: 22px; font-weight: 800; color: #1e40af; margin-bottom: 16px;">
-                                open<span style="color: #2563eb;">doctor</span><span style="color: #64748b; font-size: 14px; font-weight: 400;">.online</span>
+                                Open<span style="color: #2563eb;">Doctor</span><span style="color: #64748b; font-size: 14px; font-weight: 400;">.online</span>
                             </div>
                             <div style="display: inline-block; background-color: #dcfce7; color: #15803d; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 9999px; text-transform: uppercase;">
                                 ✓ Cita Confirmada
                             </div>
                         </td>
                     </tr>
+                    @if($userAction === 'patient')
                     <tr>
                         <td style="padding: 32px 32px 24px 32px;">
                             <h1 style="margin: 0 0 12px 0; font-size: 22px; font-weight: 700; color: #0f172a;">¡Hola, {{ $appointment->patient->user->name }}!</h1>
                             <p style="margin: 0; font-size: 15px; color: #475569; line-height: 1.6;">Tu cita médica ha sido agendada correctamente con los siguientes detalles:</p>
                         </td>
                     </tr>
+                    @else
+                    <tr>
+                        <td style="padding: 32px 32px 24px 32px;">
+                            <h1 style="margin: 0 0 12px 0; font-size: 22px; font-weight: 700; color: #0f172a;">¡Hola, Dr(a). {{ $appointment->doctor->user->name }}!</h1>
+                            <p style="margin: 0; font-size: 15px; color: #475569; line-height: 1.6;">Se agendo una cita con los siguientes detalles:</p>
+                        </td>
+                    </tr>
+                    @endif                    
                     <tr>
                         <td style="padding: 0 32px 24px 32px;">
                             <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 12px; padding: 20px;">
+                                @if($userAction === 'patient')
                                 <tr>
                                     <td style="padding-bottom: 14px; border-bottom: 1px dashed #e2e8f0;">
                                         <span style="display: block; font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700;">Profesional</span>
                                         <strong style="font-size: 16px; color: #1e293b;">Dr. {{ $appointment->doctor->user->name }}</strong>
                                     </td>
                                 </tr>
+                                @else
+                                <tr>
+                                    <td style="padding-bottom: 14px; border-bottom: 1px dashed #e2e8f0;">
+                                        <span style="display: block; font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700;">Paciente</span>
+                                        <strong style="font-size: 16px; color: #1e293b;">{{ $appointment->patient->user->name }}</strong>
+                                    </td>
+                                </tr>
+                                @endif
                                 <tr>
                                     <td style="padding: 14px 0; border-bottom: 1px dashed #e2e8f0;">
                                         <span style="display: block; font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700;">Referencia</span>
@@ -91,11 +109,13 @@
                             <a href="https://opendoctor.online" style="display: inline-block; background-color: #ffffff; color: #2563eb; border: 1px solid #cbd5e1; text-decoration: none; font-size: 14px; font-weight: 600; padding: 10px 20px; border-radius: 10px;">Gestionar mi cita</a>
                         </td>
                     </tr>
+                    
                     <tr>
                         <td style="padding: 24px 32px; background-color: #fffbeb; border-top: 1px solid #fef3c7; text-align: left;">
                             <p style="margin: 0; font-size: 13px; color: #b45309; line-height: 1.5;"><strong>Recomendación importante:</strong> Por favor asiste o conéctate al menos 5 minutos antes de la hora acordada. Si la cita requiere estudios previos, tenlos a la mano.</p>
                         </td>
                     </tr>
+
                 </table>
                 <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; text-align: center; margin-top: 24px;">
                     <tr>

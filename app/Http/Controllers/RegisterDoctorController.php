@@ -64,7 +64,9 @@ class RegisterDoctorController extends Controller
                 $doctor->specialties()->attach($request->specialties);
             });
         } catch (\Exception $e) {
-            dd("Error en el registro desacoplado del SaaS: " . $e->getMessage());
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Error durante el registro transaccional del especialista: ' . $e->getMessage());
         }
 
         return redirect()->route('login')->with('success', 'Registro exitoso. Tu perfil médico está en proceso de validación.');

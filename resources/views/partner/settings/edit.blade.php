@@ -88,8 +88,6 @@ $breadcrumbs = [
                             <label for="currency" class="block text-sm font-medium text-gray-700">Divisa base</label>
                             <select id="currency" name="currency" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                 <option value="COP" {{ $settings->currency == 'COP' ? 'selected' : '' }} selected>COP - Peso Colombiano</option>
-                                <option value="USD" {{ $settings->currency == 'USD' ? 'selected' : '' }} disabled>USD - Dólar Americano</option>
-                                <option value="MXN" {{ $settings->currency == 'MXN' ? 'selected' : '' }} disabled>MXN - Peso Mexicano</option>
                             </select>
                         </div>
                     </div>
@@ -128,10 +126,7 @@ $breadcrumbs = [
                         <label for="virtual_meeting_platform" class="block text-sm font-medium text-gray-700">Plataforma de Reunión Virtual</label>
                         <select id="virtual_meeting_platform" name="virtual_meeting_platform" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                             <option value="" disabled>Seleccione una opción</option>
-                            <option value="internal" {{ old('virtual_meeting_platform', $settings->virtual_meeting_platform ?? '') == 'internal' ? 'selected' : '' }}>Plataforma Interna</option>
-                            <option value="zoom" {{ old('virtual_meeting_platform', $settings->virtual_meeting_platform ?? '') == 'zoom' ? 'selected' : '' }}>Zoom</option>
-                            <option value="meet" {{ old('virtual_meeting_platform', $settings->virtual_meeting_platform ?? '') == 'meet' ? 'selected' : '' }}>Google Meet</option>
-                            <option value="teams" {{ old('virtual_meeting_platform', $settings->virtual_meeting_platform ?? '') == 'teams' ? 'selected' : '' }}>Microsoft Teams</option>
+                            <option value="zoom" {{ old('virtual_meeting_platform', $settings->virtual_meeting_platform ?? '') == 'zoom' ? 'selected' : '' }} selected>Zoom</option>                            
                         </select>
                     </div>
                 </div>

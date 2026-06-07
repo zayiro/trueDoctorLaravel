@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -84,4 +85,42 @@ class User extends Authenticatable
     {
         return $this->hasOne(Patient::class, 'user_id');
     }    
+
+    /**
+     * Resuelve el plan operativo real del médico basado en el contexto de la consulta.
+     * Si se proporciona un ID de clínica, el sistema evalúa si está vinculado y hereda su plan.
+     */
+    public function getActivePlanForContext(?int $clinicId = null): Plan
+    {
+        // Si el contexto indica una clínica, verificamos la vinculación en la tabla pivote
+        if ($clinicId) {
+            $clinic = Clinic::where('id', $clinicId)
+                ->whereHas('doctors', function ($query) {
+                    $query->where('doctor_id', $this->doctorProfile->id)
+                        ->where('status', 'approved'); // Solo si está aprobado en la nómina
+                })->first();
+
+            if ($clinic) {
+                return $clinic->plan; // Hereda el HasOneThrough de la clínica (Ej: clinic_gold)
+            }
+        }
+
+        // Si no hay contexto de clínica o trabaja particular, rige su plan individual comprado
+        return $this->plan ?? Plan::where('slug', 'free')->first();
+    }
+
+    /**
+     * Relación directa para acceder a los ajustes del médico desde el usuario.
+     */
+    public function doctorSettings(): HasOneThrough
+    {
+        return $this->hasOneThrough(
+            DoctorSetting::class, // Modelo de destino
+            Doctor::class,        // Modelo intermedio
+            'user_id',            // Clave foránea en la tabla 'doctors'
+            'doctor_id',          // Clave foránea en la tabla 'doctor_settings'
+            'id',                 // Clave primaria en la tabla 'users'
+            'id'                  // Clave primaria en la tabla 'doctors'
+        );
+    }
 }

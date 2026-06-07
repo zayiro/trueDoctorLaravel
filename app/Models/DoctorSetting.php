@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DoctorSetting extends Model
 {
+    // Definimos el nombre exacto de tu tabla por seguridad
+    protected $table = 'doctor_settings';
+
     protected $fillable = [
         'doctor_id',
         'plan_id',
@@ -28,7 +31,7 @@ class DoctorSetting extends Model
 
     public function doctor(): BelongsTo
     {
-        return $this->belongsTo(Doctor::class);
+        return $this->belongsTo(Doctor::class, 'doctor_id', 'id');
     }
 
     /**
@@ -36,6 +39,6 @@ class DoctorSetting extends Model
      */
     public function plan(): BelongsTo
     {
-        return $this->belongsTo(Plan::class, 'plan_id');
+        return $this->belongsTo(Plan::class, 'plan_id', 'id');
     }
 }

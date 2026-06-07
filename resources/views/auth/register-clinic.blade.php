@@ -5,7 +5,7 @@
             <x-authentication-card-logo />
         </x-slot>
         
-        <div x-data="{ showPass: false, showConfirm: false }">
+        <div>
             <h2 class="text-2xl font-black text-gray-800 mb-6">Registro de Centros Médicos</h2>
             <x-validation-errors class="mb-4" />
 
@@ -14,7 +14,7 @@
                     {{ session('error') }}
                 </div>
             @endif
-            <form action="{{ route('clinic.register.store') }}" method="POST" class="space-y-4">
+            <form action="{{ route('clinic.register.store') }}" method="POST" class="space-y-4" x-data="{ showPass: false, showConfirm: false, loading: false }" @submit="loading = true">
                 @csrf
                 
                 <div>
@@ -29,12 +29,12 @@
 
                 <div>
                     <x-label for="nit" value="{{ __('Número de identificación NIT') }}" />
-                    <x-input id="nit" class="block mt-1 w-full" type="text" name="nit" :value="old('nit')" required placeholder="Ej: 110010984301-9" />
+                    <x-input id="nit" class="block mt-1 w-full" type="text" name="nit" :value="old('nit')" required placeholder="Ej: 110010984301-9" autocomplete="off" />
                 </div>
 
                 <div>
                     <x-label for="reps_code" value="Código de Habilitación / Registro REPS" />
-                    <x-input id="reps_code" class="block mt-1 w-full" type="text" name="reps_code" :value="old('reps_code')" required placeholder="Ej: 110010984301" />
+                    <x-input id="reps_code" class="block mt-1 w-full" type="text" name="reps_code" :value="old('reps_code')" required placeholder="Ej: 110010984301" autocomplete="off" />
                 </div>                
                 
                 <!-- SELECTOR DE ESPECIALIDADES CON ALPINE -->
@@ -167,8 +167,15 @@
                         {{ __('Already registered?') }}
                     </a>
 
-                    <x-button class="ms-4">
-                        {{ __('Register') }}
+                    <x-button class="ms-4 inline-flex items-center" ::disabled="loading">
+                        <!-- Spinner Animado de Tailwind CSS (se muestra solo al cargar) -->
+                        <svg x-show="loading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" x-cloak>
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+
+                        <!-- Texto que cambia dinámicamente -->
+                        <span x-text="loading ? 'Validando...' : '{{ __('Register') }}'"></span>
                     </x-button>
                 </div>
             </form>

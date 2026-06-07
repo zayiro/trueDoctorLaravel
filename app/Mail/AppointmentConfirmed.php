@@ -16,12 +16,15 @@ class AppointmentConfirmed extends Mailable
     use Queueable, SerializesModels;
     public $appointment;
 
+    public $userAction;
+
     /**
      * Create a new message instance.
      */
-    public function __construct(Appointment $appointment)
+    public function __construct(Appointment $appointment, $userAction)
     {
         $this->appointment = $appointment;
+        $this->userAction  = $userAction;
     }
 
     /**
@@ -30,7 +33,7 @@ class AppointmentConfirmed extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Confirmación de Cita Médica',
+            subject: 'Confirmación de Cita Médica - Ref: ' . $this->appointment->reference,
         );
     }
 

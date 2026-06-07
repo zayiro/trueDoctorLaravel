@@ -44,7 +44,7 @@
             <div class="bg-slate-900 p-8 text-center text-white pt-10">
                 <span class="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-1 block">Paso de Verificación</span>
                 <h2 class="text-2xl font-black text-white tracking-tight">Resumen de tu Orden Médica</h2>                
-                <p class="text-sm text-slate-400 mt-1">Valida los datos de tu especialista antes de proceder a la confirmation de la agenda.</p>
+                <p class="text-sm text-slate-400 mt-1">Valida los datos de tu especialista antes de proceder a la confirmación de la agenda.</p>
             </div>
             
             <div class="p-8 space-y-5">
@@ -158,9 +158,19 @@
                             </form>
                         @else
                             {{-- Caso FALSE: Agendamiento directo o pago en las instalaciones físicas --}}
-                            <form action="{{ route('appointments.success', $appointment) }}" method="GET">                                
-                                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 transition-all text-sm uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
-                                    Confirmar y Finalizar Reserva
+                            <form action="{{ route('appointments.success', $appointment) }}" method="GET" x-data="{ loading: false }" x-on:submit="loading = true">                                
+                                <button type="submit" 
+                                        :disabled="loading"
+                                        :class="loading ? 'opacity-70 cursor-not-allowed bg-indigo-500' : 'bg-indigo-600 hover:bg-indigo-700'"
+                                        class="w-full text-white py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 transition-all text-sm uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-indigo-500/20 flex items-center justify-center gap-2">
+                                    
+                                    <!-- Icono ArrowPath de Heroicons (Animado con Tailwind) -->
+                                    <svg x-show="loading" class="animate-spin h-5 w-5 text-white" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="display: none;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                    </svg>
+
+                                    <!-- Texto dinámico -->
+                                    <span x-text="loading ? 'Procesando Reserva...' : 'Confirmar y Finalizar Reserva'"></span>
                                 </button>
                             </form>
 
@@ -170,7 +180,7 @@
                                     @csrf
                                     
                                     <input type="hidden" name="id" value="{{ $appointment->id }}">
-                                    <button type="submit" class="text-xs font-semibold text-slate-400 hover:text-red-500 underline transition-colors duration-150 focus:outline-none">
+                                    <button type="submit" class="text-sm font-semibold text-slate-400 hover:text-red-500 underline transition-colors duration-150 focus:outline-none">
                                         Regresar y cambiar datos
                                     </button>
                                 </form>

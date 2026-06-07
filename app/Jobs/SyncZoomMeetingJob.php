@@ -10,17 +10,33 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Queue\MaxAttemptsExceededException;
 use Exception;
+use Throwable;
 
 class SyncZoomMeetingJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    // Intentos máximos automáticos de Laravel Queue si hay fallos de red o de API
+    /**
+     * Intentos máximos automáticos de Laravel Queue si hay fallos de red o de API.
+     */
     public $tries = 3;
     
-    protected $appointmentId;
+    /**
+     * El número de segundos que el Job puede ejecutarse antes de cerrarse por Timeout.
+     * Si la API de Zoom tarda más de 30 segundos, Laravel abortará el Job de inmediato.
+     */
+    public $timeout = 30; 
 
+    /**
+     * Tiempo de espera exponencial entre reintentos (en segundos).
+     * Primer fallo reintenta a los 5s, segundo fallo a los 15s.
+     */
+    public $backoff = [5, 15];
+
+    protected $appointmentId;
+    
     public function __construct($appointmentId)
     {
         $this->appointmentId = $appointmentId;
@@ -30,17 +46,20 @@ class SyncZoomMeetingJob implements ShouldQueue
     {
         $appointment = Appointment::find($this->appointmentId);
         
-        // Si la cita fue borrada o cancelada entre tanto, salimos limpiamente
+        // Si la cita fue borrada entre tanto, salimos limpiamente sin arrojar error
         if (!$appointment) {
             return;
         }
 
-        // Registrar el intento actual en tu tabla nativa de contingencia
+        // Registrar e incrementar el intento en una sola transacción atómica eficiente
         DB::table('zoom_creation_failures')->updateOrInsert(
             ['appointment_id' => $this->appointmentId],
-            ['updated_at' => now()]
+            [
+                'attempts' => DB::raw('attempts + 1'),
+                'updated_at' => now(),
+                'created_at' => now()
+            ]
         );
-        DB::table('zoom_creation_failures')->where('appointment_id', $this->appointmentId)->increment('attempts');
 
         try {
             // Formatear los datos exactos requeridos por tu ZoomService existente
@@ -57,8 +76,11 @@ class SyncZoomMeetingJob implements ShouldQueue
 
             if ($result) {
                 // Si la reunión vieja no existía (404) y tu servicio gatilló el Plan B (recreated)
-                if ($result['action'] === 'recreated') {
-                    $appointment->update([
+                if (isset($result['action']) && $result['action'] === 'recreated') {
+                    
+                    // 🚀 CRÍTICO: Usamos updateQuietly para guardar los nuevos links en la BD
+                    // SIN volver a detonar el AppointmentObserver (Evita el bucle infinito del Timeout)
+                    $appointment->updateQuietly([
                         'zoom_meeting_id'       => $result['meeting_id'],
                         'meeting_link'          => $result['url_patient'],
                         'zoom_start_url'        => $result['url_partner'],
@@ -79,17 +101,35 @@ class SyncZoomMeetingJob implements ShouldQueue
             }
 
         } catch (Exception $e) {
-            // Guardar el log del error directo en tu tabla para auditoría administrativa del SaaS
-            DB::table('zoom_creation_failures')
-                ->where('appointment_id', $this->appointmentId)
-                ->update([
-                    'status' => 'failed',
-                    'last_error' => substr($e->getMessage(), 0, 500),
-                    'updated_at' => now()
-                ]);
-
-            // Re-lanzar la excepción para que Laravel aplique los reintentos (tries) programados
+            $this->logJobFailure($e->getMessage());
             throw $e;
         }
+    }
+
+    /**
+     * Ciclo de vida de Laravel Queue: Se ejecuta si el Job falla definitivamente
+     * o si es interrumpido abruptamente por el TIMEOUT del Worker.
+     */
+    public function failed(Throwable $exception): void
+    {
+        $errorMessage = $exception instanceof MaxAttemptsExceededException
+            ? 'El Job superó el tiempo límite de espera (Timeout de 30s) esperando respuesta de la API de Zoom.'
+            : $exception->getMessage();
+
+        $this->logJobFailure($errorMessage, 'failed');
+    }
+
+    /**
+     * Centraliza el volcado de logs de errores en tu tabla de contingencia.
+     */
+    protected function logJobFailure(string $message, string $status = 'pending'): void
+    {
+        DB::table('zoom_creation_failures')
+            ->where('appointment_id', $this->appointmentId)
+            ->update([
+                'status' => $status, 
+                'last_error' => substr($message, 0, 500),
+                'updated_at' => now()
+            ]);
     }
 }

@@ -58,7 +58,7 @@
             >
             
             <div class="absolute right-2 top-3 bottom-2 flex items-center">
-                <button type="submit" :disabled="loading" class="h-full bg-indigo-600 p-3 text-white hover:text-black rounded-xl text-xs font-black uppercase tracking-wider hover:bg-indigo-300 active:scale-95 shadow-md flex items-center gap-1.5 transition-all duration-200 whitespace-nowrap shrink-0 disabled:opacity-50">
+                <button type="submit" :disabled="loading" class="h-full bg-blue-600 p-3 text-white hover:text-black rounded-xl text-xs font-black uppercase tracking-wider hover:bg-indigo-700 active:scale-95 shadow-md flex items-center gap-1.5 transition-all duration-200 whitespace-nowrap shrink-0 disabled:opacity-50">
                     <span>Buscar</span>
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
                 </button>

@@ -20,6 +20,16 @@ class Service extends Model
     ];    
 
     /**
+     * Relación Muchos a Muchos con Especialidades aislada por el Tenant logueado.
+     */
+    public function specialties(): BelongsToMany
+    {
+        return $this->belongsToMany(Specialty::class, 'service_specialty')
+                    ->withPivot('user_id')
+                    ->withTimestamps();
+    }
+
+    /**
      * Sedes físicas o virtuales en las cuales se presta este servicio.
      * Inyecta explícitamente las columnas transaccionales de la tabla intermedia.
      */

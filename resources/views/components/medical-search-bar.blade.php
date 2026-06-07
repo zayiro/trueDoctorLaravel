@@ -21,7 +21,7 @@
         <!-- Input oculto para persistencia del parámetro GET -->
         <input type="hidden" name="specialty" :value="selectedSlug">
         
-        <label for="specialty" class="block text-[10px] font-black text-slate-400 uppercase ml-1 mb-1 tracking-wider">Especialidad Médica</label>
+        <label for="specialty" class="block text-xs font-black text-slate-400 uppercase ml-1 mb-1 tracking-wider">Especialidad Médica</label>
         
         <div class="relative">
             <input 
@@ -78,7 +78,7 @@
         <!-- Input oculto para persistencia de la consulta por ubicación -->
         <input type="hidden" name="city" :value="selectedSlug">
         
-        <label for="city" class="block text-[10px] font-black text-slate-400 uppercase ml-1 mb-1 tracking-wider">¿Dónde?</label>
+        <label for="city" class="block text-xs font-black text-slate-400 uppercase ml-1 mb-1 tracking-wider">¿Dónde?</label>
         
         <div class="relative">
             <input 
@@ -126,8 +126,8 @@
     <div class="pt-5 w-full md:w-auto">
         <button type="submit" 
                 :disabled="loading" 
-                :class="loading ? 'opacity-75 cursor-not-allowed bg-indigo-500 shadow-none' : 'bg-indigo-600 hover:bg-indigo-700'" 
-                class="w-full text-white px-8 py-3 rounded-2xl font-bold text-sm transition shadow-md uppercase tracking-wider flex items-center justify-center gap-2 min-w-[140px]">
+                :class="loading ? 'opacity-75 cursor-not-allowed bg-indigo-500 shadow-none' : 'bg-blue-600 hover:bg-blue-700'" 
+                class="w-full text-white px-10 py-4 rounded-2xl font-bold text-sm transition shadow-md uppercase tracking-wider flex items-center justify-center gap-2 min-w-[140px]">
             
             <!-- 🔍 Icono de Lupa Nativo (Visible por defecto, oculto al cargar) -->
             <svg x-show="!loading" class="w-5 h-5 text-white flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">

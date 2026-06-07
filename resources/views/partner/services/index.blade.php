@@ -1,4 +1,5 @@
 @php
+// 🔒 CORREGIDO: Redirección del Breadcrumb al Dashboard de Aliados del SaaS
 $breadcrumbs = [
     [
         'name' => 'Dashboard',
@@ -14,8 +15,9 @@ $breadcrumbs = [
     <!-- ALERTA DE ÉXITO DE TRANSACCIÓN CONTROLADA CON ALPINE.JS -->
     @if (session('success'))
         <div x-data="{ show: true }" x-show="show" x-transition id="alert-success" class="flex items-center p-4 mb-4 text-green-800 rounded-2xl bg-green-50 border border-green-100 shadow-sm" role="alert">
-            <svg class="flex-shrink-0 w-4 h-4" aria-true xmlns="http://w3.org" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L8 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+            <!-- 🎯 HEROICONS MIGRADO: check-circle (outline) -->
+            <svg class="flex-shrink-0 w-5 h-5 text-green-600" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span class="sr-only">Éxito</span>
             <div class="ms-3 text-sm font-bold">
@@ -23,8 +25,9 @@ $breadcrumbs = [
             </div>
             <button type="button" @click="show = false" class="ms-auto -mx-1.5 -my-1.5 bg-green-50 text-green-500 rounded-lg focus:ring-2 focus:ring-green-400 p-1.5 hover:bg-green-200 inline-flex items-center justify-center h-8 w-8">
                 <span class="sr-only">Cerrar</span>
-                <svg class="w-3 h-3" aria-hidden="true" xmlns="http://w3.org" fill="none" viewBox="0 0 14 14">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                <!-- 🎯 HEROICONS MIGRADO: x-mark (outline) -->
+                <svg class="w-4 h-4" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
         </div>
@@ -35,35 +38,41 @@ $breadcrumbs = [
         @if($owner->canAddMoreServices())
         <div class="flex justify-between items-center mb-8">
             <a class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold transition flex items-center gap-2 text-sm shadow-md shadow-indigo-100 uppercase tracking-wider" href="{{ route('partner.services.create') }}">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                <!-- 🎯 HEROICONS MIGRADO: plus (outline) -->
+                <svg class="w-4 h-4" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
                 Nuevo servicio
             </a>
         </div>
         @else
-            {{-- Si alcanzó el límite del plan, mostramos un mensaje corporativo --}}    
+            {{-- 🔒 CORREGIDO: Uso de Operador Null Safe para blindar el staff de clínicas corporativas --}}    
             <div class="text-sm text-amber-600 font-medium italic mb-4 p-4 bg-amber-50 rounded-xl border border-amber-100 shadow-sm flex items-center gap-2">
-                <span>⚠️ Has alcanzado el límite de <strong>{{ $owner->plan->max_services ?? 3 }}</strong> servicios de tu plan {{ $owner->plan->name ?? 'Básico' }}.</span>
-                <a href="{{ route('partner.profile.edit') }}" class="underline font-black ml-1 hover:text-amber-800 uppercase tracking-wider text-xs">Mejora tu plan aquí</a>.
+                <span>⚠️ Has alcanzado el límite de <strong>{{ $owner->plan?->max_services ?? 'N/A' }}</strong> servicios de tu plan {{ $owner->plan?->name ?? 'Staff' }}.</span>
+                @if($owner->plan)
+                    <a href="{{ route('partner.profile.edit') }}" class="underline font-black ml-1 hover:text-amber-800 uppercase tracking-wider text-xs">Mejora tu plan aquí</a>.
+                @endif
             </div>
         @endif
 
+        {{-- Contenedor de métricas de consumo del SaaS --}}
         <div class="mb-5 bg-slate-50 p-4 rounded-xl border border-slate-100 inline-block shadow-inner">
             <p class="text-sm text-slate-600">
                 <strong>Uso del plan actual:</strong> 
-                <span class="font-bold text-slate-900">{{ $uniqueServicesCount }}</span> de <span class="font-bold text-slate-900">{{ $owner->plan->max_services ?? 3 }}</span> servicios creados.
+                <span class="font-bold text-slate-900">{{ $uniqueServicesCount }}</span> de <span class="font-bold text-slate-900">{{ $owner->plan?->max_services ?? 'Ilimitado' }}</span> servicios creados.
             </p>
         </div>
-
-        <div class="bg-white shadow-xl rounded-3xl border border-gray-100 overflow-hidden w-full">
+        <div class="bg-white shadow-xl rounded-3xl border border-gray-100 overflow-hidden w-full mt-6">
             <div class="overflow-x-auto min-w-full inline-block align-middle">
                 <table class="w-full text-left border-collapse whitespace-nowrap">
                     <thead>
                         <tr class="bg-gray-50 border-b border-gray-100">
                             <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Servicio</th>
+                            <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Especialidad</th>
                             <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Modalidad</th>
                             <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Duración</th>
                             <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Precio</th>
-                            <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Sedes</th>
+                            <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Sedes Asignadas</th>
                             <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Activo</th>                        
                             <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Acciones</th>
                         </tr>
@@ -71,15 +80,33 @@ $breadcrumbs = [
                     <tbody class="divide-y divide-gray-50">
                         @forelse($services as $service)
                         @php
-                            // Evaluamos el excedente sobre el servicio unificado cruzando el plan del dueño
-                            $isOverLimit = ($loop->index >= ($owner->plan->max_services ?? 3));
-                            // Tomamos la primera dirección para mostrar una duración de referencia en la tabla
+                            // 🔒 CORREGIDO: Uso de Operador Null Safe para blindar el staff de clínicas corporativas
+                            $maxServices = $owner->plan?->max_services ?? 999;
+                            $isOverLimit = ($loop->index >= $maxServices);
+                            
+                            // Extraemos de manera segura la primera sede vinculada para el registro de referencia
                             $firstAddress = $service->addresses->first();
                         @endphp
                         <tr class="hover:bg-slate-50/50 transition {{ $isOverLimit ? 'opacity-60 bg-gray-50' : '' }}">
                             <td class="px-6 py-4">
                                 <span class="font-black text-slate-800 block tracking-tight">{{ $service->name }}</span>
                             </td>
+                            
+                            <!-- ⚡ NUEVO: DESGLOSE TAXONÓMICO DE ESPECIALIDADES VINCULADAS -->
+                            <td class="px-6 py-4">
+                                <div class="flex flex-wrap gap-1 max-w-xs">
+                                    @forelse($service->specialties as $specialty)
+                                        <span class="bg-indigo-50 text-indigo-700 text-[10px] font-black px-2 py-0.5 rounded-lg border border-indigo-100 uppercase tracking-wide">
+                                            {{ $specialty->name }}
+                                        </span>
+                                    @empty
+                                        <span class="text-amber-600 text-xs italic font-medium bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100">
+                                            Sin especialidad
+                                        </span>
+                                    @endforelse
+                                </div>
+                            </td>
+
                             <td class="px-6 py-4">
                                 @if($service->type === 'virtual')
                                     <span class="px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-100 rounded-full text-[10px] font-black uppercase tracking-wide">
@@ -92,15 +119,19 @@ $breadcrumbs = [
                                 @endif
                             </td>
                             <td class="px-6 py-4 text-slate-600 font-bold text-sm">
-                                <!-- Duración extraída correctamente de la tabla pivote de la primera sede -->
-                                {{ $firstAddress?->pivot->duration ?? 0 }} min
+                                <!-- 🔄 REFACTORIZADO: Resiliencia visual para servicios recién creados sin sedes configuradas -->
+                                @if($firstAddress)
+                                    {{ $firstAddress->pivot->duration }} min
+                                @else
+                                    <span class="text-gray-400 italic text-xs font-normal">No definida</span>
+                                @endif
                             </td>
                             <td class="px-6 py-4">
-                                @if($service->type === 'virtual')
-                                    <!-- Precio virtual unificado desde el pivot -->
-                                    <span class="text-green-600 font-black text-sm">${{ number_format($firstAddress?->pivot->price ?? 0, 2) }}</span>
+                                @if(!$firstAddress)
+                                    <span class="text-amber-600 text-xs font-bold bg-amber-50 px-2 py-1 rounded-xl border border-amber-100">Pendiente configurar</span>
+                                @elseif($service->type === 'virtual')
+                                    <span class="text-green-600 font-black text-sm">${{ number_format($firstAddress->pivot->price, 2) }}</span>
                                 @else
-                                    <!-- Listado dinámico de tarifas corporativas mapeadas por sede -->
                                     <div class="flex flex-col gap-1.5">
                                         @foreach($service->addresses as $address)
                                             <span class="text-xs text-slate-600 font-medium">
@@ -116,11 +147,15 @@ $breadcrumbs = [
                                     <span class="text-slate-400 italic text-xs font-medium">Enlace digital / Plataforma</span>
                                 @else
                                     <div class="flex flex-wrap gap-1 max-w-xs">
-                                        @foreach($service->addresses as $address)
+                                        @forelse($service->addresses as $address)
                                             <span class="bg-slate-50 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-slate-200/60">
                                                 {{ $address->name }} - <span class="text-indigo-600 font-black">{{ $address->city->name ?? 'N/A' }}</span>
                                             </span>
-                                        @endforeach
+                                        @empty
+                                            <span class="text-amber-600 text-xs italic font-medium bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100">
+                                                Sin sedes asignadas
+                                            </span>
+                                        @endforelse
                                     </div>
                                 @endif
                             </td>
@@ -134,7 +169,6 @@ $breadcrumbs = [
                             <td class="px-6 py-4">
                                 @if (!$isOverLimit)
                                     <div class="flex items-center">
-                                        <!-- Enlace limpio para la edición del servicio en base a su ID -->
                                         <a href="{{ route('partner.services.edit', $service->id) }}" class="text-indigo-600 hover:text-indigo-900 text-xs font-black uppercase tracking-wider transition-colors">
                                             Editar
                                         </a>
@@ -146,10 +180,12 @@ $breadcrumbs = [
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" class="px-6 py-16 text-center bg-white">
+                            <!-- 🔒 CORREGIDO: Colspan expandido a 8 para asimilar la columna de especialidades sin romper el layout -->
+                            <td colspan="8" class="px-6 py-16 text-center bg-white">
                                 <div class="mx-auto w-12 h-12 text-slate-400 mb-3 flex items-center justify-center bg-slate-50 rounded-full border border-slate-100 shadow-inner">
-                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" class="w-6 h-6 text-slate-400">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                                    <!-- 🎯 HEROICONS MIGRADO: clipboard-document-list (outline) -->
+                                    <svg class="w-6 h-6 text-slate-400" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.03 0 1.9.693 2.166 1.638m-7.377 0A48.536 48.536 0 0 1 12 3.75c.38 0 .758.004 1.136.01m-3.385 0c-.18.016-.359.033-.538.051m4.462-.051c.179.016.358.033.537.051M5.25 6.108V18.25A2.25 2.25 0 0 0 7.5 20.5h3.385m-6.635-14.39a2.25 2.25 0 0 1 1.976-2.192c.404-.034.81-.062 1.217-.083m-3.193 2.275a48.406 48.406 0 0 0-.115 5.233m-.034 1.786a48.294 48.294 0 0 0 .066 4.16" />
                                     </svg>
                                 </div>
                                 <h4 class="text-base font-black text-slate-800 tracking-tight">No hay servicios configurados</h4>

@@ -14,12 +14,22 @@ class DoctorObserver
      */
     public function created(Doctor $doctor): void
     {
-        $defaultPlan = Plan::where('plan', 'free')->first();
+        // 🚀 DETECCIÓN SAAS: Verificamos si el usuario que está operando e iniciando la creación es una clínica
+        $isCreatedByClinic = auth()->check() && auth()->user()->role === 'clinic';
 
-        // Creamos la configuración por defecto
+        // Si fue creado por una clínica, el plan_id va explícitamente en NULL. 
+        // Si se registró solo, busca el Plan Free por defecto.
+        $planId = null;
+        
+        if (!$isCreatedByClinic) {
+            $defaultPlan = Plan::where('plan', 'free')->first();
+            $planId = $defaultPlan ? $defaultPlan->id : 1;
+        }
+
+        // Creamos la configuración con el plan_id condicional
         DoctorSetting::create([
             'doctor_id'                  => $doctor->id,
-            'plan_id'                    => $defaultPlan ? $defaultPlan->id : 1, 
+            'plan_id'                    => $planId, // 🔒 NULL para staff, ID para particulares
             'accepts_online_payments'    => false,
             'currency'                   => 'COP',
             'min_notice_hours'           => 2,

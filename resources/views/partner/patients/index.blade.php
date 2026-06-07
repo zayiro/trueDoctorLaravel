@@ -16,12 +16,12 @@ $breadcrumbs = [
             <h2 class="text-2xl font-bold">Buscador de Pacientes</h2>
             
             {{-- Badge del Plan Actual --}}
-            <span class="px-3 py-1 rounded-full text-xs font-semibold {{ $plan->slug === 'free' ? 'bg-gray-100' : 'bg-gold-100 text-gold-700' }}">
-                {{ $plan->name }}
+            <span class="px-3 py-1 rounded-full text-xs font-semibold {{ $plan?->slug === 'free' ? 'bg-gray-100' : 'bg-gold-100 text-gold-700' }}">
+                {{ $plan?->name }}
             </span>
         </div>
 
-        @if($plan->can_search_patients)
+        @if($plan?->can_search_patients)
             {{-- BUSCADOR ACTIVO PARA PREMIUM/GOLD --}}
             <form action="{{ route('partner.patients.index') }}" method="GET" class="mb-8">
                 <div class="flex gap-2">
@@ -37,12 +37,14 @@ $breadcrumbs = [
             </form>
         @else
             {{-- AVISO PARA USUARIOS FREE --}}
+            @if($plan)
             <div class="mb-8 p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700">
                 <p class="font-bold">Vista Limitada</p>
                 <p class="text-sm">Actualmente solo ves pacientes con citas para hoy. 
                 <strong>Actualiza el plan</strong> para buscar en toda tu base de datos histórica.</p>
                 <a href="{{ route('plans.index') }}" class="text-sm underline font-bold mt-2 inline-block">Ver Planes Pro</a>
             </div>
+            @endif
         @endif
 
         {{-- TABLA DE RESULTADOS (Aquí aplicas el scroll horizontal que vimos antes) --}}
