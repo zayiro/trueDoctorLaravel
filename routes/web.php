@@ -34,6 +34,7 @@ use App\Http\Controllers\DoctorClinicController;
 use App\Http\Controllers\ClinicDoctorController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\PatientHistoryAttachmentController;
+use App\Http\Controllers\ContextDoctorController;
 
 use App\Http\Controllers\ClinicAddressController;
 use App\Http\Controllers\ClinicServiceController;
@@ -181,6 +182,9 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     // Procesos de aceptación o desvinculación voluntaria
     Route::patch('clinics/{clinic}/accept', [DoctorClinicController::class, 'accept'])->name('partner.doctor_clinics.accept');
     Route::delete('clinics/{clinic}/reject', [DoctorClinicController::class, 'reject'])->name('partner.doctor_clinics.reject');
+
+    // Para implementar el Selector de Contexto / Switch de Entorno (particular/clinica)
+    Route::post('/context/switch', [ContextDoctorController::class, 'switchContext'])->name('doctor.context.switch');
 });
 
 // Grupo exclusivo para la administración de nóminas de centros médicos
@@ -188,7 +192,7 @@ Route::middleware(['auth', 'role:clinic'])->group(function () {
     Route::get('/clinic/doctors', [ClinicDoctorController::class, 'index'])->name('partner.clinic.doctors.index');
     Route::post('/clinic/doctors', [ClinicDoctorController::class, 'store'])->name('partner.clinic.doctors.store');
     Route::patch('/clinic/doctors/{doctor}/toggle', [ClinicDoctorController::class, 'toggleStatus'])->name('partner.clinic.doctors.toggle');
-    Route::delete('/clinic/doctors/{id}', [ClinicDoctorController::class, 'destroy'])->name('partner.clinic.doctors.destroy');
+    Route::delete('/clinic/doctors/{doctor}', [ClinicDoctorController::class, 'destroy'])->name('partner.clinic.doctors.destroy');
     Route::post('/clinic/doctors/{doctor}/resend-invitation', [ClinicDoctorController::class, 'resendInvitation'])->name('partner.clinic.doctors.resend-invitation');
 
     // 👇 EXTENSIÓN PREMIUM: Módulo Core de Sedes Institucionales (Addresses)
@@ -321,7 +325,9 @@ Route::get('/{partner_slug}/{campaign_slug}.html', PublicLanding::class)->name('
 Route::get('/medical-partner/{slug}', [PublicProfileController::class, 'show'])->name('partner.public.profile');
 
 // Embudo Público: Vista intermedia de decisión de la clínica (Inmediatez vs Especialista de Turno)
-Route::get('/clinic/{slug}/specialty/{specialty_slug?}', [PublicClinicController::class, 'showClinicStaff'])->name('partner.clinic.public.decision');
+//Route::get('/clinic/{slug}/specialty/{specialty_slug?}', [PublicClinicController::class, 'showClinicStaff'])->name('partner.clinic.public.decision');
+Route::get('/clinic/{slug}/{specialty_slug?}', [PublicClinicController::class, 'showClinicStaff'])->name('partner.clinic.public.decision');
+
 
 // Ruta API para que FullCalendar cargue los huecos libres
 Route::get('/api/{partner}/availability', [PublicProfileController::class, 'getAvailability'])

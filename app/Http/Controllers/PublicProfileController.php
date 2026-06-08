@@ -103,7 +103,7 @@ class PublicProfileController extends Controller
             session(['current_clinic_user_id' => $clinic->user_id]);
             session()->forget('current_doctor_id');
 
-            return view('public.profiles.clinic_decision', [
+            return view('partner.clinic.public.decision', [
                 'clinic'         => $clinic,
                 'address'        => $address,
                 'unifiedSlots'   => $unifiedSlots,

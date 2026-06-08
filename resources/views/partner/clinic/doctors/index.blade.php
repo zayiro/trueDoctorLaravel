@@ -214,8 +214,8 @@ $breadcrumbs = [
                                 </div>
 
                                 <!-- SELECTOR DE ESPECIALIDADES CON ALPINE -->
-                                <div class="mt-2 relative" x-data="specialtiesSelect()" @click.away="open = false">
-                                    <select name="specialties[]" multiple class="hidden">
+                                <div class="mt-4 relative" x-data="specialtiesSelect()" @click.away="open = false">
+                                    <select :name="`doctors[${index}][specialties][]`" multiple x-model="doctor.specialties" class="hidden">
                                         <template x-for="id in selected" :key="id">
                                             <option :value="id" selected></option>
                                         </template>
@@ -253,7 +253,7 @@ $breadcrumbs = [
                                             </div>
                                         </template>
                                     </div>
-                                </div>
+                                </div>   
 
                             </div>
                         </template>

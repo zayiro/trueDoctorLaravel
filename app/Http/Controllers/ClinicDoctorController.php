@@ -15,10 +15,10 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use App\Notifications\ClinicInvitationNotification;
 use App\Notifications\DirectDoctorWelcomeNotification;
+use App\Notifications\InvitationToIndependentDoctorNotification;
 
 class ClinicDoctorController extends Controller
-{
-    // Las funciones irán en los siguientes bloques...
+{    
     /**
      * Muestra la nómina de médicos vinculados a la clínica actual.
      */
@@ -38,7 +38,9 @@ class ClinicDoctorController extends Controller
             ->get();
 
         // Catálogo global para alimentar la lista dinámica de registro directo
-        $specialties = Specialty::where('status', true)->get();
+        $specialties = Specialty::where('status', true)
+            ->orderBy('name', 'asc')
+            ->get();
 
         return view('partner.clinic.doctors.index', compact('doctors', 'clinic', 'specialties'));
     }
@@ -73,7 +75,7 @@ class ClinicDoctorController extends Controller
      * FLUJO 1: Invitar a un doctor existente por su número de identificación.
      */
     protected function handleInvitationFlow(Request $request, Clinic $clinic)
-    {
+    {        
         $request->validate([
             'identification' => 'required|string',
         ], [
@@ -105,16 +107,17 @@ class ClinicDoctorController extends Controller
      * FLUJO 2: Registrar múltiples médicos nuevos en lote usando la cédula como clave.
      */
     protected function handleDirectRegistrationFlow(Request $request, Clinic $clinic)
-    {
+    {                
         $request->validate([
-            'doctors'                 => 'required|array|min:1',
+            'doctors'                   => 'required|array|min:1',
             'doctors.*.name'            => 'required|string|max:255',
             'doctors.*.email'           => 'required|string|email|max:255',
             'doctors.*.identification'  => 'required|string|max:255',
             'doctors.*.medical_license' => 'required|string|max:255',
             'doctors.*.phone'           => 'required|string|max:10',
-            'doctors.*.gender'          => 'required|in:male,female,other',
-            'doctors.*.specialties'     => 'nullable|array',
+            'doctors.*.gender'          => 'required|in:male,female,other',            
+            'doctors.*.specialties'     => 'required|array|min:1',
+            'doctors.*.specialties.*'   => 'exists:specialties,id',
         ]);
 
         $doctorsData = $request->input('doctors');
@@ -145,8 +148,8 @@ class ClinicDoctorController extends Controller
                     // BLINDAJE MULTI-TENANT: Validar límites en tiempo real (Pessimistic Locking)
                     $currentCount = DB::table('clinic_doctor')->where('clinic_id', $clinic->id)->lockForUpdate()->count();
 
-                    // Definimos la variable buscando el plan desde el usuario dueño de la clínica
-                    $maxDoctors = $clinic->user->plan->max_doctors; 
+                    // USAMOS TU RELACIÓN NATIVA CON OPERADOR OPCIONAL (?->) POR SEGURIDAD
+                    $maxDoctors = $clinic->plan?->max_doctors ?? 0; 
 
                     if (($currentCount + count($registeredSuccessfully)) >= $maxDoctors) {
                         throw new \Exception('Has alcanzado el límite máximo de médicos permitidos en tu plan actual.');
@@ -183,10 +186,8 @@ class ClinicDoctorController extends Controller
                         'active'            => true,
                     ]);
 
-                    if (!empty($docData['specialties'])) {
-                        // Guardar las especialidades en la tabla pivote doctor_specialty
-                        $doctor->specialties()->attach($docData['specialties']);
-                    }
+                    // Guardar las especialidades en la tabla pivote doctor_specialty
+                    $doctor->specialties()->attach($docData['specialties']);
 
                     // C. Vincular directamente a la clínica como aprobado
                     $clinic->doctors()->attach($doctor->id, ['status' => 'approved']);
@@ -241,27 +242,79 @@ class ClinicDoctorController extends Controller
     }
 
     /**
-     * Remueve por completo a un médico de la nómina y purga su grilla de horarios.
+     * Remueve a un médico de la nómina corporativa, migra su cuenta al plan Free e invita al flujo independiente.
      */
     public function destroy(Doctor $doctor)
-    {
-        if (auth()->user()->role !== 'clinic') abort(403);
+    {        
+        // 1. Control de acceso: Solo el rol tipo clínica puede ejecutar esta acción
+        if (auth()->user()->role !== 'clinic') {
+            abort(403, 'No tienes permisos para realizar esta acción.');
+        }
+        
         $clinic = auth()->user()->clinic;
 
-        $hasAppointments = Appointment::where('clinic_id', $clinic->id)->where('doctor_id', $doctor->id)
-            ->whereIn('status', ['pending', 'confirmed'])->where('date', '>=', now()->toDateString())->exists();
+        // 2. Validación normativa de negocio: Evitar dejar citas huérfanas en el sistema
+        $hasAppointments = Appointment::where('clinic_id', $clinic->id)
+            ->where('doctor_id', $doctor->id)
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->where('date', '>=', now()->toDateString())
+            ->exists();
 
         if ($hasAppointments) {
             return back()->with('error', 'No puedes desvincular al médico, posee citas agendadas vigentes.');
         }
+        // 3. Evaluar el origen del médico: ¿No tiene registro de configuración o su plan_id es NULL?
+        $doctorSettings = DB::table('doctor_settings')
+            ->where('doctor_id', $doctor->id)
+            ->first();
+        
+        $shouldMigrateToFree = false;
+        
+        // REGLA CORREGIDA: Si no existe el registro O si existe con plan_id nulo
+        if (!$doctorSettings || is_null($doctorSettings->plan_id)) {
+            $shouldMigrateToFree = true;
+        }
+        // 4. Procesamiento atómico de la desvinculación y migración de perfil
+        DB::transaction(function () use ($clinic, $doctor, $shouldMigrateToFree) {
+            
+            if ($shouldMigrateToFree) {
+                // A. Notificación por email para jalarlo como independiente
+                if ($doctor->user) {
+                    $doctor->user->notify(new InvitationToIndependentDoctorNotification($clinic->name));
+                }
 
-        DB::transaction(function () use ($clinic, $doctor) {
+                // B. Ajuste en doctor_settings (updateOrInsert asegura que la fila exista con Plan Free ID = 1)                
+                DB::table('doctor_settings')
+                    ->updateOrInsert(
+                        ['doctor_id' => $doctor->id], // Condición para buscar si ya existe
+                        [
+                            'doctor_id'  => $doctor->id, // <--- OBLIGATORIO: Añadirlo aquí para que no sea NULL si se inserta desde cero
+                            'plan_id'    => 1,
+                            'updated_at' => now()
+                        ]
+                    );
+                    
+
+                // C. Blindaje Normativo: Cambiar estado a 'missing' para obligar carga de documentos
+                DB::table('doctors')
+                    ->where('id', $doctor->id)
+                    ->update([
+                        'validation_status' => 'missing',
+                        'updated_at' => now()
+                    ]);
+            }
+
+            // 5. Desvincular al médico de la relación de la clínica (Tabla pivote)
             $clinic->doctors()->detach($doctor->id);
-            DB::table('schedules')->where('doctor_id', $doctor->id)->whereIn('address_id', function ($query) use ($clinic) {
-                $query->select('id')->from('addresses')->where('clinic_id', $clinic->id);
-            })->delete();
-        });
 
+            // 6. Eliminar grilla de horarios asignada a las sedes de esta clínica
+            DB::table('schedules')
+                ->where('doctor_id', $doctor->id)
+                ->whereIn('address_id', function ($query) use ($clinic) {
+                    $query->select('id')->from('addresses')->where('clinic_id', $clinic->id);
+                })->delete();
+        });
+        // 7. Redirección final con confirmación visual en la interfaz de la clínica
         return back()->with('success', 'Especialista removido de la nómina corporativa correctamente.');
     }
 

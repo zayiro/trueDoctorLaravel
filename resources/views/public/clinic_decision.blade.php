@@ -49,6 +49,7 @@
                     <div class="flex flex-wrap gap-1.5 mt-0.5">
                         <span class="px-2 py-0.5 bg-blue-50/60 text-blue-600 text-[10px] font-bold rounded-md uppercase tracking-wide border border-blue-100/40">
                             Especialistas adscritos en <span class="decoration-2 decoration-indigo-500/20">{{ $specialty->name }}</span>
+                            <span>sino existe especialidad sugerida, entonces traer todas las de la clinica. Esta por desarrollar en el controlador</span>
                         </span>
                     </div>
 

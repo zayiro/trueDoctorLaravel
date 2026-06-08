@@ -15,7 +15,7 @@ $breadcrumbs = [
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-    <div class="max-w-3xl mx-auto py-10 px-4" x-data="{ loading: false }">
+    <div class="max-w-7xl mx-auto py-10 px-4" x-data="{ loading: false }">
         
         <!-- ENCABEZADO ESTILIZADO DE NIVEL SAAS -->
         <div class="mb-8 border-b border-slate-100 pb-5">

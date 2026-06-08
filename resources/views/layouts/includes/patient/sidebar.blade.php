@@ -87,11 +87,11 @@ $userRole = match ($user->role) {
 
 <aside id="top-bar-sidebar" class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform -translate-x-full border-r bg-slate-50 border-slate-200 sm:translate-x-0 dark:bg-slate-900 dark:border-slate-800" aria-label="Sidebar">
     <!-- SE REMOVIÓ 'overflow-y-auto' y 'overflow-x-auto' PARA CONGELAR LOS ENCABEZADOS -->
-    <div class="h-full px-4 pb-12 overflow-y-auto bg-slate-50 dark:bg-slate-900 block">
+    <div class="h-full px-4 pb-12 overflow-hidden bg-slate-50 dark:bg-slate-900 block">
         
         <!-- Pie del Sidebar: Información de Cuenta paciente (Fijo arriba) -->
         @if($user)
-            <div class="pt-4 pb-4 mb-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between" style="margin-top: 5rem;">
+            <div class="pt-4 pb-4 mb-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <div class="flex items-center space-x-3 truncate">
                     <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm">
                         {{ substr($user->name, 0, 2) }}

@@ -17,19 +17,23 @@
     ];
 
     $doctorSettings = $user->doctorSettings;
-    $hasIndividualPlan = $doctorSettings && $doctorSettings->plan_id !== null;
+    $hasIndividualPlan = $doctorSettings && $doctorSettings?->plan_id !== null;
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">    
-    <div>        
+    <div>     
         @if($isAdmin || (($isDoctor || $isClinic) && $validationStatus === 'approved'))
             <div class="mb-5">
                 @if($user->role !== 'patient' && isset($owner->slug))
+                    @if ($user->role === 'doctor')
                     <a href="{{ route('partner.public.profile', ['slug' => $owner->slug]) }}" target="_blank" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-indigo-700 transition-colors">Ver perfil publico</a>
+                    @elseif ($user->role === 'clinic')
+                    <a href="{{ route('partner.clinic.public.decision', ['slug' => $owner->slug]) }}" target="_blank" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-indigo-700 transition-colors">Ver perfil publico clinico</a>
+                    @endif
                 @endif
             </div>
             <x-appointment-search-form class="mb-6 p-4 bg-white rounded-lg shadow" />
-        @endif
+        @endif       
 
         <div class="max-w-7xl mx-auto py-8 space-y-8">
             @if($isPatient)
@@ -164,7 +168,7 @@
                                 <span class="text-2xl font-black text-indigo-400 font-mono">{{ $usersByRole['doctor'] ?? 0 }}</span>
                             </div>
                             <div class="space-y-1 border-r border-slate-800 last:border-0 pr-4 sm:pl-4">
-                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Clínicas</span>
+                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Clínicas Activas</span>
                                 <span class="text-2xl font-black text-purple-400 font-mono">{{ $usersByRole['clinic'] ?? 0 }}</span>
                             </div>
                             <div class="space-y-1 border-r border-slate-800 last:border-0 pr-4 sm:pl-4">
@@ -172,7 +176,7 @@
                                 <span class="text-2xl font-black text-emerald-400 font-mono">{{ $usersByRole['patient'] ?? 0 }}</span>
                             </div>
                             <div class="space-y-1 sm:pl-4">
-                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Admins</span>
+                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Administradores</span>
                                 <span class="text-2xl font-black text-amber-400 font-mono">{{ $usersByRole['admin'] ?? 0 }}</span>
                             </div>
                         </div>
@@ -180,7 +184,7 @@
 
                     <!-- CUADRÍCULA DE KPIs FINANCIEROS Y OPERATIVOS -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">                        
-                        @if ($hasIndividualPlan)
+                        @if ($hasIndividualPlan || $user->role !== 'patient')
                         <div class="bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100 flex items-center justify-between gap-4">
                             <div>
                                 <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Ingresos Mensuales</span>

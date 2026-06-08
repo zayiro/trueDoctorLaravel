@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Http\Middleware\EnsureDoctorContext;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -23,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'role.redirect' => \App\Http\Middleware\RedirectByUserRole::class,
+            'doctor.context' => EnsureDoctorContext::class,
         ]);
         $middleware->validateCsrfTokens(except: [
             'api/webhooks/zoom',
@@ -30,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\SeoOptimizationMiddleware::class,
+            EnsureDoctorContext::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

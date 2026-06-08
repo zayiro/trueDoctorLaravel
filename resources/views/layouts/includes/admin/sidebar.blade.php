@@ -106,6 +106,7 @@
         $links = [
             [
                 'header' => 'Validando documentos...',        
+                'visible' => true,
             ],
         ];
     }
@@ -120,11 +121,11 @@
 
 <aside id="top-bar-sidebar" class="fixed top-0 left-0 z-40 w-64 h-screen pt-20 transition-transform -translate-x-full bg-slate-50 border-r border-slate-200 sm:translate-x-0 dark:bg-slate-900 dark:border-slate-800" aria-label="Sidebar">
     <!-- CORRECCIÓN CRÍTICA: Contenedor en bloque puro con scroll vertical aislado e inalterable -->
-    <div class="h-full px-4 pb-12 overflow-y-auto bg-slate-50 dark:bg-slate-900 block">
+    <div class="h-full px-4 pb-12 overflow-hidden bg-slate-50 dark:bg-slate-900 block">
         
         <!-- Identificación del Socio Comercial (Doctor/Clínica) -->
         @if($user)
-            <div class="pb-4 mb-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between" style="margin-top: 3rem;">
+            <div class="pb-4 mb-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <div class="flex items-center space-x-3 truncate">
                     <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm shrink-0">
                         {{ substr($user->name, 0, 2) }}
@@ -156,7 +157,7 @@
         <!-- Listado de Enlaces Administrativos en bloque natural -->
         <ul class="space-y-1.5 font-medium pb-24" style="height: 60dvh; overflow-y: auto;">
             @foreach ($links as $link)
-                @if ($link['visible'])
+                @if ($link['visible'] ?? true)
                 <li>
                     @isset($link['header'])
                         <div class="px-2 pt-4 pb-1 text-[11px] font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">

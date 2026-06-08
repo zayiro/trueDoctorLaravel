@@ -30,7 +30,7 @@
         <div class="text-center mb-6 border-b border-gray-100 pb-4">
             <h2 class="text-lg font-bold text-gray-800">Conectando salud en tiempo real</h2>
             <p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto leading-relaxed">
-                Inicia sesión para gestionar tus datos médicos, agendar pacientes o administrar tu clínica en OpenDoctor.
+                Inicia sesión para gestionar y administrar la información en <span class="font-semibold">opendoctor.online</span>
             </p>
             <h2 class="text-lg font-bold text-gray-800">
                 <span class="bg-success-soft text-fg-success-strong text-xs font-medium px-1.5 py-0.5 rounded">Pacientes</span>
@@ -44,7 +44,7 @@
 
             <div>
                 <x-label for="email" value="{{ __('Email') }}" />
-                <x-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
+                <x-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="off" />
             </div>
 
             <!-- CAMPO PASSWORD CON OJO INTERACTIVO -->

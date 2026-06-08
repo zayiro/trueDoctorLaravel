@@ -13,7 +13,9 @@ class RegisterDoctorController extends Controller
 {
     public function register() 
     {
-        $specialties = Specialty::orderBy('name', 'asc')->get();
+        $specialties = Specialty::where('status', true)
+            ->orderBy('name', 'asc')
+            ->get();
 
         return view('auth.register-doctor', compact('specialties'));
     }

@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Carbon\Carbon; // 🔥 AGREGADO: Importación obligatoria para evitar fallos de clase no encontrada
+use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 
 class Schedule extends Model
 {
@@ -13,7 +15,7 @@ class Schedule extends Model
      */
     protected $fillable = [
         'address_id', 
-        'doctor_id', // 🔥 AGREGADO: Permite la asignación masiva de especialistas a franjas horarias
+        'doctor_id', 
         'day', 
         'start_time', 
         'end_time'
@@ -28,7 +30,48 @@ class Schedule extends Model
     ];
 
     /**
-     * 🔥 NUEVA RELACIÓN: El médico especialista asignado a este bloque de tiempo.
+     * 🔒 SCOPE: Filtra los bloques de horario de forma automatizada según el espacio de trabajo activo.
+     */
+    public function scopeForCurrentContext(Builder $query): Builder
+    {
+        $user = Auth::user();
+        $context = session('doctor_context');
+
+        if (!$user) {
+            return $query;
+        }
+
+        // Si es Clínica Corporativa Pura: Filtramos todos los horarios de sus sedes institucionales
+        if ($user->role === 'clinic') {
+            return $query->whereHas('address', function ($q) use ($user) {
+                $q->where('clinic_id', $user->clinic->id);
+            });
+        }
+
+        // Si es Doctor: Evaluamos su conmutador de entorno activo
+        if ($user->role === 'doctor') {
+            $doctorProfileId = $user->doctor->id;
+
+            // Caso A: Contexto Institucional de Clínica Aliada
+            if (($context['type'] ?? 'particular') === 'clinic') {
+                return $query->where('doctor_id', $doctorProfileId)
+                             ->whereHas('address', function ($q) use ($context) {
+                                 $q->where('clinic_id', $context['id']);
+                             });
+            }
+
+            // Caso B: Contexto Consultorio Particular (Producción estándar)
+            return $query->where('doctor_id', $doctorProfileId)
+                         ->whereHas('address', function ($q) {
+                             $q->whereNull('clinic_id');
+                         });
+        }
+
+        return $query;
+    }
+
+    /**
+     * El médico especialista asignado a este bloque de tiempo.
      */
     public function doctor(): BelongsTo
     {
@@ -60,7 +103,6 @@ class Schedule extends Model
      */
     public function getRangeAttribute(): string
     {
-        // Al estar casteado como datetime, convertimos de forma segura usando la instancia Carbon nativa
         $start = $this->start_time ? $this->start_time->format('g:i A') : '00:00';
         $end = $this->end_time ? $this->end_time->format('g:i A') : '00:00';
         

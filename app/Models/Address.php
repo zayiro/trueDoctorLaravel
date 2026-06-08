@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Auth;
 
 class Address extends Model
 {
@@ -17,7 +19,7 @@ class Address extends Model
      */
     protected $fillable = [
         'doctor_id', 
-        'clinic_id', // 🔥 AGREGADO: Indispensable para habilitar las sedes institucionales en el SaaS
+        'clinic_id', 
         'name', 
         'address',
         'phone',
@@ -28,12 +30,46 @@ class Address extends Model
 
     /**
      * Los atributos que deben ser convertidos a tipos nativos.
-     * 🔥 REEMPLAZO SEGURO: Mapeamos deleted_at aquí eliminando la propiedad obsoleta $dates
      */
     protected $casts = [
         'status'     => 'boolean',
         'deleted_at' => 'datetime',
     ];
+
+    /**
+     * 🔒 SCOPE: Filtra de manera inteligente las sedes según el contexto del usuario.
+     * Ideal para búsquedas globales en el panel de control.
+     */
+    public function scopeForCurrentContext(Builder $query): Builder
+    {
+        $user = Auth::user();
+        $context = session('doctor_context');
+
+        if (!$user) {
+            return $query;
+        }
+
+        // Si es Clínica Pura: Solo ve sus sedes institucionales (Producción)
+        if ($user->role === 'clinic') {
+            return $query->where('clinic_id', $user->clinic->id);
+        }
+
+        // Si es Doctor: Evaluamos el switch de entorno
+        if ($user->role === 'doctor') {
+            $doctorProfileId = $user->doctor->id;
+
+            // Caso A: Contexto Institucional de Clínica Aliada
+            if (($context['type'] ?? 'particular') === 'clinic') {
+                return $query->where('clinic_id', $context['id']);
+            }
+
+            // Caso B: Contexto Consultorio Particular (Producción)
+            return $query->where('doctor_id', $doctorProfileId)
+                         ->whereNull('clinic_id');
+        }
+
+        return $query;
+    }
 
     /**
      * Relación inversa uno a muchos con el Médico (si la sede es una consulta privada).
@@ -44,7 +80,7 @@ class Address extends Model
     }
 
     /**
-     * 🔥 NUEVA RELACIÓN: La Clínica institucional dueña de este consultorio o sede técnica.
+     * La Clínica institucional dueña de este consultorio o sede técnica.
      */
     public function clinic(): BelongsTo
     {

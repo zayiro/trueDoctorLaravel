@@ -28,14 +28,23 @@ class PublicClinicController extends Controller
             ->firstOrFail();
 
         // 3. Detección Inteligente Bimodal de la Especialidad Requerida
-        $specialtyInput = $specialtySlug ?? $request->input('specialty');
-        $specialty = Specialty::where('slug', $specialtyInput)->orWhere('id', $specialtyInput)->first();
-
-        // Fallback preventivo si el parámetro viene vacío para no romper la navegación
-        if (!$specialty) {
+        if ($specialtySlug) {
+            $specialtyInput = $specialtySlug ?? $request->input('specialty');
+            $specialty = Specialty::where('slug', $specialtyInput)->orWhere('id', $specialtyInput)->first();
+    
+            // Fallback preventivo si el parámetro viene vacío para no romper la navegación
+            if (!$specialty) {
+                $specialty = $clinic->specialties()->first() ?? (object) [
+                    'id' => 1, 'name' => 'Consulta General', 'slug' => 'general'
+                ];
+            }
+        } else {
+            //vamos a traer todas las especialidades de la clinica
             $specialty = $clinic->specialties()->first() ?? (object) [
                 'id' => 1, 'name' => 'Consulta General', 'slug' => 'general'
             ];
+
+            //hay que refactorizar el codigo porque veo que utiliza una especialidad sugerida en todos lados
         }
 
         // 4. FILTRADO MAESTRO SEGURO: Obtener médicos aprobados vinculados a la clínica y a la especialidad
@@ -97,7 +106,7 @@ class PublicClinicController extends Controller
                 'user'               => $doctor->user
             ];
         }       
-
+        
         return view('public.clinic_decision', compact('clinic', 'specialty', 'results', 'clinicAddresses'));
     }
 

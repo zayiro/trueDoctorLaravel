@@ -12,34 +12,55 @@ use Illuminate\Validation\Rule;
 class AddressController extends Controller
 {
     /**
-     * Obtiene el modelo del perfil propietario (Doctor o Clinic) según el rol.
+     * Obtiene el modelo del perfil propietario (Doctor o Clinic) según el rol o el contexto activo.
      */
     private function getOwner()
     {
         $user = Auth::user();
+        $context = session('doctor_context');
         
         if ($user->role === 'clinic') {
             return $user->clinic()->with(['plan', 'addresses'])->first();
         }
         
+        // Si es doctor y está en contexto de clínica aliada, el "owner" de este entorno es la clínica
+        if ($user->role === 'doctor' && ($context['type'] ?? 'particular') === 'clinic') {
+            // Buscamos la clínica aliada a la que pertenece
+            return \App\Models\Clinic::with(['plan', 'addresses'])->find($context['id']);
+        }
+        
+        // Por defecto: Modo médico particular (Tu lógica original de producción intacta)
         return $user->doctor()->with(['plan', 'addresses'])->first();
     }
 
     /**
-     * Muestra la lista de sedes del propietario autenticado.
+     * Muestra la lista de sedes del propietario o del contexto institucional activo.
      */
     public function index()
     {
         $owner = $this->getOwner();
+        $user = Auth::user();
+        $context = session('doctor_context');
 
         if (!$owner) {
             return redirect()->back()->with('error', 'Perfil comercial no encontrado.');
         }
         
-        // Obtenemos las direcciones vinculadas al propietario con el conteo de horarios
-        $addresses = $owner->addresses()
-            ->withCount('schedules')
-            ->get();
+        // Separación por contexto para médicos:
+        if ($user->role === 'doctor' && ($context['type'] ?? 'particular') === 'clinic') {
+            // Modo Clínica: Listamos solo las sedes pertenecientes a esta clínica aliada
+            // Filtrando los horarios en esa sede que correspondan únicamente a este doctor
+            $addresses = $owner->addresses()
+                ->withCount(['schedules' => function ($query) use ($user) {
+                    $query->where('doctor_id', $user->doctor->id);
+                }])
+                ->get();
+        } else {
+            // Modo Particular o Perfil Clínica Pura (Tu lógica original de producción intacta)
+            $addresses = $owner->addresses()
+                ->withCount('schedules')
+                ->get();
+        }
 
         // Cargar departamentos DIVIPOLA para el formulario de alta
         $departments = Department::orderBy('name')->get();            
@@ -60,9 +81,10 @@ class AddressController extends Controller
 
         return back()->with('success', "La sede ha sido {$textoStatus} correctamente.");
     }
-
     public function create()
     {
+        $this->denyIfInstitutionalContext();
+
         $cities = City::all();
         $owner = $this->getOwner();
 
@@ -84,6 +106,8 @@ class AddressController extends Controller
      */
     public function store(Request $request)
     {
+        $this->denyIfInstitutionalContext();
+
         $owner = $this->getOwner();
         $user = Auth::user();
 
@@ -138,13 +162,12 @@ class AddressController extends Controller
         return redirect()->route('partner.addresses.index')
             ->with('success', 'Nueva sede registrada correctamente.');
     }
-
     public function edit(Address $address)
     {
+        $this->denyIfInstitutionalContext();
         $this->authorizeOwner($address);
+        
         $cities = City::all();
-
-        // Cargar departamentos DIVIPOLA para el formulario de alta
         $departments = Department::orderBy('name')->get();   
 
         return view('partner.addresses.edit', compact('address', 'departments', 'cities'));
@@ -155,7 +178,9 @@ class AddressController extends Controller
      */
     public function update(Request $request, Address $address)
     {        
+        $this->denyIfInstitutionalContext();
         $this->authorizeOwner($address);
+        
         $user = Auth::user();
         $owner = $this->getOwner();
 
@@ -186,6 +211,7 @@ class AddressController extends Controller
      */
     public function destroy(Address $address)
     {
+        $this->denyIfInstitutionalContext();
         $this->authorizeOwner($address);
 
         $hasAppointments = $address->appointments()
@@ -207,13 +233,22 @@ class AddressController extends Controller
     private function authorizeOwner(Address $address)
     {        
         $user = Auth::user();
+        $context = session('doctor_context');
 
-        // Control de acceso para Clínicas
+        // Si es un médico operando en el contexto de una clínica aliada
+        if ($user->role === 'doctor' && ($context['type'] ?? 'particular') === 'clinic') {
+            if ($address->clinic_id !== (int)$context['id']) {
+                abort(403, 'No tienes permiso sobre esta sede de la clínica corporativa.');
+            }
+            return; // Autorizado para verla/listar horarios
+        }
+
+        // Control de acceso estándar para Clínicas Puras (Producción)
         if ($user->role === 'clinic' && $address->clinic_id !== $user->clinic->id) {
             abort(403, 'No tienes permiso sobre esta sede institucional.');
         }
 
-        // Control de acceso para Doctores Independientes
+        // Control de acceso estándar para Doctores Independientes (Producción)
         if ($user->role === 'doctor' && $address->doctor_id !== $user->doctor->id) {
             abort(403, 'No tienes permiso sobre esta sede privada.');
         }
@@ -227,12 +262,24 @@ class AddressController extends Controller
     }
 
     /**
+     * Impide que un médico realice acciones de escritura (CRUD) sobre sedes institucionales.
+     */
+    private function denyIfInstitutionalContext()
+    {
+        $user = Auth::user();
+        $context = session('doctor_context');
+
+        if ($user->role === 'doctor' && ($context['type'] ?? 'particular') === 'clinic') {
+            abort(403, 'Acción denegada. Las sedes institucionales solo pueden ser modificadas por los administradores de la clínica.');
+        }
+    }
+
+    /**
      * Lógica para cambiar el plan (SaaS Billing placeholder).
      */
     public function upgradePlan(Request $request)
     {
         $owner = $this->getOwner();
-        // Lógica de pasarela aquí...
         return back()->with('success', 'Tu plan ha sido actualizado.');
     }
 }
