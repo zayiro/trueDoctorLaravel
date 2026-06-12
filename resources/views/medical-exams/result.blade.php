@@ -6,8 +6,8 @@
                 .print-card { border: none !important; box-shadow: none !important; }
             }
         </style>
-        <div class="max-w-4xl mx-auto space-y-6">
-            
+        
+        <div class="max-w-4xl mx-auto space-y-6">            
             <!-- Acciones superiores (Ocultas al imprimir) -->
             <div class="flex justify-between items-center print:hidden bg-white p-4 border border-slate-200 rounded-2xl shadow-sm">
                 <a href="{{ route('exams.index') }}" class="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1">
@@ -97,7 +97,7 @@
                                     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Recomendación Médica</h3>
                                     <h4 class="text-lg font-black tracking-tight mt-2">¿Deseas revisar estos resultados con un profesional?</h4>
                                     <p class="text-sm text-slate-700 font-medium leading-relaxed">
-                                        La Inteligencia Artificial sugiere que un especialista en <strong class="text-indigo-300 capitalize">{{ str_replace('-', ' ', $analysisResult['especialidad_slug']) }}</strong> es el más idóneo para dar seguimiento a tus métricas.
+                                        La Inteligencia Artificial sugiere que un especialista en <strong class="text-indigo-600 capitalize">{{ str_replace('-', ' ', $analysisResult['especialidad_slug']) }}</strong> es el más idóneo para dar seguimiento a tus métricas.
                                     </p>
                                 </div>
                                 <div class="shrink-0 mt-3">

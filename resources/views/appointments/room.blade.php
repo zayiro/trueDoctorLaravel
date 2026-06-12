@@ -2,10 +2,10 @@
     <!-- Inicializamos Alpine.js con los datos de la cita -->
     <div class="max-w-7xl mx-auto py-12 px-4 mt-6" 
         x-data="telemedicineRoom({
-            date: '{{ substr($appointment->date, 0, 10) }}',
-            startTime: '{{ $appointment->start_time }}',
-            duration: {{ $appointment->duration }},
-            appointmentId: {{ $appointment->id }}
+            date: '{{ \Carbon\Carbon::parse($appointment->date)->format('Y-m-d') }}',
+            startTime: '{{ \Carbon\Carbon::parse($appointment->start_time)->format('H:i:s') }}',
+            duration: {{ (int) $appointment->duration }},
+            appointmentId: {{ (int) $appointment->id }}
         })"
         x-init="initRoom()">
         
@@ -17,12 +17,24 @@
             </div>
             
             <!-- Contador Regresivo -->
-            <div class="flex items-center space-x-2 px-4 py-2 rounded-full font-semibold text-sm transition-all duration-300"
+            <div class="flex items-center space-x-2 font-semibold text-sm transition-all duration-300"
                 :class="timerClass">
-                <svg class="w-5 h-5" :class="minutesRemaining < 5 ? 'animate-pulse' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <span x-text="timerText">Calculando tiempo...</span>
+                
+                <!-- Contador Regresivo -->
+                <div class="flex items-center space-x-2 font-semibold text-sm transition-all duration-300"
+                    :class="timerClass">
+                    
+                    <!-- CORRECCIÓN: Agregamos "this.startTime" para evitar el ReferenceError -->
+                    <svg class="w-5 h-5 flex-shrink-0" 
+                        :class="(new Date() >= this.startTime && minutesRemaining < 5) ? 'animate-pulse' : ''" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    
+                    <span x-text="timerText" x-cloak>Calculando tiempo...</span>
+                </div>
             </div>
 
             @if(auth()->user()->role === 'doctor' || auth()->user()->role === 'clinic')
@@ -109,9 +121,19 @@ a las {{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }}
                 endTime: null,
                 
                 initRoom() {
-                    this.endTime = new Date(`${config.date}T${config.startTime}`);
-                    this.endTime.setMinutes(this.endTime.getMinutes() + config.duration);
+                    // 1. Limpiamos espacios y creamos la base del tiempo de la cita
+                    const cleanDate = String(config.date).trim();
+                    const cleanTime = String(config.startTime).trim();
+                    const isoString = `${cleanDate}T${cleanTime}`;
+
+                    // 2. CORRECCIÓN CRÍTICA: Inicializamos la variable startTime que le falta a tu contador
+                    this.startTime = new Date(isoString);
                     
+                    // 3. Inicializamos el endTime sumándole los minutos de duración a partir del startTime
+                    this.endTime = new Date(this.startTime.getTime());
+                    this.endTime.setMinutes(this.endTime.getMinutes() + parseInt(config.duration));
+                    
+                    // 4. Encendemos el conteo y monitoreo
                     this.startCountdown();
                     this.listenToMeetingEnd();
 
@@ -119,7 +141,10 @@ a las {{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }}
                     const checkZoomLoaded = setInterval(() => {
                         if (typeof ZoomMtg !== 'undefined') {
                             clearInterval(checkZoomLoaded);
-                            this.initZoomSDK(); // Encendemos el SDK solo cuando el archivo terminó de descargar
+                            const now = new Date();
+                            if (now >= this.startTime) {
+                                this.initZoomSDK(); // Encendemos el SDK solo cuando el archivo terminó de descargar
+                            }                            
                         }
                     }, 2000); // Revisa cada 2 segundos
                 },
@@ -171,35 +196,77 @@ a las {{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }}
                         alert('Error al guardar el historial médico.');
                     });
                 },
+                
                 startCountdown() {
+                    let interval = null;
+
                     const updateTimer = () => {
                         const now = new Date();
-                        const difference = this.endTime - now;
 
-                        if (difference <= 0) {
-                            clearInterval(interval);
-                            this.timerText = "Consulta finalizada";
-                            this.timerClass = "bg-red-100 text-red-700";
-                            this.minutesRemaining = 0;
-                            this.forceCloseZoomMeeting();
+                        // 🟦 ESTADO 1: LA CITA ES EN EL FUTURO (Aún no empieza)
+                        if (now < this.startTime) {
+                            this.minutesRemaining = config.duration;
+                            const timeToStart = this.startTime - now;
+                            const oneDayInMs = 24 * 60 * 60 * 1000;
+
+                            // Si falta más de 24 horas
+                            if (timeToStart > oneDayInMs) {
+                                const days = Math.ceil(timeToStart / oneDayInMs);
+                                this.timerText = `La reunión aún no empieza (Faltan ${days} ${days === 1 ? 'día' : 'días'})`;
+                                this.timerClass = "bg-blue-50 text-blue-700 border border-blue-200 font-medium px-4 py-2 rounded-full";
+                                return;
+                            }
+
+                            // Mismo día, falta menos de 24 horas (Cuenta regresiva de inicio)
+                            const totalSeconds = Math.floor(timeToStart / 1000);
+                            const hours = Math.floor(totalSeconds / 3600);
+                            const minutes = Math.floor((totalSeconds % 3600) / 60);
+                            const seconds = totalSeconds % 60;
+
+                            const pad = (num) => String(num).padStart(2, '0');
+                            this.timerText = `Inicia en: ${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
+                            this.timerClass = "bg-blue-50 text-blue-600 border border-blue-100 animate-pulse font-semibold px-4 py-2 rounded-full";
                             return;
                         }
 
-                        const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-                        const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+                        // 🟩/🟥 ESTADO 2: LA REUNIÓN ESTÁ EN CURSO o FINALIZADA
+                        const difference = this.endTime - now;
+
+                        if (difference <= 0) {
+                            if (interval) clearInterval(interval);
+                            this.timerText = "Consulta finalizada";
+                            this.timerClass = "bg-red-100 text-red-700 border border-red-300 font-bold px-4 py-2 rounded-full";
+                            this.minutesRemaining = 0;
+                            
+                            if (typeof ZoomMtg !== 'undefined') {
+                                this.forceCloseZoomMeeting();
+                            }
+                            return;
+                        }
+
+                        // Cómputo y formateo estable de minutos restantes (Evita brincos visuales)
+                        const totalSeconds = Math.floor(difference / 1000);
+                        const minutes = Math.floor(totalSeconds / 60);
+                        const seconds = totalSeconds % 60;
                         
                         this.minutesRemaining = minutes;
-                        this.timerText = `Tiempo restante: ${minutes}m ${seconds}s`;
 
+                        const paddedMinutes = String(minutes).padStart(2, '0');
+                        const paddedSeconds = String(seconds).padStart(2, '0');
+                        this.timerText = `Tiempo restante: ${paddedMinutes}m ${paddedSeconds}s`;
+
+                        // Estilos dinámicos basados en el tiempo
                         if (minutes < 5) {
-                            this.timerClass = "bg-red-50 text-red-600 font-bold animate-pulse";
+                            this.timerClass = "bg-red-50 text-red-600 font-bold animate-pulse border border-red-200 px-4 py-2 rounded-full";
                         } else if (minutes < 10) {
-                            this.timerClass = "bg-yellow-50 text-yellow-700";
+                            this.timerClass = "bg-yellow-50 text-yellow-700 border border-yellow-200 px-4 py-2 rounded-full";
+                        } else {
+                            this.timerClass = "bg-green-50 text-green-700 border border-green-200 font-medium px-4 py-2 rounded-full";
                         }
                     };
 
                     updateTimer();
-                    const interval = setInterval(updateTimer, 1000);
+                    interval = setInterval(updateTimer, 1000);
                 },
 
                 forceCloseZoomMeeting() {
@@ -215,17 +282,30 @@ a las {{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }}
                 },
 
                 listenToMeetingEnd() {
+                    const now = new Date();
+                    if (now < this.startTime) {
+                        console.log("Polling en pausa: Sala en fase de espera futura.");
+                        return; 
+                    }
+
                     const checkStatusInterval = setInterval(() => {
                         fetch(`/api/appointments/${config.appointmentId}/status`)
                             .then(res => res.json())
                             .then(data => {
-                                if (data.status === 'completed') {
+                                if (data.status === 'completed' || data.status === 'cancelled') {
                                     clearInterval(checkStatusInterval);
+                                    
                                     this.timerText = "Consulta terminada";
-                                    this.timerClass = "bg-red-600 text-white font-bold animate-bounce";
+                                    this.timerClass = "bg-red-600 text-white font-bold animate-pulse px-4 py-2 rounded-full";
                                     
                                     setTimeout(() => {
-                                        window.location.href = "{{ route('admin.dashboard') }}";
+                                        const userRole = "{{ Auth::user()->roles->first()?->name ?? 'patient' }}";
+                                        
+                                        if (userRole === 'doctor' || userRole === 'admin' || userRole === 'clinic') {
+                                            window.location.href = "{{ route('admin.dashboard') }}";
+                                        } else {
+                                            window.location.href = "/appointments/history"; 
+                                        }
                                     }, 3000);
                                 }
                             })

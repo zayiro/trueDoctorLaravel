@@ -167,6 +167,7 @@
 
                     </div>
                 </div>
+
                 <!-- COLUMNA DERECHA: MOTOR DE RESERVAS (Sedes, Servicios y Slots) -->
                 <div class="lg:col-span-2 space-y-6">
                     
@@ -184,31 +185,47 @@
                             @endif
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             @php
-                                // 🔒 SOLUCIÓN: Si la sede viene pre-seleccionada desde la clínica, la congelamos en una colección,
-                                // de lo contrario, iteramos de forma directa la relación cargada en el modelo maestro $partner.
-                                $activeAddresses = isset($preSelectedAddress) && $preSelectedAddress 
-                                    ? collect([$preSelectedAddress]) 
-                                    : $partner->addresses;
+                                // Captura unificada del contexto Multi-tenant
+                                $currentClinicId = request()->input('clinic_id') ?? request()->input('from_clinic');
+                                $urlAddressId = request()->input('address_id');
+
+                                if ($currentClinicId) {
+                                    // 🔥 FILTRO DE RENDERIZADO: Si viene de clínica, el médico solo puede atender telemedicina.
+                                    // Descartamos fulminantemente cualquier consultorio físico particular de producción.
+                                    $activeAddresses = $partner->addresses->where('type', 'virtual');
+                                    
+                                    // 🚀 FALLBACK AUTOMÁTICO DE ID: Como la URL trae address_id=1, ignoramos ese filtro
+                                    // y seleccionamos la primera dirección virtual institucional legítima del doctor (ej: 8 o 10)
+                                    $preSelectedAddress = $activeAddresses->where('id', $urlAddressId)->first() ?? $activeAddresses->first();
+                                } else {
+                                    // ENTORNO DE PRODUCCIÓN ORIGINAL: El médico es consultado de forma directa. Flujo intacto.
+                                    $activeAddresses = $partner->addresses;
+                                    $preSelectedAddress = $urlAddressId ? $activeAddresses->where('id', $urlAddressId)->first() : null;
+                                }
                             @endphp
 
-                            @foreach($activeAddresses as $address) {{-- 🔒 REEMPLAZADO $addresses POR $activeAddresses --}}
+                            @foreach($activeAddresses as $address)
                                 <label class="cursor-pointer block select-none group">
                                     <input type="radio" name="address_id" value="{{ $address->id }}" 
                                         x-on:change="selectAddress({{ $address->id }}, '{{ $address->type }}')" 
-                                        {{ (isset($preSelectedAddress) && $preSelectedAddress && $preSelectedAddress->id === $address->id) ? 'checked' : '' }}
-                                        class="sr-only peer">
+                                        {{ ($preSelectedAddress && $preSelectedAddress->id === $address->id) ? 'checked' : '' }}
+                                        class="sr-only">
                                     
-                                    <div class="p-4 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 peer-checked:bg-indigo-50/70 peer-checked:border-indigo-600 peer-checked:ring-2 peer-checked:ring-indigo-600/20 transition-all shadow-sm flex flex-col justify-between h-full">
+                                    <!-- Control visual reactivo asignado a Alpine.js -->
+                                    <div :class="selectedAddress === {{ $address->id }} ? 'bg-indigo-50/70 border-indigo-600 ring-2 ring-indigo-600/20' : 'bg-white border-slate-200 hover:bg-slate-50'"
+                                         class="p-4 border rounded-2xl transition-all shadow-sm flex flex-col justify-between h-full">
+                                        
                                         <div class="space-y-0.5">
                                             <span class="font-extrabold text-slate-800 text-sm block group-hover:text-indigo-600 transition-colors">{{ $address->name }}</span>
-                                            <span class="text-xs text-slate-500 block leading-tight">{{ $address->address }}{{ $address->type === 'virtual' ? '' : ', ' . ($address->city->name ?? '') }}</span>
+                                            <span class="text-xs text-slate-500 block leading-tight">{{ $address->address_line ?? $address->address }}</span>
                                         </div>
 
                                         <div class="mt-3 border-t border-slate-100 pt-2 flex items-center justify-between">
-                                            @if($address->clinic_id)
-                                                <span class="text-[9px] font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100/30">🏢 {{ $address->clinic->name ?? 'Clínica Aliada' }}</span>
+                                            @if($currentClinicId)
+                                                {{-- Forzamos visualmente el badge de la clínica institucional si viene derivado de allí --}}
+                                                <span class="text-[9px] font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100/30">🏢 Sede Virtual Institucional</span>
                                             @else
                                                 <span class="text-[9px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100/30">👨‍⚕️ Consulta Privada</span>
                                             @endif
@@ -218,6 +235,7 @@
                                 </label>
                             @endforeach
                         </div>
+
 
                     </div>
 
@@ -291,6 +309,7 @@
                 </div> <!-- Cierre .lg:col-span-2 -->
             </div> <!-- Cierre .grid -->
         </div> <!-- Cierre .max-w-7xl -->
+
     <!-- ======================================================== -->
     <!-- ARQUITECTURA REACTIVA CON ALPINE.JS (MÁQUINA DE ESTADOS) -->
     <!-- ======================================================== -->
@@ -309,12 +328,27 @@
                 // Capturar el ID global de la clínica aliada si proviene de derivación corporativa
                 fromClinicId: '{{ $fromClinicId ?? "" }}',
 
+                // 🔥 SOLUCIÓN AL PARSEERROR: Inyección directa limpia de la colección relacional mapeada desde el backend
+                addressesServicesPool: {!! json_encode($activeAddresses->map(function($addr) {
+                    return [
+                        'id' => $addr->id,
+                        'services' => $addr->services->where('active', true)->map(function($srv) {
+                            return [
+                                'id' => $srv->id,
+                                'name' => $srv->name,
+                                'duration' => $srv->pivot->duration ?? $srv->duration,
+                                'price' => $srv->pivot->price ?? $srv->price
+                            ];
+                        })->values()->toArray()
+                    ];
+                })->toArray()) !!},
+
                 selectAddress(id, type) {
                     this.selectedAddress = id;
                     this.addressType = type;
                     this.selectedService = null;
                     this.availableSlots = [];
-                    this.fetchServices();
+                    this.fetchServicesLocal();
                 },
 
                 selectService(id, duration) {
@@ -323,13 +357,10 @@
                     this.fetchAvailableSlots();
                 },
 
-                async fetchServices() {
-                    try {
-                        const response = await fetch(`/api/addresses/${this.selectedAddress}/services`);
-                        this.availableServices = await response.json();
-                    } catch (error) {
-                        console.error("Error cargando servicios:", error);
-                    }
+                // ⏱️ INSTANTÁNEO: Extrae los servicios directamente desde la memoria cacheada en Blade
+                fetchServicesLocal() {
+                    const matchedAddress = this.addressesServicesPool.find(addr => addr.id === this.selectedAddress);
+                    this.availableServices = matchedAddress ? matchedAddress.services : [];
                 },
 
                 async fetchAvailableSlots() {
@@ -338,8 +369,25 @@
                     this.availableSlots = [];
 
                     try {
-                        const param = profileType === 'clinic' ? `clinic_id=${partnerId}` : `doctor_id=${partnerId}`;
-                        const url = `/slots?date=${this.selectedDate}&duration=${this.serviceDuration}&address_id=${this.selectedAddress}&${param}&is_virtual=${this.addressType === 'virtual' ? 'true' : 'false'}`;
+                        // 🔒 PARÁMETROS CRUCIALES INTEGRADOS: Mantiene el ID del médico y de la clínica vinculados
+                        const searchParams = new URLSearchParams({
+                            date: this.selectedDate,
+                            duration: this.serviceDuration,
+                            address_id: this.selectedAddress,
+                            is_virtual: this.addressType === 'virtual' ? 'true' : 'false'
+                        });
+
+                        if (profileType === 'clinic') {
+                            searchParams.append('clinic_id', partnerId);
+                        } else {
+                            searchParams.append('doctor_id', partnerId);
+                            // 🔥 ARREGLO CRÍTICO: Si el perfil es médico pero proviene de una clínica, inyectamos la co-propiedad
+                            if (this.fromClinicId) {
+                                searchParams.append('clinic_id', this.fromClinicId);
+                            }
+                        }
+
+                        const url = `/slots?${searchParams.toString()}`;
                         const response = await fetch(url);
                         this.availableSlots = await response.json();
                     } catch (error) {
@@ -382,3 +430,4 @@
 
     </div> <!-- Cierre del div del fondo .bg-gray-100 -->
 </x-guest-layout>
+        

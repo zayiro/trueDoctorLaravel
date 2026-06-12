@@ -77,7 +77,7 @@ class MedicalExamController extends Controller
 
         // Actualizar estado del pago
         $analysis->update([
-            'payment_status' => 'paid',
+            'payment_status' => 'pending',
             'payment_id'     => 'PAY-' . strtoupper(Str::random(10))
         ]);
 
@@ -115,69 +115,90 @@ class MedicalExamController extends Controller
         $dataUri = "data:{$finalMime};base64,{$finalBase64}";
         $contextoMotivo = "El paciente se tomó este examen por: {$analysis->reason_type}. Detalles adicionales: {$analysis->reason_custom}";
 
-        // Llamada oficial a OpenAI
-        $response = OpenAI::chat()->create([
-            'model' => 'gpt-4o',            
-            'messages' => [
-                [
-                    'role' => 'system', 
-                    'content' => "Eres un asistente médico experto de un SAAS de salud. Tu tarea es extraer la información del examen y obligatoriamente clasificarlo en una especialidad médica."
+        try {
+            // Llamada oficial a OpenAI
+            $response = OpenAI::chat()->create([
+                'model' => 'gpt-4o',            
+                'messages' => [
+                    [
+                        'role' => 'system', 
+                        'content' => "Eres un asistente médico experto de un SAAS de salud. Tu tarea es extraer la información del examen y obligatoriamente clasificarlo en una especialidad médica."
+                    ],
+                    [
+                        'role' => 'user',
+                        'content' => [
+                            [
+                                'type' => 'text', 
+                                'text' => "Analiza este examen médico correlacionándolo con el motivo del paciente ({$contextoMotivo}). Extrae los biomarcadores, conclusiones claras y próximos pasos. REGLA CRÍTICA: En el campo 'especialidad_slug' debes colocar OBLIGATORIAMENTE uno de estos términos en minúsculas y sin acentos según corresponda: 'medicina-general', 'neurologia', 'cardiologia', 'ginecologia', 'endocrinologia', 'pediatria', 'urologia', 'dermatologia'. Si tienes dudas, usa 'medicina-general'."
+                            ],
+                            ['type' => 'image_url', 'image_url' => ['url' => $dataUri]]
+                        ]
+                    ]
                 ],
-                [
-                    'role' => 'user',
-                    'content' => [
-                        [
-                            'type' => 'text', 
-                            'text' => "Analiza este examen médico correlacionándolo con el motivo del paciente ({$analysis->reason_type}). Extrae los biomarcadores, conclusiones claras y próximos pasos. REGLA CRÍTICA: En el campo 'especialidad_slug' debes colocar OBLIGATORIAMENTE uno de estos términos en minúsculas y sin acentos según corresponda: 'medicina-general', 'neurologia', 'cardiologia', 'ginecologia', 'endocrinologia', 'pediatria', 'urologia', 'dermatologia'. Si tienes dudas, usa 'medicina-general'."
-                        ],
-                        ['type' => 'image_url', 'image_url' => ['url' => $dataUri]]
+
+                'response_format' => [
+                    'type' => 'json_schema',
+                    'json_schema' => [
+                        'name' => 'analisis_clinico_pago',
+                        'strict' => true,
+                        'schema' => [
+                            'type' => 'object',
+                            'properties' => [
+                                'nombre_examen' => ['type' => 'string'],
+                                'especialidad_slug' => [
+                                    'type' => 'string',
+                                    'description' => 'El slug en minúsculas de la especialidad correspondiente de la lista entregada.'
+                                ],
+                                'hallazgos_clave' => [
+                                    'type' => 'array',
+                                    'items' => [
+                                        'type' => 'object',
+                                        'properties' => [
+                                            'parametro' => ['type' => 'string'],
+                                            'valor_detectado' => ['type' => 'string'],
+                                            'estado' => ['type' => 'string', 'enum' => ['Normal', 'Elevado', 'Bajo', 'Crítico']],
+                                        ],
+                                        'required' => ['parametro', 'valor_detectado', 'estado'],
+                                        'additionalProperties' => false
+                                    ]
+                                ],
+                                'conclusion_paciente' => ['type' => 'string'],
+                                'recomendaciones' => ['type' => 'string']
+                            ],                        
+                            'required' => ['nombre_examen', 'especialidad_slug', 'hallazgos_clave', 'conclusion_paciente', 'recomendaciones'],
+                            'additionalProperties' => false
+                        ]
                     ]
                 ]
-            ],
+            ]);
 
-            'response_format' => [
-                'type' => 'json_schema',
-                'json_schema' => [
-                    'name' => 'analisis_clinico_pago',
-                    'strict' => true,
-                    'schema' => [
-                        'type' => 'object',
-                        'properties' => [
-                            'nombre_examen' => ['type' => 'string'],
-                            'especialidad_slug' => [
-                                'type' => 'string',
-                                'description' => 'El slug en minúsculas de la especialidad correspondiente de la lista entregada.'
-                            ],
-                            'hallazgos_clave' => [
-                                'type' => 'array',
-                                'items' => [
-                                    'type' => 'object',
-                                    'properties' => [
-                                        'parametro' => ['type' => 'string'],
-                                        'valor_detectado' => ['type' => 'string'],
-                                        'estado' => ['type' => 'string', 'enum' => ['Normal', 'Elevado', 'Bajo', 'Crítico']],
-                                    ],
-                                    'required' => ['parametro', 'valor_detectado', 'estado'],
-                                    'additionalProperties' => false
-                                ]
-                            ],
-                            'conclusion_paciente' => ['type' => 'string'],
-                            'recomendaciones' => ['type' => 'string']
-                        ],                        
-                        'required' => ['nombre_examen', 'especialidad_slug', 'hallazgos_clave', 'conclusion_paciente', 'recomendaciones'],
-                        'additionalProperties' => false
-                    ]
-                ]
-            ]
-        ]);
+            // Guardar el resultado en la base de datos de forma asociativa correcta
+            $analysis->update([
+                'ai_result' => json_decode($response['choices'][0]['message']['content'], true)
+            ]);
 
-        // Guardar el resultado en la base de datos de forma asociativa correcta
+            // Enviar correo electrónico de respaldo
+            //Mail::to($analysis->customer_email)->send(new ExamAnalysisReady($analysis));
+        } catch (\OpenAI\Exceptions\ErrorException $e) {
+            // Error específico de la API de OpenAI (Falta de saldo, timeout, rate limit, etc.)
+            Log::error("Error de API OpenAI en Análisis #{$analysis->id}: " . $e->getMessage());
+            $this->handleAnalysisFailure($analysis, 'Error en la plataforma de IA. Por favor, reintenta más tarde.');
+        } catch (\Exception $e) {
+            // Cualquier otro error general (JSON inválido, error de base de datos, falla de correo)
+            Log::error("Error general en Análisis #{$analysis->id}: " . $e->getMessage());
+            $this->handleAnalysisFailure($analysis, 'Ocurrió un error inesperado al procesar el examen.');
+        }
+    }
+
+    /**
+     * Método auxiliar opcional para marcar el fallo en la base de datos
+     */
+    private function handleAnalysisFailure(ExamAnalysis $analysis, string $errorMessage)
+    {
         $analysis->update([
-            'ai_result' => json_decode($response['choices'][0]['message']['content'], true)
+            'status' => 'failed',
+            'error_message' => $errorMessage // Campo útil para mostrarle al usuario en el frontend
         ]);
-
-        // Enviar correo electrónico de respaldo
-        Mail::to($analysis->customer_email)->send(new ExamAnalysisReady($analysis));
     }
 
     public function showResult($id)

@@ -6,8 +6,7 @@
                 <h1 class="text-2xl font-black text-slate-900 tracking-tight">Analizar nuevo examen</h1>
                 <p class="text-sm text-slate-500">Sube tus reportes y obtén una interpretación médica guiada por Inteligencia Artificial.</p>
             </div>
-
-            @if(auth()->check() && auth()->user()->role === 'patient')
+            
             <!-- Alertas de Errores Dinámicas de JavaScript y Laravel -->
             <div id="js-error-container" class="hidden mb-5 bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-xl text-xs font-semibold"></div>
 
@@ -49,7 +48,7 @@
                             placeholder="ejemplo@correo.com" 
                             class="w-full pl-10 p-3 bg-white border border-slate-200 rounded-xl font-medium text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 placeholder:text-slate-400/80 shadow-xs">
                     </div>
-                    <p class="text-[10px] text-slate-400 font-medium">Te enviaremos una copia digital y tu comprobante de pago a esta dirección.</p>
+                    <p class="text-sm text-slate-400 font-medium">Te enviaremos el resultado digital a esta dirección</p>
                 </div>
 
                 <!-- Campo del Motivo -->
@@ -68,16 +67,26 @@
                     <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Detalles o síntomas adicionales (Opcional)</label>
                     <textarea name="reason_custom" rows="3" placeholder="Ej: Sufro de colesterol alto y mi médico me ordenó este control trimestral..." class="w-full p-3 border border-slate-200 rounded-xl font-medium text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 shadow-xs placeholder:text-slate-400/80"></textarea>
                 </div>
-
+                
                 <!-- Botón de Envío con Estado de Carga -->
                 <div class="pt-2">                    
+                @if(auth()->check() && auth()->user()->role === 'patient')
                     {{-- CASO 1: El usuario es un Paciente Autenticado (Envía el formulario de inmediato) --}}
-                    <button type="submit" id="submit-btn" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-100 hover:shadow-emerald-200/80 active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2">
+                    <button type="submit" id="submit-btn" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-base rounded-xl shadow-lg shadow-emerald-100 hover:shadow-emerald-200/80 active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2">
                         <span id="btn-text">Interpretar mi examen GRATIS</span>
                         <svg id="btn-icon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path>
                         </svg>
                     </button>
+                @else
+                    {{-- CASO 2: Visitantes o No Registrados pagan el examen --}}
+                    <button type="submit" id="submit-btn" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-base rounded-xl shadow-lg shadow-emerald-100 hover:shadow-emerald-200/80 active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2">
+                        <span>Interpretar mi examen</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path>
+                        </svg>
+                    </button>
+                @endif    
                 </div>                
             </form>
         </div>
@@ -140,15 +149,6 @@
                     `;
                 });
             });
-        </script>
-        @else
-            {{-- CASO 2: Visitantes o No Registrados (Redirección Persuasiva al Registro) --}}
-            <a href="{{ route('register') }}" id="register-redirect-btn" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-100 hover:shadow-indigo-200/80 active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2 text-center decoration-none">
-                <span>Regístrate para obtener tu examen GRATIS</span>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path>
-                </svg>
-            </a>
-        @endif
+        </script>        
     </div>
 </x-guest-layout>

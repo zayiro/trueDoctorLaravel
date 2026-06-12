@@ -20,134 +20,6 @@ use Illuminate\Support\Facades\DB;
 class PublicProfileController extends Controller
 {   
     /**
-     * Muestra la pantalla del perfil directo del doctor.
-     */
-    public function show__(Request $request, $slug)
-    {        
-        $addressId = $request->input('address_id');
-        $now = Carbon::now();
-
-        // 1. Intentar buscar en el catálogo maestro de Clínicas aprobadas
-        $clinic = Clinic::where('slug', $slug)
-            ->where('validation_status', 'approved')
-            ->where('active', true)
-            ->first();
-
-        if ($clinic) {
-            $clinic->load([
-                'user',
-                'doctors' => function ($query) {
-                    $query->where('active', true)
-                          ->where('validation_status', 'approved')
-                          ->with(['user', 'specialties']);
-                },
-                'addresses' => function ($query) use ($addressId) {
-                    $query->where('status', true)->with(['city', 'services']);
-                    if ($addressId) {
-                        $query->where('id', $addressId);
-                    }
-                }
-            ]);
-
-            // Determinar la sede física de trabajo evaluada
-            $address = $addressId 
-                ? $clinic->addresses->where('id', $addressId)->first() 
-                : $clinic->addresses->first();
-
-            if (!$address) {
-                abort(404, 'The requested medical address is not available.');
-            }
-
-            // Algoritmo para consolidar los siguientes 12 bloques disponibles (Inmediatez)
-            $doctorIds = $clinic->doctors->pluck('id')->toArray();
-            $unifiedSlots = [];
-            $currentTime = $now->toTimeString();
-
-            for ($dayOffset = 0; $dayOffset < 7; $dayOffset++) {
-                $evalDate = Carbon::now()->addDays($dayOffset);
-                $evalDayOfWeek = $evalDate->dayOfWeekIso; // 1 = Lunes, 7 = Domingo
-
-                $schedules = DB::table('schedules')
-                    ->where('address_id', $address->id)
-                    ->where('day', $evalDayOfWeek)
-                    ->get();
-
-                foreach ($schedules as $sched) {
-                    if ($dayOffset === 0 && $sched->start_time < $currentTime) {
-                        continue;
-                    }
-
-                    foreach ($doctorIds as $docId) {
-                        $isBooked = Appointment::where('address_id', $address->id)
-                            ->where('doctor_id', $docId)
-                            ->where('date', $evalDate->toDateString())
-                            ->where('start_time', $sched->start_time)
-                            ->whereIn('status', ['pending', 'confirmed', 'completed'])
-                            ->exists();
-
-                        if (!$isBooked) {
-                            $unifiedSlots[] = [
-                                'date' => $evalDate->toDateString(),
-                                'date_human' => $evalDate->translatedFormat('D d \d\e F'),
-                                'start_time' => $sched->start_time,
-                                'time_human' => Carbon::parse($sched->start_time)->format('g:i A'),
-                                'doctor_id' => $docId
-                            ];
-
-                            if (count($unifiedSlots) >= 12) break 3; // Límite de 12 opciones rápidas
-                        }
-                    }
-                }
-            }
-
-            session(['current_clinic_user_id' => $clinic->user_id]);
-            session()->forget('current_doctor_id');
-
-            return view('partner.clinic.public.decision', [
-                'clinic'         => $clinic,
-                'address'        => $address,
-                'unifiedSlots'   => $unifiedSlots,
-                'seoTitle'       => $clinic->name . ' | Selección de Turno',
-                'seoDescription' => $clinic->bio ?? 'Elige entre atención inmediata o tu especialista preferido.'
-            ]);
-        }
-
-        // 2. Si no es una clínica, buscamos en el catálogo de Especialistas Independientes
-        $doctor = Doctor::where('slug', $slug)
-            ->where('validation_status', 'approved')
-            ->where('active', true)
-            ->firstOrFail();
-
-        $fromClinicId = $request->input('from_clinic');
-        $preSelectedAddress = null;
-
-        $doctor->load([
-            'user',
-            'specialties',
-            'addresses' => function ($query) {
-                $query->where('status', true)->with(['city', 'services']);
-            }
-        ]);
-
-        if ($addressId && $fromClinicId) {
-            $preSelectedAddress = $doctor->addresses->where('id', $addressId)->first();
-        }
-
-        session(['current_doctor_id' => $doctor->user_id]);
-        session()->forget('current_clinic_user_id');
-
-        return view('public.public-profile', [
-            'partner'            => $doctor,
-            'profileType'        => 'doctor',
-            'seoTitle'           => "Dr(a). " . ucfirst($doctor->user->name) . ' | Agendamiento en Línea',
-            'seoDescription'     => $doctor->bio ?? 'Especialista profesional calificado, agenda tu cita médica en línea.',
-            'metaRobots'         => 'index, follow',
-            'preSelectedAddress' => $preSelectedAddress,
-            'fromClinicId'       => $fromClinicId
-        ]);
-    }
-
-        /**
      * Muestra la pantalla del perfil unificado (Clínica o Doctor de opendoctor.online).
      * URL: /medical-partner/{slug}
      */
@@ -157,12 +29,13 @@ class PublicProfileController extends Controller
         $now = Carbon::now();
         $currentTime = $now->toTimeString();
 
-        // 🔒 CAPTURA MAESTRA DE LA ESPECIALIDAD REQUERIDA (Desde Query String del buscador o URLs del staff)
+        // 🔒 CAPTURA MAESTRA DE LA ESPECIALIDAD REQUERIDA
         $specialtyInput = $request->input('specialty');
         $currentSpecialty = Specialty::where('status', true)
             ->where(function($query) use ($specialtyInput) {
                 $query->where('slug', $specialtyInput)->orWhere('id', $specialtyInput);
             })->first();
+
         // --------------------------------------------------------------------
         // 1. INTENTAR BUSCAR EN EL CATÁLOGO MAESTRO DE CLÍNICAS APROBADAS
         // --------------------------------------------------------------------
@@ -170,14 +43,32 @@ class PublicProfileController extends Controller
             ->where('validation_status', 'approved')
             ->where('active', true)
             ->first();
-
         if ($clinic) {
+            $showingAllStaffFallback = false;
+
+            // Determinar si la especialidad solicitada tiene médicos activos en la clínica
+            if ($currentSpecialty) {
+                $hasDoctorsInSpecialty = $clinic->doctors()
+                    ->where('clinic_doctor.status', 'approved')
+                    ->where('doctors.validation_status', 'approved')
+                    ->whereHas('specialties', function($sp) use ($currentSpecialty) {
+                        $sp->where('specialty_id', $currentSpecialty->id);
+                    })->exists();
+
+                if (!$hasDoctorsInSpecialty) {
+                    $showingAllStaffFallback = true;
+                }
+            } else {
+                $showingAllStaffFallback = true;
+            }
+
+            // Cargar relaciones aplicando el Fallback de Especialidades de la clínica
             $clinic->load([
                 'user',
-                'doctors' => function ($query) use ($currentSpecialty) {
-                    $query->where('active', true)
-                          ->where('validation_status', 'approved')
-                          ->when($currentSpecialty, function($q) use ($currentSpecialty) {
+                'doctors' => function ($query) use ($currentSpecialty, $showingAllStaffFallback) {
+                    $query->where('clinic_doctor.status', 'approved')
+                          ->where('doctors.validation_status', 'approved')
+                          ->when(!$showingAllStaffFallback, function($q) use ($currentSpecialty) {
                               $q->whereHas('specialties', function($sp) use ($currentSpecialty) {
                                   $sp->where('specialty_id', $currentSpecialty->id);
                               });
@@ -201,12 +92,11 @@ class PublicProfileController extends Controller
                 abort(404, 'The requested medical address is not available.');
             }
 
-            if (!$currentSpecialty && $clinic->doctors->isNotEmpty()) {
+            if ($showingAllStaffFallback && $clinic->doctors->isNotEmpty()) {
                 $currentSpecialty = $clinic->doctors->first()->specialties->first();
             }
-
-            // Algoritmo nativo de inmediatez del staff de la clínica
-            $doctorIds = $clinic->doctors->pluck('id')->toArray();
+            // Algoritmo nativo de inmediatez del staff de la clínica (Corregido y Optimizado)
+            $doctorIds = $clinic->doctors()->pluck('doctors.id')->toArray();
             $unifiedSlots = [];
 
             for ($dayOffset = 0; $dayOffset < 7; $dayOffset++) {
@@ -216,6 +106,7 @@ class PublicProfileController extends Controller
                 $schedules = DB::table('schedules')
                     ->where('address_id', $address->id)
                     ->where('day', $evalDayOfWeek)
+                    ->whereIn('doctor_id', $doctorIds)
                     ->get();
 
                 foreach ($schedules as $sched) {
@@ -223,38 +114,37 @@ class PublicProfileController extends Controller
                         continue;
                     }
 
-                    foreach ($doctorIds as $docId) {
-                        $isBooked = Appointment::where('address_id', $address->id)
-                            ->where('doctor_id', $docId)
-                            ->where('date', $evalDate->toDateString())
-                            ->where('start_time', $sched->start_time)
-                            ->whereIn('status', ['pending', 'confirmed', 'completed'])
-                            ->exists();
+                    // Validación Transaccional Fiel: El turno pertenece estrictamente al médico asignado
+                    $isBooked = Appointment::where('address_id', $address->id)
+                        ->where('doctor_id', $sched->doctor_id)
+                        ->where('date', $evalDate->toDateString())
+                        ->where('start_time', $sched->start_time)
+                        ->whereIn('status', ['pending', 'confirmed', 'completed'])
+                        ->exists();
 
-                        if (!$isBooked) {
-                            $targetDoctor = $clinic->doctors->firstWhere('id', $docId);
+                    if (!$isBooked) {
+                        $targetDoctor = $clinic->doctors->firstWhere('id', $sched->doctor_id);
 
-                            $unifiedSlots[] = [
-                                'date'        => $evalDate->toDateString(),
-                                'date_human'  => $evalDate->translatedFormat('D d \d\e F'),
-                                'start_time'  => $sched->start_time,
-                                'time_human'  => Carbon::parse($sched->start_time)->format('g:i A'),
-                                'doctor_id'   => $docId,
-                                'doctor_name' => $targetDoctor ? $targetDoctor->user->name : 'Especialista'
-                            ];
+                        $unifiedSlots[] = [
+                            'date'        => $evalDate->toDateString(),
+                            'date_human'  => $evalDate->translatedFormat('D d \d\e F'),
+                            'start_time'  => $sched->start_time,
+                            'time_human'  => Carbon::parse($sched->start_time)->format('g:i A'),
+                            'doctor_id'   => $sched->doctor_id,
+                            'doctor_name' => $targetDoctor ? $targetDoctor->user->name : 'Especialista'
+                        ];
 
-                            if (count($unifiedSlots) >= 12) break 3;
-                        }
+                        if (count($unifiedSlots) >= 24) break 2;
                     }
                 }
             }
-
-                        // FÓRMULA DE SÍNTESIS DEPURADA: Prepara las tarjetas moleculares para la clínica
+            
+                        // FÓRMULA DE SÍNTESIS DEPURADA Y BLINDADA: Prepara las tarjetas moleculares para la clínica
             $results = [];
             $clinicAddresses = $clinic->addresses;
 
             foreach ($clinic->doctors as $doc) {
-                // 🚀 SOLUCIÓN MAESTRA: Buscamos en qué sedes de ESTA clínica tiene horarios reales configurados este médico
+                // Buscamos en qué sedes de ESTA clínica tiene horarios reales configurados este médico
                 $activeAddressIds = DB::table('schedules')
                     ->where('doctor_id', $doc->id)
                     ->whereIn('address_id', $clinicAddresses->pluck('id'))
@@ -262,48 +152,44 @@ class PublicProfileController extends Controller
                     ->unique()
                     ->toArray();
                 
-                // Si el médico no tiene horarios en ninguna sede, usamos por defecto la sede evaluada en la URL
+                // 🔥 CORRECCIÓN CRÍTICA: Extraemos el primer ID numérico del array. 
+                // Si el array está vacío, usamos el ID real de la sede actual evaluada ($address->id)
                 $assignedAddressId = !empty($activeAddressIds) ? $activeAddressIds[0] : $address->id;
-
-                // Buscamos el modelo físico de la sede asignada para construir el subtítulo exacto de la tarjeta
+                
                 $targetAddressModel = $clinicAddresses->firstWhere('id', $assignedAddressId) ?? $address;
 
-                // Mapeamos el arreglo con los nombres exactos que espera tu index.blade.php molecular
                 $results[] = [
                     'id'                 => $doc->id,
                     'slug'               => $doc->slug ?? $doc->user->slug,
-                    'type'               => 'doctor', // Mantiene el render de tipo doctor en la terna
+                    'type'               => 'doctor',
                     'title'              => ($doc->gender === 'female' ? 'Dra. ' : 'Dr. ') . ucfirst($doc->user->name),
-                    
-                    // 🏢 DINÁMICO: Muestra la sede física real de la clínica donde atiende el doctor
-                    'subtitle'           => "Sede " . $targetAddressModel->name . " • " . $targetAddressModel->address,
+                    'subtitle'           => "Sede " . $targetAddressModel->name . " • " . $targetAddressModel->address_line,
                     'rating'             => $doc->rating ?? 5,
                     
-                    // 🔒 CLAVE DEL ÉXITO: Este address_id alimenta el buscador de servicios en tu Blade
-                    'address_id'         => $assignedAddressId, 
+                    // 🔒 AHORA SÍ: Envía un entero limpio (ej: 8 o 10) al parámetro address_id de la URL de Blade
+                    'address_id'         => (int)$assignedAddressId, 
                     'active_address_ids' => !empty($activeAddressIds) ? $activeAddressIds : [$address->id],
-                    'badge_text'         => $currentSpecialty ? $currentSpecialty->name : 'Especialista',
-                    'next_turn'          => collect($unifiedSlots)->firstWhere('doctor_id', $doc->id)['time_human'] ?? null,
+                    'badge_text'         => $doc->specialties->first()->name ?? ($currentSpecialty ? $currentSpecialty->name : 'Especialista'),
+                    'next_turn'          => collect($unifiedSlots)->firstWhere('doctor_id', $doc->id)['time_human'] ?? 'Sin turnos esta semana',
                     'user'               => $doc->user
                 ];
             }
 
-            // Inyección de Control de Sesión y Retorno de Vista Institucional Original
             session(['current_clinic_user_id' => $clinic->user_id]);
             session()->forget('current_doctor_id');
 
             return view('public.profiles.clinic_decision', [
-                'clinic'          => $clinic,
-                'specialty'       => $currentSpecialty,
-                'clinicAddresses' => $clinicAddresses,
-                'results'         => $results, // Transmite las tarjetas moleculares en parejas
-                'address'         => $address,
-                'unifiedSlots'    => $unifiedSlots,
-                'seoTitle'        => $clinic->name . ' | Selección de Turno',
-                'seoDescription'  => $clinic->bio ?? 'Elige entre atención inmediata o tu especialista preferido.'
+                'clinic'                  => $clinic,
+                'specialty'               => $currentSpecialty,
+                'clinicAddresses'         => $clinicAddresses,
+                'results'                 => $results,
+                'address'                 => $address,
+                'unifiedSlots'            => $unifiedSlots,
+                'showingAllStaffFallback' => $showingAllStaffFallback,
+                'seoTitle'                => $clinic->name . ' | Selección de Turno',
+                'seoDescription'          => $clinic->bio ?? 'Elige entre atención inmediata o tu especialista preferido.'
             ]);
         }
-
         // --------------------------------------------------------------------
         // 2. SI NO ES UNA CLÍNICA, BUSCAMOS EN EL CATÁLOGO DE ESPECIALISTAS INDEPENDIENTES
         // --------------------------------------------------------------------
@@ -315,11 +201,10 @@ class PublicProfileController extends Controller
         $fromClinicId = $request->input('from_clinic');
         $preSelectedAddress = null;
 
-        // 🚀 LÓGICA DE PRODUCCIÓN ORIGINAL RESTAURADA AL 100%
+        // LÓGICA DE PRODUCCIÓN ORIGINAL RESTAURADA AL 100%
         $doctor->load([
             'user',
             'specialties' => function ($query) use ($currentSpecialty) {
-                // 🔍 AQUÍ SE COLOCA LA LÍNEA:
                 if ($currentSpecialty && isset($currentSpecialty->id)) {
                     $query->orderByRaw('CASE WHEN specialties.id = ? THEN 0 ELSE 1 END', [$currentSpecialty->id])
                           ->orderBy('name', 'asc');
@@ -332,14 +217,26 @@ class PublicProfileController extends Controller
             }
         ]);
 
-        // Mapear la especialidad requerida para pintar de forma correcta en tus condicionales del Blade
         if (!$currentSpecialty) {
             $currentSpecialty = $doctor->specialties->first() ?? (object) [
                 'id' => 1, 'name' => 'Consulta General', 'slug' => 'general'
             ];
         }
 
-        // Tu validación condicional exacta original que protegía la visualización multi-sede
+                // 🔒 AISLAMIENTO MULTI-TENANT CONTEXTUAL (REPARACIÓN DE ATENCIÓN VIRTUAL)
+        if ($fromClinicId) {
+            $parentClinic = Clinic::where('id', $fromClinicId)
+                ->where('validation_status', 'approved')
+                ->first();
+
+            // Mantenemos la carga original de direcciones del médico (admite clinic_id = null si es su dirección virtual)
+            // para que la sede virtual autogenerada por el Observer no sea eliminada por la consulta SQL.
+            $doctor->load(['addresses' => function ($query) {
+                $query->where('status', true)->with(['city', 'services' => fn($q) => $q->where('services.active', true)]);
+            }]);
+        }
+
+
         if ($addressId && $fromClinicId) {
             $preSelectedAddress = $doctor->addresses->where('id', $addressId)->first();
         }
@@ -350,64 +247,12 @@ class PublicProfileController extends Controller
         return view('public.public-profile', [
             'partner'            => $doctor,
             'profileType'        => 'doctor',
-            'currentSpecialty'   => $currentSpecialty, // Inyectado de forma segura
+            'currentSpecialty'   => $currentSpecialty,
             'seoTitle'           => "Dr(a). " . ucfirst($doctor->user->name) . ' | Agendamiento en Línea',
             'seoDescription'     => $doctor->bio ?? 'Especialista profesional calificado, agenda tu cita médica en línea.',
             'metaRobots'         => 'index, follow',
-            'preSelectedAddress' => $preSelectedAddress, // Se mantiene null si es independiente puro
+            'preSelectedAddress' => $preSelectedAddress,
             'fromClinicId'       => $fromClinicId
         ]);
-    }
-
-    /**
-     * Devuelve la disponibilidad de FullCalendar según la infraestructura del Doctor.
-     */
-    public function getAvailability__(Doctor $doctor, Request $request)
-    {
-        $start = Carbon::parse($request->start);
-        $end = Carbon::parse($request->end);
-        
-        $events = [];
-        $schedules = $doctor->addresses()->with('schedules')->get()->pluck('schedules')->flatten();
-
-        foreach ($schedules as $schedule) {
-            // Generación interna de bloques de tiempo (FullCalendar)
-        }
-
-        return response()->json($events);
-    }
-
-    /**
-     * Genera la previsualización de la cita antes de confirmar la transacción.
-     */
-    public function preview__(Request $request)
-    {
-        $service = Service::with('doctor.user')->findOrFail($request->service);
-        $address = $request->address ? Address::with('city')->find($request->address) : null;
-        $datetime = Carbon::parse($request->datetime);
-        
-        $notes = $request->notes;
-        $phone = $request->phone;
-        $identification = $request->identification;
-
-        return view('public.appointments.preview', compact(
-            'service', 'address', 'datetime', 'notes', 'phone', 'identification'
-        ));
-    }
-
-    /**
-     * Muestra la confirmación de éxito validando correctamente la tenencia del recurso.
-     */
-    public function success__(Appointment $appointment)
-    {
-        $patient = auth()->user()->patient;
-
-        // 🔒 CONTROL DE ACCESO CORRECTO: Validamos contra el ID de la tabla patients, no el user_id directo
-        if (!$patient || $appointment->patient_id !== $patient->id) { 
-            abort(403, 'Unauthorized access to this medical receipt.'); 
-        }
-
-        $appointment->load(['doctor.user', 'service', 'address.city']);
-        return view('public.appointments.success', compact('appointment'));
-    }    
+    }        
 }

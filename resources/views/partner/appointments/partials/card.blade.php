@@ -8,8 +8,13 @@
             this.loadingSlots = true;
             this.slots = [];
             
-            // Consumimos tu endpoint unificado /slots inyectando los datos de la cita actual
-            fetch(`/slots?date=${this.selectedDate}&doctor_id={{ $app->doctor_id }}&address_id={{ $app->address_id }}`)
+            // Evaluamos contextualmente si viaja un clinic_id en la sesión para inyectarlo en el endpoint móvil
+            @php
+                $context = session('doctor_context');
+                $clinicParam = (($context['type'] ?? 'particular') === 'clinic') ? '&clinic_id=' . $context['id'] : '';
+            @endphp
+            
+            fetch(`/slots?date=${this.selectedDate}&doctor_id={{ $app->doctor_id }}&address_id={{ $app->address_id }}{{ $clinicParam }}`)
                 .then(res => res.json())
                 .then(data => {
                     this.slots = Array.isArray(data) ? data : (data.slots || Object.values(data));
@@ -30,7 +35,7 @@
                 {{ \Carbon\Carbon::parse($app->start_time)->format('g:i A') }}
             </span>
             <span class="text-xs font-bold text-slate-400 ml-1">
-                ({{ $app->duration }} min)
+                ({{ $app->service->duration ?? $app->address->pivot->duration ?? 20 }} min)
             </span>
         </div>
         
@@ -38,62 +43,94 @@
         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-black border uppercase tracking-wider
             @if($app->status === 'confirmed') bg-green-50 text-green-700 border-green-200
             @elseif($app->status === 'pending') bg-amber-50 text-amber-700 border-amber-200
-            @elseif($app->status === 'completed') bg-gray-50 text-gray-700 border-gray-200
-            @else bg-red-50 text-red-700 border-red-200 @endif">
-            {{ $app->status === 'confirmed' ? 'Confirmada' : ($app->status === 'pending' ? 'Pendiente' : ($app->status === 'completed' ? 'Completada' : 'Cancelada')) }}
+            @elseif($app->status === 'completed') bg-blue-50 text-blue-700 border-blue-200
+            @else bg-rose-50 text-rose-700 border-rose-200 @endif">
+            @switch($app->status)
+                @case('confirmed') Confirmada @break
+                @case('pending') Pendiente @break
+                @case('completed') Atendida @break
+                @case('cancelled') Cancelada @break
+                @default {{ $app->status }}
+            @endswitch
         </span>
     </div>
-
     <!-- Fila 2: Información Médica y Paciente -->
     <div class="space-y-1">
         <div class="text-xs font-bold text-slate-400 font-mono">Ref: {{ $app->reference }}</div>
         <h4 class="text-base font-black text-slate-900">{{ $app->patient->user->name ?? 'Paciente' }}</h4>
-        <p class="text-xs font-black text-indigo-600">{{ $app->service->name }}</p>
+        <p class="text-xs font-black text-slate-600">{{ $app->service->name }}</p>
+        
+        <!-- ⚡ INDICADOR STAFF MÓVIL: Visible si audita la clínica -->
+        @if(auth()->user()->role === 'clinic')
+            <span class="inline-flex items-center gap-1 text-[9px] font-black text-indigo-600 uppercase tracking-wider mt-1 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100/60">
+                Dr(a). {{ $app->doctor->user->name ?? 'Sin asignar' }}
+            </span>
+        @endif
     </div>
 
     <!-- Fila 3: Canal y Sede -->
     <div class="flex flex-wrap items-center gap-2 pt-1">
-        @if($app->service && $app->service->type === 'virtual')
+        @if($app->address && $app->address->type === 'virtual')
             <span class="bg-purple-50 text-purple-700 text-[9px] font-black px-2 py-0.5 rounded-lg border border-purple-200 uppercase tracking-wider">💻 Telemedicina</span>
         @else
-            <span class="bg-emerald-50 text-emerald-700 text-[9px] font-black px-2 py-0.5 rounded-lg border border-emerald-200 uppercase tracking-wider">📍 Presencial</span>
+            <span class="bg-blue-50 text-blue-700 text-[9px] font-black px-2 py-0.5 rounded-lg border border-blue-200 uppercase tracking-wider">📍 Presencial</span>
+        @endif
+        
+        <!-- 🌐 INICIAR TELECONSULTA ZOOM MÓVIL -->
+        @if($app->address && $app->address->type === 'virtual' && $app->status === 'confirmed' && $app->zoom_start_url)
+            <a href="{{ $app->zoom_start_url }}" target="_blank" 
+               class="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg border shadow-2xs transition
+               {{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') 
+                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
+                   : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' }}">
+                🚀 Iniciar Zoom
+            </a>
         @endif
     </div>
+
     <!-- Fila 4: Botonera de Acción Táctil -->
     <div class="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100">
-        <!-- Ver Notas (Llama a tu función JavaScript global) -->
-        <button type="button" @click="openNoteModal('{{ addslashes($app->notes) }}')" 
-                class="inline-flex justify-center items-center text-center text-xs font-bold text-amber-600 bg-amber-50 hover:bg-amber-100 py-2.5 rounded-xl transition">
-            👁️ Notas
-        </button>
+        <!-- Ver Notas -->
+        @if($app->notes)
+            <button type="button" @click="openNoteModal('{{ addslashes($app->notes) }}')" 
+                    class="inline-flex justify-center items-center text-center text-xs font-bold text-amber-600 bg-amber-50 hover:bg-amber-100 py-2.5 rounded-xl transition shadow-2xs">
+                👁️ Notas
+            </button>
+        @endif
 
-        <!-- Botón Reagendar Móvil -->
+        <!-- Botón Reagendar Móvil (Tematizado) -->
         @if(in_array($app->status, ['pending', 'confirmed']))
             <button type="button" @click="openReschedule = true" 
-                    class="inline-flex justify-center items-center text-center text-xs font-black text-indigo-600 bg-indigo-50 hover:bg-indigo-100 py-2.5 rounded-xl transition uppercase tracking-wider">
+                    class="inline-flex justify-center items-center text-center text-xs font-black py-2.5 rounded-xl transition uppercase tracking-wider shadow-2xs
+                    {{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100' : 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100' }}">
                 🔄 Reagendar
             </button>
-        @else
-            <div class="h-10"></div>
+        @endif
+
+        <!-- COMPLETAR CITA MÓVIL -->
+        @if(in_array($app->status, ['pending', 'confirmed']))
+            <form action="{{ route('partner.appointments.complete', $app->id) }}" method="POST" class="w-full">
+                @csrf
+                @method('PATCH')
+                <button type="submit" class="w-full inline-flex justify-center items-center text-center text-xs font-bold text-green-600 bg-green-50 hover:bg-green-100 py-2.5 rounded-xl transition uppercase tracking-wider shadow-2xs">
+                    ✓ Atendida
+                </button>
+            </form>
         @endif
 
         <!-- BOTÓN CANCELAR CITA MÓVIL -->
         @if(in_array($app->status, ['pending', 'confirmed']))
-            <form action="{{ route('appointments.updateStatus', $app->id) }}" method="POST" 
+            <form action="{{ route('partner.appointments.cancel', $app->id) }}" method="POST" 
                   onsubmit="return confirm('¿Estás seguro de que deseas cancelar esta consulta médica?');" 
-                  class="flex-1 min-w-[100px]">
+                  class="w-full">
                 @csrf
-                @method('PUT')
-                <input type="hidden" name="status" value="cancelled">
-                
-                <button type="submit" 
-                        class="w-full inline-flex justify-center items-center text-center text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 py-2.5 rounded-xl transition uppercase tracking-wider">
+                @method('PATCH')
+                <button type="submit" class="w-full inline-flex justify-center items-center text-center text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 py-2.5 rounded-xl transition uppercase tracking-wider shadow-2xs">
                     ❌ Cancelar
                 </button>
             </form>
         @endif
     </div>
-
     <!-- 👇 MODAL INTERACTIVO DE REAGENDAMIENTO MÓVIL (Aislado para esta Tarjeta) -->
     <div x-show="openReschedule" 
          @click.self="openReschedule = false; selectedDate = ''; slots = []"
@@ -126,20 +163,20 @@
                 <div>
                     <label class="block text-[10px] font-black text-slate-700 uppercase tracking-wider mb-1">Nueva Fecha</label>
                     <input type="date" name="new_date" min="{{ date('Y-m-d') }}" x-model="selectedDate" @change="fetchSlots()" required
-                           class="w-full text-xs font-bold text-slate-700 border-slate-200 rounded-xl shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 bg-white">
+                           class="w-full text-xs font-bold text-slate-700 border-slate-200 rounded-xl shadow-sm py-2.5 px-3 bg-white focus:ring-2 {{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') ? 'focus:border-emerald-500 focus:ring-emerald-500' : 'focus:border-indigo-500 focus:ring-indigo-500' }}">
                 </div>
 
                 <!-- Input 2: Slots -->
                 <div>
                     <label class="block text-[10px] font-black text-slate-700 uppercase tracking-wider mb-1">Turnos Libres</label>
                     
-                    <div x-show="loadingSlots" class="text-xs font-bold text-indigo-600 py-2.5 flex items-center gap-2" x-cloak>
+                    <div x-show="loadingSlots" class="text-xs font-bold py-2.5 flex items-center gap-2 {{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') ? 'text-emerald-600' : 'text-indigo-600' }}" x-cloak>
                         <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                         Consultando matriz...
                     </div>
 
                     <select name="new_start_time" x-show="!loadingSlots && slots.length > 0" required
-                            class="w-full text-xs font-bold text-slate-700 border-slate-200 rounded-xl shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 bg-white">
+                            class="w-full text-xs font-bold text-slate-700 border-slate-200 rounded-xl shadow-sm py-2.5 px-3 bg-white focus:ring-2 {{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') ? 'focus:border-emerald-500 focus:ring-emerald-500' : 'focus:border-indigo-500 focus:ring-indigo-500' }}">
                         <option value="">Selecciona una opción...</option>
                         <template x-for="slot in slots" :key="slot.time">
                             <option :value="(() => {
@@ -149,7 +186,7 @@
                                         if (modifier === 'PM') hours = parseInt(hours, 10) + 12;
                                         return `${hours.toString().padStart(2, '0')}:${minutes}:00`;
                                     })()" x-text="slot.time"></option>
-                        </template>
+                            </template>
                     </select>
 
                     <div x-show="!loadingSlots && selectedDate && slots.length === 0" class="text-xs font-bold text-red-600 bg-red-50 border border-red-100 p-2.5 rounded-xl" x-cloak>
@@ -164,7 +201,8 @@
                         Cancelar
                     </button>
                     <button type="submit" x-bind:disabled="slots.length === 0"
-                            class="px-4 py-2 text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition shadow-sm tracking-wider uppercase disabled:opacity-50 disabled:cursor-not-allowed">
+                            class="px-4 py-2 text-xs font-black text-white rounded-xl transition shadow-sm tracking-wider uppercase disabled:opacity-50 disabled:cursor-not-allowed
+                            {{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700' }}">
                         Confirmar Cambio
                     </button>
                 </div>

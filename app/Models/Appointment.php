@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Contracts\Encryption\DecryptException;
 
 class Appointment extends Model
 {
@@ -26,6 +27,7 @@ class Appointment extends Model
         'duration',
         'price',
         'status',
+        'payment_status',
         'channel',
         'meeting_link',     // Enlace para el paciente (o fallback interno)
         'zoom_meeting_id',  // ID identificador de Zoom
@@ -41,6 +43,8 @@ class Appointment extends Model
     protected $casts = [
         'date'  => 'date',
         'price' => 'float',
+        'status' => \App\Enums\AppointmentStatus::class,
+        'payment_status' => \App\Enums\PaymentStatus::class,
     ];
 
     protected static function booted()
@@ -65,7 +69,15 @@ class Appointment extends Model
     }
 
     /**
-     * Descifra de forma segura el enlace de inicio del doctor
+     * 🔒 MUTADOR: Encripta el enlace de inicio del doctor antes de guardarlo
+     */
+    public function setZoomStartUrlAttribute($value)
+    {
+        $this->attributes['zoom_start_url'] = $value ? Crypt::encryptString($value) : null;
+    }
+    
+    /**
+     * 🔓 ACCESSOR: Descifra de forma segura el enlace de inicio del doctor
      */
     public function getZoomStartUrlAttribute($value)
     {
@@ -74,13 +86,21 @@ class Appointment extends Model
         try {
             return Crypt::decryptString($value);
         } catch (DecryptException $e) {
-            // 💡 Si falla porque era texto plano viejo, retorna el valor original sin romper la app
+            // Ahora sí capturará la excepción correctamente si el dato es texto plano viejo
             return $value; 
         }
     }
 
     /**
-     * Descifra de forma segura el enlace de acceso del paciente
+     * 🔒 MUTADOR: Encripta el enlace del paciente antes de guardarlo
+     */
+    public function setMeetingLinkAttribute($value)
+    {
+        $this->attributes['meeting_link'] = $value ? Crypt::encryptString($value) : null;
+    }
+    
+    /**
+     * 🔓 ACCESSOR: Descifra de forma segura el enlace de acceso del paciente
      */
     public function getMeetingLinkAttribute($value)
     {
@@ -89,7 +109,7 @@ class Appointment extends Model
         try {
             return Crypt::decryptString($value);
         } catch (DecryptException $e) {
-            // 💡 Si falla porque era texto plano viejo, retorna el valor original sin romper la app
+            // Retorna el texto plano sin romper la aplicación si no estaba cifrado
             return $value; 
         }
     }
@@ -100,7 +120,7 @@ class Appointment extends Model
     public function clinic(): BelongsTo
     {
         return $this->belongsTo(Clinic::class, 'clinic_id');
-    }
+    }    
 
     /**
      * Relación con el Servicio médico contratado.

@@ -75,7 +75,9 @@ class DashboardController extends Controller
                 'bmi_status' => $owner->imc_status,
                 'age' => $owner->age,
                 'blood_type' => $owner->blood_type ?? 'No registrada'
-            ];                  
+            ];  
+            
+            //dd($upcomingAppointments);
 
             return view('admin.dashboard', compact(
                 'user', 'owner', 'upcomingAppointments', 'pastAppointments', 'healthMetrics'

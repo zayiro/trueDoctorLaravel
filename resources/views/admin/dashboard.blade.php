@@ -98,6 +98,8 @@
                         <h4 class="text-sm font-black text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">Próximas citas</h4>
                         @forelse($upcomingAppointments as $appointment)
                             @php
+                            $appointmentStatusPatient = '';
+                            
                             switch ($appointment->status) {
                                 case 'pending': $appointmentStatusPatient = 'Pendiente';
                                 break;

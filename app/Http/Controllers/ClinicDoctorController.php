@@ -199,6 +199,7 @@ class ClinicDoctorController extends Controller
                     $registeredSuccessfully[] = $docData['name'];
                 }
             }); // Fin del DB::transaction
+            
             $response = redirect()->route('partner.clinic.doctors.index');
 
             if (count($registeredSuccessfully) > 0) {

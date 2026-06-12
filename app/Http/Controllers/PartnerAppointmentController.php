@@ -15,75 +15,131 @@ use App\Services\AppointmentService;
 
 class PartnerAppointmentController extends Controller
 {
-    /**
-     * Muestra el cronograma de citas unificado.
+        /**
+     * Muestra el cronograma de citas unificado filtrado por el espacio de trabajo activo.
      */
     public function index(Request $request)
     {
         $user = auth()->user();
+        $context = session('doctor_context');
         $date = $request->input('date', now()->toDateString());
         $showAll = $request->has('all');
 
-        // 1. RESOLVER LA CAJA DE HERRAMIENTAS SEGÚN EL ROL
+        // 1. RESOLVER LA NÓMINA DISPONIBLE PARA FILTRADO SEGÚN EL ÁMBITO
         if ($user->role === 'clinic') {
             $clinic = $user->clinic;
-            
-            // 🔥 ESTA ES LA LÓGICA: Cargamos la nómina de médicos de la clínica
+            // La clínica carga todo su staff médico aprobado para la barra de filtros institucional
             $availableDoctors = $clinic->doctors()->with('user')->get();
-
-            // Filtramos las citas de la clínica (por médico si seleccionó uno)
-            $appointmentsQuery = Appointment::where('clinic_id', $clinic->id);
-            if ($request->filled('doctor_id')) {
-                $appointmentsQuery->where('doctor_id', $request->doctor_id);
-            }
         } else {
-            $doctor = $user->doctor;
-            
-            // Si es doctor independiente, la lista de médicos para filtrar va vacía
+            // El médico (Particular o Staff) opera su agenda de forma individualizada
             $availableDoctors = collect([]); 
-
-            // Filtramos las citas privadas del doctor
-            $appointmentsQuery = Appointment::where('doctor_id', $doctor->id);
         }
 
-        // 2. FILTRADO CRONOLÓGICO COMÚN
+        // 2. MÁQUINA DE CONSULTA CENTRALIZADA MULTI-TENANT CONTEXTUAL
+        // Usamos el scope del modelo que separa automáticamente: Clínica Pura vs Médico Particular vs Médico Staff
+        $appointmentsQuery = Appointment::forCurrentContext();
+
+        // Si es una clínica administrando, le permitimos filtrar adicionalmente por un médico de su nómina
+        if ($user->role === 'clinic' && $request->filled('doctor_id')) {
+            $appointmentsQuery->where('doctor_id', $request->doctor_id);
+        }
+
+        // 3. FILTRADO CRONOLÓGICO COMÚN (Producción intacta)
         if (!$showAll) {
             $appointmentsQuery->where('date', $date);
         } else {
             $appointmentsQuery->where('date', '>=', now()->toDateString());
         }
 
-        // 3. AGRUPAMOS LAS CITAS POR SEDE (Tal como lo pide tu vista con $appointments as $addressId => $group)
+        // 4. AGRUPAMOS LAS CITAS POR SEDE (Garantiza compatibilidad absoluta con tu Blade original)
         $appointments = $appointmentsQuery->with(['patient.user', 'address', 'service'])
+            ->orderBy('start_time', 'asc')
             ->get()
             ->groupBy('address_id');
 
-        // 4. ENVIAMOS TODO COMPACTADO A LA VISTA
         return view('partner.appointments.index', compact('appointments', 'availableDoctors', 'date', 'showAll'));
     }
 
-    /**
+        /**
      * Calcula las franjas horarias libres para el calendario público del SaaS.
      * Atiende las llamadas de Alpine.js en el perfil público y del formulario de reagendamiento táctico.
      */
     public function getSlots(Request $request)
     {
-        // 1. Validamos estrictamente los parámetros requeridos por la matriz de disponibilidad
+        // 1. Validación polimórfica flexible adaptada a la co-propiedad del SaaS
         $request->validate([
             'address_id' => 'required|exists:addresses,id,deleted_at,NULL',
-            'date'       => 'required|date',
-            'doctor_id'  => 'required|exists:doctors,id', // Indispensable para el SaaS corporativo
+            'date'       => 'required|date|after_or_equal:today',
+            'doctor_id'  => 'required_without:clinic_id|nullable|integer',
+            'clinic_id'  => 'required_without:doctor_id|nullable|integer',
+            'is_virtual' => 'nullable|string'
         ]);
 
-        // 2. Invocamos al servicio centralizado de la aplicación
+        $addressId = $request->integer('address_id');
+        $dateInput = $request->input('date');
+        $isVirtual = $request->input('is_virtual') === 'true';
+        
+        // Recuperamos el modelo de la sede para auditar los contextos de seguridad
+        $address = Address::findOrFail($addressId);
+        $doctorId = null;
+
+        // --------------------------------------------------------------------
+        // ESCENARIO A: Petición desde el Perfil de una Clínica Corporativa
+        // --------------------------------------------------------------------
+        if ($request->filled('clinic_id')) {
+            $clinicId = $request->integer('clinic_id');
+
+            // Regla de Oro: Validamos que la sede física o virtual pertenezca legítimamente a esta clínica
+            if ($address->clinic_id !== $clinicId) {
+                return response()->json(['error' => 'La sede seleccionada no coincide con la infraestructura de la clínica.'], 403);
+            }
+
+            // Identificamos cuál es el doctor asignado a la agenda de esta sede institucional.
+            // Para entornos corporativos, buscamos el propietario de la franja en la tabla schedules.
+            $doctorId = DB::table('schedules')
+                ->where('address_id', $addressId)
+                ->where('day', Carbon::parse($dateInput)->dayOfWeekIso)
+                ->value('doctor_id');
+
+            // Fallback preventivo: Si la agenda está vacía para el día, intentamos recuperar el primer médico 
+            // aprobado en la nómina de la clínica que atienda la especialidad requerida.
+            if (!$doctorId) {
+                $doctorId = DB::table('clinic_doctor')
+                    ->where('clinic_id', $clinicId)
+                    ->where('status', 'approved')
+                    ->value('doctor_id');
+            }
+
+            if (!$doctorId) {
+                return response()->json([]); // Retorno limpio si la clínica no tiene personal asignado aún
+            }
+        } 
+        // --------------------------------------------------------------------
+        // ESCENARIO B: Petición desde el Perfil de un Médico Particular Autónomo
+        // --------------------------------------------------------------------
+        else {
+            $doctorId = $request->integer('doctor_id');
+
+            // Seguridad de Aislamiento: Validar que el doctor exista y esté aprobado en producción
+            $doctorExists = DB::table('doctors')
+                ->where('id', $doctorId)
+                ->where('validation_status', 'approved')
+                ->exists();
+
+            if (!$doctorExists) {
+                return response()->json(['error' => 'El especialista solicitado no está habilitado.'], 422);
+            }
+        }
+
+        // 2. Invocamos al servicio centralizado de la aplicación con el ID del doctor resuelto
         $appointmentService = app(AppointmentService::class);
 
         // 3. Ejecutamos el motor de cálculo cruzado libre de colisiones multiperfil
         $slots = $appointmentService->getAvailableSlots(
-            $request->address_id,
-            $request->date,
-            $request->doctor_id,
-            $request->input('is_virtual') === 'true'
+            $addressId,
+            $dateInput,
+            $doctorId,
+            $isVirtual
         );
 
         // 4. Retornamos la matriz en un JSON limpio para que Alpine.js pinte los botones

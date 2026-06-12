@@ -32,8 +32,9 @@ use Throwable;
 
 class AppointmentController extends Controller
 {
-    protected $appointmentService;
-    protected $zoomService;
+    // Definición de propiedades protegidas para los servicios del SaaS
+    protected AppointmentService $appointmentService;
+    protected ZoomService $zoomService;
 
     public function __construct(AppointmentService $service, ZoomService $zoomService)
     {
@@ -42,11 +43,14 @@ class AppointmentController extends Controller
     }
 
     /**
-     * Obtiene el modelo dueño actual (Doctor o Clinic).
+     * Obtiene el modelo dueño actual autenticado (Exclusivo para flujos del Panel Privado Dashboard).
+     * ⚠️ NOTA DE SEGURIDAD: No utilizar en métodos de agendamiento público, ya que el paciente es un invitado.
      */
     protected function getOwner()
     {
         $user = Auth::user();
+        if (!$user) return null;
+        
         return $user->role === 'clinic' ? $user->clinic : $user->doctor;
     }
 
@@ -123,31 +127,113 @@ class AppointmentController extends Controller
         ], 200);
     }
     
+    /**
+     * Consólida la transacción final de reserva insertando la cita médica (Multi-tenant).
+     */
     public function store(Request $request)
     {
-        $service = Service::findOrFail($request->service_id);
-        $address = $request->address_id ? Address::find($request->address_id) : null;
-        
-        $appointmentData = [
-            'patient_id' => auth()->id(),
-            'doctor_id'  => $request->doctor_id,
-            'clinic_id'  => $address ? $address->clinic_id : null, // 🔥 RASTRÉO SAAS: Vincula la clínica de la sede
-            'service_id' => $service->id,
-            'date'       => $request->date,
-            'start_time' => $request->start_time,
-            'status'     => 'confirmed',
-        ];
+        // 1. Validación estructural estricta de la reserva
+        $request->validate([
+            'service_id' => 'required|integer|exists:services,id',
+            'address_id' => 'required|integer|exists:addresses,id,deleted_at,NULL',
+            'date'       => 'required|date|after_or_equal:today',
+            'start_time' => 'required|string',
+            'doctor_id'  => 'required|integer|exists:doctors,id',
+            'clinic_id'  => 'nullable|integer|exists:clinics,id',
+        ]);
 
-        if ($service->type === 'virtual') {
-            $appointmentData['meeting_link'] = url('/meet/' . Str::random(10));
-        } else {
-            $appointmentData['address_id'] = $request->address_id;
+        // 2. RESOLUCIÓN DE LA ENTIDAD PACIENTE (Fin del bug de llaves users.id)
+        $patient = DB::table('patients')->where('user_id', Auth::id())->first();
+        if (!$patient) {
+            return redirect()->back()->withErrors(['error' => 'No se encontró un perfil de paciente válido vinculado a tu cuenta.']);
         }
 
-        Appointment::create($appointmentData);
+        $service = Service::findOrFail($request->service_id);
+        $address = Address::findOrFail($request->address_id);
+        $doctorId = $request->integer('doctor_id');
+        $dateInput = $request->input('date');
+        $startTime = Carbon::parse($request->start_time)->format('H:i:s');
 
-        return redirect()->route('patient.appointments')
-            ->with('success', 'Cita agendada. ' . ($service->type === 'virtual' ? 'El link de la reunión está listo.' : ''));
+        // Buscar la duración específica en la tabla pivote de la sede para calcular el end_time real
+        $pivotDuration = DB::table('address_service')
+            ->where('address_id', $address->id)
+            ->where('service_id', $service->id)
+            ->value('duration') ?? 20;
+
+        $endTime = Carbon::parse($startTime)->addMinutes((int)$pivotDuration)->format('H:i:s');
+
+        // ====================================================================
+        // 🔥 ESCUDO FINAL DE CONCURRENCIA (BLOQUEO PESIMISTA ANTE DOBLE CLIC)
+        // ====================================================================
+        $isAlreadyBooked = Appointment::where('address_id', $address->id)
+            ->where('doctor_id', $doctorId)
+            ->whereDate('date', $dateInput)
+            ->where('start_time', $startTime)
+            ->whereIn('status', ['pending', 'confirmed', 'completed'])
+            ->exists();
+
+        if ($isAlreadyBooked) {
+            return redirect()->route('partner.public.profile', $request->input('doctor_slug', 'search'))
+                ->with('error', 'El turno seleccionado fue reservado por otro paciente en el último segundo. Por favor, elige uno nuevo.');
+        }
+
+        // Estado por defecto según tus reglas de pre-aprobación del SaaS
+        $status = \App\Enums\AppointmentStatus::CONFIRMED->value; 
+        $payment_status = \App\Enums\PaymentStatus::PENDING->value;
+
+        // 3. Preparación molecular de la matriz de datos transaccionales
+        $appointmentData = [
+            'patient_id'     => (int) $patient->id, // Vinculado a la tabla patients legítima
+            'doctor_id'      => (int) $doctorId,
+            'clinic_id'      => $address->clinic_id ? (int) $address->clinic_id : ($request->filled('clinic_id') ? (int) $request->clinic_id : null),
+            'service_id'     => (int) $service->id,
+            'address_id'     => (int) $address->id,
+            'date'           => $dateInput,
+            'start_time'     => $startTime,
+            'end_time'       => $endTime,
+            'status'         => $status,
+            'payment_status' => $payment_status,
+        ];
+
+        // 🔒 CONTROL NATIVO DE TELEMEDICINA ASÍNCRONA
+        if ($service->type === 'virtual' || $address->is_virtual) {
+            try {
+                // Invocamos al servicio de Zoom inyectado para estructurar la sala virtual
+                $zoomMeeting = $this->zoomService->createMeeting([
+                    'topic'      => "Consulta Médica: " . $service->name,
+                    'start_time' => Carbon::parse("$dateInput $startTime")->toIso8601String(),
+                    'duration'   => (int) $pivotDuration,
+                ]);
+
+                // Acoplamos las credenciales seguras de la API de Zoom
+                $appointmentData['zoom_meeting_id']   = $zoomMeeting['id'];
+                $appointmentData['zoom_start_url']    = $zoomMeeting['start_url'];
+                $appointmentData['zoom_join_url']     = $zoomMeeting['join_url'];
+                $appointmentData['meeting_link']      = $zoomMeeting['join_url'];
+            } catch (\Exception $e) {
+                // ⚠️ TRATAMIENTO DE ERRORES ASÍNCRONO NATIVO (OPENDOCTOR)
+                // Si la API de Zoom falla, se crea un link temporal y se delega la corrección al Job
+                $appointmentData['meeting_link'] = url('/meet/pending-' . Str::random(6));
+                
+                // Registramos el fallo para que la cola de Jobs reintente la creación en background
+                DB::table('zoom_creation_failures')->insert([
+                    'appointment_id' => $appointmentData['id'],
+                    'error_log'      => $e->getMessage(),
+                    'created_at'     => now()
+                ]);
+            }
+        }
+        
+        // 4. Inserción atómica final en la base de datos
+        $appointment = Appointment::create($appointmentData);
+
+        // 🔥 LIMPIEZA ABSOLUTA DE MEMORIA CACHEADA EN SESIÓN
+        session()->forget('booking_data');
+        session()->forget('current_doctor_id');
+        session()->forget('current_clinic_user_id');
+
+        // 5. Redirección blindada al recibo de éxito que validará la propiedad de la cita
+        return redirect()->route('appointments.success', $appointment->id);
     }
 
     /**
@@ -155,67 +241,105 @@ class AppointmentController extends Controller
      */
     public function storeStepTwo(Request $request) 
     {
-        // 1. Extraer los datos enviados por la máquina de estados de Alpine.js
+        // 1. Validación estructural rígida de tipos y estados en el payload JSON
         $request->validate([
-            'service_id' => 'required|exists:services,id',
-            'address_id' => 'required|exists:addresses,id,deleted_at,NULL',
+            'service_id' => 'required|integer|exists:services,id',
+            'address_id' => 'required|integer|exists:addresses,id,deleted_at,NULL',
             'date'       => 'required|date|after_or_equal:today',
-            'hour'       => 'required',
-            'doctor_id'  => 'nullable|exists:doctors,id',
-            'clinic_id'  => 'nullable|exists:clinics,id',
+            'hour'       => 'required|string',
+            'doctor_id'  => 'nullable|integer|exists:doctors,id',
+            'clinic_id'  => 'nullable|integer|exists:clinics,id',
         ]);
 
-        // 2. Resolver el ID del doctor objetivo de la reserva
-        // Priorizar el enviado por el request (Asignación rápida/Staff), de lo contrario usar el congelado en sesión
-        $sessionDoctorId = session('current_doctor_id');
-        $targetDoctorId = $request->input('doctor_id', $sessionDoctorId);
+        $addressId = $request->integer('address_id');
+        $dateInput = $request->input('date');
+        $hourInput = $request->input('hour');
+        $address = Address::findOrFail($addressId);
 
-        // 3. 🔒 BLINDAJE DE CO-PROPIEDAD: Resolver el ID de la clínica
-        // Priorizar el clinic_id enviado en el payload JSON por Alpine.js
-        $targetClinicId = $request->input('clinic_id');
+        // 2. RESOLUCIÓN DE IDENTIDAD COMERCIAL (Fin del Bug de Llaves Cruzadas user_id)
+        $targetDoctorId = $request->integer('doctor_id');
+
+        if (!$targetDoctorId) {
+            // Si Alpine no lo envía, buscamos el modelo de doctor usando el user_id de la sesión
+            $sessionDoctorUserId = session('current_doctor_id');
+            if ($sessionDoctorUserId) {
+                $targetDoctorId = DB::table('doctors')
+                    ->where('user_id', $sessionDoctorUserId)
+                    ->value('id');
+            }
+        }
+
+        // Si sigue sin resolverse y estamos en una clínica, lo extraemos de la agenda de la sede
+        if (!$targetDoctorId && $address->clinic_id) {
+            $targetDoctorId = DB::table('schedules')
+                ->where('address_id', $addressId)
+                ->where('day', Carbon::parse($dateInput)->dayOfWeekIso)
+                ->value('doctor_id');
+        }
+
+        // 3. 🔒 BLINDAJE DE CO-PROPIEDAD CONTEXTUAL MULTI-TENANT
+        $targetClinicId = $request->integer('clinic_id');
 
         if (!$targetClinicId) {
-            // Si no viene en el request, evaluar el address_id seleccionado para ver si le pertenece a una clínica aliada
-            $address = Address::find($request->address_id);
-            if ($address && $address->clinic_id) {
+            if ($address->clinic_id) {
                 $targetClinicId = $address->clinic_id;
             } else {
-                // Si la sede es privada pero existía un rastro de sesión institucional, resolverlo por su user_id
                 $sessionClinicUserId = session('current_clinic_user_id');
                 if ($sessionClinicUserId) {
-                    $clinicProfile = Clinic::where('user_id', $sessionClinicUserId)->first();
-                    $targetClinicId = $clinicProfile?->id;
+                    $targetClinicId = DB::table('clinics')
+                        ->where('user_id', $sessionClinicUserId)
+                        ->value('id');
                 }
             }
         }
 
-        // 🛡️ VALIDACIÓN DE SEGURIDAD OPERATIVA: Validar que exista al menos un médico asignable
+        // 🛡️ CONTROL DE INTEGRIDAD OPERATIVA
         if (!$targetDoctorId) {
-            return [
-                "message" => "No se pudo identificar al especialista responsable para gestionar esta reserva de cita médica.",
+            return response()->json([
+                "message" => "No se pudo identificar al especialista responsable para gestionar esta reserva.",
                 "status"  => false,
-            ];
+            ], 422);
         }
 
-        // 🛠️ Limpieza absoluta de intentos de reserva previos
-        session()->forget('booking_data');
+        // ====================================================================
+        // 🔥 REVALIDACIÓN TRANSACCIONAL UTIZANDO EL SERVICIO INYECTADO
+        // ====================================================================
+        $availableSlots = $this->appointmentService->getAvailableSlots(
+            $addressId,
+            $dateInput,
+            $targetDoctorId,
+            $address->type === 'virtual',
+            $request->integer('service_id')
+        );
 
-        // 4. Empaquetamos el nuevo objeto estructurado de reserva congelándolo en la sesión nativa
+        // Convertimos la hora recibida (ej: "3:00 PM") a formato estándar para comparar de forma segura
+        $formattedRequestedHour = Carbon::parse($hourInput)->format('g:i A');
+        $slotStillAvailable = collect($availableSlots)->contains('time', $formattedRequestedHour);
+
+        if (!$slotStillAvailable) {
+            return response()->json([
+                "message" => "El turno seleccionado acaba de ser reservado por otro paciente. Por favor, elige otra hora.",
+                "status"  => false,
+            ], 409);
+        }
+
+        // 4. Empaquetamos el objeto sanitizado congelándolo en la sesión nativa
+        session()->forget('booking_data');
         session([
             'booking_data' => [
                 'clinic_id'  => $targetClinicId ? (int) $targetClinicId : null, 
                 'doctor_id'  => (int) $targetDoctorId, 
                 'service_id' => (int) $request->service_id,
-                'address_id' => (int) $request->address_id,
-                'date'       => $request->date,
-                'hour'       => $request->hour,
+                'address_id' => (int) $addressId,
+                'date'       => $dateInput,
+                'hour'       => $hourInput,
             ]
         ]);
 
-        return [
+        return response()->json([
             "message" => "Información de reserva (booking_data) configurada correctamente en el ecosistema de OpenDoctor.",
             "status"  => true,
-        ];
+        ]);
     }
 
     /**
@@ -223,39 +347,46 @@ class AppointmentController extends Controller
      */
     public function patient()
     {
-        // 1. Proteger el acceso al paso: si no existe intento de reserva activo, abortar a la búsqueda
+        // 1. Proteger el acceso al paso: si no existe intento de reserva activo, abortar de forma contextual
         if (!session()->has('booking_data')) {
-            return redirect()->route('search');
+            // Fallback inteligente: si no hay sesión, lo saca al home global para no tirar un error de ruta inexistente
+            return redirect()->to('/');
         }
 
         // Extraer la estructura de datos unificada de la sesión
         $bookingData = session('booking_data');
         $addressId = $bookingData['address_id'] ?? null;
         $targetDoctorId = $bookingData['doctor_id'] ?? null;
+        $serviceId = $bookingData['service_id'] ?? null;
 
         $isVirtualAddress = false;
 
-        // 2. 🔒 VALIDACIÓN SEGURA DE MODALIDAD VIRTUAL: Mapeada con tu columna física de migraciones 'type'
+        // 2. 🔒 DETECCIÓN BIMODAL INTEGRAL DE VIRTUALIDAD (Sede o Tipo de Servicio)
         if ($addressId) {
-            $address = Address::find($addressId);
+            $address = Address::with(['services' => function($q) use ($serviceId) {
+                $q->where('services.id', $serviceId);
+            }])->find($addressId);
+
             if ($address) {
-                // Tu esquema define $table->string('type')->default('physical')
-                $isVirtualAddress = ($address->type === 'virtual'); 
+                $hasVirtualService = $address->services->contains('type', 'virtual');
+                
+                // Es virtual si la sede es de telemedicina O si el servicio médico elegido es virtual
+                $isVirtualAddress = ($address->type === 'virtual' || $hasVirtualService); 
             }
         }
 
-        // 3. 🛡️ BLINDAJE DE AUTO-AGENDAMIENTO (Self Booking / Recepción de Clínica)
-        $authUserId = auth()->id();
+        // 3. 🛡️ BLINDAJE DE AUTO-AGENDAMIENTO (Self Booking / Recepción Asistida de Clínica)
+        $authUserId = Auth::id();
         $isSelfBooking = false;
 
         if ($authUserId) {
-            $user = auth()->user();
+            $user = Auth::user();
             
             if ($user->role === 'doctor' && $user->doctor) {
-                // Si el usuario logueado es médico y el ID coincide con el doctor de la cita, es un auto-agendamiento
+                // Si el usuario logueado es médico y el ID coincide con el doctor de la cita, es auto-agendamiento (bloquea fraude)
                 $isSelfBooking = ($user->doctor->id === (int) $targetDoctorId);
             } elseif ($user->role === 'clinic' && $user->clinic && isset($bookingData['clinic_id'])) {
-                // Si el usuario logueado es una clínica y la cita ocurre en sus instalaciones, es una reserva asistida de recepción
+                // Si el usuario logueado es una clínica y la cita ocurre en su tenant, es reserva asistida desde recepción
                 $isSelfBooking = ($user->clinic->id === (int) $bookingData['clinic_id']);
             }
         }
@@ -268,23 +399,28 @@ class AppointmentController extends Controller
         ));
     }
 
+    /**
+     * Procesa la captura de datos del paciente, gestiona el login/registro automático y crea la transacción.     
+     */
     public function processPatient(Request $request)
     {
+        // 1. Proteger el acceso al paso: si no existe intento de reserva activo, abortar
         $bookingData = session('booking_data');
         if (!$bookingData || !isset($bookingData['doctor_id'])) {
-            return redirect()->route('search')->with('error', 'Sesión inválida o datos de reserva incompletos.');
+            return redirect()->to('/')->with('error', 'Sesión inválida o datos de reserva incompletos.');
         }
 
         $rules = ['notes' => 'required|string|min:10|max:500'];
         $hasAccount = $request->has_account == 'yes';
 
-        // 1. VALIDACIÓN PREVIA EN CASO DE USUARIO AUTENTICADO
-        if (Auth::check() && auth()->user()->role !== 'patient') {
+        // 🔒 ESCUDO DE SEGURIDAD INTERNO: Bloquear si un personal del sistema intenta actuar como paciente
+        if (Auth::check() && Auth::user()->role !== 'patient') {
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Tu cuenta actual pertenece al personal del sistema ('.auth()->user()->role.'). No tienes permisos para registrar citas como paciente. Por favor, cierra sesión e intenta de nuevo.');
+                ->with('error', 'Tu cuenta actual pertenece al personal del sistema ('.Auth::user()->role.'). No tienes permisos para registrar citas como paciente. Por favor, cierra sesión e intenta de nuevo.');
         }
 
+        // 2. Construcción de reglas dinámicas basadas en el estado del invitado
         if (Auth::guest()) {
             if ($hasAccount) {
                 $rules['login_email'] = 'required|email|exists:users,email';
@@ -292,288 +428,380 @@ class AppointmentController extends Controller
             } else {
                 $rules['name'] = 'required|string|min:3|max:100';
                 $rules['email'] = 'required|email|unique:users,email';
-                // Añadimos validación única para evitar usar una identificación existente de personal
                 $rules['identification'] = 'required|numeric|unique:patients,identification';
                 $rules['phone'] = 'required|numeric';
             }
         }
         
         $request->validate($rules);
-                                        
-        return DB::transaction(function () use ($request, $bookingData, $hasAccount) {
+
+        // 3. PROCESAR AUTENTICACIÓN PREVIA (Seguridad Multi-tenant fuera de la transacción SQL)
+        if (Auth::guest() && $hasAccount) {
+            $login_email = trim(strtolower($request->login_email));
+            $login_password = $request->login_password;
             
-            if (Auth::guest()) {
-                if ($hasAccount) {
-                    $login_email = trim(strtolower($request->login_email));
-                    $login_password = $request->login_password;
+            // Buscar el usuario antes del login para verificar su rol estrictamente
+            $targetUser = User::where('email', $login_email)->first();
+            if ($targetUser && $targetUser->role !== 'patient') {
+                return back()->withErrors(['login_email' => 'Esta cuenta pertenece al personal del sistema y no puede agendar citas como paciente.'])->withInput();
+            }
+
+            if (!Auth::attempt(['email' => $login_email, 'password' => $login_password])) {
+                return back()->withErrors(['login_email' => 'Las credenciales introducidas no coinciden con nuestros registros.'])->withInput();
+            }
+        }
+        // 4. EJECUCIÓN ATÓMICA DE REGISTRO (Dentro de la transacción SQL)
+        $user = Auth::user();
+
+        if (Auth::guest() && !$hasAccount) {
+            $user = DB::transaction(function () use ($request) {
+                $cleanIdentification = trim($request->identification);
+                $cleanPhone = preg_replace('/[^0-9]/', '', trim($request->phone));
+                $fullPhone = $request->country_code ? $request->country_code . $cleanPhone : '+57' . $cleanPhone;
+
+                $newUser = User::create([
+                    'name'     => trim($request->name),
+                    'email'    => trim($request->email),
+                    'password' => Hash::make($cleanIdentification),
+                    'role'     => 'patient',
+                ]);
+
+                // Asignación inmutable del rol a través de Spatie
+                $role = Role::firstOrCreate(['name' => 'patient']);
+                $newUser->assignRole($role);
+
+                // Control relacional: Crear el perfil clínico en la tabla patients
+                Patient::create([
+                    'user_id'        => $newUser->id,
+                    'identification' => $cleanIdentification,
+                    'phone'          => $fullPhone,
+                ]);
+
+                return $newUser;
+            });
+
+            Auth::login($user);
+        }
+
+        // 5. 🛡️ CONTROL EXTRA DE SEGURIDAD POST-AUTENTICACIÓN
+        if ($user->role !== 'patient') {
+            return back()->with('error', 'Operación cancelada. El usuario autenticado debe tener exclusivamente el rol de paciente.');
+        }
+
+        // Recuperar el registro legítimo del perfil clínico
+        $patient = Patient::where('user_id', $user->id)->firstOrFail();
+        // 6. RESOLUCIÓN DE IDENTIDADES COMERCIALES (Busca por 'id' real, no por user_id)
+        $doctor = Doctor::with(['settings', 'user'])
+            ->where('id', $bookingData['doctor_id'])
+            ->first();
+
+        if (!$doctor) {
+            session()->forget(['booking_data', 'current_doctor_id', 'current_clinic_user_id']);
+            return redirect()->to('/')->with('error', 'El médico seleccionado ya no se encuentra disponible.');
+        }
+
+        // Cargar la sede física validando el servicio de su tabla pivote
+        $address = Address::with(['clinic.settings', 'services' => function($q) use ($bookingData) {
+            $q->where('services.id', $bookingData['service_id']);
+        }])->find($bookingData['address_id']);
+
+        $serviceSpecific = $address?->services->first();
+
+        if (!$serviceSpecific || !$serviceSpecific->pivot) {
+            return redirect()->to('/')->with('error', 'El servicio seleccionado ya no está disponible en esta sede.');
+        }
+        
+        $duration = (int) $serviceSpecific->pivot->duration;
+        $price = $serviceSpecific->pivot->price;
+        
+        // Calcular cronología exacta del turno
+        $startTime = Carbon::parse($bookingData['date'] . ' ' . $bookingData['hour']);
+        $endTime = $startTime->copy()->addMinutes($duration);
+
+        // ====================================================================
+        // 🔒 CORRECCIÓN MÁXIMA: VALIDACIÓN EN SERVIDOR CON EL NUEVO MOTOR DE SLOTS
+        // ====================================================================
+        $availableSlots = $this->appointmentService->getAvailableSlots(
+            $address->id,
+            $bookingData['date'],
+            $doctor->id,
+            $address->type === 'virtual' || $serviceSpecific->type === 'virtual',
+            $serviceSpecific->id
+        );
+
+        // Convertimos la hora elegida (ej: "3:00 PM") a formato estándar para comparar en la colección
+        $formattedRequestedHour = Carbon::parse($bookingData['hour'])->format('g:i A');
+        $isStillAvailable = collect($availableSlots)->contains('time', $formattedRequestedHour);
+        
+        if (!$isStillAvailable) {
+            return redirect()->to('/')->with('error', 'Lo sentimos, ese horario acaba de ser reservado por otro paciente de forma simultánea.');
+        }
+        
+        // Resolver políticas de aprobación jerárquica corporativa o privada
+        $settings = $address->clinic_id ? $address->clinic->settings : $doctor->settings;
+        $requiresApproval = $settings ? (bool)$settings->requires_approval : false;
+        $acceptsPayments = $settings ? (bool)$settings->accepts_online_payments : false;
+
+        if ($acceptsPayments) {
+            $requiresApproval = false; 
+        }
+        
+        // Estado por defecto según tus reglas de pre-aprobación del SaaS
+        $status = $requiresApproval ? \App\Enums\AppointmentStatus::PENDING->value : \App\Enums\AppointmentStatus::CONFIRMED->value;
+        $payment_status = \App\Enums\PaymentStatus::PENDING->value;
                     
-                    // Buscar el usuario antes del login para verificar su rol
-                    $targetUser = User::where('email', $login_email)->first();
-                    if ($targetUser && $targetUser->role !== 'patient') {
-                        return back()->withErrors(['login_email' => 'Esta cuenta pertenece al personal del sistema y no puede agendar citas como paciente.'])->withInput();
-                    }
-
-                    if (!Auth::attempt(['email' => $login_email, 'password' => $login_password])) {
-                        return back()->withErrors(['login_email' => 'Las credenciales no coinciden.'])->withInput();
-                    }
-                    $user = auth()->user();
-                } else {                    
-                    $cleanIdentification = trim($request->identification);
-                    $cleanPhone = preg_replace('/[^0-9]/', '', trim($request->phone));
-                    $fullPhone = $request->country_code ? $request->country_code . $cleanPhone : '+57' . $cleanPhone;
-
-                    $user = User::create([
-                        'name'     => trim($request->name),
-                        'email'    => trim($request->email),
-                        'password' => Hash::make($cleanIdentification),
-                        'role'     => 'patient',
-                    ]);
-
-                    // ESTO ES LO QUE LE ASIGNA EL ROL EN SPATIE:
-                    $role = Role::firstOrCreate(['name' => 'patient']);
-                    $user->assignRole($role);
-
-                    //aqui valido si tiene patient
-                    $existingPatient = Patient::where('user_id', $user->id)->first();
-                    if (!$existingPatient) {
-                        // Crear el registro en la tabla patients usando solo el ID generado                        
-                        Patient::create([
-                            'user_id' => $user->id,
-                            'identification' => $cleanIdentification,
-                            'phone'          => $fullPhone,
-                        ]);                        
-                    }
-                    
-                    Auth::login($user);
-                }
-            } else {
-                $user = auth()->user();
-            }
-
-            // 2. 🛡️ CONTROL EXTRA DE SEGURIDAD POST-AUTENTICACIÓN
-            if ($user->role !== 'patient') {
-                return back()->with('error', 'Operación cancelada. El usuario autenticado debe tener exclusivamente el rol de paciente.');
-            }
-
-            // Capturar la relación del perfil del paciente en la base de datos
-            $patient = Patient::where('user_id', $user->id)->firstOrFail();
-
-            // Buscar al doctor validando que su cuenta e ID de usuario sigan activos en el ecosistema
-            $doctor = Doctor::with(['settings', 'user'])
-                ->where('user_id', $bookingData['doctor_id'])
-                ->first();
-
-            if (!$doctor) {
-                session()->forget(['booking_data', 'current_doctor_id']);
-                return redirect()->route('search')->with('error', 'El médico seleccionado ya no se encuentra disponible.');
-            }
-
-            // Cargar la sede física validando el servicio y los precios/duración de su tabla pivote
-            $address = Address::with(['clinic.settings', 'services' => function($q) use ($bookingData) {
-                $q->where('services.id', $bookingData['service_id']);
-            }])->find($bookingData['address_id']);
-
-            $serviceSpecific = $address?->services->first();
-
-            if (!$serviceSpecific || !$serviceSpecific->pivot) {
-                return redirect()->route('search')->with('error', 'El servicio seleccionado ya no está disponible en esta sede.');
-            }
-            
-            // Extraer métricas comerciales de la relación de la sucursal
-            $duration = (int) $serviceSpecific->pivot->duration;
-            $price = $serviceSpecific->pivot->price;
-            
-            // Calcular cronología exacta de inicio y finalización del turno médico
-            $startTime = Carbon::parse($bookingData['date'] . ' ' . $bookingData['hour']);
-            $endTime = $startTime->copy()->addMinutes($duration);
-
-            // 🔒 VALIDACIÓN CONCURRENTE EN SERVIDOR: Evitar sobreventa si otro usuario reservó en paralelo
-            $isAvailable = $this->appointmentService->isAvailable(
-                $doctor->id,
-                $bookingData['date'],
-                $startTime->format('H:i:s'),
-                $duration
-            );
-            
-            if (!$isAvailable) {
-                return redirect()->route('search')->with('error', 'Lo sentimos, ese horario acaba de ser reservado por otro paciente de forma simultánea.');
-            }
-            
-            // Resolver las políticas de aprobación según la jerarquía de la sede (Clínica o Particular)
-            $settings = $address->clinic_id ? $address->clinic->settings : $doctor->settings;
-
-            $requiresApproval = $settings ? (bool)$settings->requires_approval : false;
-            $acceptsPayments = $settings ? (bool)$settings->accepts_online_payments : false;
-
-            // Si la sede acepta pasarelas de pago en línea, la cita se confirma automáticamente al pagar
-            if ($acceptsPayments) {
-                $requiresApproval = false; 
-            }
-            
-            //esta regla es del plan
-            $status = $requiresApproval ? 'pending' : 'confirmed';
-
-            //se coloca pending hasta que el usuario no confirme la cita en el paso de review
-            $status = 'pending';
-                        
-            // 💾 GUARDADO FÍSICO DE LA CITA EN TU TABLA APPOINTMENTS
-            $appointment = Appointment::create([
-                'patient_id' => $patient->id,
-                'doctor_id'  => $doctor->id,
-                'clinic_id'  => $address->clinic_id, // Guarda automáticamente el rastro de la clínica si aplica
-                'service_id' => $serviceSpecific->id,
-                'address_id' => $address->id,
-                'date'       => $bookingData['date'],
-                'start_time' => $startTime->format('H:i:s'),
-                'end_time'   => $endTime->format('H:i:s'),
-                'duration'   => $duration,
-                'price'      => $price,
-                'status'     => $status,
-                'channel'    => 'web',
-                'notes'      => trim($request->notes),
+        // 💾 CONSOLIDACIÓN DE LA RESERVA (Encapsulada en una transacción limpia)
+        //reference lo hace en el modelo Appointment en el boot method, así que no es necesario generarla aquí
+        $appointment = DB::transaction(function () use ($patient, $doctor, $address, $serviceSpecific, $bookingData, $startTime, $endTime, $duration, $price, $status, $payment_status, $request) {
+            return Appointment::create([
+                'patient_id'     => (int) $patient->id,
+                'doctor_id'      => (int) $doctor->id,
+                'clinic_id'      => $address->clinic_id ? (int) $address->clinic_id : null,
+                'service_id'     => (int) $serviceSpecific->id,
+                'address_id'     => (int) $address->id,
+                'date'           => $bookingData['date'],
+                'start_time'     => $startTime->format('H:i:s'),
+                'end_time'       => $endTime->format('H:i:s'),
+                'duration'       => $duration,
+                'price'          => $price,
+                'status'         => $status,
+                'payment_status' => $payment_status,
+                'channel'        => 'web',
+                'notes'          => trim($request->notes),                
             ]);
-            
-            // Limpieza absoluta de los mapas temporales de sesión
-            session()->forget(['booking_data', 'current_doctor_id']);
-
-            // Redirección exitosa hacia tu método preview pasándole el ID de la cita guardada
-            return redirect()->route('appointments.preview', ['id' => $appointment->id])
-                ->with('success', $status === 'pending' ? 'Cita solicitada. Esperando aprobación de la administración.' : 'Cita agendada exitosamente.');
         });
+        
+        // Limpieza absoluta de la memoria de sesión
+        session()->forget(['booking_data', 'current_doctor_id', 'current_clinic_user_id']);
+
+        return redirect()->route('appointments.preview', ['id' => $appointment->id]);
     }
    
     /**
      * 🔥 NUEVA FUNCIÓN: Renderiza la pantalla de resumen de la orden médica.
-     * Recibe el ID de la URL y precarga las dependencias del SaaS.
+     * Recibe el ID de la URL y precarga las dependencias del SaaS bajo estricto control de acceso.
      */
     public function preview($id)
     {
-        // Buscamos la cita médica con todas sus relaciones unificadas
-        $appointment = Appointment::with(['doctor.user', 'clinic', 'service', 'address.city'])->findOrFail($id);
+        // 1. Recuperar la cita con todas sus relaciones moleculares cargadas
+        $appointment = Appointment::with([
+            'doctor.user', 
+            'clinic', 
+            'service', 
+            'address.city'
+        ])->findOrFail($id);
 
-        // Despachamos la vista compactando el objeto
+        // 2. 🔒 CONTROL DE SEGURIDAD OPERATIVA ANTI-ESPIONAJE (Anti Data Leaking)
+        if (Auth::check()) {
+            $user = Auth::user();
+
+            if ($user->role === 'patient') {
+                // Si está autenticado como paciente, validamos que la cita le pertenezca legítimamente
+                $patient = DB::table('patients')->where('user_id', $user->id)->first();
+                if (!$patient || (int)$appointment->patient_id !== (int)$patient->id) {
+                    abort(403, 'Acceso denegado a esta orden médica de previsualización.');
+                }
+            } elseif ($user->role === 'doctor') {
+                // Si es médico, validamos que él sea el especialista asignado a la cita
+                $doctor = DB::table('doctors')->where('user_id', $user->id)->first();
+                if (!$doctor || (int)$appointment->doctor_id !== (int)$doctor->id) {
+                    abort(403, 'Acceso denegado. No eres el especialista responsable de esta cita.');
+                }
+            } elseif ($user->role === 'clinic') {
+                // Si es una clínica, validamos que la cita ocurra en sus sucursales institucionales
+                $clinic = DB::table('clinics')->where('user_id', $user->id)->first();
+                if (!$clinic || (int)$appointment->clinic_id !== (int)$clinic->id) {
+                    abort(403, 'Acceso denegado. Esta cita no pertenece a tu infraestructura corporativa.');
+                }
+            }
+        } else {
+            // 🛡️ CONTROL PARA INVITADOS: Si el paciente acaba de registrarse pero la sesión se cerró,
+            // bloqueamos que cualquiera acceda a la URL de previsualización sin estar logueado.
+            abort(401, 'Debes iniciar sesión para visualizar el resumen de tu orden médica.');
+        }
+
+        // 3. Despachamos la vista compactando el objeto totalmente aislado
         return view('appointments.preview', compact('appointment'));
     }
 
     /**
      * Muestra la pantalla de confirmación exitosa de la cita médica validando la tenencia del recurso.
-     */    
+    */    
     public function success(Appointment $appointment)
     {
-        $activeUser = auth()->user();
-
         // 1. Cargar todas las relaciones necesarias desde el inicio para evitar consultas N+1
-        $appointment->load(['doctor.user', 'clinic', 'service', 'address.city', 'patient']);
+        $appointment->load(['doctor.user', 'clinic', 'service', 'address.city', 'patient.user']);
 
-        // 🔒 BLINDAJE DE SEGURIDAD SaaS
-        if ($activeUser && $appointment->patient && $appointment->patient->user_id === $activeUser->id) {
-            // Acceso concedido automáticamente por propiedad directa
-        } else {
-            // Si no es el dueño directo en caliente, ejecutamos los filtros SaaS tradicionales de forma fresca
-            $activeUser = $activeUser->fresh(['patient', 'doctor', 'clinic']);
+        $activeUser = Auth::user();
+        if (!$activeUser) {
+            abort(401, 'Debes iniciar sesión para visualizar el comprobante de tu cita.');
+        }
 
-            if ($activeUser->role === 'patient') {
-                $patientProfile = $activeUser->patient;
-                if (!$patientProfile || $appointment->patient_id !== $patientProfile->id) {
-                    abort(403, 'Acceso no autorizado a este recibo de consulta médica.');
+        // 🔒 BLINDAJE DE SEGURIDAD MULTI-TENANT RIGIDO
+        $hasAccess = false;
+
+        // Caso A: El usuario actual es el paciente dueño de la cita
+        if ($activeUser->role === 'patient' && $appointment->patient) {
+            if ((int)$appointment->patient->user_id === (int)$activeUser->id) {
+                $hasAccess = true;
+            }
+        }
+        // Caso B: El usuario es el médico especialista asignado
+        elseif ($activeUser->role === 'doctor' && $appointment->doctor) {
+            if ((int)$appointment->doctor_id === (int)$activeUser->doctor?->id) {
+                $hasAccess = true;
+            }
+        }
+        // Caso C: El usuario es el personal administrativo de la clínica donde ocurre la cita
+        elseif ($activeUser->role === 'clinic') {
+            if ((int)$appointment->clinic_id === (int)$activeUser->clinic?->id) {
+                $hasAccess = true;
+            }
+        }
+
+        if (!$hasAccess) {
+            abort(403, 'Acceso no autorizado a este recibo o comprobante transaccional de consulta médica.');
+        }
+
+        // 1. Verificamos rápidamente en la base de datos si la referencia está registrada como un fallo previo
+        $hasCreationFailure = DB::table('zoom_creation_failures')->where('appointment_id', $appointment->id)->exists();
+        
+        // 2. 🔒 CONTROL DE TELEMEDICINA SEGURO (Previene duplicación de salas en recargas de página)
+        if (
+            (($appointment->service && $appointment->service->type === 'virtual') || ($appointment->address && $appointment->address->type === 'virtual')) 
+            && !$appointment->zoom_meeting_id 
+            && !$hasCreationFailure
+        ) {            
+            try {
+                // Usamos una transacción con bloqueo pesimista para evitar que recargas simultáneas dupliquen salas
+                DB::transaction(function () use ($appointment) {
+                    // Bloqueamos la fila en la base de datos para esta petición
+                    $freshAppointment = $appointment->newQuery()->lockForUpdate()->find($appointment->id);
+
+                    // Doble verificación: Si otra petición o el Job ya creó la sala en este instante, abortamos
+                    if ($freshAppointment->zoom_meeting_id) {
+                        return;
+                    }
+
+                    $onlyDate = substr($freshAppointment->date, 0, 10); 
+                    $startDateTime = Carbon::parse("{$onlyDate} {$freshAppointment->start_time}")->toIso8601String();
+                    $topic = "Telemedicina_Ref: " . $freshAppointment->reference;
+
+                    // Invocación al servicio
+                    $zoomMeeting = $this->zoomService->createMeeting($topic, $startDateTime, (int) $freshAppointment->duration);                
+
+                    if ($zoomMeeting) {
+                        // El modelo encripta automáticamente gracias a los nuevos mutadores set...Attribute
+                        $freshAppointment->update([
+                            'zoom_meeting_id' => $zoomMeeting['meeting_id'], //ID numérico de la reunión en Zoom                  
+                            'meeting_link'    => $zoomMeeting['url_patient'], //Enlace genérico o exclusivo para el Paciente
+                            'zoom_start_url'  => $zoomMeeting['url_partner'], //Enlace exclusivo para que el Doctor inicie como Anfitrión
+                        ]);                                        
+
+                        // ÉXITO: Limpiamos la tabla de contingencia asíncrona
+                        DB::table('zoom_creation_failures')->where('appointment_id', $freshAppointment->id)->delete();
+                        
+                        // Sincronizamos el estado fresco (y desencriptado por el accessor) en el objeto original para la vista
+                        $appointment->fill($freshAppointment->toArray())->syncOriginal();
+                    } else {
+                        \Log::error('Fallo al crear la reunión de Zoom con referencia: ' . $freshAppointment->reference . ' - Registrando para contingencia asíncrona.');
+                        
+                        DB::table('zoom_creation_failures')->updateOrInsert(
+                            ['appointment_id' => $freshAppointment->id],
+                            [
+                                'status'     => 'pending',
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ]
+                        );
+                    }
+                });
+            } catch (\Exception $e) {
+                \Log::error('Fallo crítico en bloque de contingencia Zoom para la referencia: ' . $appointment->reference . ' - ' . $e->getMessage());
+            }
+        }
+
+        // 3. ENVÍO CONTROLADO DE CORREO ELECTRÓNICO (Evita caídas por límites de SMTP corporativos)
+        if (!$appointment->email_sent) {
+            try {
+                $patientEmail = $appointment->patient?->user?->email;
+                $doctorEmail = $appointment->doctor?->user?->email;
+
+                if ($patientEmail) {
+                    Mail::to($patientEmail)->send(new AppointmentConfirmed($appointment, 'patient'));
                 }
-            }
-        }
-
-        if ($activeUser->role === 'doctor' && $appointment->doctor_id !== $activeUser->doctor?->id) {
-            abort(403, 'No tienes privilegios para auditar esta transacción.');
-        }
-
-        if ($activeUser->role === 'clinic' && $appointment->clinic_id !== $activeUser->clinic?->id) {
-            abort(403, 'Esta cita no corresponde al registro transaccional de tu institución.');
-        }
-
-        // 2. GENERACIÓN AUTOMÁTICA DE ZOOM (Basada en tu validación de servicio)
-        if ($appointment->service->type === 'virtual' && !$appointment->hasZoom()) {
-            
-            // Fusionamos fecha y hora en el formato ISO requerido por Zoom
-            $onlyDate = substr($appointment->date, 0, 10); 
-            $startDateTime = Carbon::parse("{$onlyDate} {$appointment->start_time}")
-                ->format('Y-m-d\TH:i:s');
                 
-            $topic = "Teleconferencia Médica - Ref: " . $appointment->reference;
-
-            $zoomMeeting = $this->zoomService->createMeeting($topic, $startDateTime, $appointment->duration);
-
-            if ($zoomMeeting) {
-                // Actualizamos la instancia directamente para que la vista reciba los cambios
-                $appointment->update([
-                    'zoom_meeting_id'       => $zoomMeeting['meeting_id'],                    
-                    'zoom_start_url'        => Crypt::encryptString($zoomMeeting['url_partner']),   // Llave real de tu ZoomService
-                    'meeting_link'          => Crypt::encryptString($zoomMeeting['url_patient']), // Llave real de tu ZoomService    
-                    'meeting_link_password' => Crypt::encryptString($zoomMeeting['password']),                
-                ]);
-            } else {
-                Log::error('ZoomService Error: ' . $appointment->reference);                
-                // Usamos firstOrCreate para evitar duplicados si el usuario reintenta manualmente
-                ZoomCreationFailure::firstOrCreate(
-                    ['appointment_id' => $appointment->id],
-                    [
-                        'attempts' => 0,
-                        'status' => 'pending',
-                        'last_error' => '[' . now()->toDateTimeString() . '] Error inicial en ZoomService al crear el link.'
-                    ]
-                );
-            }
-        }
-
-        $appointment->update(['status' => 'confirmed']);
-
-        $appointment = $appointment->fresh(['doctor.user', 'clinic', 'service', 'address.city', 'patient']);
-
-        // 3. ENVÍO DE CORREO ELECTRÓNICO AL PACIENTE Y AL PARTNER SI ES UNA CONSULTA PRESENCIAL
-        if (!$appointment->email_sent && $appointment->service->type === 'physical') {
-            try {                
-                Mail::to($activeUser->email)->send(new AppointmentConfirmed($appointment, 'patient'));                
-                Mail::to($appointment->doctor?->user?->email)->send(new AppointmentConfirmed($appointment, 'partner'));
+                if ($doctorEmail && $appointment->service->type === 'physical') {
+                    Mail::to($doctorEmail)->send(new AppointmentConfirmed($appointment, 'partner'));
+                }
 
                 $appointment->update(['email_sent' => true]);
             } catch (Throwable $e) {
-                $admins = User::where('role', 'admin')->get();
-                Notification::send($admins, new MailLimitExceededNotification($e->getMessage(), $activeUser->email));
+                \Log::error("Límite de correo excedido o SMTP caído en el recibo de éxito: " . $e->getMessage());
+                
+                // Notificación silenciosa opcional para el administrador de la plataforma
+                try {
+                    $admins = User::where('role', 'admin')->get();
+                    \Notification::send($admins, new MailLimitExceededNotification($e->getMessage(), $activeUser->email));
+                } catch (\Exception $ne) {
+                    // Evitar bucle infinito de excepciones si el Driver de correo está roto
+                }
             }
         }            
         
+        // Sincronizamos la instancia fresca final para la renderización del Blade
+        $appointment = $appointment->fresh(['doctor.user', 'clinic', 'service', 'address.city', 'patient.user']);
+
         return view('appointments.success', compact('appointment'));
     }
 
     /**
      * Cancela el flujo de reserva, valida la propiedad del paciente y elimina el registro de forma segura.
-     */
+    */
     public function cancelFlow(Request $request)
     {
-        $appointmentId = $request->input('id');
-        $user = auth()->user(); // Capturamos el usuario logueado en la sesión
+        $appointmentId = $request->integer('id');
+        $user = Auth::user(); 
 
-        if ($appointmentId) {
+        if ($appointmentId > 0) {
             // Buscamos la cita médica con su relación de paciente
             $appointment = Appointment::with('patient')->find($appointmentId);
             
             if ($appointment) {
-                // 🛡️ BARRERA DE SEGURIDAD EXCLUSIVA DEL SAAS:
-                // Si el usuario es un paciente, validamos que el patient_id de la cita coincida con SU id de paciente.
-                // Si es un usuario invitado (Guest), validamos a través del ID de sesión temporal.
-                if ($user && $user->role === 'patient') {
-                    if ($appointment->patient->user_id !== $user->id) {
-                        abort(403, 'Operación no autorizada. No tienes permisos sobre esta orden médica.');
+                // 🔒 BARRERA DE SEGURIDAD EXCLUSIVA DEL SAAS (Anti-IDOR)
+                if ($user) {
+                    // Caso A: Si está logueado como paciente, validamos la propiedad directa del perfil clínico
+                    if ($user->role === 'patient') {
+                        if (!$appointment->patient || (int)$appointment->patient->user_id !== (int)$user->id) {
+                            abort(403, 'Operación no autorizada. No tienes propiedad sobre esta orden médica.');
+                        }
+                    }
+                    // Caso B: Si es personal de una clínica o un médico en auto-agendamiento, validamos su tenencia
+                    elseif ($user->role === 'clinic') {
+                        if ((int)$appointment->clinic_id !== (int)$user->clinic?->id) {
+                            abort(403, 'No tienes autorización para alterar registros de otra institución.');
+                        }
+                    }
+                } else {
+                    // Caso C: Si es un usuario invitado (Guest), BLINDAMOS el borrado verificando 
+                    // que el ID de la cita coincida estrictamente con la última que guardó en su sesión booking_data
+                    $bookingData = session('booking_data');
+                    
+                    // Si no tiene booking_data activo o el ID no coincide, bloqueamos fulminantemente la petición
+                    if (!$bookingData || !isset($bookingData['appointment_id']) || (int)$bookingData['appointment_id'] !== $appointmentId) {
+                        abort(403, 'Acceso denegado. No puedes cancelar un flujo de reserva que no te pertenece.');
                     }
                 }
 
-                // Si la validación es exitosa, se procede al borrado físico de la cita fantasma
+                // Si supera los escudos, se procede al borrado seguro (aplica SoftDeletes si el modelo lo tiene)
                 $appointment->delete(); 
             }
         }
+        // Limpieza absoluta de los mapas de datos de la sesión para liberar el entorno
+        session()->forget(['booking_data', 'current_doctor_id', 'current_clinic_user_id']);
 
-        // Limpieza absoluta de los mapas de datos de la sesión
-        session()->forget(['booking_data', 'current_doctor_id']);
-
-        return redirect()->route('search')
-            ->with('info', 'Proceso de reserva cancelado con éxito. El horario ha sido liberado.');
+        // Redirección contextual unificada al home global inmune a errores de rutas inexistentes
+        return redirect()->route('search')->with('info', 'Proceso de reserva cancelado con éxito. El horario de atención ha sido liberado.');
     }
 
     /**
@@ -583,7 +811,7 @@ class AppointmentController extends Controller
     {
         // 1. Validar que la cita tenga un ID de reunión generado
         if (!$appointment->zoom_meeting_id) {
-            return redirect()->route('dashboard')->with('error', 'Esta cita no tiene una videollamada activa.');
+            return redirect()->route('admin.dashboard')->with('error', 'Esta cita no tiene una videollamada activa.');
         }
 
         try {

@@ -45,6 +45,8 @@ use App\Http\Controllers\AppointmentStateController;
 
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\Admin\ExamAnalysisController;
+
 use Spatie\Honeypot\ProtectAgainstSpam; 
 
 // URL central del DashboardController analítico
@@ -88,6 +90,10 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     // Rutas para la creación de administradores del staff
     Route::get('/users/create-admin', [UserManagementController::class, 'createAdmin'])->name('administrator.users.createAdmin');
     Route::post('/users/create-admin', [UserManagementController::class, 'storeAdmin'])->name('administrator.users.storeAdmin');
+
+    Route::get('/medical-exams', [ExamAnalysisController::class, 'index'])->name('administrator.exams.index');    
+    Route::post('/admin/exams/{exam}/resend', [ExamAnalysisController::class, 'resend'])->name('administrator.exams.resend');
+    Route::patch('/admin/exams/{examAnalysis}/toggle', [ExamAnalysisController::class, 'toggleStatus'])->name('administrator.exams.toggle');
 });
 
 // Rutas Privadas (medical partner)

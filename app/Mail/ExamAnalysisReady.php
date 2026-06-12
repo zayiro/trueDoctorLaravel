@@ -10,9 +10,9 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ExamAnalysisReady extends Mailable implements ShouldQueue
+class ExamAnalysisReady extends Mailable
 {
-    use Queueable, SerializesModels;
+    use SerializesModels;
 
     // Propiedad pública para que esté disponible automáticamente en la vista Blade
     public $analysis;

@@ -21,40 +21,50 @@ class PublicClinicController extends Controller
         $currentTime = $now->toTimeString();
 
         // 2. Recuperar la clínica corporativa validando que esté aprobada y activa
-        $clinic = Clinic::with(['user'])
+        $clinic = Clinic::with(['user', 'specialties'])
             ->where('slug', $slug)
             ->where('active', true)
             ->where('validation_status', 'approved')
             ->firstOrFail();
 
-        // 3. Detección Inteligente Bimodal de la Especialidad Requerida
-        if ($specialtySlug) {
+        // 3. Detección Inteligente Bimodal con Bandera de Fallback Integrada
+        $specialty = null;
+        $showingAllStaffFallback = false;
+
+        if ($specialtySlug || $request->has('specialty')) {
             $specialtyInput = $specialtySlug ?? $request->input('specialty');
             $specialty = Specialty::where('slug', $specialtyInput)->orWhere('id', $specialtyInput)->first();
-    
-            // Fallback preventivo si el parámetro viene vacío para no romper la navegación
-            if (!$specialty) {
-                $specialty = $clinic->specialties()->first() ?? (object) [
-                    'id' => 1, 'name' => 'Consulta General', 'slug' => 'general'
-                ];
-            }
-        } else {
-            //vamos a traer todas las especialidades de la clinica
-            $specialty = $clinic->specialties()->first() ?? (object) [
-                'id' => 1, 'name' => 'Consulta General', 'slug' => 'general'
-            ];
-
-            //hay que refactorizar el codigo porque veo que utiliza una especialidad sugerida en todos lados
         }
 
-        // 4. FILTRADO MAESTRO SEGURO: Obtener médicos aprobados vinculados a la clínica y a la especialidad
-        $doctors = $clinic->doctors()
+        // Si no se solicitó especialidad, o la solicitada no existe, activamos el fallback global
+        if (!$specialty) {
+            $showingAllStaffFallback = true;
+        }
+
+        // 4. FILTRADO MAESTRO SEGURO (Aislado para Multi-Tenancy y Fallback)
+        $doctorsQuery = $clinic->doctors()
             ->where('clinic_doctor.status', 'approved')
-            ->whereHas('specialties', function ($query) use ($specialty) {
-                $query->where('specialty_id', $specialty->id);
-            })
-            ->with(['user', 'specialties'])
-            ->get();
+            ->where('doctors.validation_status', 'approved')
+            ->with(['user', 'specialties']);
+
+        // Aplicar filtro de especialidad solo si no estamos en modo "traer todas"
+        if (!$showingAllStaffFallback) {
+            // Validamos primero si existen médicos para esa combinación específica
+            $hasDoctorsInSpecialty = (clone $doctorsQuery)->whereHas('specialties', function ($query) use ($specialty) {
+                $query->where('specialties.id', $specialty->id);
+            })->exists();
+
+            if ($hasDoctorsInSpecialty) {
+                $doctorsQuery->whereHas('specialties', function ($query) use ($specialty) {
+                    $query->where('specialties.id', $specialty->id);
+                });
+            } else {
+                // Si se solicitó una especialidad pero la clínica no tiene médicos en ella, forzamos fallback global
+                $showingAllStaffFallback = true;
+            }
+        }
+
+        $doctors = $doctorsQuery->get();
 
         // 5. OBTENER INFRAESTRUCTURA DE LA CLÍNICA Y AGENDAS ASOCIADAS
         $clinicAddresses = $clinic->addresses()->where('status', true)->get();
@@ -66,7 +76,7 @@ class PublicClinicController extends Controller
             ->whereIn('address_id', $clinicAddressIds)
             ->get();
 
-        // 6. SÍNTESIS DE DATOS HÍBRIDA (Mapeo molecular exacto para las tarjetas del index)
+        // 6. SÍNTESIS DE DATOS HÍBRIDA (Garantiza visibilidad del médico aunque no tenga agendas cargadas)
         $results = [];
 
         foreach ($doctors as $doctor) {
@@ -74,30 +84,35 @@ class PublicClinicController extends Controller
             $activeAddressIds = $schedules->where('doctor_id', $doctor->id)
                 ->pluck('address_id')->unique()->values()->toArray();
 
-            // Si el médico pertenece a la clínica pero no atiende esta especialidad en ninguna sede, se ignora
-            if (empty($activeAddressIds)) {
-                continue;
+            // RESOLUCIÓN DE SEDE PRINCIPAL (Cero regresión: Si no tiene agenda, le asignamos la primera sede de la clínica)
+            if (!empty($activeAddressIds)) {
+                $primaryAddressId = $activeAddressIds[0];
+                $addressModel = $clinicAddresses->firstWhere('id', $primaryAddressId);
+                
+                // Llamada al motor de inmediatez nativo si registra turnos
+                $nextAvailableTurn = $this->calculateNextTurn($primaryAddressId, [$doctor->id], $now, $currentTime);
+            } else {
+                // El médico no tiene turnos configurados aún, pero DEBE mostrarse en el staff institucional
+                $addressModel = $clinicAddresses->first(); // Sede por defecto de la institución
+                $primaryAddressId = $addressModel ? $addressModel->id : null;
+                $nextAvailableTurn = 'Sin turnos asignados esta semana';
             }
 
-            // Seleccionar la sede principal (La primera donde registre agenda)
-            $primaryAddressId = $activeAddressIds[0];
-            $addressModel = $clinicAddresses->firstWhere('id', $primaryAddressId);
-
-            // 🔥 LLAMADA DEPURADA AL MOTOR DE INMEDIATEZ NATIVO DE OPENDOCTOR
-            // Corregido: Pasamos el ID de la sede correcto y el ID del doctor dentro de un array compatible
-            $nextAvailableTurn = $this->calculateNextTurn($primaryAddressId, [$doctor->id], $now, $currentTime);
-
-            // Determinar el badge de especialidad (Fiel a la regla de tu else original)
-            $doctorBadgeText = $specialty ? $specialty->name : ($doctor->specialties->first()->name ?? 'Consultorio Privado');
+            // Determinar el badge de especialidad dinámico por fila (Garantiza consistencia en modo "Traer Todas")
+            if (!$showingAllStaffFallback && $specialty) {
+                $doctorBadgeText = $specialty->name;
+            } else {
+                // Si estamos mostrando todo el staff, toma la primera especialidad registrada del médico
+                $doctorBadgeText = $doctor->specialties->first()->name ?? 'Medicina General';
+            }
 
             // Inyectar el arreglo molecular sanitizado
             $results[] = [
                 'id'                 => $doctor->id,
                 'slug'               => $doctor->slug ?? $doctor->user->slug,
                 'type'               => 'doctor',
-                // Manejo de prefijo de género estricto según tu regla de negocio original
                 'title'              => ($doctor->gender === 'female' ? 'Dra. ' : 'Dr. ') . ucfirst($doctor->user->name),
-                'subtitle'           => $addressModel ? "Consultorio: {$addressModel->name} • {$addressModel->address}" : $clinic->brand_name,
+                'subtitle'           => $addressModel ? "Consultorio: {$addressModel->name} • {$addressModel->address_line}" : $clinic->brand_name,
                 'rating'             => $doctor->rating ?? 5,
                 'address_id'         => $primaryAddressId,
                 'active_address_ids' => $activeAddressIds,
@@ -107,7 +122,13 @@ class PublicClinicController extends Controller
             ];
         }       
         
-        return view('public.clinic_decision', compact('clinic', 'specialty', 'results', 'clinicAddresses'));
+        return view('public.clinic_decision', compact(
+            'clinic', 
+            'specialty', 
+            'results', 
+            'clinicAddresses', 
+            'showingAllStaffFallback'
+        ));
     }
 
     /**

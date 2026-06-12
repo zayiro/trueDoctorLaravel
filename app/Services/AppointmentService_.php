@@ -7,7 +7,6 @@ use App\Models\Schedule;
 use App\Models\Unavailability;
 use App\Models\Appointment;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class AppointmentService
 {
@@ -15,44 +14,43 @@ class AppointmentService
      * Genera los slots (intervalos) disponibles para un doctor en una dirección específica.
      * Soporta flujos Web, App Móvil y API Externa, citas presenciales y virtuales corporativas.
      */
-    public function getAvailableSlots($addressId, $date, $doctorId, $isVirtual = false, $serviceId = null)
+    public function getAvailableSlots($addressId, $date, $doctorId, $isVirtual = false)
     {
         $requestedDate = Carbon::parse($date);
         
-        // 🔒 SINCRONIZACIÓN ISO: Garantiza que 1=Lunes y 7=Domingo en coincidencia con la DB
-        $dayOfWeekIso = $requestedDate->dayOfWeekIso; 
+        // El bucle de nuestro backend procesa los días de 0 (Domingo) a 6 (Sábado)
+        $dayOfWeek = $requestedDate->dayOfWeek; 
         
-        // 1. Obtener la sede con sus relaciones estructurales de co-propiedad
+        // 1. Obtener la sede con sus relaciones estructurales cruzadas de co-propiedad
         $address = Address::with(['clinic.settings', 'services' => function($q) {
-            $q->where('services.active', true);
+            $q->where('active', true);
         }])->find($addressId);
         
         if (!$address) return [];
 
-        // 🔒 DETERMINACIÓN DEL INTERVALO: Busca la duración exacta del servicio seleccionado
-        $intervalMinutes = 20; // Valor de contingencia por defecto
-        if ($serviceId) {
-            $targetService = $address->services->firstWhere('id', $serviceId);
-            if ($targetService && $targetService->pivot) {
-                $intervalMinutes = (int) $targetService->pivot->duration;
+        // Buscamos la duración específica del servicio asignado a esta sede física o virtual
+        $serviceSpecific = $address->services->first();
+        $intervalMinutes = $serviceSpecific && $serviceSpecific->pivot ? (int) $serviceSpecific->pivot->duration : 20;
+
+        // 2. Obtener horario base adaptado para consultorios institucionales y privados
+        if ($isVirtual) {
+            // El médico puede hacer telemedicina en su consulta privada o contratado por una clínica
+            $schedule = Schedule::where('address_id', $addressId)
+                ->where('doctor_id', $doctorId)
+                ->where('day', $dayOfWeek)
+                ->first();
+                
+            // Contingencia: Si no hay horario virtual local, busca su bloque técnico general
+            if (!$schedule) {
+                $schedule = Schedule::where('address_id', $addressId)
+                    ->where('day', $dayOfWeek)
+                    ->first();
             }
         } else {
-            $firstService = $address->services->first();
-            if ($firstService && $firstService->pivot) {
-                $intervalMinutes = (int) $firstService->pivot->duration;
-            }
-        }
-        // 2. Obtener horario base adaptado para consultorios institucionales y privados
-        $schedule = Schedule::where('address_id', $addressId)
-            ->where('doctor_id', $doctorId)
-            ->where('day', $dayOfWeekIso)
-            ->first();
-            
-        // Contingencia virtual institucional: Si es telemedicina y no hay horario exclusivo asignado,
-        // toma la franja técnica corporativa parametrizada para la sede
-        if (!$schedule && $isVirtual) {
+            // Sede física: Se extrae el bloque de horas que el médico tiene asignado en ese consultorio
             $schedule = Schedule::where('address_id', $addressId)
-                ->where('day', $dayOfWeekIso)
+                ->where('doctor_id', $doctorId)
+                ->where('day', $dayOfWeek)
                 ->first();
         }
 
@@ -79,6 +77,7 @@ class AppointmentService
             ->get();
 
         // 5. 🔥 CARGA INTELIGENTE DE POLÍTICAS DE ANTICIPACIÓN (SaaS Multi-inquilino)
+        // Si la sede le pertenece a una clínica, hereda sus plazos; si no, lee los de la consulta privada del doctor
         if ($address->clinic_id && $address->clinic) {
             $settings = $address->clinic->settings;
             $minNoticeHours = $settings->min_notice_hours ?? 2;
@@ -90,15 +89,9 @@ class AppointmentService
         
         $limiteCitaMinima = Carbon::now()->addHours($minNoticeHours);
 
-        // 🔥 OPTIMIZACIÓN RENDIMIENTO: Cargar citas confirmadas para evitar consultas N+1 repetitivas
-        $bookedAppointments = Appointment::where('doctor_id', $doctorId)
-            ->whereDate('date', $date)
-            ->whereIn('status', ['pending', 'confirmed', 'completed'])
-            ->get();
         // 6. Filtrar disponibilidad real cruzando con el validador de traslapes y anticipación
-        return collect($allSlots)->map(function ($slot) use ($doctorId, $date, $intervalMinutes, $unavailabilities, $limiteCitaMinima, $bookedAppointments) {
+        return collect($allSlots)->map(function ($slot) use ($doctorId, $date, $intervalMinutes, $unavailabilities, $limiteCitaMinima) {
             $startTimeString = $slot['start'];
-            $endTimeString = $slot['end'];
             $slotDateTime = Carbon::parse("$date $startTimeString");
 
             // REGLA DE ORO DE ANTICIPACIÓN: Control estricto de horas pasadas
@@ -113,15 +106,8 @@ class AppointmentService
                 }
             }
 
-            // 🔥 OPTIMIZACIÓN MÁXIMA (Fin del N+1): Validar colisiones directamente en memoria cacheada
-            $estaOcupado = $bookedAppointments->contains(function ($appointment) use ($startTimeString, $endTimeString) {
-                $appStart = $appointment->start_time;
-                $appEnd = $appointment->end_time;
-
-                return ($appStart < $endTimeString && $appStart >= $startTimeString) ||
-                       ($appEnd > $startTimeString && $appEnd <= $endTimeString) ||
-                       ($appStart <= $startTimeString && $appEnd >= $endTimeString);
-            });
+            // Condición C: ¿Choca con alguna cita agendada en la base de datos?
+            $estaOcupado = !$this->isAvailable($doctorId, $date, $startTimeString, $intervalMinutes);
 
             return [
                 'time'      => Carbon::parse($startTimeString)->format('g:i A'),
@@ -150,6 +136,7 @@ class AppointmentService
         }
         return $slots;
     }
+
     /**
      * Valida si un bloque específico cae dentro de una ausencia configurada
      */
@@ -164,7 +151,38 @@ class AppointmentService
     }
 
     /**
+     * Cerebro de validación de traslapes (Lógica matemática original de colisiones)
+     */
+    public function isAvailable($doctorId, $date, $startTime, $durationMinutes)
+    {
+        $start = Carbon::parse($startTime);
+        $end = $start->copy()->addMinutes($durationMinutes);
+
+        return !Appointment::where('doctor_id', $doctorId)
+            ->whereDate('date', $date)
+            ->whereNotIn('status', ['cancelled'])
+            ->where(function ($query) use ($start, $end) {
+                $query->where(function ($q) use ($start, $end) {
+                    $q->where('start_time', '<', $end->format('H:i:s'))
+                      ->where('start_time', '>=', $start->format('H:i:s'));
+                })
+                ->orWhere(function ($q) use ($start, $end) {
+                    $q->where('end_time', '>', $start->format('H:i:s'))
+                      ->where('end_time', '<=', $end->format('H:i:s'));
+                })
+                ->orWhere(function ($q) use ($start, $end) {
+                    $q->where('start_time', '<=', $start->format('H:i:s'))
+                      ->where('end_time', '>=', $end->format('H:i:s'));
+                });
+            })
+            ->exists();
+    }
+
+        /**
      * Valida si una cita específica se puede cancelar o reprogramar (Reparada, Completada y Blindada).
+     *
+     * @param int $appointmentId
+     * @return array ['allowed' => bool, 'message' => string]
      */
     public function checkIfCanModify($appointmentId)
     {

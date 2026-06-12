@@ -51,7 +51,7 @@ $breadcrumbs = [
                     </a>
                 @else
                     <a href="{{ route('partner.appointments.index') }}" 
-                       class="px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest bg-indigo-50 text-indigo-700 border border-indigo-100 transition-all">
+                       class="px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest {{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-indigo-50 text-indigo-700 border-indigo-100' }} transition-all">
                         Volver a Hoy
                     </a>
                 @endif
@@ -77,7 +77,7 @@ $breadcrumbs = [
                     <div class="flex items-center gap-2 bg-white p-2 rounded-2xl border border-gray-200 shadow-sm">
                         <input type="date" name="date" value="{{ $date ?? now()->toDateString() }}" onchange="this.form.submit()" 
                             class="border-none focus:ring-0 text-sm font-semibold text-gray-700 bg-transparent cursor-pointer py-1">
-                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-xs uppercase font-black tracking-wider transition-all shadow-sm shadow-indigo-100">
+                        <button type="submit" class="{{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100' }} text-white px-5 py-2 rounded-xl text-xs uppercase font-black tracking-wider transition-all shadow-sm">
                             Filtrar
                         </button>
                     </div>
@@ -91,17 +91,17 @@ $breadcrumbs = [
                 @php $groupCount = $group->count(); @endphp
                 
                 <section class="animate-fade-in">
-                    <div class="flex items-center justify-between bg-slate-900 px-6 py-4 rounded-t-3xl shadow-md text-white">
+                    <!-- Cabecera de la sección tematizada según el contexto activo -->
+                    <div class="flex items-center justify-between {{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') ? 'bg-emerald-950' : 'bg-slate-900' }} px-6 py-4 rounded-t-3xl shadow-md text-white">
                         <div class="flex items-center gap-3">
                             <span class="font-bold tracking-wide uppercase text-xs sm:text-sm flex items-center gap-2">
                                 📍 {{ $group->first()->address->name ?? 'Consulta Virtual / Telemedicina' }}
                             </span>
                         </div>
-                        <span class="bg-indigo-600 text-white text-[10px] px-3 py-1 rounded-full font-black tracking-wider">
+                        <span class="{{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') ? 'bg-emerald-600' : 'bg-indigo-600' }} text-white text-[10px] px-3 py-1 rounded-full font-black tracking-wider">
                             {{ $groupCount }} {{ Str::plural('CITA', $groupCount) }}
                         </span>
                     </div>
-
                     <div class="bg-white shadow-xl rounded-b-3xl overflow-hidden border-x border-b border-gray-100">
                         <!-- Tabla para Pantallas de Escritorio (Desktop) -->
                         <div class="hidden md:block overflow-x-auto">
@@ -139,7 +139,7 @@ $breadcrumbs = [
                         </svg>
                     </div>
                     <h5 class="text-base font-bold text-slate-800">No hay citas registradas</h5>
-                    <p class="text-gray-500 text-sm mt-1 max-w-sm mx-auto">No se encontrarón reservas de pacientes para los filtros o la fecha seleccionada en el cuadrante.</p>
+                    <p class="text-gray-500 text-sm mt-1 max-w-sm mx-auto">No se encontraron reservas de pacientes para los filtros o la fecha seleccionada en el cuadrante.</p>
                 </div>
             @endforelse
         </div>
