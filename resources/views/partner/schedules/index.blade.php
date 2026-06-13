@@ -4,14 +4,32 @@ $breadcrumbs = [
     ['name' => 'Consultorios', 'href' => route('partner.addresses.index')],
     ['name' => 'Configuración de Horarios']
 ];
-$colorState = $address->status ? 'green' : 'red';
+$colorState = $address && $address->status ? 'green' : 'red';
+
+// Preservamos la indexación nativa de tu base de datos (1=Lunes, 7=Domingo)
+$daysMap = [
+    1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles', 4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado', 7 => 'Domingo'
+];
+
+$daysColorMeta = [
+    1 => 'bg-blue-50 text-blue-800 border-blue-100',
+    2 => 'bg-purple-50 text-purple-800 border-purple-100',
+    3 => 'bg-green-50 text-green-800 border-green-100',
+    4 => 'bg-orange-50 text-orange-800 border-orange-100',
+    5 => 'bg-indigo-50 text-indigo-800 border-indigo-100',
+    6 => 'bg-cyan-50 text-cyan-800 border-cyan-100',
+    7 => 'bg-rose-50 text-rose-800 border-rose-100'
+];
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-    <div class="max-w-7xl mx-auto py-6 px-4">
+    {{-- Contenedor unificado con Alpine.js reactivo al conmutador regulatorio inyectado por el controlador --}}
+    <div class="max-w-7xl mx-auto py-6 px-4" x-data="{ loading: false, showReplicate: false, selectedDoctorId: '', isReadOnly: {{ $isReadOnly ? 'true' : 'false' }} }">
         
         <!-- SECCIÓN DE ALERTAS INTELIGENTES CONTROLADAS CON ALPINE.JS -->
         <div class="space-y-4 mb-8">
+            
+            <!-- 🌟 BLINDAJE ABSOLUTO CONTRA EL ERROR DE TIPADO "Attempt to read property on array" -->
             @if(session('schedule_conflicts'))
                 <div x-data="{ show: true }" x-show="show" x-transition class="mb-8 p-6 bg-red-50 border-2 border-red-200 rounded-[2.5rem] shadow-xl shadow-red-100">
                     <div class="flex items-center gap-3 mb-4 text-red-700">
@@ -23,9 +41,22 @@ $colorState = $address->status ? 'green' : 'red';
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
                         @foreach(session('schedule_conflicts') as $app)
+                            @php
+                                // Normalización defensiva para soportar de forma segura objetos y arreglos deserializados de la sesión
+                                $appData = is_array($app) ? $app : $app->toArray();
+                                $patientName = 'Nombre no disponible';
+                                if (is_object($app) && isset($app->patient->user->name)) {
+                                    $patientName = $app->patient->user->name;
+                                } elseif (isset($appData['patient']['user']['name'])) {
+                                    $patientName = $appData['patient']['user']['name'];
+                                }
+                            @endphp
                             <div class="flex justify-between items-center text-xs bg-white p-3 rounded-xl border border-red-100 shadow-sm">
-                                <span class="font-bold text-red-800">{{ $app->patient->user->name }}</span>
-                                <span class="text-red-500 font-black">{{ \Carbon\Carbon::parse($app->date)->format('d/m/Y') }} — {{ \Carbon\Carbon::parse($app->start_time)->format('g:i A') }}</span>
+                                <span class="font-bold text-red-800">{{ $patientName }}</span>
+                                <span class="text-red-500 font-black">
+                                    {{ isset($appData['date']) ? \Carbon\Carbon::parse($appData['date'])->format('d/m/Y') : 'N/A' }} — 
+                                    {{ isset($appData['start_time']) ? \Carbon\Carbon::parse($appData['start_time'])->format('g:i A') : 'N/A' }}
+                                </span>
                             </div>
                         @endforeach
                     </div>
@@ -40,6 +71,7 @@ $colorState = $address->status ? 'green' : 'red';
                     </div>
                 </div>
             @endif
+
             @if (session('success'))
                 <div x-data="{ show: true }" x-show="show" x-transition class="flex items-center justify-between p-4 text-emerald-800 rounded-3xl bg-emerald-50 border border-emerald-100 shadow-sm">
                     <div class="flex items-center">
@@ -65,26 +97,25 @@ $colorState = $address->status ? 'green' : 'red';
         <div class="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4 bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
             <div>
                 <span class="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-2 block">Sede Seleccionada</span>
-                <h3 class="text-3xl font-black text-slate-900 tracking-tight">{{ $address->name }}</h3>
+                <h3 class="text-3xl font-black text-slate-900 tracking-tight">{{ $address ? $address->name : 'Sin Sede' }}</h3>
                 <p class="text-slate-500 flex items-center gap-2 mt-1 font-medium text-sm">
                     <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
-                    {{ $address->address }}{{ $address->type === 'virtual' ? ' (Canal Digital)' : ', ' . ($address->city->name ?? '') }}
+                    {{ $address ? $address->address : '' }}{{ $address && $address->type === 'virtual' ? ' (Canal Digital)' : ', ' . ($address->city->name ?? '') }}
                     <span class="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-tighter {{ $colorState === 'green' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700' }}">
                         {{ $colorState === 'green' ? 'Sede Activa' : 'Inactiva' }}
                     </span>
                 </p>
             </div>
-            <a href="{{ route('partner.appointments.index') }}" class="text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-2">
+            <a href="{{ route('partner.addresses.index') }}" class="text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                Volver a la Agenda Principal
+                Volver a las sedes
             </a>
         </div>
-        <!-- GRILLA DINÁMICA: ANCHO TOTAL PARA LECTURA INSTITUCIONAL O 4 COLUMNAS PARA GESTIÓN PROPIA -->
-        <div class="grid grid-cols-1 {{ (auth()->user()->role === 'doctor' && ($currentContext['type'] ?? 'particular') === 'clinic') ? '' : 'lg:grid-cols-4' }} gap-6">
-            
-            <!-- 🔒 RESTRICCIÓN ABSOLUTA DE ESCRITURA INSTITUCIONAL -->
-            @if(!(auth()->user()->role === 'doctor' && ($currentContext['type'] ?? 'particular') === 'clinic'))
-                <!-- COLUMNA IZQUIERDA: FORMULARIO HORARIOS (Solo visible para Consultorio Particular o Clínicas Puras) -->
+
+        <!-- REJILLA ADAPTATIVA HÍBRIDA: Se auto-expande eliminando las columnas si Alpine detecta isReadOnly = true -->
+        <div class="grid grid-cols-1 gap-6" :class="isReadOnly ? 'grid-cols-1' : 'lg:grid-cols-4'">
+            <!-- COLUMNA IZQUIERDA: FORMULARIO HORARIOS (Solo visible para Consultorio Particular o Clínicas Puras) -->
+            <template x-if="!isReadOnly">
                 <div class="lg:col-span-1">
                     <div class="bg-white p-6 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-50 sticky top-24">
                         <div class="flex items-center gap-3 mb-6">
@@ -96,9 +127,10 @@ $colorState = $address->status ? 'green' : 'red';
                             <h4 class="font-black text-slate-800 text-sm uppercase tracking-wide">Asignar Turno</h4>
                         </div>
 
-                        <form action="{{ route('partner.schedules.store') }}" method="POST" class="space-y-4">
+                        <!-- Enrutamiento adaptativo automático basado en el rol -->
+                        <form action="{{ auth()->user()->role === 'clinic' ? route('partner.clinic.schedules.store') : route('partner.schedules.store') }}" method="POST" @submit="loading = true" class="space-y-4">
                             @csrf
-                            <input type="hidden" name="address_id" value="{{ $address->id }}">
+                            <input type="hidden" name="address_id" value="{{ $address?->id }}">
 
                             @if(auth()->user()->role === 'clinic')
                                 <div>
@@ -115,7 +147,7 @@ $colorState = $address->status ? 'green' : 'red';
                                 </div>
                             @endif
 
-                            <!-- Día Base -->
+                            <!-- Día Base Principal (Rango ISO 1=Lun, 7=Dom unificado con el backend) -->
                             <div>
                                 <label for="day" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Día Principal</label>
                                 <select name="day" id="day" class="w-full rounded-2xl border-slate-200 py-3 text-sm focus:ring-indigo-500 focus:border-indigo-500" required>
@@ -125,7 +157,7 @@ $colorState = $address->status ? 'green' : 'red';
                                     <option value="4" {{ old('day') == 4 ? 'selected' : '' }}>Jueves</option>
                                     <option value="5" {{ old('day') == 5 ? 'selected' : '' }}>Viernes</option>
                                     <option value="6" {{ old('day') == 6 ? 'selected' : '' }}>Sábado</option>
-                                    <option value="0" {{ old('day') == 0 ? 'selected' : '' }}>Domingo</option>
+                                    <option value="7" {{ old('day') == 7 ? 'selected' : '' }}>Domingo</option>
                                 </select>
                             </div>
 
@@ -142,13 +174,13 @@ $colorState = $address->status ? 'green' : 'red';
                             </div>
                             @error('end_time') <p class="text-xs text-red-600 mt-1 font-semibold">{{ $message }}</p> @enderror
 
-                            <!-- Replicar Días -->
+                            <!-- Replicar Días con estilo de botones compactos sr-only -->
                             <div>
                                 <span class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Replicar en otros días (Opcional)</span>
                                 <div class="flex flex-wrap gap-2">
-                                    @foreach([1=>'L', 2=>'Ma', 3=>'Mi', 4=>'J', 5=>'V', 6=>'S', 0=>'D'] as $val => $letra)
+                                    @foreach([1=>'L', 2=>'Ma', 3=>'Mi', 4=>'J', 5=>'V', 6=>'S', 7=>'D'] as $val => $letra)
                                         <label class="cursor-pointer">
-                                            <input type="checkbox" name="repeat_days[]" value="{{ $val }}" class="sr-only peer" {{ in_array($val, old('repeat_days', [])) ? 'checked' : '' }}>
+                                            <input type="checkbox" name="replicate_days[]" value="{{ $val }}" class="sr-only peer" {{ in_array($val, old('replicate_days', [])) ? 'checked' : '' }}>
                                             <div class="w-8 h-8 flex items-center justify-center text-xs font-bold rounded-xl border border-slate-200 text-slate-500 bg-white peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600 transition-all select-none">
                                                 {{ $letra }}
                                             </div>
@@ -158,91 +190,108 @@ $colorState = $address->status ? 'green' : 'red';
                             </div>
 
                             <div class="pt-2">
-                                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-2xl shadow-lg shadow-indigo-100 transition-all uppercase tracking-wider text-xs">
-                                    Agregar a la Agenda
+                                <button type="submit" :disabled="loading" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-2xl shadow-lg shadow-indigo-100 transition-all uppercase tracking-wider text-xs flex items-center justify-center gap-2 cursor-pointer">
+                                    <svg x-show="loading" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" x-cloak><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span x-show="loading" x-cloak>Sincronizando...</span>
+                                    <span x-show="!loading">Agregar a la Agenda</span>
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
-            @endif
-            <!-- COLUMNA DERECHA: SE EXPANDE AL ANCHO TOTAL EN CONTEXTO CLÍNICA -->
-            <div class="{{ (auth()->user()->role === 'doctor' && ($currentContext['type'] ?? 'particular') === 'clinic') ? 'w-full' : 'lg:col-span-3' }} space-y-6">
+            </template>
+            <!-- COLUMNA DERECHA: SE EXPANDE AL ANCHO TOTAL EN CONTEXTO CLÍNICA (3 COLUMNAS O 5 COLUMNAS EN MODALIDAD LECTURA) -->
+            <div :class="isReadOnly ? 'w-full' : 'lg:col-span-3'" class="space-y-6">
                 <div class="bg-white p-6 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-50">
                     <div class="flex justify-between items-center mb-6">
                         <div class="flex items-center gap-3">
-                            <div class="{{ (auth()->user()->role === 'doctor' && ($currentContext['type'] ?? 'particular') === 'clinic') ? 'bg-emerald-500 shadow-emerald-200' : 'bg-indigo-500 shadow-indigo-200' }} p-2 rounded-xl shadow-lg">
-                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div :class="isReadOnly ? 'bg-emerald-500 shadow-emerald-200' : 'bg-indigo-500 shadow-indigo-200'" class="p-2 rounded-xl shadow-lg text-white flex items-center justify-center">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                 </svg>
                             </div>
                             <h4 class="font-black text-slate-800 text-sm uppercase tracking-wide">
-                                {{ (auth()->user()->role === 'doctor' && ($currentContext['type'] ?? 'particular') === 'clinic') ? 'Mis Horarios Asignados por la Institución' : 'Cronograma Semanal de Turnos' }}
+                                <span x-show="isReadOnly">Mis Horarios Asignados por la Institución</span>
+                                <span x-show="!isReadOnly">Cronograma Semanal de Turnos</span>
                             </h4>
                         </div>
                         
                         <!-- 🔒 FILTRO DEL BOTÓN DE EDICIÓN EN LOTE SEGÚN LA POTESTAD DE LA CLÍNICA -->
-                        @if(!(auth()->user()->role === 'doctor' && ($currentContext['type'] ?? 'particular') === 'clinic'))
+                        <template x-if="!isReadOnly">
                             <a href="{{ route('partner.schedules.edit', $address->id) }}" class="text-xs font-bold text-indigo-600 hover:bg-indigo-50 p-2.5 rounded-xl border border-indigo-100 transition-all uppercase tracking-wider">
                                 Editar Horarios en Lote
                             </a>
-                        @endif
+                        </template>
                     </div>
 
-                    <!-- Grilla del listado de turnos -->
+                    <!-- 📆 CRONOGRAMA SEMANAL REFACTORIZADO: CONTENEDORES POR DÍA A DOS COLUMNAS -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        @forelse($schedules as $schedule)
-                            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center gap-4 hover:border-slate-200 transition-all">
-                                <div class="space-y-1">
-                                    <span class="text-xs font-black uppercase text-indigo-600 tracking-wider block">
-                                        {{ $schedule->day_name }}
-                                    </span>
-                                    
-                                    <span class="text-base font-bold text-slate-800 block">
-                                        {{ $schedule->range }}
-                                    </span>
-
-                                    <span class="text-xs text-slate-500 flex items-center gap-1">
-                                        <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                                        </svg>
-                                        {{ $schedule->doctor->user->name ?? 'Especialista sin asignar' }}
+                        @foreach($daysMap as $dayIndex => $dayLabel)
+                            <div class="bg-slate-50/70 border border-slate-100 rounded-[2rem] p-4 flex flex-col min-h-[220px] shadow-2xs">
+                                
+                                <!-- Cabecera Semántica del Día (Insignia a lo ancho de la tarjeta) -->
+                                <div class="py-2.5 px-4 rounded-2xl border text-xs font-black uppercase tracking-wider mb-3 shadow-3xs flex justify-between items-center {{ $daysColorMeta[$dayIndex] }}">
+                                    <span>📅 {{ $dayLabel }}</span>
+                                    <span class="text-[10px] opacity-70 bg-white/50 px-2 py-0.5 rounded-lg">
+                                        {{ isset($schedulesByDay[$dayIndex]) ? $schedulesByDay[$dayIndex]->count() . ' bloque(s)' : 'Libre' }}
                                     </span>
                                 </div>
 
-                                <!-- Botón de eliminación individual condicionado al entorno -->
-                                @if(!(auth()->user()->role === 'doctor' && ($currentContext['type'] ?? 'particular') === 'clinic'))
-                                    <form action="{{ route('partner.schedules.destroy', $schedule) }}" method="POST" onsubmit="return confirm('¿Estás seguro de remover este bloque horario de la agenda pública?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="p-2.5 bg-white text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl border border-slate-200 hover:border-red-100 shadow-sm transition-all">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                            </svg>
-                                        </button>
-                                    </form>
-                                @endif
-                            </div>
-                        @empty
-                            <div class="col-span-1 md:col-span-2 text-center py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 p-6">
-                                <div class="mx-auto w-10 h-10 text-slate-400 mb-2">
-                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                    </svg>
+                                <!-- Listado de Bloques del Día Específico (Se distribuyen en una mini-grilla interna de franjas) -->
+                                <div class="grid gap-2 flex-1">
+                                    @if(isset($schedulesByDay[$dayIndex]) && $schedulesByDay[$dayIndex]->count() > 0)
+                                        @foreach($schedulesByDay[$dayIndex] as $item)
+                                            <div 
+                                                class="bg-white border border-slate-100 p-3 rounded-xl shadow-3xs flex flex-col justify-between gap-3 transition-all hover:border-slate-200"
+                                                x-show="!selectedDoctorId || selectedDoctorId == '{{ $item->doctor_id }}'" 
+                                                x-transition
+                                            >
+                                                <div class="space-y-1">
+                                                    <!-- Rango Horario formateado por el Attribute de tu modelo -->
+                                                    <span class="text-xs font-black text-slate-800 block tracking-tight">
+                                                        {{ \Carbon\Carbon::parse($item->start_time)->format('g:i A') }}
+                                                    </span>
+                                                    <span class="text-[10px] font-bold text-slate-400 block leading-none">
+                                                        hasta {{ \Carbon\Carbon::parse($item->end_time)->format('g:i A') }}
+                                                    </span>
+
+                                                    <!-- Identificador del profesional para la clínica -->
+                                                    @if(auth()->user()->role === 'clinic')
+                                                        <span class="text-[9px] text-indigo-600 font-bold block truncate mt-1">
+                                                            👨‍⚕️ {{ $item->doctor->user->name ?? 'N/A' }}
+                                                        </span>
+                                                    @endif
+                                                </div>
+
+                                                <!-- Botón de eliminación individual condicionado al entorno (Ocultado en Modo Lectura) -->
+                                                <template x-if="!isReadOnly">
+                                                    <form action="{{ auth()->user()->role === 'clinic' ? route('partner.clinic.schedules.destroy', $item) : route('partner.schedules.destroy', $item) }}" method="POST" onsubmit="return confirm('¿Estás seguro de remover este bloque horario de la agenda pública?');" class="flex justify-end pt-1.5 border-t border-slate-50">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="text-[10px] font-bold text-slate-400 hover:text-red-600 transition-colors flex items-center gap-0.5 cursor-pointer">
+                                                            ✕ Quitar
+                                                        </button>
+                                                    </form>
+                                                </template>
+                                            </div>
+                                        @endforeach
+                                        
+                                    @else
+                                        <div class="col-span-1 sm:col-span-2 flex items-center justify-center py-8 text-[11px] text-slate-400 italic font-medium tracking-wide">
+                                            Libre de compromisos
+                                        </div>
+                                    @endif
                                 </div>
-                                <h5 class="text-sm font-bold text-slate-700">No hay franjas registradas</h5>
-                                <p class="text-slate-400 text-xs mt-0.5">
-                                    {{ (auth()->user()->role === 'doctor' && ($currentContext['type'] ?? 'particular') === 'clinic') ? 'No tienes turnos asignados por la administración en este consultorio corporativo.' : 'Asigna los rangos de atención en el bloque de la izquierda para abrir la disponibilidad.' }}
-                                </p>
                             </div>
-                        @endforelse
+                        @endforeach
                     </div>
+
                 </div>
 
                 <!-- SECCIÓN SECUNDARIA: BLOQUEOS DE AGENDA / AUSENCIAS -->
                 <div class="bg-white p-6 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-50">
                     <div class="flex items-center gap-3 mb-4">
-                        <div class="bg-amber-500 p-2 rounded-xl shadow-lg shadow-amber-200">
+                        <div class="bg-amber-500 p-2 rounded-xl shadow-lg shadow-amber-200 flex items-center justify-center">
                             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
                             </svg>
@@ -257,7 +306,7 @@ $colorState = $address->status ? 'green' : 'red';
                                     {{ $unavailability->reason ?? 'Bloqueo temporal' }}
                                 </span>
                                 <span class="text-[11px] text-amber-700 font-medium mt-0.5">
-                                    {{ $unavailability->start_date->format('d/m/Y') }} al {{ $unavailability->end_date->format('d/m/Y') }}
+                                    {{ is_string($unavailability->start_date) ? \Carbon\Carbon::parse($unavailability->start_date)->format('d/m/Y') : $unavailability->start_date->format('d/m/Y') }} al {{ _is_string($unavailability->end_date) ? \Carbon\Carbon::parse($unavailability->end_date)->format('d/m/Y') : $unavailability->end_date->format('d/m/Y') }}
                                 </span>
                                 @if(auth()->user()->role === 'clinic')
                                     <span class="text-[10px] text-slate-400 mt-1 block font-bold">
@@ -266,7 +315,7 @@ $colorState = $address->status ? 'green' : 'red';
                                 @endif
                             </div>
                         @empty
-                            <p class="text-slate-400 text-xs italic col-span-1 md:col-span-2 bg-slate-50 p-4 rounded-xl border border-dashed border-slate-200 text-center">
+                            <p class="text-slate-400 text-xs italic col-span-1 md:col-span-2 bg-slate-50 p-4 rounded-xl border border-dashed border-slate-200 text-center w-full">
                                 No hay bloqueos temporales de agenda activos o programados.
                             </p>
                         @endforelse

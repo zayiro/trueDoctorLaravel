@@ -7,6 +7,7 @@ use App\Models\Specialty;
 use App\Models\City;
 use App\Models\Clinic;
 use App\Models\Address;
+use App\Models\Schedule;
 use App\Models\Appointment;
 use App\Models\Unavailability;
 use App\Models\IndexedSymptom;
@@ -268,41 +269,85 @@ class SearchController extends Controller
     }
 
     /**
-     * Función auxiliar privada para encapsular el cálculo de turnos en tiempo real.
+     * Calcula el próximo turno disponible leyendo el colchón logístico configurado por el médico.
+     * 🛡️ CONEXIÓN MULTI-TENANT: Consume de forma nativa 'min_notice_hours' de doctor_settings.
      */
     private function calculateNextTurn($addressId, array $doctorIds, $now, $currentTime)
     {
-        for ($dayOffset = 0; $dayOffset < 7; $dayOffset++) {
-            $evalDate = Carbon::now()->addDays($dayOffset);
-            $evalDayOfWeek = $evalDate->dayOfWeekIso; // 1 = Lunes, 7 = Domingo
+        if (empty($doctorIds)) {
+            return null;
+        }
 
-            $schedules = DB::table('schedules')->where('address_id', $addressId)->where('day', $evalDayOfWeek)->get();
+        // 1. DETERMINAR EL MARGEN INDIVIDUALIZADO DEL ESPECIALISTA (O STAFF)
+        // Extraemos el valor máximo de horas de anticipación configurado por los médicos involucrados
+        $bufferHours = DB::table('doctor_settings')
+            ->whereIn('doctor_id', $doctorIds)
+            ->value('min_notice_hours');
 
-            foreach ($schedules as $sched) {
-                $startTime = Carbon::parse($sched->start_time);
-                if ($dayOffset === 0 && $startTime->toTimeString() < $currentTime) {
-                    continue;
-                }
+        // Validación defensiva: Si no hay registro o es nulo, asume el default de 2 horas de tu migración
+        $hoursToKey = !is_null($bufferHours) ? (int)$bufferHours : 2;
 
-                $isBooked = Appointment::where('address_id', $addressId)
+        // REGLA DE NEGOCIO EN CALIENTE: Hora actual del servidor + las horas de aviso requeridas por este médico
+        $minAvailableTime = Carbon::now()->addHours($hoursToKey);
+        
+        // Obtener los índices de control del calendario
+        $currentDayIndex = $minAvailableTime->dayOfWeekIso; // Formato numérico ISO (1 = Lunes, 7 = Domingo)
+        $currentHourStr  = $minAvailableTime->format('H:i:s');
+
+        // Mapeo en español para el formateo de los días de la semana
+        $daysMap = [
+            1 => 'lunes', 2 => 'martes', 3 => 'miércoles', 4 => 'jueves', 
+            5 => 'viernes', 6 => 'sábado', 7 => 'domingo'
+        ];
+
+        // ESCENARIO A: Buscar si quedan bloques disponibles HOY mismo que superen el margen personalizado
+        $schedule = Schedule::where('address_id', $addressId)
+            ->whereIn('doctor_id', $doctorIds)
+            ->where('day', $currentDayIndex)
+            ->whereTime('start_time', '>=', $currentHourStr)
+            ->orderBy('day')
+            ->orderBy('start_time', 'asc')
+            ->first();
+
+        $targetDate = Carbon::today();
+
+        // ESCENARIO B: Si hoy ya no hay franjas que cumplan el margen, barremos secuencialmente los días siguientes
+        if (!$schedule) {
+            // Ciclo de inspección de los próximos 7 días del calendario
+            for ($i = 1; $i <= 7; $i++) {
+                $nextDateCheck = Carbon::today()->addDays($i);
+                $checkDayIndex = $nextDateCheck->dayOfWeekIso;
+
+                $schedule = Schedule::where('address_id', $addressId)
                     ->whereIn('doctor_id', $doctorIds)
-                    ->where('date', $evalDate->toDateString())
-                    ->where('start_time', $sched->start_time)
-                    ->whereIn('status', ['pending', 'confirmed', 'completed'])
-                    ->exists();
+                    ->where('day', $checkDayIndex)
+                    ->orderBy('start_time', 'asc')
+                    ->first();
 
-                $isUnavailable = Unavailability::whereIn('doctor_id', $doctorIds)
-                    ->where('start_date', '<=', $evalDate->toDateString())
-                    ->where('end_date', '>=', $evalDate->toDateString())
-                    ->exists();
-
-                if (!$isBooked && !$isUnavailable) {
-                    return $evalDate->translatedFormat('l d \d\e F') . ' — ' . $startTime->format('g:i A');
+                if ($schedule) {
+                    $targetDate = $nextDateCheck;
+                    break; // Rompemos el ciclo inmediatamente al encontrar la jornada operativa más cercana
                 }
             }
         }
 
-        return null;
+        // 2. PROCESAMIENTO Y FORMATEO FINAL DEL RANGO EMITIDO
+        if ($schedule) {
+            // Obtenemos la hora purificada en formato H:i:s de forma segura, 
+            // sin importar si $schedule->start_time es un string o un objeto Carbon
+            $timeStr = $schedule->start_time instanceof \Carbon\Carbon 
+                ? $schedule->start_time->format('H:i:s') 
+                : \Carbon\Carbon::parse($schedule->start_time)->format('H:i:s');
+
+            // Combinamos la fecha destino calculada en el bucle con la hora purificada del turno
+            $scheduleTime = \Carbon\Carbon::parse($targetDate->toDateString() . ' ' . $timeStr);
+            
+            // Formateamos estilo Doctoralia: "sábado 13 de junio — 10:30 AM"
+            return $scheduleTime->isoFormat('dddd d [de] MMMM') . ' — ' . $scheduleTime->format('g:i A');
+        }
+
+        return 'Sin disponibilidad próxima';
+
     }
 
     /**

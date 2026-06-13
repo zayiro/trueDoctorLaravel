@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Schedule;
 use App\Models\Address;
 use App\Models\Doctor;
+use App\Models\Unavailability; // Inyectado para el mapeo analítico de ausencias
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +27,7 @@ class ClinicScheduleController extends Controller
     /**
      * Listar la grilla horaria actual de los especialistas en las sedes físicas de la clínica.
      */
-    public function index()
+    public function index(Request $request)
     {
         $clinic = $this->getClinicContext();
 
@@ -36,25 +37,64 @@ class ClinicScheduleController extends Controller
             ->whereNull('deleted_at')
             ->get();
 
-        $addressIds = $addresses->pluck('id');
+        // Resolver de forma segura la sede física activa para el cronograma (por defecto la primera)
+        $addressId = $request->input('address_id', $addresses->first()?->id);
+        $address = $addresses->firstWhere('id', $addressId);
+
+        // Si la clínica no posee infraestructura registrada, evitamos excepciones de objeto nulo en Blade
+        if (!$address) {
+            return view('partner.schedules.index', [
+                'address' => null,
+                'schedules' => collect(),
+                'schedulesByDay' => collect(),
+                'unavailabilities' => collect(),
+                'availableDoctors' => collect(),
+                'addresses' => collect(),
+                'isReadOnly' => false,
+                'daysMap' => [1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles', 4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado', 7 => 'Domingo']
+            ])->with('error', 'Por favor, registre primero una sede física para su clínica.');
+        }
 
         // 2. Recuperar el Staff de médicos aprobados en la nómina corporativa
-        $staffDoctors = $clinic->doctors()
+        $availableDoctors = $clinic->doctors()
             ->where('clinic_doctor.status', 'approved')
             ->with('user')
             ->get();
 
-        // 3. Consultar los horarios semanales vigentes golpeando tus índices compuestos
-        $schedules = Schedule::whereIn('address_id', $addressIds)
+        // 3. Consultar los horarios semanales vigentes de la sede seleccionada
+        $schedules = Schedule::where('address_id', $address->id)
             ->with(['doctor.user', 'address'])
-            ->orderBy('address_id')
             ->orderBy('day')
             ->orderBy('start_time')
             ->get();
 
-        return view('partner.clinic.schedules.index', compact('schedules', 'addresses', 'staffDoctors', 'clinic'));
+        // 4. Extraer las ausencias vigentes de todo el staff adscrito para la sección secundaria
+        $doctorIds = $availableDoctors->pluck('id')->toArray();
+        $unavailabilities = Unavailability::whereIn('doctor_id', $doctorIds)
+            ->where('end_date', '>=', now()->toDateString())
+            ->with('doctor.user')
+            ->orderBy('start_date', 'asc')
+            ->get();
+
+        // Mapeo e indexación grupal para que coincida milimétricamente con las directivas de tu Blade (1=Lun, 7=Dom)
+        $schedulesByDay = $schedules->groupBy('day');
+        $daysMap = [1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles', 4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado', 7 => 'Domingo'];
+
+        // BANDERAS REQUISITO: Al ser el rol corporativo de la clínica administrando, la escritura está habilitada
+        $isReadOnly = false;
+
+        // 🌟 LA MAGIA: Apuntamos al Blade unificado pasando todas las llaves requeridas por la UI para borrar el error
+        return view('partner.clinic.schedules.index', compact(
+            'address', 
+            'schedules', 
+            'schedulesByDay', 
+            'unavailabilities', 
+            'availableDoctors', 
+            'addresses', 
+            'isReadOnly', 
+            'daysMap'
+        ));
     }
-    
     /**
      * Registrar un nuevo bloque de atención horaria semanal para un especialista.
      * 🛡️ BLINDAJE SAAS: Soporta clonación masiva y valida choques globales e inhabilidades.
@@ -67,7 +107,7 @@ class ClinicScheduleController extends Controller
         $validated = $request->validate([
             'doctor_id'      => 'required|exists:doctors,id',
             'address_id'     => 'required|exists:addresses,id',
-            'day'            => 'required|integer|min:1|max:7', // Día principal de origen
+            'day'            => 'required|integer|min:1|max:7', // Día principal de origen (1=Lun, 7=Dom)
             'start_time'     => 'required|date_format:H:i',
             'end_time'       => 'required|date_format:H:i|after:start_time',
             'replicate_days' => 'nullable|array', // Checkboxes dinámicos de Alpine
@@ -98,9 +138,8 @@ class ClinicScheduleController extends Controller
                 
                 $daysMap = [1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles', 4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado', 7 => 'Domingo'];
 
-                foreach ($targetDays as $dayId) {
-                    
-                    // A. 🛑 CONTROL DE CHOQUE GLOBAL CORREGIDO (orWhere reemplaza al .or erróneo)
+                foreach ($targetDays as $dayId) {                    
+                    // Buscamos colisiones horarias del doctor, pero eximiendo los cruces Híbridos (Físico vs Virtual)
                     $hasGlobalOverlap = Schedule::where('doctor_id', $validated['doctor_id'])
                         ->where('day', $dayId)
                         ->where(function ($query) use ($startTime, $endTime) {
@@ -111,6 +150,17 @@ class ClinicScheduleController extends Controller
                                         ->where('end_time', '>=', $endTime);
                                   });
                         })
+                        ->whereHas('address', function ($query) use ($address) {
+                            // REGLA DE ORO MULTI-TENANT SAAS:
+                            // Solo disparamos la colisión si AMBAS sedes (la nueva y la existente) son 'physical'.
+                            // Si cualquiera de las dos es 'virtual', se autoriza la coexistencia horaria en producción.
+                            if ($address->type === 'physical') {
+                                $query->where('type', 'physical');
+                            } else {
+                                // Si la sede de destino es virtual, solo choca si ya hay otro turno virtual a esa hora
+                                $query->where('type', 'virtual');
+                            }
+                        })
                         ->with('address')
                         ->first();
 
@@ -119,7 +169,7 @@ class ClinicScheduleController extends Controller
                             ? "en tu sede '{$hasGlobalOverlap->address->name}'" 
                             : "en su agenda externa / privada independiente";
                             
-                        throw new \Exception("Conflicto de agenda el día {$daysMap[$dayId]}: El especialista ya cuenta con un bloque configurado de {$hasGlobalOverlap->start_time} a {$hasGlobalOverlap->end_time} {$lugarChoque}.");
+                        throw new \Exception("Conflicto de agenda el día {$daysMap[$dayId]}: El especialista ya cuenta con un bloque configurado de {$hasGlobalOverlap->start_time->format('H:i')} a {$hasGlobalOverlap->end_time->format('H:i')} {$lugarChoque}.");
                     }
 
                     // B. ⚠️ DETECCIÓN DE INHABILIDADES VIGENTES
@@ -159,7 +209,8 @@ class ClinicScheduleController extends Controller
                 }
             });
 
-            return redirect()->route('partner.clinic.schedules.index')
+            // Redirección con parámetros limpios para mantener la sede activa en pantalla tras el envío
+            return redirect()->route('partner.clinic.schedules.index', ['address_id' => $validated['address_id']])
                 ->with('success', 'La jornada horaria y sus respectivas replicaciones masivas han sido sincronizadas con éxito.');
 
         } catch (\Exception $e) {
@@ -180,10 +231,12 @@ class ClinicScheduleController extends Controller
             abort(403, 'Operación denegada.'); 
         }
 
+        $addressId = $schedule->address_id;
+
         // Se elimina la fila base de la disponibilidad
         $schedule->delete();
 
-        return redirect()->route('partner.clinic.schedules.index')
+        return redirect()->route('partner.clinic.schedules.index', ['address_id' => $addressId])
             ->with('success', 'El horario de atención ha sido removido. El motor de búsquedas ha liberado el espacio en la web.');
     }
 } // Cierre definitivo del controlador ClinicScheduleController

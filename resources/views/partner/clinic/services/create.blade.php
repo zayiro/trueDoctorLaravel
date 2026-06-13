@@ -1,5 +1,5 @@
 @php
-// 🔒 ENFOQUE CLÍNICO: Direccionamiento al ecosistema de la organización
+// 🔒 ENFOQUE CLÍNICO: Direccionamiento al ecosistema de la organización con prefijo partner
 $breadcrumbs = [
     [
         'name' => 'Panel Institucional',
@@ -13,8 +13,10 @@ $breadcrumbs = [
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
     <div class="max-w-6xl mx-auto py-10 px-4">
+        
+        <!-- Enlace superior de retorno -->
         <div class="mb-6 flex items-center justify-between">
-            <a href="{{ route('partner.services.index') }}" class="text-blue-600 hover:underline text-sm flex items-center gap-1">
+            <a href="{{ route('partner.clinic.services.index') }}" class="text-blue-600 hover:underline text-sm flex items-center gap-1 font-bold">
                 <!-- 🎯 HEROICONS: arrow-left (outline) -->
                 <svg class="w-4 h-4" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
@@ -22,7 +24,6 @@ $breadcrumbs = [
                 Volver al catálogo
             </a>
         </div>
-
         @if(!$hasAddresses)
             <!-- Alerta Preventiva: La clínica no tiene sedes físicas registradas -->
             <div class="mb-8 p-6 bg-amber-50 border-2 border-amber-200 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4">
@@ -41,29 +42,32 @@ $breadcrumbs = [
                         </p>
                     </div>
                 </div>
-                <a href="{{ route('partner.addresses.create') }}" class="whitespace-nowrap bg-amber-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-amber-700 transition shadow-sm text-sm">
+                <a href="{{ route('clinic.addresses.create') }}" class="whitespace-nowrap bg-amber-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-amber-700 transition shadow-sm text-sm">
                     Registrar Consultorio Físico
                 </a>
             </div>
         @endif     
-
         <!-- Contenedor Base Reactivo con Alpine.js -->
         <div x-data="{ type: '{{ old('type', $hasAddresses ? 'physical' : 'virtual') }}' }" class="bg-white shadow-xl rounded-3xl overflow-hidden border border-gray-100">
-            <form action="{{ route('partner.services.store') }}" method="POST" class="p-8 space-y-6">
+            <!-- 🚀 APUNTAMOS A LA RUTA PARTNER CON MÁXIMO ENVÍO MATRICIAL -->
+            <form action="{{ route('partner.clinic.services.store') }}" method="POST" class="p-8 space-y-6">
                 @csrf
 
+                <!-- Caja de errores nativa del Jetstream/SaaS -->
                 <x-validation-errors class="mb-4" />
 
+                <!-- Procedimiento Clínico -->
                 <div class="grid grid-cols-1 gap-6">
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-2">Nombre del Servicio Clínico Institucional</label>
-                        <input type="text" name="name" value="{{ old('name') }}" placeholder="Ej: Ecocardiograma Transtorácico, Consulta Externa Pediatría" 
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Procedimiento o Servicio Clínico Institucional</label>
+                        <input type="text" name="service_id" value="{{ old('service_id') }}" placeholder="Ej: Ecocardiograma Transtorácico, Consulta Externa Pediatría" 
                             class="w-full rounded-2xl border-gray-300 py-3 focus:ring-indigo-500 focus:border-indigo-500" required>
                     </div>
                 </div>
+                <!-- Duración y Modalidad -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-2">Duración de la Cita Clinica</label>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Duración de la Cita Clínica</label>
                         <select name="duration" class="w-full rounded-2xl border-gray-300 py-3 focus:ring-indigo-500">
                             @foreach([15, 20, 30, 45, 60] as $time)
                                 <option value="{{ $time }}" {{ old('duration', 20) == $time ? 'selected' : '' }}>{{ $time }} min</option>
@@ -86,7 +90,6 @@ $breadcrumbs = [
                         @endif
                     </div>
                 </div>
-
                 <!-- MÓDULO TAXONÓMICO: ESPECIALIDADES DE LA CLÍNICA -->
                 <div class="p-6 bg-gray-50 rounded-3xl border border-gray-200 space-y-3 mt-6">
                     <label class="block text-sm font-bold text-gray-800 mb-2">Asociar a Especialidad del Centro Médico</label>
@@ -112,7 +115,7 @@ $breadcrumbs = [
                             class="w-full md:w-1/2 rounded-2xl border-purple-300 py-3 focus:ring-purple-500 focus:border-purple-400 text-gray-800" placeholder="0.00">
                     </div>
                 </div>
-
+                
                 <!-- Selección de Sedes Clínicas con Tarifas Diferenciales -->
                 @if($hasAddresses)
                     <div x-show="type === 'physical'" x-transition:enter="transition ease-out duration-300"
@@ -120,7 +123,8 @@ $breadcrumbs = [
                         <label class="block text-sm font-bold text-blue-900 mb-4">Tarifas asignadas según la sede física:</label>
                         
                         <div class="space-y-3">
-                            @foreach($addresses as $address)
+                            {{-- 🎯 FIX DE INFRAESTRUCTURA: Filtramos la colección para mostrar ÚNICAMENTE sedes físicas --}}
+                            @foreach($addresses->where('type', 'physical') as $address)
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-xl border border-blue-200 gap-4"
                                  x-data="{ checked: {{ in_array($address->id, old('address_ids', [])) ? 'true' : 'false' }} }">
                                 
@@ -131,7 +135,7 @@ $breadcrumbs = [
                                         {{ in_array($address->id, old('address_ids', [])) ? 'checked' : '' }}>
                                     <div class="ml-3">
                                         <span class="block text-sm font-bold text-gray-800">{{ $address->name }}</span>
-                                        <span class="block text-xs text-gray-500">{{ $address->address }}, {{ $address->city->name ?? 'N/A' }}</span>
+                                        <span class="block text-xs text-gray-500">{{ $address->address }}</span>
                                     </div>
                                 </label>
 
@@ -149,6 +153,7 @@ $breadcrumbs = [
                         @error('prices.*') <p class="mt-2 text-xs text-red-600 font-bold">Asegúrate de asignar precios válidos a las sedes seleccionadas.</p> @enderror
                     </div>
                 @endif
+
 
                 <!-- Mensaje Informativo de Telemedicina con Heroicon -->
                 <div x-show="type === 'virtual'" 
@@ -168,7 +173,7 @@ $breadcrumbs = [
                     <button type="submit" class="flex-1 bg-blue-600 text-white font-black py-4 rounded-2xl shadow-lg hover:bg-blue-700 transition tracking-wide uppercase text-sm">
                         Registrar Servicio Clínico
                     </button>
-                    <a href="{{ route('partner.services.index') }}" class="px-8 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition text-sm flex items-center justify-center">
+                    <a href="{{ route('partner.clinic.services.index') }}" class="px-8 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition text-sm flex items-center justify-center">
                         Cancelar
                     </a>
                 </div>

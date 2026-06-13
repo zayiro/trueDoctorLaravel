@@ -212,7 +212,8 @@ Route::middleware(['auth', 'role:clinic'])->group(function () {
     Route::get('/clinic/services/create', [ClinicServiceController::class, 'create'])->name('partner.clinic.services.create');
     Route::post('/clinic/services', [ClinicServiceController::class, 'store'])->name('partner.clinic.services.store');
     Route::get('/clinic/services/{address}/{service}/edit', [ClinicServiceController::class, 'edit'])->name('partner.clinic.services.edit');
-    Route::delete('/clinic/services/{address}/{service}', [ClinicServiceController::class, 'destroy'])->name('partner.clinic.services.destroy');
+    Route::delete('/clinic/services/{address}/{service}', [ClinicServiceController::class, 'destroy'])->name('partner.clinic.services.destroy');    
+    Route::put('/clinic/services/{address}/{service}', [ClinicServiceController::class, 'update'])->name('partner.clinic.services.update');
 
     // Módulo Core: Horarios de Atención Semanales y Disponibilidad (Schedules)
     Route::get('/clinic/schedules', [ClinicScheduleController::class, 'index'])->name('partner.clinic.schedules.index');

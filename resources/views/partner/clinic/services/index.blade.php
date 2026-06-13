@@ -9,6 +9,10 @@ $breadcrumbs = [
         'name' => 'Catálogo de Servicios Médicos',
     ]
 ];
+
+// Cálculo estricto de límites para el Tenant corporativo
+$maxServices = $owner->plan?->max_services ?? 0;
+$canAddMoreServices = $uniqueServicesCount < $maxServices;
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
@@ -32,12 +36,11 @@ $breadcrumbs = [
             </button>
         </div>
     @endif
-
     <div class="max-w-6xl mx-auto py-10 px-4">
         {{-- Validación de límites dinámica para la Clínica --}}
-        @if($owner->canAddMoreServices())
+        @if($canAddMoreServices)
         <div class="flex justify-between items-center mb-8">
-            <a class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold transition flex items-center gap-2 text-sm shadow-md shadow-indigo-100 uppercase tracking-wider" href="{{ route('partner.services.create') }}">
+            <a class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold transition flex items-center gap-2 text-sm shadow-md shadow-indigo-100 uppercase tracking-wider" href="{{ route('partner.clinic.services.create') }}">
                 <!-- 🎯 HEROICONS: plus (outline) -->
                 <svg class="w-4 h-4" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -47,12 +50,12 @@ $breadcrumbs = [
         </div>
         @else
             <div class="text-sm text-amber-600 font-medium italic mb-4 p-4 bg-amber-50 rounded-xl border border-amber-100 shadow-sm flex items-center gap-2">
-                <span>⚠️ El centro médico ha alcanzado el límite de <strong>{{ $owner->plan?->max_services ?? 0 }}</strong> servicios de su plan corporativo {{ $owner->plan?->name ?? 'Clínica' }}.</span>
+                <span>⚠️ El centro médico ha alcanzado el límite de <strong>{{ $maxServices }}</strong> servicios de su plan corporativo {{ $owner->plan?->name ?? 'Clínica' }}.</span>
                 <a href="{{ route('partner.profile.edit') }}" class="underline font-black ml-1 hover:text-amber-800 uppercase tracking-wider text-xs">Gestionar suscripción aquí</a>.
             </div>
         @endif
 
-        {{-- Uso de infraestructura actual --}}
+        {{-- Contadores de consumo de infraestructura actual --}}
         <div class="mb-5 bg-slate-50 p-4 rounded-xl border border-slate-100 inline-block shadow-inner">
             <p class="text-sm text-slate-600">
                 <strong>Capacidad del Catálogo:</strong> 
@@ -60,35 +63,56 @@ $breadcrumbs = [
             </p>
         </div>
         <div class="bg-white shadow-xl rounded-3xl border border-gray-100 overflow-hidden w-full mt-6">
-            <div class="overflow-x-auto min-w-full inline-block align-middle">
-                <table class="w-full text-left border-collapse whitespace-nowrap">
+            <!-- 🚀 CONTENEDOR RESPONSIVO: Forzamos bloque completo con scroll horizontal elástico -->
+            <div class="overflow-x-auto w-full block">
+                <!-- 🎯 TABLA MODERADA: min-w-full asegura el llenado proporcional -->
+                <table class="w-full min-w-full text-left border-collapse whitespace-nowrap table-auto">
                     <thead>
                         <tr class="bg-gray-50 border-b border-gray-100">
                             <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Servicio Institucional</th>
-                            <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Especialidad Clínica</th>
-                            <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Modalidad</th>
-                            <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Duración Turno</th>
-                            <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Tarifas por Sede</th>
-                            <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Sedes Habilitadas</th>
-                            <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Estado</th>                        
+                            <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Especialidad Clínica</th>                            
+                            <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Duración</th>
+                            <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Tarifas</th>
+                            <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Sedes Habilitadas</th>                                            
                             <th class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Acciones</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-50">
                         @forelse($services as $service)
                         @php
-                            $maxServices = $owner->plan?->max_services ?? 999;
-                            $isOverLimit = ($loop->index >= $maxServices);
+                            $maxServicesLimit = $owner->plan?->max_services ?? 999;
+                            $isOverLimit = ($loop->index >= $maxServicesLimit);
                             $firstAddress = $service->addresses->first();
                         @endphp
                         <tr class="hover:bg-slate-50/50 transition {{ $isOverLimit ? 'opacity-60 bg-gray-50' : '' }}">
+                            <!-- Nombre del Servicio -->
                             <td class="px-6 py-4">
                                 <span class="font-black text-slate-800 block tracking-tight">{{ $service->name }}</span>
+                                <div>
+                                    @if($service->type === 'virtual')
+                                        <span class="px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-100 rounded-full text-[10px] font-black uppercase tracking-wide">
+                                            Telemedicina
+                                        </span>
+                                    @else
+                                        <span class="px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded-full text-[10px] font-black uppercase tracking-wide">
+                                            Presencial
+                                        </span>
+                                    @endif
+                                </div>
+                                <div class="mt-2">
+                                    @if($service->active)
+                                        <span class="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full">Activo</span>
+                                    @else
+                                        <span class="bg-rose-50 text-rose-700 border border-rose-100 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full">Inactivo</span>
+                                    @endif
+                                </div>
                             </td>
                             
+                            <!-- Especialidades Clínicas -->
                             <td class="px-6 py-4">
                                 <div class="flex flex-wrap gap-1 max-w-xs">
-                                    @forelse($service->specialties as $specialty)
+                                    {{-- 🎯 FIX DE DUPLICADOS: Aplicamos ->unique('id') para filtrar las especialidades repetidas --}}
+                                    @forelse($service->specialties->unique('id') as $specialty)
                                         <span class="bg-indigo-50 text-indigo-700 text-[10px] font-black px-2 py-0.5 rounded-lg border border-indigo-100 uppercase tracking-wide">
                                             {{ $specialty->name }}
                                         </span>
@@ -99,18 +123,7 @@ $breadcrumbs = [
                                     @endforelse
                                 </div>
                             </td>
-
-                            <td class="px-6 py-4">
-                                @if($service->type === 'virtual')
-                                    <span class="px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-100 rounded-full text-[10px] font-black uppercase tracking-wide">
-                                        Telemedicina
-                                    </span>
-                                @else
-                                    <span class="px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded-full text-[10px] font-black uppercase tracking-wide">
-                                        Presencial
-                                    </span>
-                                @endif
-                            </td>
+                            <!-- Duración del Turno -->
                             <td class="px-6 py-4 text-slate-600 font-bold text-sm">
                                 @if($firstAddress)
                                     {{ $firstAddress->pivot->duration }} min
@@ -118,6 +131,7 @@ $breadcrumbs = [
                                     <span class="text-gray-400 italic text-xs font-normal">No definida</span>
                                 @endif
                             </td>
+                            <!-- Tarifas por Sede -->
                             <td class="px-6 py-4">
                                 @if(!$firstAddress)
                                     <span class="text-amber-600 text-xs font-bold bg-amber-50 px-2 py-1 rounded-xl border border-amber-100">Configuración pendiente</span>
@@ -128,12 +142,14 @@ $breadcrumbs = [
                                         @foreach($service->addresses as $address)
                                             <span class="text-xs text-slate-600 font-medium">
                                                 <strong class="text-green-600 font-black">${{ number_format($address->pivot->price, 2) }}</strong> 
-                                                <span class="text-slate-400 font-normal">({{ $address->name }})</span>
+                                                <div class="text-slate-400 font-normal">({{ $address->name }})</div>
                                             </span>
                                         @endforeach
                                     </div>
                                 @endif
                             </td>
+
+                            <!-- Sedes e Infraestructura Habilitada -->
                             <td class="px-6 py-4">
                                 @if($service->type === 'virtual')
                                     <span class="text-slate-400 italic text-xs font-medium">Consultorio Digital Clínico</span>
@@ -150,18 +166,15 @@ $breadcrumbs = [
                                         @endforelse
                                     </div>
                                 @endif
-                            </td>
-                            <td class="px-6 py-4">
-                                @if($service->active)
-                                    <span class="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full">Activo</span>
-                                @else
-                                    <span class="bg-rose-50 text-rose-700 border border-rose-100 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full">Inactivo</span>
-                                @endif
-                            </td>                        
+                            </td>                
+
+                            <!-- Acciones de Fila -->
                             <td class="px-6 py-4">
                                 @if (!$isOverLimit)
                                     <div class="flex items-center">
-                                        <a href="{{ route('partner.services.edit', $service->id) }}" class="text-indigo-600 hover:text-indigo-900 text-xs font-black uppercase tracking-wider transition-colors">
+                                        {{-- 🎯 FIX DE PARÁMETROS: Pasamos las llaves relacionales en el orden exacto de la ruta --}}
+                                        <a href="{{ route('partner.clinic.services.edit', ['address' => $firstAddress->id, 'service' => $service->id]) }}" 
+                                        class="text-indigo-600 hover:text-indigo-900 text-xs font-black uppercase tracking-wider transition-colors">
                                             Editar
                                         </a>
                                     </div>
