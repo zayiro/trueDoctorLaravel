@@ -10,9 +10,9 @@ use Illuminate\Support\Facades\Auth;
 class ProfileDoctorController extends Controller
 {
     public function edit()
-    {
-        // Traemos todos los planes disponibles
-        $plans = Plan::orderBy('price', 'asc')->get();
+    {        
+        // Traer todos los planes disponibles para pintar las tarjetas de suscripción si aplica
+        $plans = DB::table('plans')->where('applicable_role', 'doctor')->orderBy('price', 'asc')->get();
         
         // Obtenemos el doctor actual y sus configuraciones
         $doctor = auth()->user()->doctor;

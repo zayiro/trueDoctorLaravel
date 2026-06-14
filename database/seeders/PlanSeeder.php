@@ -18,6 +18,7 @@ class PlanSeeder extends Seeder
             [
                 'name' => 'Plan Free', 
                 'plan' => 'free', 
+                'applicable_role' => 'doctor',
                 'slug' => 'free', 
                 'max_addresses' => 2, 
                 'max_services' => 3, 
@@ -33,6 +34,7 @@ class PlanSeeder extends Seeder
             [
                 'name' => 'Plan Premium', 
                 'plan' => 'premium', 
+                'applicable_role' => 'doctor',
                 'slug' => 'premium', 
                 'max_addresses' => 10, 
                 'max_services' => 20, 
@@ -48,6 +50,7 @@ class PlanSeeder extends Seeder
             [
                 'name' => 'Plan Gold', 
                 'plan' => 'gold', 
+                'applicable_role' => 'doctor',
                 'slug' => 'gold', 
                 'max_addresses' => 20, 
                 'max_services' => 50, 
@@ -60,10 +63,28 @@ class PlanSeeder extends Seeder
                 'has_telemedicine' => true, 
                 'price' => 3500000
             ],
+            // 🏢 PLAN FREE EXCLUSIVO AÑADIDO PARA CLÍNICAS / CENTROS MÉDICOS MULTI-DOCTOR
+            [
+                'name' => 'Plan Clínica Free', 
+                'plan' => 'clinic_free', 
+                'applicable_role' => 'clinic',
+                'slug' => 'clinic_free', 
+                'max_addresses' => 2, 
+                'max_services' => 10, 
+                'max_doctors' => 5, // Capacidad para la nómina de la clínica
+                'max_appointments_per_year' => 200, 
+                'can_search_patients' => true, 
+                'can_see_whatsapp_contact_button' => true, 
+                'max_patients_list' => 500, 
+                'can_export_history' => true, 
+                'has_telemedicine' => true, 
+                'price' => 0
+            ],
             // 🏢 PLAN EXCLUSIVO AÑADIDO PARA CLÍNICAS / CENTROS MÉDICOS MULTI-DOCTOR
             [
                 'name' => 'Plan Clínica Gold', 
                 'plan' => 'clinic_gold', 
+                'applicable_role' => 'clinic',
                 'slug' => 'clinic_gold', 
                 'max_addresses' => 15, 
                 'max_services' => 100, 

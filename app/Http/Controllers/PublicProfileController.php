@@ -18,22 +18,23 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
 class PublicProfileController extends Controller
-{   
+{          
     /**
      * Muestra la pantalla del perfil unificado (Clínica o Doctor de opendoctor.online).
      * URL: /medical-partner/{slug}
      */
     public function show(Request $request, $slug)
-    {        
+    {                
         $addressId = $request->input('address_id');
         $now = Carbon::now();
         $currentTime = $now->toTimeString();
 
-        // 🔒 CAPTURA MAESTRA DE LA ESPECIALIDAD REQUERIDA
-        $specialtyInput = $request->input('specialty');
+        // 🔒 CAPTURA MAESTRA DE LA ESPECIALIDAD REQUERIDA (Soporta Slug e ID numérico)
+        $targetSpecialtySlug = $request->input('specialty');
+        
         $currentSpecialty = Specialty::where('status', true)
-            ->where(function($query) use ($specialtyInput) {
-                $query->where('slug', $specialtyInput)->orWhere('id', $specialtyInput);
+            ->where(function($query) use ($targetSpecialtySlug) {
+                $query->where('slug', $targetSpecialtySlug)->orWhere('id', $targetSpecialtySlug);
             })->first();
 
         // --------------------------------------------------------------------
@@ -43,6 +44,7 @@ class PublicProfileController extends Controller
             ->where('validation_status', 'approved')
             ->where('active', true)
             ->first();
+
         if ($clinic) {
             $showingAllStaffFallback = false;
 
@@ -95,7 +97,8 @@ class PublicProfileController extends Controller
             if ($showingAllStaffFallback && $clinic->doctors->isNotEmpty()) {
                 $currentSpecialty = $clinic->doctors->first()->specialties->first();
             }
-            // Algoritmo nativo de inmediatez del staff de la clínica (Corregido y Optimizado)
+
+            // Algoritmo nativo de inmediatez del staff de la clínica
             $doctorIds = $clinic->doctors()->pluck('doctors.id')->toArray();
             $unifiedSlots = [];
 
@@ -108,7 +111,6 @@ class PublicProfileController extends Controller
                     ->where('day', $evalDayOfWeek)
                     ->whereIn('doctor_id', $doctorIds)
                     ->get();
-
                 foreach ($schedules as $sched) {
                     if ($dayOffset === 0 && $sched->start_time < $currentTime) {
                         continue;
@@ -139,7 +141,7 @@ class PublicProfileController extends Controller
                 }
             }
             
-                        // FÓRMULA DE SÍNTESIS DEPURADA Y BLINDADA: Prepara las tarjetas moleculares para la clínica
+            // FÓRMULA DE SÍNTESIS DEPURADA Y BLINDADA: Prepara las tarjetas moleculares para la clínica
             $results = [];
             $clinicAddresses = $clinic->addresses;
 
@@ -152,8 +154,7 @@ class PublicProfileController extends Controller
                     ->unique()
                     ->toArray();
                 
-                // 🔥 CORRECCIÓN CRÍTICA: Extraemos el primer ID numérico del array. 
-                // Si el array está vacío, usamos el ID real de la sede actual evaluada ($address->id)
+                // Extraemos el primer ID numérico del array. Fallback de la sede actual evaluada ($address->id)
                 $assignedAddressId = !empty($activeAddressIds) ? $activeAddressIds[0] : $address->id;
                 
                 $targetAddressModel = $clinicAddresses->firstWhere('id', $assignedAddressId) ?? $address;
@@ -163,10 +164,8 @@ class PublicProfileController extends Controller
                     'slug'               => $doc->slug ?? $doc->user->slug,
                     'type'               => 'doctor',
                     'title'              => ($doc->gender === 'female' ? 'Dra. ' : 'Dr. ') . ucfirst($doc->user->name),
-                    'subtitle'           => "Sede " . $targetAddressModel->name . " • " . $targetAddressModel->address_line,
+                    'subtitle'           => "Sede " . $targetAddressModel->name . " • " . $targetAddressModel->address,
                     'rating'             => $doc->rating ?? 5,
-                    
-                    // 🔒 AHORA SÍ: Envía un entero limpio (ej: 8 o 10) al parámetro address_id de la URL de Blade
                     'address_id'         => (int)$assignedAddressId, 
                     'active_address_ids' => !empty($activeAddressIds) ? $activeAddressIds : [$address->id],
                     'badge_text'         => $doc->specialties->first()->name ?? ($currentSpecialty ? $currentSpecialty->name : 'Especialista'),
@@ -190,6 +189,7 @@ class PublicProfileController extends Controller
                 'seoDescription'          => $clinic->bio ?? 'Elige entre atención inmediata o tu especialista preferido.'
             ]);
         }
+
         // --------------------------------------------------------------------
         // 2. SI NO ES UNA CLÍNICA, BUSCAMOS EN EL CATÁLOGO DE ESPECIALISTAS INDEPENDIENTES
         // --------------------------------------------------------------------
@@ -198,22 +198,19 @@ class PublicProfileController extends Controller
             ->where('active', true)
             ->firstOrFail();
 
-        $fromClinicId = $request->input('from_clinic');
+        $fromClinicId = $request->input('from_clinic') ?? $request->input('clinic_id');
         $preSelectedAddress = null;
 
-        // LÓGICA DE PRODUCCIÓN ORIGINAL RESTAURADA AL 100%
+        // Carga base unificada de datos del médico y sus especialidades ordenadas
         $doctor->load([
             'user',
-            'specialties' => function ($query) use ($currentSpecialty) {
-                if ($currentSpecialty && isset($currentSpecialty->id)) {
-                    $query->orderByRaw('CASE WHEN specialties.id = ? THEN 0 ELSE 1 END', [$currentSpecialty->id])
+            'specialties' => function ($query) use ($targetSpecialtySlug) {
+                if ($targetSpecialtySlug && isset($targetSpecialtySlug)) {
+                    $query->orderByRaw('CASE WHEN specialties.id = ? THEN 0 ELSE 1 END', [$targetSpecialtySlug])
                           ->orderBy('name', 'asc');
                 } else {
                     $query->orderBy('name', 'asc');
                 }
-            },
-            'addresses' => function ($query) {
-                $query->where('status', true)->with(['city', 'services']);
             }
         ]);
 
@@ -223,26 +220,221 @@ class PublicProfileController extends Controller
             ];
         }
 
-                // 🔒 AISLAMIENTO MULTI-TENANT CONTEXTUAL (REPARACIÓN DE ATENCIÓN VIRTUAL)
+        // =========================================================================
+        // 🏢 CASO 1: EL MÉDICO ESTÁ OPERANDO COMO STAFF DE UNA CLÍNICA (?from_clinic=1)
+        // =========================================================================
         if ($fromClinicId) {
             $parentClinic = Clinic::where('id', $fromClinicId)
                 ->where('validation_status', 'approved')
                 ->first();
 
-            // Mantenemos la carga original de direcciones del médico (admite clinic_id = null si es su dirección virtual)
-            // para que la sede virtual autogenerada por el Observer no sea eliminada por la consulta SQL.
-            $doctor->load(['addresses' => function ($query) {
-                $query->where('status', true)->with(['city', 'services' => fn($q) => $q->where('services.active', true)]);
-            }]);
+            if (!$parentClinic) {
+                abort(404, 'La institución médica vinculada no se encuentra activa.');
+            }
+
+            // 1. 🔒 FILTRADO ESTRICTO: Traer únicamente las sedes oficiales de la clínica
+            $clinicAddresses = Address::where('status', true)
+                ->where('clinic_id', $fromClinicId)
+                ->get();
+
+            // 2. 🧬 DETECCIÓN HÍBRIDA MULTI-TENANT: Iteramos cada sede para inyectarle sus servicios institucionales
+            foreach ($clinicAddresses as $currentAddr) {
+                
+                // 🛡️ CONTROL DE MODALIDAD FIEL A MARIADB:
+                // Si la sede es VIRTUAL, jalamos directo de address_service para evitar cuellos de botella
+                if ($currentAddr->type === 'virtual') {
+                    $rawServices = DB::table('address_service')
+                        ->join('services', 'address_service.service_id', '=', 'services.id')
+                        ->where('address_service.address_id', $currentAddr->id)
+                        ->where('services.active', true)
+                        ->select('services.id', 'services.name', 'address_service.price', 'address_service.duration')
+                        ->distinct()
+                        ->get();
+                } 
+                // Si la sede es FÍSICA, mantenemos el filtro cruzado por especialidad médica
+                else {
+                    $rawServices = DB::table('address_service')
+                        ->join('services', 'address_service.service_id', '=', 'services.id')
+                        ->join('service_specialty', 'services.id', '=', 'service_specialty.service_id')
+                        ->join('doctor_specialty', 'service_specialty.specialty_id', '=', 'doctor_specialty.specialty_id')
+                        ->where('address_service.address_id', $currentAddr->id)
+                        ->where('services.active', true)
+                        ->where('doctor_specialty.doctor_id', $doctor->id)
+                        ->when($targetSpecialtySlug, function($q) use ($targetSpecialtySlug) {
+                            $q->join('specialties', 'service_specialty.specialty_id', '=', 'specialties.id')
+                              ->where(function($sub) use ($targetSpecialtySlug) {
+                                  $sub->where('specialties.slug', $targetSpecialtySlug)
+                                      ->orWhere('specialties.id', $targetSpecialtySlug);
+                              });
+                        })
+                        ->select('services.id', 'services.name', 'address_service.price', 'address_service.duration')
+                        ->distinct()
+                        ->get();
+                }
+
+                // Formateamos los servicios inyectando el objeto pivot simétrico que espera el frontend
+                $formattedServices = $rawServices->map(function($srv) {
+                    $srv->pivot = (object)[
+                        'price' => $srv->price,
+                        'duration' => $srv->duration
+                    ];
+                    return $srv;
+                });
+
+                // Asignación manual e inmune de la relación en memoria ram
+                $currentAddr->setRelation('services', $formattedServices);
+            }
+
+            // Sobreescribe la colección del médico con el staff corporativo blindado
+            $doctor->setRelation('addresses', $clinicAddresses);
+
+            session(['current_clinic_user_id' => $parentClinic->user_id]);
+            session(['current_doctor_id' => $doctor->user_id]);
         }
 
+                // =========================================================================
+        // 🩺 CASO 2: EL MÉDICO OPERA EN SU CONSULTORIO PARTICULAR AUTÓNOMO
+        // =========================================================================
+        else {
+            // Lógica original de producción: el médico es dueño de sus propios servicios y tarifas
+            $doctor->load(['addresses' => function ($query) use ($doctor) {
+                $query->where('status', true)
+                    ->whereNull('clinic_id') // Solo consultorios privados
+                    ->with(['city', 'services' => function($query) use ($doctor) {
+                        $query->where('services.active', true)
+                            ->withPivot('price', 'duration') // Extrae tarifas particulares de address_service
+                            ->whereIn('services.id', function($subQuery) use ($doctor) {
+                                $subQuery->select('service_specialty.service_id')
+                                    ->from('service_specialty')
+                                    ->where('service_specialty.user_id', $doctor->user_id); // Catálogo del Médico Individual
+                            });
+                    }]);
+            }]);
 
-        if ($addressId && $fromClinicId) {
+            session(['current_doctor_id' => $doctor->user_id]);
+            session()->forget('current_clinic_user_id');
+        }
+
+        // =========================================================================
+        // 🔒 ALGORITMO HÍBRIDO AVANZADO: RECOPILACIÓN DE FECHAS CON SLOTS REALES
+        // =========================================================================
+        $nextAvailableDate = Carbon::now()->toDateString();
+        $targetAddressId = null;
+        $enabledDates = []; // Array que alimentará a Flatpickr en el frontend
+
+        // Determinar de forma segura qué address_id evaluar para el cronograma predictivo
+        if ($addressId) {
+            $targetAddressId = $addressId;
+        } elseif ($doctor->addresses->isNotEmpty()) {
+            $targetAddressId = $doctor->addresses->first()->id;
+        }
+
+        if ($targetAddressId) {
+            // 🛡️ Cargar las configuraciones de citas del doctor o usar fallbacks de producción
+            $settings = DB::table('doctor_settings')->where('doctor_id', $doctor->id)->first();
+            $minNoticeHours = $settings->min_notice_hours ?? 2;
+            $maxAdvanceDays = $settings->max_advance_days ?? 30;
+
+            $now = Carbon::now();
+            $maxDate = Carbon::now()->addDays($maxAdvanceDays);
+
+            // 1. Traer todos los horarios configurados por el médico en esta sede
+            $baseSchedules = DB::table('schedules')
+                ->where('address_id', $targetAddressId)
+                ->where('doctor_id', $doctor->id)
+                ->get()
+                ->groupBy('day'); // Agrupamos por día de la semana (1 = Lunes, 7 = Domingo)
+
+            // 2. Traer todas las citas activas/reservadas en este rango de días para optimizar memoria
+            $bookedAppointments = Appointment::where('address_id', $targetAddressId)
+                ->where('doctor_id', $doctor->id)
+                ->whereBetween('date', [$now->toDateString(), $maxDate->toDateString()])
+                ->whereIn('status', ['pending', 'confirmed', 'completed'])
+                ->get()
+                ->groupBy(fn($app) => $app->date . '_' . $app->start_time);
+
+            // 3. Traer las indisponibilidades (vacaciones, congresos) del médico
+            $unavailabilities = DB::table('unavailabilities')
+                ->where('doctor_id', $doctor->id)
+                ->where(fn($q) => $q->whereNull('address_id')->orWhere('address_id', $targetAddressId))
+                ->where('start_date', '<=', $maxDate->toDateString())
+                ->where('end_date', '>=', $now->toDateString())
+                ->get();
+
+            // Escaneamos el horizonte dinámico permitido por el plan/configuración del médico
+            for ($dayOffset = 0; $dayOffset <= $maxAdvanceDays; $dayOffset++) {
+                $evalDate = Carbon::now()->addDays($dayOffset);
+                $evalDateString = $evalDate->toDateString();
+                $evalDayOfWeek = $evalDate->dayOfWeekIso; 
+
+                // Si el médico no atiende este día de la semana, pasamos al siguiente día
+                if (!isset($baseSchedules[$evalDayOfWeek])) {
+                    continue;
+                }
+
+                // Verificar si el día completo está bloqueado por indisponibilidad
+                $isDateUnavailable = $unavailabilities->contains(function ($unavail) use ($evalDateString) {
+                    return $evalDateString >= $unavail->start_date && 
+                           $evalDateString <= $unavail->end_date && 
+                           is_null($unavail->start_time);
+                });
+
+                if ($isDateUnavailable) {
+                    continue;
+                }
+
+                $hasAtLeastOneFreeSlot = false;
+
+                // Evaluamos cada franja horaria de este día específico
+                foreach ($baseSchedules[$evalDayOfWeek] as $sched) {
+                    $slotDateTime = Carbon::parse($evalDateString . ' ' . $sched->start_time);
+
+                    // Regla de Inmediatez: Filtrar horas pasadas si es hoy
+                    if ($dayOffset === 0 && $sched->start_time < $now->toTimeString()) {
+                        continue;
+                    }
+
+                    // Regla de Negocio: Validar horas mínimas de anticipación (min_notice_hours)
+                    if ($slotDateTime->diffInHours($now, false) * -1 < $minNoticeHours) {
+                        continue;
+                    }
+
+                    // Verificar si la franja específica está bloqueada por una indisponibilidad parcial (por horas)
+                    $isSlotInUnavailability = $unavailabilities->contains(function ($unavail) use ($evalDateString, $sched) {
+                        if ($evalDateString >= $unavail->start_date && $evalDateString <= $unavail->end_date && !is_null($unavail->start_time)) {
+                            return $sched->start_time >= $unavail->start_time && $sched->start_time < $unavail->end_time;
+                        }
+                        return false;
+                    });
+
+                    if ($isSlotInUnavailability) {
+                        continue;
+                    }
+
+                    // Verificar en la matriz cargada si la cita ya está ocupada
+                    $isBooked = isset($bookedAppointments[$evalDateString . '_' . $sched->start_time]);
+
+                    if (!$isBooked) {
+                        $hasAtLeastOneFreeSlot = true;
+                        // Si es el primer slot libre que encontramos en todo el bucle, lo fijamos como el próximo turno disponible
+                        if (empty($enabledDates)) {
+                            $nextAvailableDate = $evalDateString;
+                        }
+                        break; // Si ya encontramos un espacio libre, este día es válido (se pintará de verde)
+                    }
+                }
+
+                // Si el día tiene al menos un slot disponible, se añade a la lista blanca para Flatpickr
+                if ($hasAtLeastOneFreeSlot) {
+                    $enabledDates[] = $evalDateString;
+                }
+            }
+        }
+
+        // Resolver pre-selección de sede física o virtual para inyectar en Alpine.js
+        if ($addressId) {
             $preSelectedAddress = $doctor->addresses->where('id', $addressId)->first();
         }
-
-        session(['current_doctor_id' => $doctor->user_id]);
-        session()->forget('current_clinic_user_id');
 
         return view('public.public-profile', [
             'partner'            => $doctor,
@@ -252,7 +444,9 @@ class PublicProfileController extends Controller
             'seoDescription'     => $doctor->bio ?? 'Especialista profesional calificado, agenda tu cita médica en línea.',
             'metaRobots'         => 'index, follow',
             'preSelectedAddress' => $preSelectedAddress,
-            'fromClinicId'       => $fromClinicId
+            'fromClinicId'       => $fromClinicId,
+            'nextAvailableDate'  => $nextAvailableDate, // Mantiene compatibilidad total
+            'enabledDates'       => $enabledDates       // 🧬 Inyección clave para pintar el calendario real
         ]);
-    }        
+    }
 }

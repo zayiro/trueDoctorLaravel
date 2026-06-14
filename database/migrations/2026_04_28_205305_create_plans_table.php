@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('name'); // Ejemplo: "Plan Premium"
             $table->string('slug')->unique(); // free, premium, gold
             $table->string('plan'); // Ejemplo: "premium"
+            $table->string('applicable_role', ['doctor', 'clinic', 'patient']);
             $table->integer('max_addresses')->default(2);
             $table->integer('max_services')->default(3);
             $table->integer('max_doctors')->default(1);
@@ -28,7 +29,7 @@ return new class extends Migration
             $table->integer('max_patients_list')->default(20);
             $table->boolean('can_export_history')->default(false); // Descargar PDFs
             $table->boolean('has_telemedicine')->default(true); // Video-consultas
-            $table->decimal('price', 10, 2)->default(0);
+            $table->decimal('price', 10, 2)->default(0);            
             $table->timestamps();
         });
     }

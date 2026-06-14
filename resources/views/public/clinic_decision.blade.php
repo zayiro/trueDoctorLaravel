@@ -36,7 +36,7 @@
                 <!-- Columna 2: Cuerpo de Información Centralizado (Metadata del Tenant) -->
                 <div class="flex-1 min-w-0 w-full">
                     <div class="flex flex-wrap items-center gap-2">
-                        <h1 class="text-2xl font-black text-slate-900 tracking-tight">{{ $clinic->name }}</h1>
+                        <h1 class="text-2xl font-black text-slate-900 tracking-tight">{{ $clinic->user->name }}</h1>
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-100/40">
                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                             Verificado

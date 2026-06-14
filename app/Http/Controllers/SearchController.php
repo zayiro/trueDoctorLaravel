@@ -120,12 +120,13 @@ class SearchController extends Controller
             ->orWhere(function ($sub) {
                 $sub->whereHas('doctor', function ($q) {
                     $q->where('active', true)->where('validation_status', 'approved');
-                })
-                ->whereHas('doctor.settings', function ($q) {
-                    $q->whereNotNull('plan_id'); // 🔒 Oculta de inmediato al staff con plan_id = NULL
                 });
+                /*->whereHas('doctor.settings', function ($q) {
+                    $q->whereNotNull('plan_id'); // 🔒 Oculta de inmediato al staff con plan_id = NULL
+                });*/
             });
         });
+
         // Filtro condicional por Especialidad Médica (Slug de la tabla specialties)
         $searchQuery->when($request->specialty, function ($query) use ($request) {
             $query->where(function ($sub) use ($request) {
@@ -191,7 +192,7 @@ class SearchController extends Controller
                 $groupedResults->push([
                     'type'        => 'clinic',
                     'id'          => $clinic->id,
-                    'title'       => $clinic->name,
+                    'title'       => $clinic->user->name,
                     'subtitle'    => "Sede Principal: {$address->name} • {$address->address}",
                     'slug'        => $clinic->slug,
                     'rating'      => $clinic->rating,
@@ -200,8 +201,7 @@ class SearchController extends Controller
                     'next_turn'   => $nextAvailableTurn,
                     'user'        => $clinic->user
                 ]);
-            }
-                    else {
+            } else {
                 $doctor = $address->doctor;
 
                 // 🔒 BLINDAJE ANTI-REPETIDOS: Buscamos si el doctor ya fue ingresado por otro consultorio previo
@@ -260,7 +260,7 @@ class SearchController extends Controller
         );
 
         $resultsPage->appends($request->all());
-
+        
         return view('search.index', [
             'results'     => $resultsPage,
             'specialties' => $specialties,

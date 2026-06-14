@@ -42,7 +42,7 @@ class RegisterClinicController extends Controller
             'reps_code' => [
                 'required',
                 'string',
-                'digits:12', 
+                'digits:10', 
                 Rule::unique('clinics', 'reps_code'), 
             ],
             'phone' => ['required', 'string', 'regex:/^[0-9]{10}$/'], 
@@ -55,7 +55,7 @@ class RegisterClinicController extends Controller
             'nit.unique' => 'Este NIT ya está registrado en nuestra plataforma.',
             'phone.regex' => 'El número celular debe contener exactamente 10 dígitos numéricos (ej: 3001234567).',
             'reps_code.required' => 'El código de habilitación REPS es obligatorio.',
-            'reps_code.digits' => 'El código REPS debe tener exactamente 12 números.',
+            'reps_code.digits' => 'El código REPS debe tener exactamente 10 números.',
             'reps_code.unique' => 'Este código REPS ya se encuentra registrado.',
         ]);        
 
@@ -83,7 +83,6 @@ class RegisterClinicController extends Controller
                 // 3. Crear el perfil de la clínica
                 // Al ejecutarse este create(), Laravel dispara el ClinicObserver para inyectar ClinicSetting y la Sede Virtual
                 $clinic = $user->clinic()->create([
-                    'name'              => trim($request->name), 
                     'nit'               => $cleanNit,
                     'reps_code'         => trim($request->reps_code), 
                     'phone'             => $fullPhone,

@@ -29,7 +29,7 @@ class ProfileClinicController extends Controller
         $allSpecialties = Specialty::where('status', true)->orderBy('name', 'asc')->get();
 
         // Traer todos los planes disponibles para pintar las tarjetas de suscripción si aplica
-        $plans = DB::table('plans')->orderBy('price', 'asc')->get();
+        $plans = DB::table('plans')->where('applicable_role', 'clinic')->orderBy('price', 'asc')->get();
 
         return view('partner.clinic.profile.edit', [
             'user'           => $user,
@@ -74,14 +74,14 @@ class ProfileClinicController extends Controller
             
             // Actualizar credenciales básicas de acceso a la plataforma
             $user->update([
-                'name'  => $request->input('name'),
+                'name'  => trim($request->input('name')),
                 'email' => $request->input('email'),
             ]);
 
             // Reconstruir el número telefónico concatenando el indicativo de país de forma estandarizada            
             $cleanPhone = preg_replace('/[^0-9]/', '', trim($request->phone));
             $fullPhone = $request->country_code ? $request->country_code . $cleanPhone : '+57' . $cleanPhone;
-
+            
             // Preservar el slug actual de producción si ya existe para proteger el SEO de Google
             $stableSlug = $clinic->slug ?: Str::slug($request->input('name'));
 
@@ -93,7 +93,6 @@ class ProfileClinicController extends Controller
 
             // Actualizar la tabla comercial e institucional de la clínica
             $clinic->update([
-                'name'              => trim($request->input('name')),
                 'nit'               => $request->input('nit'),
                 'reps_code'         => $request->input('reps_code'),
                 'phone'             => $fullPhone,

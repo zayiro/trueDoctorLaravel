@@ -197,7 +197,7 @@
                                 <div class="flex flex-col md:col-span-2">
                                     <x-label for="name" value="Nombre Oficial de la Institución" class="mb-1 text-slate-500 font-bold text-xs" />
                                     <input type="text" name="name" id="name" 
-                                        value="{{ old('name', $clinic->name ?? $user->name) }}" required
+                                        value="{{ old('name', $clinic->user->name ?? $user->name) }}" required
                                         placeholder="Ej: Clínica Metropolitana del Valle"
                                         class="w-full rounded-2xl border-slate-200 py-4 px-5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-inner text-slate-800 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                 </div>
@@ -259,7 +259,7 @@
 
                                 <!-- Código REPS (Habilitación Oficial) -->
                                 <div class="flex flex-col">
-                                    <x-label for="reps_code" value="Código REPS (Solo Lectura)" class="mb-1 text-slate-400 font-bold text-xs" />
+                                    <x-label for="reps_code" value="Código REPS" class="mb-1 text-slate-400 font-bold text-xs" />
                                     <input type="text" name="reps_code" id="reps_code" 
                                         value="{{ $clinic->reps_code }}" 
                                         
