@@ -184,29 +184,101 @@
                             <!-- Grid de Datos Base (UX e Identidad Unificada OpenDoctor) -->
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                                 
-                                <!-- Documento de Identidad -->
-                                <div class="flex flex-col">
-                                    <x-label for="identification" value="Documento de Identidad" class="mb-1 text-slate-500 font-bold text-xs" />
-                                    <input type="text" name="identification" id="identification" 
-                                        value="{{ old('identification', $doctor->identification) }}" required
-                                        placeholder="Número de cédula o ID"
-                                        class="w-full rounded-2xl border-slate-200 py-4 px-5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-inner text-slate-800">
+                                <!-- Correo Electrónico del Médico (Con Control Dinámico Readonly) -->
+                                <div class="flex flex-col md:col-span-2 mb-2">
+                                    <x-label for="email" value="Correo Electrónico Profesional" class="mb-1 text-slate-500 font-bold text-xs" />
+                                    
+                                    <input type="email" name="email" id="email" 
+                                        value="{{ old('email', $user->email ?? '') }}" required
+                                        placeholder="doctor@opendoctor.online"
+                                        
+                                        {{-- 🔒 CAPA 1 HTML: Bloquea la edición si el médico ya está aprobado --}}
+                                        {{ $doctor->validation_status === 'approved' ? 'readonly' : '' }}
+                                        
+                                        {{-- 🎨 CAPA 2 TAILWIND: Estilos premium condicionales para estados de lectura --}}
+                                        class="w-full rounded-2xl py-4 px-5 text-sm shadow-inner transition-colors
+                                        {{ $doctor->validation_status === 'approved' 
+                                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed border-slate-200 focus:ring-0 focus:border-slate-200' 
+                                            : 'border-slate-200 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500' 
+                                        }}">
+                                        
+                                    {{-- Micro-nota explicativa de seguridad institucional --}}
+                                    @if($doctor->validation_status === 'approved')
+                                        <span class="text-[10px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
+                                            <!-- SVG Nativo: Lock-Closed de Heroicons -->
+                                            <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://w3.org" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"></path>
+                                            </svg>
+                                            Canal de acceso verificado. Cambios de correo requieren validación de soporte.
+                                        </span>
+                                    @endif
                                 </div>
 
-                                <!-- Licencia Médica -->
-                                <div class="flex flex-col">
+                                <!-- Documento de Identidad (Con Control Dinámico Readonly) -->
+                                <div class="flex flex-col mb-2">
+                                    <x-label for="identification" value="Documento de Identidad" class="mb-1 text-slate-500 font-bold text-xs" />
+                                    
+                                    <input type="text" name="identification" id="identification" 
+                                        value="{{ old('identification', $doctor->identification ?? '') }}" required
+                                        placeholder="Número de cédula o ID"
+                                        
+                                        {{-- 🔒 CAPA 1 HTML: Bloquea la escritura si el médico ya está aprobado --}}
+                                        {{ $doctor->validation_status === 'approved' ? 'readonly' : '' }}
+                                        
+                                        {{-- 🎨 CAPA 2 TAILWIND: Cambia los estilos visuales en cascada según el estado del Perfil --}}
+                                        class="w-full rounded-2xl py-4 px-5 text-sm shadow-inner transition-colors
+                                        {{ $doctor->validation_status === 'approved' 
+                                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed border-slate-200 focus:ring-0 focus:border-slate-200' 
+                                            : 'border-slate-200 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500' 
+                                        }}">
+                                        
+                                    {{-- Nota de auditoría sutil si el campo es de solo lectura --}}
+                                    @if($doctor->validation_status === 'approved')
+                                        <span class="text-[10px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
+                                            <!-- SVG Nativo: Lock-Closed de Heroicons -->
+                                            <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://w3.org" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"></path>
+                                            </svg>
+                                            Identificación verificada. Cambios requieren revisión de soporte.
+                                        </span>
+                                    @endif
+                                </div>
+
+                                <!-- Licencia Médica (Con Control Dinámico Readonly) -->
+                                <div class="flex flex-col mb-2">
                                     <x-label for="medical_license" value="Licencia Médica / Registro Oficial" class="mb-1 text-slate-500 font-bold text-xs" />
+                                    
                                     <input type="text" name="medical_license" id="medical_license" 
-                                        value="{{ old('medical_license', $doctor->medical_license) }}" required
+                                        value="{{ old('medical_license', $doctor->medical_license ?? '') }}" required
                                         placeholder="Ej: Registro ReTHUS"
-                                        class="w-full rounded-2xl border-slate-200 py-4 px-5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-inner text-slate-800">
+                                        
+                                        {{-- 🔒 CAPA 1 HTML: Bloquea la edición si el médico ya está aprobado --}}
+                                        {{ $doctor->validation_status === 'approved' ? 'readonly' : '' }}
+                                        
+                                        {{-- 🎨 CAPA 2 TAILWIND: Estilos visuales condicionales según el estado de verificación --}}
+                                        class="w-full rounded-2xl py-4 px-5 text-sm shadow-inner transition-colors
+                                        {{ $doctor->validation_status === 'approved' 
+                                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed border-slate-200 focus:ring-0 focus:border-slate-200' 
+                                            : 'border-slate-200 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500' 
+                                        }}">
+                                        
+                                    {{-- Micro-nota explicativa de seguridad --}}
+                                    @if($doctor->validation_status === 'approved')
+                                        <span class="text-[10px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
+                                            <!-- SVG Nativo: Lock-Closed de Heroicons -->
+                                            <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://w3.org" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"></path>
+                                            </svg>
+                                            Registro habilitado. Cambios regulatorios requieren validación de soporte.
+                                        </span>
+                                    @endif
                                 </div>
 
                                 <!-- Número Celular Expandido (Corregido sin ciclos indexados) -->
-                                <div class="flex flex-col">
+                                <div class="flex flex-col mb-2">
                                     <x-label for="phone" value="Número celular de notificación" class="mb-1 text-slate-500 font-bold text-xs" />
                                     <div class="flex rounded-2xl border border-slate-200 bg-white focus-within:ring-2 focus-within:ring-indigo-500 overflow-hidden shadow-inner">
-                                        <select name="country_code" required class="bg-slate-50 text-slate-600 text-xs border-0 border-r border-slate-200 focus:ring-0 px-5 cursor-pointer outline-none">
+                                        <select name="country_code" required class="bg-slate-50 text-slate-600 text-xs border-0 border-r border-slate-200 focus:ring-0 px-7 cursor-pointer outline-none">
                                             <option value="+57" {{ old('country_code', substr($doctor->phone, 0, 3)) == '+57' ? 'selected' : '' }}>🇨🇴 +57</option>
                                             <option value="+54" {{ old('country_code', substr($doctor->phone, 0, 3)) == '+54' ? 'selected' : '' }}>🇦🇷 +54</option>
                                             <option value="+591" {{ old('country_code', substr($doctor->phone, 0, 4)) == '+591' ? 'selected' : '' }}>🇧🇴 +591</option>
@@ -223,7 +295,7 @@
                                 </div>
 
                                 <!-- Años de Experiencia -->
-                                <div class="flex flex-col">
+                                <div class="flex flex-col mb-2">
                                     <x-label for="experience_years" value="Años de Experiencia Profesional" class="mb-1 text-slate-500 font-bold text-xs" />
                                     <input type="number" name="experience_years" id="experience_years" min="0" max="100"
                                         value="{{ old('experience_years', $doctor->experience_years) }}" required

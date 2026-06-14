@@ -12,6 +12,18 @@
             'active' => request()->routeIs('admin.dashboard'),
         ],
         [
+            'name' => 'Control de Citas',
+            'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A4.49 4.49 0 0 1 8.323 14.5m8.034 4.22a9.09 9.09 0 0 0 1.94-2.22c.19-.344.257-.74.257-1.136a4.49 4.49 0 0 0-1.66-3.355m-.104 6.126-2.315-2.222M10.5 7.5a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm6.75 2.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm-12.75 9c0-1.336 1.054-2.424 2.38-2.44a11.958 11.958 0 0 1 9.74 0c1.326.015 2.38 1.104 2.38 2.441 0 .641-.12 1.253-.337 1.817H4.087C3.87 19.818 3.75 19.206 3.75 18.563Z"/></svg>',
+            'href' => route('partner.clinic.appointments.index'),
+            'active' => request()->routeIs('partner.clinic.appointments.*'),
+        ],
+        [
+            'name' => 'Datos del perfil',
+            'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"></path></svg>',
+            'href' => route('partner.clinic.profile.edit'),
+            'active' => request()->routeIs('partner.clinic.profile.*'),
+        ],
+        [
             'name' => 'Nómina de Especialistas',
             'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A4.49 4.49 0 0 1 8.323 14.5m8.034 4.22a9.09 9.09 0 0 0 1.94-2.22c.19-.344.257-.74.257-1.136a4.49 4.49 0 0 0-1.66-3.355m-.104 6.126-2.315-2.222M10.5 7.5a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm6.75 2.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm-12.75 9c0-1.336 1.054-2.424 2.38-2.44a11.958 11.958 0 0 1 9.74 0c1.326.015 2.38 1.104 2.38 2.441 0 .641-.12 1.253-.337 1.817H4.087C3.87 19.818 3.75 19.206 3.75 18.563Z"/></svg>',
             'href' => route('partner.clinic.doctors.index'),

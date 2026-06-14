@@ -335,12 +335,12 @@ class SearchController extends Controller
         if ($schedule) {
             // Obtenemos la hora purificada en formato H:i:s de forma segura, 
             // sin importar si $schedule->start_time es un string o un objeto Carbon
-            $timeStr = $schedule->start_time instanceof \Carbon\Carbon 
+            $timeStr = $schedule->start_time instanceof Carbon 
                 ? $schedule->start_time->format('H:i:s') 
-                : \Carbon\Carbon::parse($schedule->start_time)->format('H:i:s');
+                : Carbon::parse($schedule->start_time)->format('H:i:s');
 
             // Combinamos la fecha destino calculada en el bucle con la hora purificada del turno
-            $scheduleTime = \Carbon\Carbon::parse($targetDate->toDateString() . ' ' . $timeStr);
+            $scheduleTime = Carbon::parse($targetDate->toDateString() . ' ' . $timeStr);
             
             // Formateamos estilo Doctoralia: "sábado 13 de junio — 10:30 AM"
             return $scheduleTime->isoFormat('dddd d [de] MMMM') . ' — ' . $scheduleTime->format('g:i A');
@@ -560,5 +560,5 @@ class SearchController extends Controller
             'status'  => true,
             'message' => 'Device coordinates and location successfully frozen in session data.'
         ]);
-    }
+    }    
 }

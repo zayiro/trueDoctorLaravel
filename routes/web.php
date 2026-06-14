@@ -10,6 +10,7 @@ use App\Http\Controllers\SearchController;
 use App\Http\Controllers\AddressController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\ProfileDoctorController;
+use App\Http\Controllers\ProfileClinicController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\RegisterDoctorController;
 use App\Http\Controllers\RegisterClinicController;
@@ -40,7 +41,7 @@ use App\Http\Controllers\ClinicAddressController;
 use App\Http\Controllers\ClinicServiceController;
 use App\Http\Controllers\ClinicScheduleController;
 use App\Http\Controllers\ClinicAppointmentController;
-
+use App\Http\Controllers\SymptomDirectoryController;
 use App\Http\Controllers\AppointmentStateController;
 
 use App\Http\Controllers\Admin\AdminController;
@@ -195,6 +196,10 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
 
 // Grupo exclusivo para la administración de nóminas de centros médicos
 Route::middleware(['auth', 'role:clinic'])->group(function () {    
+    // Ver y editar el perfil
+    Route::get('/clinic/partner/profile', [ProfileClinicController::class, 'edit'])->name('partner.clinic.profile.edit');
+    Route::put('/clinic/partner/profile', [ProfileClinicController::class, 'update'])->name('partner.clinic.profile.update');
+
     Route::get('/clinic/doctors', [ClinicDoctorController::class, 'index'])->name('partner.clinic.doctors.index');
     Route::post('/clinic/doctors', [ClinicDoctorController::class, 'store'])->name('partner.clinic.doctors.store');
     Route::patch('/clinic/doctors/{doctor}/toggle', [ClinicDoctorController::class, 'toggleStatus'])->name('partner.clinic.doctors.toggle');
@@ -225,6 +230,8 @@ Route::middleware(['auth', 'role:clinic'])->group(function () {
 
     // API Interna para carga dinámica de ciudades DIVIPOLA
     Route::get('/clinic/api/departments/{department}/cities', [ClinicAddressController::class, 'getCitiesByDepartment'])->name('partner.clinic.api.cities');
+
+    Route::get('/clinic/appointments', [ClinicAppointmentController::class, 'index'])->name('partner.clinic.appointments.index');
 });
 
 // Rutas Privadas (patient)
@@ -377,8 +384,10 @@ Route::post('/api/session/location', [SearchController::class, 'saveDeviceLocati
 
 //Páginas de Síntomas Indexables Automáticas
 
+// 🔒 ÍNDICE GENERAL: Captura la raíz y carga el catálogo completo de síntomas
+Route::get('/sintomas', [SymptomDirectoryController::class, 'index'])->name('symptom.index');
 // LA RUTA SEO DINÁMICA: Google y los usuarios entrarán aquí
-Route::get('/sintomas/{slug}', [SearchController::class, 'showSymptomLanding'])->name('symptoms.landing');
+Route::get('/sintomas/{slug}', [SymptomDirectoryController::class, 'show'])->name('symptom.landing');
 
 // Directorio médico de socios ordenado por planes de suscripción
 Route::get('/medical-directory', [SearchController::class, 'medicalDirectory'])->name('medical.directory');

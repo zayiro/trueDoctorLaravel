@@ -90,7 +90,7 @@
                             <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100/70 space-y-4">    
                                 <!-- Perfil Médico -->
                                 <div class="space-y-1">
-                                    <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Perfil Médico</h4>
+                                    <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Por qué es un especialista de alto nivel</h4>
                                     <div class="text-sm text-slate-600 leading-relaxed">                                    
                                         @if($partner->bio)
                                             <span>Consulta general y preventiva.</span>
@@ -147,7 +147,7 @@
 
                                 <!-- Experiencias y Tratamientos -->
                                 <div class="space-y-2 border-t border-slate-200/50 pt-3">
-                                    <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Tratamientos Comunes</h4>
+                                    <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider">Es experto en</h4>
                                     <div class="flex flex-wrap gap-1.5 pt-0.5">
                                         @if($profileType === 'doctor' && isset($partner->expertises))
                                             @forelse($partner->expertises as $expertise)

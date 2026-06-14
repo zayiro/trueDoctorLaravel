@@ -20,6 +20,11 @@ class ContextDoctorController extends Controller
         $contextId = $request->input('context_id');
         $user = auth()->user();
 
+        // 🛡️ BLINDAJE PRODUCCIÓN: Validar existencia del perfil médico antes de operar
+        if (!$user || !$user->doctor) {
+            abort(403, 'Perfil médico no encontrado o no configurado.');
+        }
+
         // 1. Caso: Regresar al Consultorio Particular e Independiente
         if ($contextId === 'particular' || is_null($contextId)) {
             session(['doctor_context' => [
@@ -54,7 +59,7 @@ class ContextDoctorController extends Controller
                 'type'  => 'clinic',
                 'id'    => $contextId,
                 'name'  => $clinicData ? $clinicData->name : 'Clínica Corporativa',
-                'photo' => $clinicData ? $clinicData->profile_photo_path : null // Guardamos la foto real de la clínica
+                'photo' => $clinicData ? $clinicData->profile_photo_path : null
             ]]);
         }
 

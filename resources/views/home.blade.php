@@ -7,7 +7,7 @@
                     Encuentra a tu <span class="text-blue-600">médico ideal</span>
                 </h1>
                 <p class="text-lg text-slate-600 max-w-2xl mx-auto">
-                    Reserva tu <span class="font-medium">Cita Médica en Línea</span> con los mejores especialistas de tu ciudad, de forma rápida, sencilla y sin esperas.
+                    Agenda tu <span class="font-medium">Cita Médica Virtual o Presencial</span> con los mejores especialistas de tu ciudad. Rápido, seguro y sin filas.
                 </p>
             </div>
 
@@ -26,7 +26,7 @@
     </div>
 
     <!-- Sección: buscador de sintomas de enfermedades -->
-    <div class="relative bg-white pb-10 pt-12 lg:pt-4 overflow-hidden">
+    <div class="relative bg-white pb-10 pt-10 lg:pt-4 overflow-hidden">
         <div class="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
             <div class="text-center mb-12">
                 <h1 class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
@@ -180,11 +180,17 @@
                                 Regístrate hoy y obtén tu <a href="{{ route('register') }}" class="text-blue-600 font-bold underline hover:text-blue-800">primer análisis 100% gratis</a>
                             </p>
                         @endif
-
                     </div>
-
                 </div>
             </div>
         </section>
     </div>
+
+    <!-- Componente Automático de Enlazado de Síntomas para SEO -->
+    <div class="relative bg-white pb-10 pt-10 lg:pt-4 overflow-hidden">
+        <section class="my-5 max-w-6xl mx-auto px-4">
+            <x-symptom-cards-home />
+        </section>
+    </div>
+
 </x-guest-layout>

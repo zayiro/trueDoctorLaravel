@@ -213,13 +213,27 @@
                 </div>
             @empty
                 <!-- ESTADO VACÍO EN CASO DE NO COINCIDIR FILTROS -->
-                <div class="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-slate-200 p-6 shadow-inner">
-                    <div class="mx-auto w-12 h-12 text-slate-300 mb-3 flex items-center justify-center bg-slate-50 border border-slate-100 rounded-full">
-                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.604 10.604z"/></svg>
-                    </div>
-                    <h4 class="text-base font-black text-slate-800 tracking-tight">Sin resultados exactos</h4>
-                    <p class="text-slate-400 text-xs mt-1 max-w-sm mx-auto leading-relaxed">No encontramos clínicas ni especialistas con esos criterios de búsqueda en este momento.</p>
-                    <a href="{{ route('search') }}" class="text-indigo-600 font-bold text-xs uppercase tracking-wider mt-3 inline-block hover:text-indigo-800">Limpiar todos los filtros</a>
+                <div class="text-center p-8 sm:p-12 border border-dashed border-slate-200 bg-white rounded-2xl flex flex-col items-center dark:bg-gray-800 dark:border-gray-700">
+                    <!-- SVG Nativo: Magnifying-Glass de Heroicons -->
+                    <svg class="w-10 h-10 text-slate-400 mb-3" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.604 10.604z" />
+                    </svg>
+                    
+                    <h4 class="font-bold text-slate-900 text-lg mb-1 dark:text-white">
+                        No hay especialistas directos asignados en este momento
+                    </h4>
+                    
+                    <p class="text-slate-500 text-sm max-w-md mb-5 dark:text-slate-400">
+                        Contamos con médicos generales e institucionales listos para evaluar tu caso de forma inicial y derivarte correctamente.
+                    </p>
+                    
+                    {{-- 🔒 ENLACE ESTRATÉGICO: Filtra directamente por Medicina General y deja la ciudad abierta --}}
+                    <a href="{{ url('/search') }}?specialty=medicina-general&city=" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black px-6 py-3 rounded-full transition shadow-sm focus:ring-4 focus:ring-blue-200">
+                        Consultar con Medicina General
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+                        </svg>
+                    </a>
                 </div>
             @endforelse
         </div> <!-- Cierra el contenedor de las tarjetas (.space-y-6) -->

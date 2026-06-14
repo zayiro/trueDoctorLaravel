@@ -60,7 +60,7 @@
     <!-- 5. LANDINGS DINÁMICAS DE SÍNTOMAS INDEXADOS -->
     @foreach($indexedSymptoms as $symptom)
         <url>
-            <loc>{{ route('symptoms.landing', $symptom->slug) }}</loc>
+            <loc>{{ route('symptom.landing', $symptom->slug) }}</loc>
             <lastmod>{{ $symptom->updated_at->tz('UTC')->toAtomString() }}</lastmod>
             <changefreq>weekly</changefreq>
             <priority>0.7</priority>

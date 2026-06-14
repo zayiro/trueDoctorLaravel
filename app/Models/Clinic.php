@@ -16,7 +16,7 @@ class Clinic extends Model
 {
     protected $fillable = [
         'slug', 'user_id', 'name', 'nit', 'reps_code',
-        'phone', 'bio', 'experience_years', 'rating', 
+        'phone', 'bio', 'experience_years', 'languages', 'rating', 
         'reviews_count', 'validation_status',
         'identity_card_path', 'reps_code_card_path', 'active'
     ];
@@ -25,6 +25,7 @@ class Clinic extends Model
         'active'        => 'boolean',
         'rating'        => 'float',
         'reviews_count' => 'integer',
+        'languages'     => 'json',
     ];
     public function createVirtualAddress()
     {
