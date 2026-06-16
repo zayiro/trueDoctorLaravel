@@ -112,21 +112,15 @@ class SearchController extends Controller
         
         // 🚀 INYECCIÓN CRÍTICA SAAS: Asegurar entidad válida y excluir médicos institucionales sin plan propio
         ->where(function ($query) {
-            // Condición A: La sede es de una clínica aprobada
             $query->whereHas('clinic', function ($q) {
                 $q->where('active', true)->where('validation_status', 'approved');
             })
-            // Condición B: La sede es de un médico, pero el médico DEBE tener un plan individual contratado
             ->orWhere(function ($sub) {
                 $sub->whereHas('doctor', function ($q) {
                     $q->where('active', true)->where('validation_status', 'approved');
                 });
-                /*->whereHas('doctor.settings', function ($q) {
-                    $q->whereNotNull('plan_id'); // 🔒 Oculta de inmediato al staff con plan_id = NULL
-                });*/
             });
         });
-
         // Filtro condicional por Especialidad Médica (Slug de la tabla specialties)
         $searchQuery->when($request->specialty, function ($query) use ($request) {
             $query->where(function ($sub) use ($request) {
@@ -139,7 +133,10 @@ class SearchController extends Controller
             });
         });
 
-        // Filtro condicional por Búsqueda de Ciudad (Slug de la tabla cities)
+        // 🔒 Clonación quirúrgica preventiva para el Algoritmo de Ampliación de Cobertura
+        $backupSearchQuery = clone $searchQuery;
+
+        // Filtro condicional original por Búsqueda de Ciudad (Slug de la tabla cities)
         $searchQuery->when($request->city, function ($query) use ($request) {
             $query->whereHas('city', function ($q) use ($request) {
                 $q->where('slug', $request->city);
@@ -151,9 +148,101 @@ class SearchController extends Controller
             ->orderBy('owner_rating', 'desc')                          
             ->get();
 
+        // 🚨 CONTROL DE CERO RESULTADOS: Activación de Cobertura Gradual
+        $showingSuggestions = false;
+        $targetCity = $request->city ? City::where('slug', $request->city)->first() : null;
+        $targetSpecialty = $request->specialty ? Specialty::where('slug', $request->specialty)->first() : null;
+        $expertName = 'especialistas';
+
+        if ($addresses->isEmpty() && $targetCity) {
+            $showingSuggestions = true;
+
+            // Ampliamos el query de respaldo: traemos sedes virtuales (nacionales) o físicas de otras ciudades
+            $addresses = $backupSearchQuery->where(function ($query) use ($targetCity) {
+                $query->where('addresses.type', 'virtual')
+                      ->orWhereHas('city', function ($q) use ($targetCity) {
+                          $q->where('id', '!=', $targetCity->id);
+                      });
+            })
+            ->orderBy('owner_plan_price', 'desc') 
+            ->orderBy('owner_rating', 'desc')
+            ->limit(12)
+            ->get();
+
+            // Generador gramatical empático según especialidad (Catálogo Ampliado)
+            if ($targetSpecialty) {
+                $specialtyName = strtolower($targetSpecialty->name);
+                $dictionary = [
+                    // Base y Preventiva
+                    'medicina general' => 'médicos generales',
+                    'pediatría' => 'pediatras',
+                    'ginecología' => 'ginecólogos',
+                    'obstetricia' => 'obstetras',
+                    'ginecología y obstetricia' => 'gineco-obstetras',
+                    'medicina interna' => 'médicos internistas',
+                    'medicina familiar' => 'médicos familiares',
+
+                    // Especialidades Clínicas Mayores
+                    'cardiología' => 'cardiólogos',
+                    'dermatología' => 'dermatólogos',
+                    'psiquiatría' => 'psiquiatras',
+                    'urología' => 'urólogos',
+                    'oftalmología' => 'oftalmólogos',
+                    'neurología' => 'neurólogos',
+                    'endocrinología' => 'endocrinólogos',
+                    'gastroenterología' => 'gastroenterólogos',
+                    'nefrología' => 'nefrólogos',
+                    'neumología' => 'neumólogos',
+                    'reumatología' => 'reumatólogos',
+                    'hematología' => 'hematólogos',
+                    'oncología' => 'oncólogos',
+                    'alergología' => 'alergólogos',
+                    'inmunología' => 'inmunólogos',
+                    'infectología' => 'infectólogos',
+
+                    // Especialidades Quirúrgicas y Traumatología
+                    'cirugía general' => 'cirujanos generales',
+                    'cirugía plástica' => 'cirujanos plásticos',
+                    'ortopedia' => 'ortopedistas',
+                    'traumatología' => 'traumatólogos',
+                    'ortopedia y traumatología' => 'ortopedistas traumatólogos',
+                    'otorrinolaringología' => 'otorrinolaringólogos',
+                    'neurocirugía' => 'neurocirujanos',
+                    'cirugía cardiovascular' => 'cirujanos cardiovasculares',
+                    'cirugía pediátrica' => 'cirujanos pediatras',
+
+                    // Salud Dental (Odontología y Ramas)
+                    'odontología' => 'odontólogos',
+                    'ortodoncia' => 'ortodoncistas',
+                    'endodoncia' => 'endodoncistas',
+                    'periodoncia' => 'periodoncistas',
+                    'odontopediatría' => 'odontopediatras',
+                    'maxilofacial' => 'cirujanos maxilofaciales',
+
+                    // Salud Mental, Bienestar y Terapias
+                    'psicología' => 'psicólogos',
+                    'nutrición' => 'nutricionistas',
+                    'dietética' => 'dietistas',
+                    'fisioterapia' => 'fisioterapeutas',
+                    'fonoaudiología' => 'fonoaudiólogos',
+                    'terapia ocupacional' => 'terapeutas ocupacionales',
+                    'optometría' => 'optómetras',
+
+                    // Diagnósticas y Apoyo
+                    'radiología' => 'radiólogos',
+                    'anestesiología' => 'anestesiólogos',
+                    'medicina del deporte' => 'médicos del deporte',
+                    'medicina alternativa' => 'médicos alternativos'
+                ];
+
+                if (array_key_exists($specialtyName, $dictionary)) {
+                    $expertName = $dictionary[$specialtyName];
+                }
+            }
+        }
+
         // 2. PROCESAMIENTO HÍBRIDO CON AGRUPACIÓN COMPACTA (REGLA DE ORO)
         $groupedResults = collect();
-
         foreach ($addresses as $address) {
             $isClinic = !is_null($address->clinic_id);
 
@@ -178,7 +267,7 @@ class SearchController extends Controller
                     });
 
                     // 🔒 REGLA DE ORO CLÍNICAS: Buscamos el nombre real de la especialidad buscada para el subtítulo institucional
-                    $specialtyModel = Specialty::where('slug', $request->specialty)->first();
+                    $specialtyModel = $targetSpecialty ?? Specialty::where('slug', $request->specialty)->first();
                     if ($specialtyModel) {
                         $clinicBadgeText = "Especialistas en {$specialtyModel->name} en sede";
                     }
@@ -189,15 +278,24 @@ class SearchController extends Controller
 
                 $nextAvailableTurn = $this->calculateNextTurn($address->id, $doctorIds, $now, $currentTime);
 
+                $specialistsCountText = "";
+                if ($specialistsCount > 1) {
+                    $specialistsCountText = "{$specialistsCount} {$clinicBadgeText}";
+                } elseif ($specialistsCount === 1) {
+                    $specialistsCountText = "1 especialista en {$specialtyModel->name} en sede";
+                } else {
+                    $specialistsCountText = "Sin especialistas {$specialtyModel->name} en sede";
+                }
+
                 $groupedResults->push([
                     'type'        => 'clinic',
                     'id'          => $clinic->id,
                     'title'       => $clinic->user->name,
-                    'subtitle'    => "Sede Principal: {$address->name} • {$address->address}",
+                    'subtitle'    => "{$address->name} • {$address->address} - {$address->city->name}",
                     'slug'        => $clinic->slug,
                     'rating'      => $clinic->rating,
                     'address_id'  => $address->id,
-                    'badge_text'  => "{$specialistsCount} {$clinicBadgeText}", 
+                    'badge_text'  => $specialistsCountText, 
                     'next_turn'   => $nextAvailableTurn,
                     'user'        => $clinic->user
                 ]);
@@ -213,19 +311,21 @@ class SearchController extends Controller
 
                 // 🔒 REGLA DE ORO DOCTORES: Si hay una búsqueda activa de especialidad, fijamos ese nombre en su badge
                 if ($request->filled('specialty')) {
-                    $specialtyModel = Specialty::where('slug', $request->specialty)->first();
+                    $specialtyModel = $targetSpecialty ?? Specialty::where('slug', $request->specialty)->first();
                     $doctorBadgeText = $specialtyModel ? $specialtyModel->name : ucfirst($request->specialty);                    
                 } else {
                     $doctorBadgeText = $doctor->specialties->first()->name ?? 'Consultorio Privado';
                 }
-
                 if ($existingDoctorKey !== false) {
                     // Si el doctor ya existe en la lista, evaluamos si esta sucursal física tiene un turno más veloz
                     $currentDoctorItem = $groupedResults->get($existingDoctorKey);
                     
                     if ($nextAvailableTurn && (is_null($currentDoctorItem['next_turn']) || $nextAvailableTurn < $currentDoctorItem['next_turn'])) {
                         $currentDoctorItem['next_turn'] = $nextAvailableTurn;
-                        $currentDoctorItem['subtitle'] = "Consultorio: {$address->name} • {$address->address}";
+                        // 🔒 MODALIDAD INTELIGENTE: Adapta el texto si la sede más veloz es de tipo virtual
+                        $currentDoctorItem['subtitle'] = $address->type === 'virtual' 
+                            ? "Atención Virtual • Telemedicina"
+                            : "{$address->name} • {$address->address} - {$address->city->name}";
                         $currentDoctorItem['address_id'] = $address->id; 
                         $groupedResults->put($existingDoctorKey, $currentDoctorItem);
                     }
@@ -235,13 +335,17 @@ class SearchController extends Controller
                         'type'        => 'doctor',
                         'id'          => $doctor->id,
                         'title'       => ($doctor->gender === 'female' ? 'Dra. ' : 'Dr. ') . ucfirst($doctor->user->name),
-                        'subtitle'    => "Consultorio: {$address->name} • {$address->address}",
+                        'subtitle'    => $address->type === 'virtual' 
+                            ? "Atención Virtual • Telemedicina"
+                            : "{$address->name} • {$address->address} - {$address->city->name}",
                         'slug'        => $doctor->slug,
                         'rating'      => $doctor->rating,
                         'address_id'  => $address->id,
                         'badge_text'  => $doctorBadgeText, 
                         'next_turn'   => $nextAvailableTurn,
-                        'user'        => $doctor->user
+                        'user'        => $doctor->user,
+                        // 🔒 INYECCIÓN QUIRÚRGICA: Almacena cuántas especialidades tiene en total el médico
+                        'specialties_count' => $doctor->specialties->count()
                     ]);
                 }
             }
@@ -261,10 +365,15 @@ class SearchController extends Controller
 
         $resultsPage->appends($request->all());
         
+        // 🔒 RETORNO BLINDADO: Envía todas las llaves calculadas para la UX empática del motor de búsqueda
         return view('search.index', [
-            'results'     => $resultsPage,
-            'specialties' => $specialties,
-            'cities'      => $cities
+            'results'            => $resultsPage,
+            'specialties'        => $specialties,
+            'cities'             => $cities,
+            'showingSuggestions' => $showingSuggestions ?? false,
+            'targetCity'         => $targetCity ?? null,
+            'targetSpecialty'    => $targetSpecialty ?? null,
+            'expertName'         => $expertName ?? 'especialistas'
         ]);
     }
 
@@ -402,7 +511,7 @@ class SearchController extends Controller
         return view('search.search-results', compact('doctors', 'specialties', 'cities'));
     }
 
-        /**
+    /**
      * Muestra la vista de búsqueda interactiva por sintomatología.
      */
     public function searchSymptomView(Request $request)

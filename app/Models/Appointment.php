@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Appointment extends Model
 {
@@ -34,6 +36,7 @@ class Appointment extends Model
         'zoom_start_url',   // Enlace de inicio para el Doctor
         'notes',
         'email_sent',
+        'reschedule_count', // Nuevo campo para contar reprogramaciones
     ];
 
     /**
@@ -41,10 +44,11 @@ class Appointment extends Model
      * Garantiza que la fecha sea un objeto Carbon y el precio mantenga precisión flotante.
      */
     protected $casts = [
-        'date'  => 'date',
-        'price' => 'float',
-        'status' => \App\Enums\AppointmentStatus::class,
+        'date'           => 'date',
+        'price'          => 'float',
+        'status'         => \App\Enums\AppointmentStatus::class,
         'payment_status' => \App\Enums\PaymentStatus::class,
+        'reschedule_count' => 'integer',
     ];
 
     protected static function booted()
@@ -158,5 +162,40 @@ class Appointment extends Model
     public function patient(): BelongsTo
     {
         return $this->belongsTo(Patient::class, 'patient_id');
+    }
+
+    /**
+     * Obtiene el estado de la cita con la primera letra en mayúscula.
+     */
+    protected function statusLabel(): Attribute
+    {
+        return Attribute::get(fn () => $this->status->value);
+    }
+
+    /**
+     * Scope local para segmentar las citas según el entorno multi-tenant actual.
+     * Mapea de forma transparente la llamada Appointment::forCurrentContext()
+     */
+    public function scopeForCurrentContext(Builder $query): Builder
+    {
+        // 1. Recuperar el entorno guardado en la sesión por el middleware EnsureDoctorContext
+        $context = session('doctor_context');
+
+        // 🛡️ Blindaje: Si la sesión no se ha inicializado, retornar la consulta global sin filtros
+        if (!$context) {
+            return $query;
+        }
+
+        // 2. Si el médico trabaja de forma independiente/particular, ocultamos citas de clínicas
+        if ($context['type'] === 'particular') {
+            return $query->whereNull('clinic_id');
+        }
+
+        // 3. En entorno institucional corporativo, filtramos estrictamente por el ID de dicha clínica
+        if ($context['type'] === 'clinic') {
+            return $query->where('clinic_id', $context['id']);
+        }
+
+        return $query;
     }
 }

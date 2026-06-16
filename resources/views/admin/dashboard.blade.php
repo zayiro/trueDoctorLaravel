@@ -100,7 +100,7 @@
                             @php
                             $appointmentStatusPatient = '';
                             
-                            switch ($appointment->status) {
+                            switch ($appointment->status_label) {
                                 case 'pending': $appointmentStatusPatient = 'Pendiente';
                                 break;
                                 case 'confirmed': $appointmentStatusPatient = 'Confirmada';

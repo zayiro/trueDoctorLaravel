@@ -47,18 +47,21 @@ class ContextDoctorController extends Controller
                 abort(403, 'No tienes acceso autorizado a esta clínica corporativa.');
             }
 
-            // Traer el nombre de la clínica y la foto del usuario dueño en una sola consulta
+            // Traer el nombre de la clínica (desde users) y la foto del usuario dueño en una sola consulta
             $clinicData = DB::table('clinics')
                 ->join('users', 'clinics.user_id', '=', 'users.id')
                 ->where('clinics.id', $contextId)
-                ->select('clinics.name', 'users.profile_photo_path')
+                ->select(
+                    'users.name', // <-- CORREGIDO: Tomamos el nombre desde la tabla users
+                    'users.profile_photo_path'
+                )
                 ->first();
 
             // Guardar el contexto dinámico e institucional en la sesión activa
             session(['doctor_context' => [
                 'type'  => 'clinic',
                 'id'    => $contextId,
-                'name'  => $clinicData ? $clinicData->name : 'Clínica Corporativa',
+                'name'  => $clinicData ? $clinicData->name : 'Clínica Corporativa', // <-- CORREGIDO: Usa el campo mapeado
                 'photo' => $clinicData ? $clinicData->profile_photo_path : null
             ]]);
         }

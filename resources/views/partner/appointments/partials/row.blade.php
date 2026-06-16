@@ -31,6 +31,7 @@
     <!-- Columna 1: Hora de la Cita -->
     <td class="px-6 py-4 whitespace-nowrap">
         <div class="text-sm font-black text-slate-800">
+            <div>{{ ucfirst(\Carbon\Carbon::parse($app->date)->locale('es')->isoFormat('dddd, D [de] MMMM')) }}</div>
             {{ \Carbon\Carbon::parse($app->start_time)->format('g:i A') }}
         </div>
         <div class="text-[11px] font-bold text-slate-400 mt-0.5">

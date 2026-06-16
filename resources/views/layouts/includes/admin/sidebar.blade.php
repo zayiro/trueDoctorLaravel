@@ -26,14 +26,22 @@
             'visible' => true,
         ],
         [
-            'name' => 'Datos del perfil',
-            'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>',
-            'href' => route('partner.profile.edit'),
-            'active' => request()->routeIs('partner.profile.edit'),
+            'name'    => 'Notificaciones',
+            'icon'    => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/></svg>',
+            'href'    => route('notifications.index'),
+            'active'  => request()->routeIs('notifications.index'), 
+            'badge'   => auth()->user()?->unreadNotifications()->count() ?: null,
+            'visible' => true,
+        ],
+        [
+            'name'    => 'Datos del perfil',
+            'icon'    => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>',
+            'href'    => route('partner.profile.edit'),
+            'active'  => request()->routeIs('partner.profile.edit'),
             'visible' => true,
         ], 
         [
-            'name' => 'Sedes',
+            'name'    => 'Sedes',
             'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1 1 15 0Z"/></svg>',
             'href' => route('partner.addresses.index'),
             'active' => request()->routeIs('partner.addresses.index'),
@@ -52,14 +60,7 @@
             'href' => route('partner.unavailabilities.index'),
             'active' => request()->routeIs('partner.unavailabilities.index'),
             'visible' => $hasIndividualPlan, // 🔒 BLOQUEADO para médicos institucionales
-        ],
-        [
-            'name' => 'Notificaciones',
-            'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/></svg>',
-            'href' => route('notifications.index'),
-            'active' => request()->routeIs('notifications.index'),
-            'visible' => true,
-        ],
+        ],        
         [
             'name' => 'Agenda',
             'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z"/></svg>',
@@ -196,11 +197,12 @@
                                     <span class="ms-3">{{ $link['name'] }}</span>
                                 </div>
                                 
-                                @isset($link['badge'])
-                                    <span class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-red-500 rounded-full animate-bounce shadow-sm">
+                                <!-- Burbuja de notificación condicional -->
+                                @if(isset($link['badge']) && $link['badge'] > 0)
+                                    <span class="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[11px] font-bold leading-none text-white bg-red-500 rounded-full">
                                         {{ $link['badge'] }}
-                                    </span>
-                                @endisset
+                                    </span>   
+                                @endif
                             </a>
                         @endisset
                     @endisset

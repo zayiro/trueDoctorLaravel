@@ -619,7 +619,7 @@ class AppointmentController extends Controller
             // bloqueamos que cualquiera acceda a la URL de previsualización sin estar logueado.
             abort(401, 'Debes iniciar sesión para visualizar el resumen de tu orden médica.');
         }
-
+        
         // 3. Despachamos la vista compactando el objeto totalmente aislado
         return view('appointments.preview', compact('appointment'));
     }

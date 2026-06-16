@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use App\Models\Patient;
+use App\Models\User;
+use App\Models\Doctor;
 use App\Models\PatientAllergy;
 use App\Models\Appointment;
 use App\Models\PatientSurgery;
@@ -23,6 +25,8 @@ use Illuminate\Support\Facades\DB;
 use Throwable;
 use Carbon\Carbon; 
 use App\Events\AppointmentCancelled;
+use App\Notifications\AppointmentRescheduledNotification;
+use App\Notifications\AppointmentCancelledNotification;
 
 class PatientController extends Controller
 {
@@ -267,7 +271,7 @@ class PatientController extends Controller
             return redirect()->route('profile.show')->with('error', 'No se encontró un perfil de paciente asociado a tu cuenta.');
         }
 
-        $now = \Carbon\Carbon::now('America/Bogota'); 
+        $now = Carbon::now('America/Bogota'); 
         $statusFilter = request('status');
 
         // 1. 🔮 PRÓXIMAS CONSULTAS: Citas futuras estrictamente activas (confirmed o pending)
@@ -333,7 +337,7 @@ class PatientController extends Controller
         $now = Carbon::now('America/Bogota');
 
         $appointmentDate = Carbon::parse($appointment->date)->format('Y-m-d');
-        $appointmentDateTime = \Carbon\Carbon::parse($appointmentDate . ' ' . $appointment->start_time, 'America/Bogota');
+        $appointmentDateTime = Carbon::parse($appointmentDate . ' ' . $appointment->start_time, 'America/Bogota');
 
         if ($now->greaterThanOrEqualTo($appointmentDateTime)) {
             return redirect()->back()->with('error', 'No es posible cancelar una consulta médica que ya se encuentra en desarrollo o que pertenece al pasado.');
@@ -366,9 +370,19 @@ class PatientController extends Controller
         ]);
 
         // 8. 🔥 DISPARAR EL EVENTO ASÍNCRONO 🔥
-            // El core de Laravel retendrá el evento un instante y lo despachará a Redis/Database 
-            // tan pronto como la transacción de la base de datos haga el COMMIT exitoso.
+        // El core de Laravel retendrá el evento un instante y lo despachará a Redis/Database 
+        // tan pronto como la transacción de la base de datos haga el COMMIT exitoso.
         event(new AppointmentCancelled($appointment));
+
+        // Si el paciente cambió la cita, notificamos al MÉDICO
+        // Buscamos el médico por su ID, y luego extraemos su user_id de autenticación
+        $doctor = Doctor::findOrFail($appointment->doctor_id);
+        $userToNotify = User::find($doctor->user_id);
+
+        // Enviamos la notificación al usuario de autenticación correcto
+        if ($userToNotify) {
+            $userToNotify->notify(new AppointmentCancelledNotification($appointment, 'patient'));
+        }
 
         return redirect()->route('patient.appointments.index')
             ->with('success', 'La consulta médica ha sido cancelada exitosamente y el espacio horario ha sido devuelto a la disponibilidad pública.');
@@ -640,10 +654,16 @@ class PatientController extends Controller
      * Procesa el reagendamiento estricto solicitado desde el dashboard del paciente.
      */
     public function reschedule(Request $request, Appointment $appointment)
-    {
+    {        
         // 1. Validar que la cita pertenezca al paciente autenticado
         if ($appointment->patient_id !== auth()->user()->patient->id) {
             abort(403, 'No autorizado.');
+        }
+
+        $maxReschedules = 2; // Límite máximo de reprogramaciones permitidas    
+        $rescheduleCount = $appointment->reschedule_count ?? 0;    
+        if ($rescheduleCount >= $maxReschedules) {
+            return back()->with('error', 'Has alcanzado el límite máximo de reprogramaciones permitidas para esta cita. Por favor, contacta con soporte para asistencia.');
         }
 
         // 2. Cargar configuración dinámica según el Tenant (Clínica o Doctor Independiente)
@@ -669,6 +689,12 @@ class PatientController extends Controller
         
         if (now('America/Bogota')->diffInHours($appointmentDateTime, false) < $settings->cancellation_notice_hours) {
             return back()->with('error', "Debes reprogramar con al menos {$settings->cancellation_notice_hours} horas de anticipación.");
+        }
+
+        if ($request->has('new_start_time')) {
+            // Corta los caracteres para dejar solo "11:00"
+            $timeWithoutSeconds = substr($request->new_start_time, 0, 5); 
+            $request->merge(['new_start_time' => $timeWithoutSeconds]);
         }
 
         // 5. Validar inputs requeridos del formulario modal
@@ -742,19 +768,30 @@ class PatientController extends Controller
         }
 
         // 11. Ejecución de la transacción atómica
-        DB::transaction(function () use ($appointment, $newDate, $newStartTime, $newEndTime, $settings) {
+        DB::transaction(function () use ($appointment, $newDate, $newStartTime, $newEndTime, $settings, $rescheduleCount) {
             $appointment->update([
                 'date' => $newDate,
                 'start_time' => $newStartTime,
                 'end_time' => $newEndTime,
                 'status' => $settings->requires_approval ? 'pending' : 'confirmed',
                 'email_sent' => false, // Resetea flag para obligar la re-notificación
+                'reschedule_count' => $rescheduleCount + 1, // Incrementa el contador de reprogramaciones
             ]);
         });
 
         $message = $settings->requires_approval 
             ? 'Tu solicitud de cambio fue enviada y está sujeta a la aprobación de la clínica.' 
             : 'Tu cita ha sido reprogramada exitosamente.';
+
+        // Si el paciente cambió la cita, notificamos al MÉDICO
+        // Buscamos el médico por su ID, y luego extraemos su user_id de autenticación
+        $doctor = Doctor::findOrFail($appointment->doctor_id);
+        $userToNotify = User::find($doctor->user_id);
+
+        // Enviamos la notificación al usuario de autenticación correcto
+        if ($userToNotify) {
+            $userToNotify->notify(new AppointmentRescheduledNotification($appointment, 'patient'));
+        }
 
         return back()->with('success', $message);
     }

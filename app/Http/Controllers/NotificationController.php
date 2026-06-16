@@ -17,7 +17,22 @@ class NotificationController extends Controller
 
     public function markAsRead($id)
     {
-        auth()->user()->unreadNotifications->where('id', $id)->markAsRead();
+        // 1. Buscamos la notificación específica dentro de todas las del usuario
+        $notification = auth()->user()->notifications()->findOrFail($id);
+
+        // 2. Si no está leída, la marcamos como leída
+        if ($notification->unread()) {
+            $notification->markAsRead();
+        }
+
+        // 3. Extraemos la URL de la cita médica guardada en el JSON
+        $destinationUrl = $notification->data['action_url'] ?? null;
+
+        // 4. Si existe la URL, redirigimos al usuario a la cita; si no, volvemos atrás
+        if ($destinationUrl) {
+            return redirect($destinationUrl);
+        }
+
         return back()->with('success', 'Notificación marcada como leída.');
     }
 

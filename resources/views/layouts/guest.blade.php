@@ -109,5 +109,28 @@
                     }
                 });
             </script>
+
+            <script>
+                // 🛡️ CONTROLADOR DEFENSIVO DE BFCACHE PARA PRODUCCIÓN
+                window.addEventListener('pageshow', function (event) {
+                    // Si event.persisted es true, significa que el usuario regresó usando las flechas del navegador
+                    if (event.persisted) {
+                        // 1. Quitar el overlay de carga global si se quedó encendido
+                        const overlay = document.getElementById('loading-overlay');
+                        if (overlay) {
+                            overlay.style.display = 'none';
+                        }
+
+                        // 2. Si estás usando Alpine en las tarjetas, forzar la restauración de sus estados locales
+                        window.dispatchEvent(new CustomEvent('restore-booking-buttons'));
+                        
+                        // 3. Fallback nativo: Si tus botones cambian mediante clases HTML puras o deshabilitación
+                        document.querySelectorAll('button[disabled]').forEach(button => {
+                            button.removeAttribute('disabled');
+                        });
+                    }
+                });
+            </script>
+
     </body>
 </html>

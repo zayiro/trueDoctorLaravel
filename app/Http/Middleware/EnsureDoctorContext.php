@@ -20,7 +20,7 @@ class EnsureDoctorContext
                 ->where('clinic_doctor.status', 'approved')
                 ->select(
                     'clinics.id', 
-                    'clinics.name', 
+                    'clinic_user.name', 
                     'clinic_user.profile_photo_path AS clinic_photo' // Extraemos la foto de la clínica
                 )
                 ->get(); 

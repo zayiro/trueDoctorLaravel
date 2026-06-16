@@ -112,7 +112,7 @@
                     
                     <tr>
                         <td style="padding: 24px 32px; background-color: #fffbeb; border-top: 1px solid #fef3c7; text-align: left;">
-                            <p style="margin: 0; font-size: 13px; color: #b45309; line-height: 1.5;"><strong>Recomendación importante:</strong> Por favor asiste o conéctate al menos 5 minutos antes de la hora acordada. Si la cita requiere estudios previos, tenlos a la mano.</p>
+                            <p style="margin: 0; font-size: 13px; color: #b45309; line-height: 1.5;"><strong>Recomendación importante:</strong> Por favor @if($appointment->service->type === 'virtual') conectate al menos 5 minutos @else asiste al menos 15 minutos @endif antes de la hora acordada. Si la cita requiere estudios previos, tenlos a la mano.</p>
                         </td>
                     </tr>
 

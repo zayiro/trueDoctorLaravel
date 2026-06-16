@@ -17,6 +17,8 @@ $links = [
         'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/></svg>',
         'href' => route('notifications.index'),
         'active' => request()->routeIs('notifications.index'),
+        'badge' => auth()->user()?->unreadNotifications()->count() ?: null,
+        'visible' => true,
     ],
     [
         'name' => 'Mis Citas',
@@ -85,23 +87,26 @@ $userRole = match ($user->role) {
     };
 @endphp
 
-<aside id="top-bar-sidebar" class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform -translate-x-full border-r bg-slate-50 border-slate-200 sm:translate-x-0 dark:bg-slate-900 dark:border-slate-800" aria-label="Sidebar">
+<aside id="top-bar-sidebar" class="fixed top-0 left-0 z-40 w-64 h-screen pt-20 transition-transform -translate-x-full bg-slate-50 border-r border-slate-200 sm:translate-x-0 dark:bg-slate-900 dark:border-slate-800" aria-label="Sidebar">
     <!-- SE REMOVIÓ 'overflow-y-auto' y 'overflow-x-auto' PARA CONGELAR LOS ENCABEZADOS -->
     <div class="h-full px-4 pb-12 overflow-hidden bg-slate-50 dark:bg-slate-900 block">
         
-        <!-- Pie del Sidebar: Información de Cuenta paciente (Fijo arriba) -->
+       <!-- Identificación del Socio Comercial (Doctor/Clínica) -->
         @if($user)
-            <div class="pt-4 pb-4 mb-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div class="pb-4 mb-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <div class="flex items-center space-x-3 truncate">
-                    <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm">
+                    <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm shrink-0">
                         {{ substr($user->name, 0, 2) }}
                     </div>
                     <div class="truncate">
-                        <p class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate max-w-[140px]">
+                        <p class="text-xs font-black text-slate-800 dark:text-slate-200 truncate max-w-[145px]">
                             {{ $user->name }}
                         </p>
-                        <p class="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
+                        <p class="text-[10px] uppercase font-bold text-slate-400 tracking-wider mt-0.5">
                             {{ $userRole }}
+                        </p>
+                        <p class="text-[10px] font-bold text-indigo-400 tracking-wider mt-0.5">
+                            {{ $user->email }}
                         </p>
                     </div>
                 </div>
@@ -157,6 +162,13 @@ $userRole = match ($user->role) {
                                     {!! $link['icon'] !!}
                                 </span>
                                 <span class="ms-3">{{ $link['name'] }}</span>
+
+                                <!-- Burbuja de notificación condicional -->
+                                @if(isset($link['badge']) && $link['badge'] > 0)
+                                    <span class="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[11px] font-bold leading-none text-white bg-red-500 rounded-full">
+                                        {{ $link['badge'] }}
+                                    </span>
+                                @endif
                             </a>
                         @endisset
                     @endisset

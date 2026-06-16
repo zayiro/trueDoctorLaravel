@@ -16,6 +16,7 @@ use App\Notifications\NewAppointmentNotification;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use App\Services\ColombiaHolidayService;
 
 class PublicProfileController extends Controller
 {          
@@ -338,6 +339,9 @@ class PublicProfileController extends Controller
             $now = Carbon::now();
             $maxDate = Carbon::now()->addDays($maxAdvanceDays);
 
+            // 🔒 RESTRICCIÓN DESACOPLADA PREMIUM: Consumo del servicio centralizado
+            $colombianHolidays = ColombiaHolidayService::getHolidays($now->year);
+
             // 1. Traer todos los horarios configurados por el médico en esta sede
             $baseSchedules = DB::table('schedules')
                 ->where('address_id', $targetAddressId)
@@ -365,6 +369,13 @@ class PublicProfileController extends Controller
             for ($dayOffset = 0; $dayOffset <= $maxAdvanceDays; $dayOffset++) {
                 $evalDate = Carbon::now()->addDays($dayOffset);
                 $evalDateString = $evalDate->toDateString();
+                
+                // 🛡️ REGLA DE PAÍS AUTOMÁTICA NATIVA
+                if (array_key_exists($evalDateString, $colombianHolidays)) {
+                    continue; // Pasa al siguiente día (queda gris en Flatpickr)
+                }
+
+                // 🔒 OPTIMIZACIÓN QUIRÚRGICA: Removimos la doble asignación redundante de variables
                 $evalDayOfWeek = $evalDate->dayOfWeekIso; 
 
                 // Si el médico no atiende este día de la semana, pasamos al siguiente día

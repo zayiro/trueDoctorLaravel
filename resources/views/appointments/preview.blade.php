@@ -86,10 +86,14 @@
                         </div>
                     </div>
                 </div>
+                
                 <!-- Servicio Clínico -->
                 <div class="flex justify-between items-center border-b border-slate-100 pb-4">
                     <span class="text-slate-400 text-xs font-black uppercase tracking-wider">Servicio Solicitado</span>
-                    <span class="font-bold text-sm text-slate-700">{{ $appointment->service->name }}</span>
+                    <div class="text-sm text-slate-400 tracking-wider block mb-1">
+                        <span class="font-bold text-slate-700">{{ $appointment->service->name }}</span>
+                        <div class="text-end">{{ $appointment->service->type === 'virtual' ? 'Cita Virtual' : 'Cita Presencial' }}</div>
+                    </div>
                 </div>
 
                 <!-- Fecha de la Agenda -->
@@ -121,22 +125,30 @@
                         {{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }} a 
                         {{ \Carbon\Carbon::parse($appointment->end_time)->format('g:i A') }}
                     </span>
-                </div>                
+                </div>        
+                @php
+                    if ($appointment->clinic_id && $appointment->clinic) {
+                        $acceptsOnlinePayments = (bool) ($appointment->clinic->settings->accepts_online_payments ?? false);
+                    } else {
+                        $acceptsOnlinePayments = (bool) ($appointment->doctor->settings->accepts_online_payments ?? false);
+                    }
+                @endphp
+                
+                <!-- Forma de pago -->                
+                <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+                    <div class="text-sm text-start text-slate-400 tracking-wider block mb-1">
+                        <span class="text-slate-400 text-xs font-black uppercase tracking-wider">Forma de Pago</span>
+                        <div class="text-xs text-slate-900 font-light">Deberás abonar el importe correspondiente al momento de la consulta</div>
+                    </div>
+                    <span class="text-sm font-bold text-slate-700">{{ $acceptsOnlinePayments ? 'Pago en línea' : 'Pago en consulta' }}</span>
+                </div>
 
                 <!-- PRECIO FORMATEADO Y CONDICIONAL DE PASARELAS -->
                 <div class="pt-4 text-center">
-                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Valor Total de la Consulta</span>
-                    <p class="text-3xl font-black text-indigo-600 mb-6 tracking-tight">
+                    <span class="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-1">Valor Total de la Consulta</span>
+                    <p class="text-3xl font-black text-indigo-600 tracking-tight">
                         ${{ number_format($appointment->price, 0, ',', '.') }}
-                    </p>
-                    
-                    @php
-                        if ($appointment->clinic_id && $appointment->clinic) {
-                            $acceptsOnlinePayments = (bool) ($appointment->clinic->settings->accepts_online_payments ?? false);
-                        } else {
-                            $acceptsOnlinePayments = (bool) ($appointment->doctor->settings->accepts_online_payments ?? false);
-                        }
-                    @endphp
+                    </p>                                                        
 
                     <!-- CONTENEDOR DE ACCIONES Y NAVEGACIÓN SECURE CHECKOUT -->
                     <div class="mt-8 border-t border-slate-50 pt-6">

@@ -1,5 +1,47 @@
 <x-guest-layout>
     <div class="max-w-7xl mx-auto px-4 py-8 mt-5">
+
+        @if($showingSuggestions)
+            <!-- 🚨 BANNER DE ALTO CONTRASTE CON CIERRE REACTIVO LOCAL EN ALPINE.JS -->
+            <div x-data="{ show: true }" 
+                x-show="show" 
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95"
+                class="mt-8 mb-8 bg-white border-l-4 border-amber-500 rounded-2xl shadow-xs border-y border-r border-slate-200/60 p-5 flex items-start justify-between gap-4 dark:bg-gray-800 dark:border-l-amber-500 dark:border-y-gray-700 dark:border-r-gray-700">
+                
+                <div class="flex items-start gap-4">
+                    <!-- Icono de Alerta Rediseñado con Fondo Sólido Ámbar para Enfoque Inmediato -->
+                    <div class="p-2.5 bg-amber-50 rounded-xl text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 shrink-0 border border-amber-100/50 dark:border-amber-900/30">
+                        <!-- Heroicons: LightBulb -->
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://w3.org" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18v3m0 0h.008v.008H12V21zm0-6h.008v.008H12V15zm0-6h.008v.008H12V9zm0-6h.008v.008H12V3zM3.22 8.22a.75.75 0 011.06 0L12 15.69l7.72-7.47a.75.75 0 111.06 1.06l-8.25 8a.75.75 0 01-1.06 0l-8.25-8a.75.75 0 010-1.06z"></path>
+                        </svg>
+                    </div>
+                    
+                    <div class="space-y-1">
+                        <h3 class="font-black text-slate-800 text-base tracking-tight dark:text-white flex items-center gap-2">
+                            Búsqueda Optimizada
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 uppercase tracking-wider dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-900">Cobertura Ampliada</span>
+                        </h3>
+                        <!-- Mensaje Empático Requerido con Variables Dinámicas en Contraste Premium -->
+                        <p class="text-sm text-slate-600 leading-relaxed font-medium dark:text-gray-300">
+                            No encontramos <span class="font-extrabold text-amber-600 dark:text-amber-400">{{ $expertName }}</span> con atención física en <span class="font-black text-slate-900 dark:text-white underline decoration-amber-400 decoration-2">{{ $targetCity->name }}</span>, pero estos especialistas están disponibles en otras ubicaciones de manera virtual o presencial.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- ❌ BOTÓN DE CIERRE MAESTRO: Heroicons SVG Nativo (X-Mark) -->
+                <button @click="show = false" 
+                        type="button" 
+                        class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-gray-700 p-1.5 rounded-xl transition-all shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500" 
+                        title="Cerrar aviso">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://w3.org" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        @endif
         
         <!-- ALERTAS DE INFORMACIÓN DEL SISTEMA -->
         @if(session('info'))
@@ -76,8 +118,8 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
                     </div>
                     <div class="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2">
-                        <span class="text-xs font-black text-slate-700 uppercase tracking-wider">Filtrar por ubicación:</span>
-                        <span class="text-xs text-slate-500 font-medium">Elige una ciudad arriba para descubrir consultorios físicos o clínicas más cercanas.</span>
+                        <span class="text-sm font-black text-slate-700 uppercase tracking-wider">Filtrar por ubicación:</span>
+                        <span class="text-sm text-slate-500 font-medium">Elige una ciudad arriba para descubrir consultorios físicos o clínicas más cercanas.</span>
                     </div>
                 </div>
             @endif
@@ -105,7 +147,7 @@
                                 @endif
                             </div>
                         @endif
-                        <span class="text-[9px] font-black uppercase px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md border border-indigo-100/30 tracking-wider">
+                        <span class="text-[12px] font-black uppercase px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md border border-indigo-100/30 tracking-wider">
                             {{ $result['type'] === 'clinic' ? 'Clínica' : 'Profesional' }}
                         </span>
                     </div>
@@ -119,11 +161,24 @@
                         @else
                             <!-- 🩺 CARD DE DOCTOR (Muestra Ej.: Dr. Andrés Ocampo) -->
                             <h3 class="text-xl font-black text-slate-900 tracking-tight">{{ $result['title'] }}</h3>
-                            <div class="flex flex-wrap gap-1.5 mt-1">
-                                <span class="px-2.5 py-0.5 bg-blue-50/60 text-blue-600 text-[10px] font-bold rounded-lg uppercase tracking-wide border border-blue-100/40">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <!-- Badge Base de la Especialidad Buscada -->
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900">
                                     {{ $result['badge_text'] }}
                                 </span>
+
+                                <!-- 🧬 INDICADOR PREMIUM MULTI-ESPECIALIDAD -->
+                                @if(($result['type'] ?? '') === 'doctor' && ($result['specialties_count'] ?? 0) > 1)
+                                    <span class="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 animate-pulse dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900" 
+                                        title="Este profesional cuenta con {{ $result['specialties_count'] }} especialidades médicas habilitadas">
+                                        <!-- Heroicons SVG Nativo: Plus (Compacto y elegante) -->
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" xmlns="http://w3.org" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path>
+                                        </svg>
+                                    </span>
+                                @endif
                             </div>
+
                         @endif
 
                         <!-- Estrellas de Reputación Comunes -->
@@ -151,17 +206,17 @@
                                 @endphp
                                 @if($addressServices->isNotEmpty())
                                     @foreach($addressServices as $service)
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-50 text-slate-600 border border-slate-200/60">{{ $service->name }}</span>
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[12px] font-bold bg-slate-50 text-slate-600 border border-slate-200/60">{{ $service->name }}</span>
                                     @endforeach
                                 @else
-                                    <span class="text-[10px] text-slate-400 italic">Consulta general</span>
+                                    <span class="text-[12px] text-slate-400 italic">Consulta general</span>
                                 @endif
                             </div>                                    
                         </div>
 
                         <!-- 🔥 EL GANCHO DE INMEDIATEZ (Muestra: Próximo turno disponible: Hoy a las 10:30 AM) -->
                         @if($result['next_turn'])
-                            <div class="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-100/70 text-emerald-800 text-xs font-black rounded-xl shadow-sm">
+                            <div class="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-100/70 text-emerald-800 text-sm font-black rounded-xl shadow-sm">
                                 <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
                                 Próximo turno disponible: {{ $result['next_turn'] }}
                             </div>
@@ -170,14 +225,14 @@
                     
                     <!-- Columna de Botones (Acciones Unificadas e Inteligentes con Bifurcación Semántica) -->
                     <div class="flex flex-col justify-center gap-2.5 min-w-[200px] border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6 px-2">
-                        <div x-data="{ redirecting: false }" class="flex flex-col gap-2 w-full">
+                        <div x-data="{ redirecting: false }" @restore-booking-buttons.window="redirecting = false" class="flex flex-col gap-2 w-full">
                             
                             <!-- BOTÓN ADAPTATIVO: Detecta el tipo de inquilino (Tenant) para cambiar el destino y los parámetros -->
                             <a href="{{ $result['type'] === 'clinic' 
                                             ? route('partner.clinic.public.decision', [
-                                                'slug'       => $result['slug'], 
-                                                'specialty_slug'  => request('specialty'), 
-                                                'city'       => request('city')
+                                                'slug'           => $result['slug'], 
+                                                'specialty_slug' => request('specialty'), 
+                                                'city'           => request('city')
                                             ]) 
                                             : route('partner.public.profile', [
                                                 'slug'       => $result['slug'], 

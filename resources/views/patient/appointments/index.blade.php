@@ -49,7 +49,7 @@ $hasStatusFilter = filled(request('status'));
         </div>
     @endif
 
-    <div class="py-8 px-4 max-w-5xl mx-auto">
+    <div class="py-8 px-4 max-w-7xl mx-auto">
         <!-- Encabezado de la Sección y Filtro por Estados -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
             <div>
@@ -78,12 +78,12 @@ $hasStatusFilter = filled(request('status'));
                 <ul class="space-y-4">
                     @forelse($upcomingAppointments as $appointment)
                         @php
-                        switch ($appointment->status) {
+                        switch ($appointment->status_label) {
                             case 'confirmed': $statusText = 'Confirmada'; break;
                             case 'pending': $statusText = 'Pendiente'; break;
                             case 'cancelled': $statusText = 'Cancelada'; break;
                             case 'completed': $statusText = 'Completada'; break;
-                            default: $statusText = ucfirst($appointment->status); break;
+                            default: $statusText = ucfirst($appointment->status_label); break;
                         }
 
                         $dateOnly = \Carbon\Carbon::parse($appointment->date)->toDateString(); 
@@ -92,7 +92,7 @@ $hasStatusFilter = filled(request('status'));
                         $end = $start->copy()->addMinutes($appointment->duration);
                         $activationTime = $start->copy()->subMinutes(15);
 
-                        $showMeetingButton = now('America/Bogota')->between($activationTime, $end) && ($appointment->status === 'confirmed');
+                        $showMeetingButton = now('America/Bogota')->between($activationTime, $end) && ($appointment->status_label === 'confirmed');
 
                         $settings = $appointment->doctor->settings;
                         $allowPatientCancellation = $settings->allow_patient_cancellation ?? true;
@@ -152,6 +152,31 @@ $hasStatusFilter = filled(request('status'));
                                             {{ $appointment->address ? ($appointment->address->name . " - " . $appointment->address->address) : 'Consulta Virtual desde el panel' }}
                                         </span>
                                     </div>
+                                    <div class="mt-2 text-sm text-gray-600 space-y-1.5">
+                                        <!-- 🟢 BOTÓN DE WHATSAPP: Solo visible para citas confirmadas -->
+                                        @if($appointment->status_label === 'confirmed' && $appointment->doctor->phone)
+                                            @php
+                                                $cleanDoctorPhone = preg_replace('/[^0-9]/', '', $appointment->doctor->phone);
+                                                $whatsappMessage = "Hola Dr(a). " . $appointment->doctor->user->name . ", le saluda el paciente " . auth()->user()->name . ". Le contacto respecto a mi consulta de " . $appointment->service->name . " programada para el día " . \Carbon\Carbon::parse($appointment->date)->format('d/m/Y') . " (Ref: " . $appointment->reference . ").";
+                                                $whatsappUrl = "https://wa.me/" . $cleanDoctorPhone . "?text=" . urlencode($whatsappMessage);
+                                            @endphp
+
+                                            <a href="{{ $whatsappUrl }}" 
+                                                target="_blank" 
+                                                rel="noopener noreferrer" 
+                                                class="inline-flex items-center gap-2 px-4 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+                                                <!-- Icono estilo Heroicons (SVG Nativo) -->
+                                                <svg xmlns="http://w3.org" 
+                                                    fill="currentColor" 
+                                                    viewBox="0 0 24 24" 
+                                                    class="w-5 h-5">
+                                                    <path d="M12.004 2c-5.51 0-9.993 4.483-9.993 9.993 0 1.763.461 3.42 1.262 4.873L2 22l5.304-1.392a9.922 9.922 0 0 0 4.699 1.183c5.51 0 9.994-4.483 9.994-9.993C21.997 6.483 17.514 2 12.004 2zm5.221 14.195c-.227.64-.1.115-.902.937-.738.756-1.688.855-2.853.336-2.585-1.15-4.417-3.618-5.385-4.935-.37-.503-1.026-1.511-.968-2.316.05-.688.423-1.011.664-1.242.215-.207.48-.3.69-.3.21 0 .42.01.6.1.25.13.56.66.68.91.13.27.14.57.02.82-.12.25-.26.4-.41.58-.15.17-.32.36-.14.68.39.69.96 1.34 1.63 1.9 1.11.93 2.02 1.36 2.65 1.55.45.13.84.03 1.13-.24.33-.3.99-.95 1.22-1.32.22-.36.5-.28.82-.16.32.12 2.05 1.01 2.14 1.06.1.05.23.11.28.2.09.16.03.74-.2 1.37z"/>
+                                                </svg>
+
+                                                <span>Hablar con el doctor</span>
+                                            </a>
+                                        @endif
+                                    </div>
                                 </div>
                                 <!-- Lado Derecho: Estado, Acciones y Reagendamiento (Aislado con Alpine.js) -->
                                 <div class="flex flex-col items-start sm:items-end justify-between gap-3 min-w-[150px]"
@@ -180,27 +205,12 @@ $hasStatusFilter = filled(request('status'));
                                      }">
                                     
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black border uppercase tracking-wider
-                                        @if($appointment->status === 'confirmed') bg-green-50 text-green-700 border-green-200
+                                        @if($appointment->status_label === 'confirmed') bg-green-50 text-green-700 border-green-200
                                         @else bg-amber-50 text-amber-700 border-amber-200 @endif">
                                         {{ $statusText }}
                                     </span>
 
-                                    <div class="flex flex-row sm:flex-col gap-2 w-full">
-                                        <!-- 🟢 BOTÓN DE WHATSAPP: Solo visible para citas confirmadas -->
-                                        @if($appointment->status === 'confirmed' && $appointment->doctor->phone)
-                                            @php
-                                                $cleanDoctorPhone = preg_replace('/[^0-9]/', '', $appointment->doctor->phone);
-                                                $whatsappMessage = "Hola Dr. " . $appointment->doctor->user->name . ", le saluda el paciente " . auth()->user()->name . ". Le contacto respecto a mi consulta de " . $appointment->service->name . " programada para el día " . \Carbon\Carbon::parse($appointment->date)->format('d/m/Y') . " (Ref: " . $appointment->reference . ").";
-                                                $whatsappUrl = "https://wa.me" . $cleanDoctorPhone . "?text=" . urlencode($whatsappMessage);
-                                            @endphp
-
-                                            <a href="{{ $whatsappUrl }}" 
-                                            target="_blank" 
-                                            class="inline-flex justify-center items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider text-center w-full shadow-md shadow-emerald-100 transition-all transform hover:-translate-y-0.5">
-                                                Hablar con el Doctor
-                                            </a>
-                                        @endif
-
+                                    <div class="flex flex-row sm:flex-col gap-2 w-full">                                        
                                         <!-- 🟣 BOTÓN DE TELEMEDICINA EN VIVO -->
                                         @if($showMeetingButton && $appointment->meeting_link)
                                             <a href="{{ $appointment->meeting_link }}" 
@@ -215,7 +225,7 @@ $hasStatusFilter = filled(request('status'));
                                         @endif
 
                                         <!-- 🔄 BOTÓN AGREGADO: REAGENDAR CITA -->
-                                        @if(in_array($appointment->status, ['pending', 'confirmed']) && ($remainingHours >= $cancellationNoticeHours))
+                                        @if(in_array($appointment->status_label, ['pending', 'confirmed']) && ($remainingHours >= $cancellationNoticeHours))
                                             <button @click="openReschedule = true" 
                                                     type="button" 
                                                     class="inline-flex justify-center items-center gap-1.5 px-4 py-2 mt-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-xs font-black uppercase tracking-wider text-center w-full border border-indigo-100 transition-colors">
@@ -237,114 +247,6 @@ $hasStatusFilter = filled(request('status'));
                                                 </button>
                                             </form>
                                         @endif
-                                    </div>
-                                    <!-- 👇 COMPONENTE MODAL INTERACTIVO CON SELECTOR DE SLOTS -->
-                                    <div x-show="openReschedule" 
-                                         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs"
-                                         x-transition:enter="transition ease-out duration-200"
-                                         x-transition:enter-start="opacity-0"
-                                         x-transition:enter-end="opacity-100"
-                                         x-transition:leave="transition ease-in duration-150"
-                                         x-transition:leave-start="opacity-100"
-                                         x-transition:leave-end="opacity-0"
-                                         x-cloak>
-                                        
-                                        <!-- Tarjeta Física del Modal -->
-                                        <div @click.away="openReschedule = false" 
-                                             class="bg-white w-full max-w-md p-6 rounded-2xl shadow-xl border border-slate-100 mx-4 text-left">
-                                            
-                                            <!-- Cabecera -->
-                                            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-                                                <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider">Reprogramar Consulta</h3>
-                                                <button @click="openReschedule = false" type="button" class="text-slate-400 hover:text-slate-600 transition">
-                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
-                                                    </svg>
-                                                </button>
-                                            </div>
-
-                                            <!-- Formulario -->
-                                            <form action="{{ route('patient.appointments.reschedule', $appointment->id) }}" method="POST" class="mt-4 space-y-4">
-                                                @csrf
-                                                @method('PUT')
-
-                                                <p class="text-xs text-slate-600 leading-relaxed font-medium">
-                                                    Estás modificando el horario de tu cita de <span class="font-bold text-indigo-600">{{ $appointment->service->name }}</span> con el <span class="font-bold text-slate-800">Dr. {{ $appointment->doctor->user->name }}</span>.
-                                                </p>
-
-                                                <!-- 1. Selección de Fecha -->
-                                                <div>
-                                                    <label class="block text-[10px] font-black text-slate-700 uppercase tracking-wider mb-1">Nueva Fecha Deseada</label>
-                                                    <input type="date" 
-                                                           name="new_date" 
-                                                           min="{{ date('Y-m-d') }}"
-                                                           x-model="selectedDate"
-                                                           @change="fetchSlots()"
-                                                           required
-                                                           class="w-full text-xs font-bold text-slate-700 border-slate-200 rounded-xl shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 bg-white">
-                                                </div>
-
-                                                <!-- 2. Selección de Horas Disponibles -->
-                                                <div>
-                                                    <label class="block text-[10px] font-black text-slate-700 uppercase tracking-wider mb-1">Nueva Hora Disponible</label>
-                                                    
-                                                    <!-- Estado: Cargando slots -->
-                                                    <div x-show="loadingSlots" class="text-xs font-bold text-indigo-600 py-2.5 px-1 flex items-center gap-2">
-                                                        <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                        </svg>
-                                                        Consultando disponibilidad médica...
-                                                    </div>
-
-                                                    <!-- Selector de Horarios Reales -->
-                                                    <select name="new_start_time" 
-                                                            x-show="!loadingSlots && slots.length > 0"
-                                                            required
-                                                            class="w-full text-xs font-bold text-slate-700 border-slate-200 rounded-xl shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 bg-white">
-                                                        <option value="">Selecciona un turno libre...</option>
-                                                        <template x-for="slot in slots" :key="slot">
-                                                            <option :value="slot" x-text="slot"></option>
-                                                        </template>
-                                                    </select>
-
-                                                    <!-- Estado: Sin disponibilidad -->
-                                                    <div x-show="!loadingSlots && selectedDate && slots.length === 0" 
-                                                         class="text-xs font-bold text-red-600 bg-red-50 border border-red-100 p-2.5 rounded-xl" x-cloak>
-                                                        ⚠️ No hay horarios disponibles para el día seleccionado. Intenta con otra fecha.
-                                                    </div>
-
-                                                    <!-- Estado Inicial: Sin fecha seleccionada -->
-                                                    <div x-show="!selectedDate" class="text-xs font-medium text-slate-400 py-2 px-1">
-                                                        Por favor, elige una fecha primero para calcular los turnos.
-                                                    </div>
-                                                </div>
-
-                                                <!-- Caja Informativa de Reglas -->
-                                                <div class="p-3 bg-indigo-50 border border-indigo-100 rounded-xl flex gap-2 items-start">
-                                                    <svg class="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.852l.041-.028M12 13.5h.008v.008H12v-.008zM12 3h.008v.008H12V3z"></path>
-                                                    </svg>
-                                                    <p class="text-[11px] text-indigo-900 font-bold leading-relaxed">
-                                                        La re-programación está sujeta a los bloques libres de la sede y a las políticas del centro médico (Límite: {{ $cancellationNoticeHours }} horas antes).
-                                                    </p>
-                                                </div>
-
-                                                <!-- Botones -->
-                                                <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
-                                                    <button @click="openReschedule = false; selectedDate = ''; slots = []" 
-                                                            type="button" 
-                                                            class="px-3 py-2 text-xs font-black text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-xl transition tracking-wider uppercase">
-                                                        Cancelar
-                                                    </button>
-                                                    <button type="submit" 
-                                                            x-bind:disabled="slots.length === 0"
-                                                            class="px-4 py-2 text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition shadow-sm tracking-wider uppercase disabled:opacity-50 disabled:cursor-not-allowed">
-                                                        Confirmar Cambio
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        </div>
                                     </div>
 
                                     <!-- 👇 COMPONENTE MODAL CORREGIDO: El clic solo actúa en el fondo gris -->
@@ -372,12 +274,11 @@ $hasStatusFilter = filled(request('status'));
                                                 </button>
                                             </div>
 
-
                                             <!-- Formulario con eventos internos aislados -->
                                             <form action="{{ route('patient.appointments.reschedule', $appointment->id) }}" 
-                                                  method="POST" 
-                                                  @click.stop
-                                                  class="mt-4 space-y-4">
+                                                method="POST" 
+                                                @click.stop
+                                                class="mt-4 space-y-4">
                                                 @csrf
                                                 @method('PUT')
 
@@ -486,7 +387,7 @@ $hasStatusFilter = filled(request('status'));
                             case 'pending': $statusText = 'Pendiente'; break;
                             case 'cancelled': $statusText = 'Cancelada'; break;
                             case 'completed': $statusText = 'Completada'; break;
-                            default: $statusText = ucfirst($appointment->status); break;
+                            default: $statusText = ucfirst($appointment->status_label); break;
                         }
                         @endphp
 
@@ -546,7 +447,7 @@ $hasStatusFilter = filled(request('status'));
                         </li>
                     @empty
                         <div class="text-center py-10 bg-white rounded-2xl border-2 border-dashed border-slate-200 p-6">
-                            <p class="text-slate-400 font-bold text-xs uppercase tracking-wider">No se encontraron registros en tu historial clínico.</p>
+                            <p class="text-slate-400 font-bold text-xs uppercase tracking-wider">No se encontrarón registros en tu historial clínico.</p>
                         </div>
                     @endforelse
                 </ul>
