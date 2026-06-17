@@ -59,23 +59,26 @@
     };
 @endphp
 
-<aside id="top-bar-sidebar" class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform -translate-x-full border-r bg-slate-50 border-slate-200 sm:translate-x-0 dark:bg-slate-900 dark:border-slate-800" aria-label="Sidebar">
-    <!-- Se eliminó overflow-y-auto de este contenedor principal para mantener la estructura fija -->
+<aside id="top-bar-sidebar" class="fixed top-0 left-0 z-40 w-64 h-screen pt-20 transition-transform -translate-x-full bg-slate-50 border-r border-slate-200 sm:translate-x-0 dark:bg-slate-900 dark:border-slate-800" aria-label="Sidebar">
+    <!-- CORRECCIÓN CRÍTICA: Contenedor en bloque puro con scroll vertical aislado e inalterable -->
     <div class="h-full px-4 pb-12 overflow-hidden bg-slate-50 dark:bg-slate-900 block">
         
-        <!-- Pie de página del Sidebar: Datos de Root User (Se mantiene arriba fijo) -->
+        <!-- Identificación del Socio Comercial (Doctor/Clínica) --> 
         @if($user)
-            <div class="pt-4 pb-4 mb-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between survival-header-1">
+            <div class="pb-4 mb-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <div class="flex items-center space-x-3 truncate">
-                    <div class="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm">
+                    <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm shrink-0">
                         {{ substr($user->name, 0, 2) }}
                     </div>
                     <div class="truncate">
-                        <p class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate max-w-[140px]">
+                        <p class="text-xs font-black text-slate-800 dark:text-slate-200 truncate max-w-[145px]">
                             {{ $user->name }}
                         </p>
-                        <p class="text-[10px] uppercase font-bold text-indigo-500 tracking-wider">
+                        <p class="text-[10px] uppercase font-bold text-slate-400 tracking-wider mt-0.5">
                             {{ $userRole }}
+                        </p>
+                        <p class="text-[10px] font-bold text-indigo-400 tracking-wider mt-0.5">
+                            {{ $user->email }}
                         </p>
                     </div>
                 </div>

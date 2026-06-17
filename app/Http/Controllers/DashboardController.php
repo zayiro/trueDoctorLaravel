@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Appointment;
 use App\Models\User;
 use App\Models\Doctor;
+use App\Models\SearchLog;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -19,12 +21,21 @@ class DashboardController extends Controller
         $now = Carbon::now();
 
         $usersByRole = [];
+        // 💡 SOLUCIÓN: Definir valores por defecto para que siempre existan
+        $popularSpecialties = []; 
+        $popularCities = [];
 
         // 1. CONDICIONAL DE SEGURIDAD MULTI-PERFIL
         if ($user->role === 'admin') {
             // Al ser administrador global, ve las métricas de todo el SaaS de golpe
             $owner = null;
             $ownerColumn = null;
+
+            // Obtiene las 10 especialidades más buscadas
+            $popularSpecialties = SearchLog::topSpecialties(10);
+
+            // Obtiene las 5 ciudades más buscadas
+            $popularCities = SearchLog::topCities(5);
 
             // Conteo global de usuarios agrupados por rol para el Administrador
             $usersByRole = User::select('role', DB::raw('count(*) as total'))
@@ -77,8 +88,6 @@ class DashboardController extends Controller
                 'blood_type' => $owner->blood_type ?? 'No registrada'
             ];  
             
-            //dd($upcomingAppointments);
-
             return view('admin.dashboard', compact(
                 'user', 'owner', 'upcomingAppointments', 'pastAppointments', 'healthMetrics'
             ));
@@ -126,6 +135,7 @@ class DashboardController extends Controller
         if ($user->role !== 'admin') {
             $modalitiesQuery->where('appointments.' . $ownerColumn, $owner->id);
         }
+
         $modalities = $modalitiesQuery->select('services.type', DB::raw('count(*) as total'))
             ->groupBy('services.type')
             ->pluck('total', 'type')
@@ -194,7 +204,7 @@ class DashboardController extends Controller
             'monthlyRevenue', 'cancellationRate', 'modalities', 
             'topClinicalLocations', 'monthlyHistorical', 'usersByRole',
             'chartLabels', 'chartData', 'locationLabels',
-            'locationRevenueData'
+            'locationRevenueData', 'popularSpecialties', 'popularCities'
         ));
     }
 }

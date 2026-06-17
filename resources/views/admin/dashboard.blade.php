@@ -181,6 +181,33 @@
                                 <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Administradores</span>
                                 <span class="text-2xl font-black text-amber-400 font-mono">{{ $usersByRole['admin'] ?? 0 }}</span>
                             </div>
+                            <div class="col-span-6 mt-4 border-t border-slate-800 pt-4">
+                                <h4 class="text-sm font-black text-slate-400 uppercase tracking-wide mb-2">Tendencias de búsqueda global</h4>
+                                <div class="flex flex-col sm:flex-row gap-6">
+                                    <div class="flex-1 bg-slate-800 p-4 rounded-lg">
+                                        <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Especialidades más buscadas</h5>
+                                        <ul class="text-sm text-white space-y-1">
+                                            @foreach($popularSpecialties as $item)
+                                                <li class="flex justify-between items-center">
+                                                    <span>{{ ucwords(str_replace('-', ' ', $item->specialty)) }}</span>
+                                                    <span class="text-xs bg-indigo-600 px-2 py-0.5 rounded-full">({{ $item->total_searches }} búsquedas)</span>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                    <div class="flex-1 bg-slate-800 p-4 rounded-lg">
+                                        <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Ciudades más buscadas</h5>
+                                        <ul class="text-sm text-white space-y-1">
+                                            @foreach($popularCities as $item)
+                                                <li class="flex justify-between items-center">
+                                                    <span>{{ $item->city }}</span>
+                                                    <span class="text-xs bg-green-600 px-2 py-0.5 rounded-full">({{ $item->total_searches }} búsquedas)</span>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     @endif
 
