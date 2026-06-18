@@ -317,9 +317,14 @@ Route::get('/register-options', function () {
     return view('auth.register-options');
 })->name('register.options');
 
-// Ruta para mostrar el formulario de registro de doctores
+// Ruta para mostrar el formulario de registro de doctores (registro independiente)
 Route::get('/register-partner', [RegisterDoctorController::class, 'register'])->name('partner.register');
 Route::post('/register-partner', [RegisterDoctorController::class, 'store'])->name('partner.register.store');
+
+// Rutas para registro/invitación de doctores a través de una clínica
+// Estas rutas permiten que una clínica invite a médicos existentes o registre nuevos
+Route::get('/clinic/{clinic}/register-doctor', [RegisterDoctorController::class, 'register'])->name('clinic.register-doctor.form');
+Route::post('/clinic/{clinic}/register-doctor', [RegisterDoctorController::class, 'store'])->name('clinic.register-doctor.store');
 
 // Ruta para mostrar el formulario de registro de clinicas
 Route::get('/register-clinic', [RegisterClinicController::class, 'register'])->name('clinic.register');

@@ -20,6 +20,7 @@ class Doctor extends Model
         'reviews_count', 'identification', 'gender',
         'validation_status', 'identity_card_path',
         'professional_card_path', 'active'
+        // NOTA: 'plan_id' NO está en fillable para evitar manipulación desde el frontend
     ];
 
     protected $casts = [
@@ -131,6 +132,19 @@ class Doctor extends Model
                 $q->where('address', 'like', "%$city%");
             });
         }
+    }
+
+    /**
+     * Busca un médico por su número de cédula/documento.
+     * Utilizado en el flujo de invitación de médicos a clínicas.
+     * 
+     * Ejemplo:
+     * $doctor = Doctor::byIdentification('1234567890')->first();
+     */
+    public function scopeByIdentification($query, string $identification)
+    {
+        $cleanIdentification = str_replace('-', '', $identification);
+        return $query->where('identification', $cleanIdentification);
     }
     public function canAddMoreAddresses(): bool
     {
