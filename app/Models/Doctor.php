@@ -197,9 +197,9 @@ class Doctor extends Model
         return $this->hasMany(Unavailability::class, 'doctor_id');
     }
 
-    public function schedules(): HasManyThrough
+    public function schedules(): HasMany
     {
-        return $this->hasManyThrough(Schedule::class, Address::class, 'doctor_id', 'address_id');
+        return $this->hasMany(Schedule::class, 'doctor_id');
     }
 
     public function campaigns()

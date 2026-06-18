@@ -25,6 +25,7 @@ class AvailabilityService
      * Calcula con precisión atómica el próximo turno real disponible.
      * 
      * ⚡ OPTIMIZADO: Utiliza caché del repositorio para consultas repetidas
+     * 🆕 MEJORADO: Consolida bloques horarios de múltiples contextos (particular + clínicas)
      * 
      * @param array $doctorIds Matriz de IDs de los doctores a evaluar (Staff o Particular).
      * @param int $addressId ID de la sede física o virtual.
@@ -58,6 +59,7 @@ class AvailabilityService
                 $dayOfWeek = $currentDate->dayOfWeekIso; // 1 = Lunes, 7 = Domingo
 
                 // ⚡ Obtener horarios con caché
+                // 🆕 Ahora carga clinic_id para identificar el contexto de propiedad
                 $schedules = $this->repository->getSchedulesForDay($addressId, $doctorIds, $dayOfWeek);
 
                 if ($schedules->isEmpty()) {
@@ -136,6 +138,71 @@ class AvailabilityService
             ]);
             
             return null;
+        }
+    }
+
+    /**
+     * 🆕 Obtiene los bloques horarios de un doctor agrupados por contexto de propiedad.
+     * Útil para renderizar la agenda consolidada mostrando "Particular" vs "Clínica X".
+     * 
+     * @param int $doctorId
+     * @param int $dayOfWeek (1-7)
+     * @return array Estructura: ['particular' => [...], 'clinics' => ['clinic_id' => [...]]]
+     */
+    public function getSchedulesByContext(int $doctorId, int $dayOfWeek): array
+    {
+        try {
+            $schedules = \App\Models\Schedule::where('doctor_id', $doctorId)
+                ->where('day', $dayOfWeek)
+                ->where('is_active', true)
+                ->with(['clinic', 'address'])
+                ->orderBy('start_time')
+                ->get();
+
+            $grouped = [
+                'particular' => [],
+                'clinics' => []
+            ];
+
+            foreach ($schedules as $schedule) {
+                if (is_null($schedule->clinic_id)) {
+                    // Bloque particular
+                    $grouped['particular'][] = [
+                        'id' => $schedule->id,
+                        'start_time' => $schedule->start_time->format('H:i'),
+                        'end_time' => $schedule->end_time->format('H:i'),
+                        'address_name' => $schedule->address->name ?? 'Consultorio',
+                        'context' => 'Consulta Particular'
+                    ];
+                } else {
+                    // Bloque de clínica
+                    $clinicId = $schedule->clinic_id;
+                    if (!isset($grouped['clinics'][$clinicId])) {
+                        $grouped['clinics'][$clinicId] = [
+                            'clinic_name' => $schedule->clinic->name ?? "Clínica #{$clinicId}",
+                            'blocks' => []
+                        ];
+                    }
+
+                    $grouped['clinics'][$clinicId]['blocks'][] = [
+                        'id' => $schedule->id,
+                        'start_time' => $schedule->start_time->format('H:i'),
+                        'end_time' => $schedule->end_time->format('H:i'),
+                        'address_name' => $schedule->address->name ?? 'Sede',
+                        'context' => "Staff - {$schedule->clinic->name}"
+                    ];
+                }
+            }
+
+            return $grouped;
+        } catch (\Exception $e) {
+            Log::error('AvailabilityService: Error al agrupar horarios por contexto', [
+                'doctor_id' => $doctorId,
+                'day_of_week' => $dayOfWeek,
+                'error' => $e->getMessage()
+            ]);
+
+            return ['particular' => [], 'clinics' => []];
         }
     }
 
