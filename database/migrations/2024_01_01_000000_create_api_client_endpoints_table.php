@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('api_client_endpoints', function (Blueprint $table) {
+        Schema::createIfNotExists('api_client_endpoints', function (Blueprint $table) {
             $table->id();
             $table->foreignId('api_client_id')->constrained('api_clients')->onDelete('cascade');
             $table->string('endpoint'); // ej: /api/appointments/slots
