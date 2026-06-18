@@ -34,58 +34,122 @@
    </x-slot:seo>
 
    <style>
-    /* 📅 REDUCCIÓN TIPOGRÁFICA Y ESCALA PREMIUM DE FLATPICKR */
+        /* 📅 REDUCCIÓN TIPOGRÁFICA Y ESCALA PREMIUM RESPONSIVA DE FLATPICKR */
     .flatpickr-calendar {
-    font-family: inherit !important;
-    font-size: 13px !important;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
-    border-radius: 1.5rem !important;
-    border: 1px solid #f1f5f9 !important;
-    padding: 4px !important;
-    
-    /* 🛠️ AÑADE ESTO: Sincroniza el ancho del padre con tus días reducidos */
-    width: 280px !important; /* 266px de los días + 8px de paddings internos */
-    box-sizing: border-box !important;
-}
+        font-family: inherit !important;
+        font-size: 14px !important; /* Subimos un punto para mejor legibilidad */
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02) !important;
+        border-radius: 1.5rem !important;
+        border: 1px solid #f1f5f9 !important;
+        padding: 12px !important; /* Más aire interno */
+        box-sizing: border-box !important;
+        
+        /* 📱 COMPORTAMIENTO MÓVIL: Ocupa el 100% del ancho del contenedor del input */
+        width: 100% !important; 
+        min-width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* 💻 COMPORTAMIENTO ESCRITORIO (A partir de pantallas medianas/grandes) */
+    @media (min-width: 768px) {
+        .flatpickr-calendar {
+            /* Subimos a 290px (los 280px antiguos + los 10px ideales que solicitaste) */
+            width: 290px !important; 
+            min-width: 290px !important;
+            max-width: 290px !important;
+        }
+        
+        .flatpickr-days, 
+        .dayContainer,
+        .flatpickr-weekdays {
+            width: 266px !important;
+            min-width: 266px !important;
+            max-width: 266px !important;
+        }
+    }
+
+    /* 🚀 FLEXIBILIDAD EN MÓVILES: Si está en móvil, obliga a las grillas internas a estirarse uniformemente */
+    @media (max-width: 767px) {
+        .flatpickr-innerContainer,
+        .flatpickr-rContainer,
+        .flatpickr-days,
+        .dayContainer,
+        .flatpickr-weekdays {
+            width: 100% !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+        }
+
+        /* Hace que la fila de días de la semana se distribuya de forma homogénea */
+        .flatpickr-weekdays {
+            display: flex !important;
+            justify-content: space-between !important;
+            height: 32px !important;
+        }
+
+        .flatpickr-weekday {
+            flex: 1 !important;
+            max-width: none !important;
+            text-align: center !important;
+        }
+
+         /* Hace que la grilla de días ocupe todo el espacio de forma perfectamente cuadriculada */
+        .dayContainer {
+            display: grid !important;
+            grid-template-columns: repeat(7, 1fr) !important;
+            
+            /* 🚀 SEPARACIÓN DE DÍAS: Añade 4px de margen de separación interna entre celdas */
+            gap: 4px !important; 
+            
+            /* Añade un pequeño margen extra en los bordes para que no pegue con la caja principal */
+            padding: 2px !important; 
+        }
+
+        /* Las celdas de los días individuales crecen proporcionalmente al ancho de la pantalla */
+        .flatpickr-day {
+            width: 100% !important;
+            max-width: none !important;
+            height: auto !important;
+            aspect-ratio: 1 / 1 !important; /* Garantiza que sigan siendo cuadrados perfectos */
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            
+            /* 🚀 MARGEN DE SEGURIDAD: Añade 2px de margen externo individual para el desborde */
+            margin: 2px !important; 
+            border-radius: 0.75rem !important;
+        }
+    }
 
     /* Reducción proporcional de la cabecera de meses y flechas */
     .flatpickr-months .flatpickr-month {
-        height: 30px !important;
+        height: 36px !important;
     }
     .flatpickr-current-month {
-        font-size: 13px !important;
+        font-size: 14px !important;
         font-weight: 800 !important;
     }
 
-    /* Ajuste simétrico para los contenedores internos de los días (Evita que se corten los bordes) */
-    .flatpickr-innerContainer {
-        padding: 2px !important;
-    }
-    
-    /* Reducción sutil de las celdas de los días individuales manteniendo la grilla flexible intacta */
-    .flatpickr-day {
-        font-size: 12px !important;
-        height: 36px !important;
-        line-height: 36px !important;
-        max-width: 36px !important;
-        margin: 1px !important;
-    }
-
-    .flatpickr-days, 
-    .dayContainer {
-        width: 266px !important;
-        min-width: 266px !important;
-        max-width: 266px !important;
-    }
-
-    /* 🎨 Tus estilos estéticos: Días habilitados en Verde suave OpenDoctor */
+    /* 🎨 Días habilitados en Verde suave OpenDoctor */
     .flatpickr-day.has-agenda-slot {
         background-color: #f0fdf4 !important; 
         color: #166534 !important; 
-        font-weight: 800 !important;
-        border-color: #bbf7d0 !important;
-        border-radius: 0.75rem !important;
+        font-weight: 900 !important;
+        border: 1px solid #bbf7d0 !important;
+        position: relative;
     }
+    
+    .flatpickr-day.has-agenda-slot::after {
+        content: '';
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 4px;
+        height: 4px;
+        background-color: #22c55e;
+        border-radius: 50%;
+    }
+    
     .flatpickr-day.has-agenda-slot:hover {
         background-color: #dcfce7 !important;
     }
@@ -95,30 +159,8 @@
         background-color: #4f46e5 !important;
         color: white !important;
         border-color: #4f46e5 !important;
-        border-radius: 0.75rem !important;
     }
 
-    /* 🔒 CAPA DE SEGURIDAD ESTÉTICA: Atenúa y bloquea los días del mes anterior y siguiente */
-    .flatpickr-day.nextMonthDay, 
-    .flatpickr-day.prevMonthDay,
-    .flatpickr-day.nextMonthDay:hover,
-    .flatpickr-day.prevMonthDay:hover {
-        background-color: transparent !important;
-        color: #cbd5e1 !important; /* Gris suave (text-slate-300) */
-        font-weight: 400 !important;
-        cursor: not-allowed !important; /* Cursor de prohibición */
-        pointer-events: none !important; /* Anula por completo los clics en el navegador */
-        border-color: transparent !important;
-    }
-
-    .flatpickr-weekdays {
-    width: 266px !important;
-    max-width: 266px !important;
-    height: 28px !important;
-}
-.flatpickr-weekday {
-    max-width: 38px !important; /* Sincronizado con el ancho total de tu .flatpickr-day (36px + margins) */
-}
 </style>
  
     {{-- 🔒 INICIALIZACIÓN HÍBRIDA MAESTRA: Envía de forma explícita el context ID de la clínica a JavaScript --}}
@@ -463,7 +505,7 @@
             </div> <!-- Cierre .grid -->
         </div> <!-- Cierre .max-w-7xl -->
 
-        <!-- ======================================================== -->
+                <!-- ======================================================== -->
         <!-- ARQUITECTURA REACTIVA DE PRODUCCIÓN: AGENDAMIENTO        -->
         <!-- ======================================================== -->
         <script>
@@ -476,19 +518,16 @@
                     flatpickr(element, {
                         locale: 'es',
                         dateFormat: 'Y-m-d',
-                        minDate: 'today',
+                        // 🔒 BLINDAJE DE TIEMPO: Usamos el hoy real de Colombia calculado por PHP
+                        minDate: '{{ $todayColombia }}',
                         maxDate: new Date().fp_incr(60),
                         defaultDate: '{{ $nextAvailableDate }}',
                         showMonths: 1,
                         animate: true,
-                        enable: [
-                            function(date) {
-                                const year = date.getFullYear();
-                                const month = String(date.getMonth() + 1).padStart(2, '0');
-                                const day = String(date.getDate()).padStart(2, '0');
-                                return realEnabledDates.includes(`${year}-${month}-${day}`);
-                            }
-                        ],
+                        
+                        // 🔥 REGLA DE ORO DE PRODUCCIÓN: 
+                        // Eliminamos la propiedad rígida 'enable' para liberar los clics en todos los días.
+
                         onOpen: function() {
                             const overlay = document.querySelector('[x-show="isOpen"]');
                             if(overlay) overlay.style.opacity = '1';
@@ -506,18 +545,16 @@
                             const day = String(dayElem.dateObj.getDate()).padStart(2, '0');
                             const dateString = `${year}-${month}-${day}`;
 
+                            // 🟢 Si el día tiene agenda en el SaaS, se pinta en verde
                             if (realEnabledDates.includes(dateString)) {
                                 dayElem.classList.add('has-agenda-slot');
-                            } else {
-                                // 🔒 CAPA VISUAL DE INHABILITACIÓN: Fuerza el color gris y bloquea interacciones
-                                dayElem.style.opacity = '0.3';
-                                dayElem.style.backgroundColor = '#f8fafc'; // bg-slate-50
-                                dayElem.style.color = '#94a3b8'; // text-slate-400
-                                dayElem.style.cursor = 'not-allowed';
-                                dayElem.style.pointerEvents = 'none';
-                                dayElem.classList.remove('disabled'); // Evita conflictos con clases nativas
+                            } 
+                            // ⚪ Si no tiene agenda, Flatpickr le pondrá su estilo gris pero el CSS mantendrá activo el clic
+                            else {
+                                dayElem.setAttribute('title', 'Sin turnos configurados para esta fecha');
                             }
                         },
+                        // 🚀 ACCIÓN UNIVERSAL EN CALIENTE: Registra el clic en cualquier fecha (Gris o Verde)
                         onChange: function(selectedDates, dateStr) {
                             element.value = dateStr;
                             element.dispatchEvent(new Event('input', { bubbles: true }));
@@ -525,15 +562,20 @@
                             const alpineData = Alpine.$data(document.querySelector('[x-data^="bookingSystem"]'));
                             if (alpineData) {
                                 alpineData.selectedDate = dateStr;
-                                alpineData.fetchAvailableSlots();
+                                
+                                // Evaluamos dinámicamente si la fecha elegida tiene turnos reales configurados
+                                if (realEnabledDates.includes(dateStr)) {
+                                    alpineData.fetchAvailableSlots();
+                                } else {
+                                    alpineData.availableSlots = []; // Limpieza instantánea para los días grises
+                                }
                             }
                         }
                     });
                 }
             });
 
-
-            // 🔒 MÁQUINA DE ESTADOS RECONSTRUIDA EN ALPINE.JS
+            // 🔒 MÁQUINA DE ESTADOS RECONSTRUIDA EN ALPINE.JS EN PRODUCCIÓN
             document.addEventListener('alpine:init', () => {
                 Alpine.data('bookingSystem', (partnerId, profileType, maxAdvanceDays, fromClinicUrl) => ({
                     selectedAddress: null,
@@ -563,7 +605,12 @@
                     init() {
                         this.$watch('selectedDate', (value) => {
                             if (value && this.selectedService) {
-                                this.fetchAvailableSlots();
+                                const realEnabledDates = @json($enabledDates ?? []);
+                                if (realEnabledDates.includes(value)) {
+                                    this.fetchAvailableSlots();
+                                } else {
+                                    this.availableSlots = [];
+                                }
                             }
                         });
                     },
@@ -579,7 +626,13 @@
                     selectService(id, duration) {
                         this.selectedService = id;
                         this.serviceDuration = duration;
-                        this.fetchAvailableSlots();
+                        
+                        const realEnabledDates = @json($enabledDates ?? []);
+                        if (this.selectedDate && realEnabledDates.includes(this.selectedDate)) {
+                            this.fetchAvailableSlots();
+                        } else {
+                            this.availableSlots = [];
+                        }
                     },
 
                     fetchServicesLocal() {

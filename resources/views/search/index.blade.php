@@ -371,7 +371,7 @@
                     </svg>
                     
                     <h4 class="font-bold text-slate-900 text-lg mb-1 dark:text-white">
-                        No hay especialistas directos asignados en este momento
+                        <p>Llegaste justo en pleno lanzamiento de opendoctor.online. Aunque el especialista que buscas aún está configurando su agenda presencial, puedes agendar una telemedicina inmediata o dar clic abajo para consultar con el médico general de turno.</p>
                     </h4>
                     
                     <p class="text-slate-500 text-sm max-w-md mb-5 dark:text-slate-400">
