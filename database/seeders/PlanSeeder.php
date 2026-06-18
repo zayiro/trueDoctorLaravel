@@ -29,7 +29,8 @@ class PlanSeeder extends Seeder
                 'max_patients_list' => 20, 
                 'can_export_history' => false, 
                 'has_telemedicine' => true, 
-                'price' => 0
+                'price' => 0,
+                'active' => true
             ],
             [
                 'name' => 'Plan Premium', 
@@ -45,7 +46,8 @@ class PlanSeeder extends Seeder
                 'max_patients_list' => 200, 
                 'can_export_history' => true, 
                 'has_telemedicine' => true, 
-                'price' => 2400000
+                'price' => 2400000,
+                'active' => true
             ],
             [
                 'name' => 'Plan Gold', 
@@ -61,7 +63,8 @@ class PlanSeeder extends Seeder
                 'max_patients_list' => 10000, 
                 'can_export_history' => true, 
                 'has_telemedicine' => true, 
-                'price' => 3500000
+                'price' => 3500000,
+                'active' => true
             ],
             // 🏢 PLAN FREE EXCLUSIVO AÑADIDO PARA CLÍNICAS / CENTROS MÉDICOS MULTI-DOCTOR
             [
@@ -78,7 +81,8 @@ class PlanSeeder extends Seeder
                 'max_patients_list' => 500, 
                 'can_export_history' => true, 
                 'has_telemedicine' => true, 
-                'price' => 0
+                'price' => 0,
+                'active' => true
             ],
             // 🏢 PLAN EXCLUSIVO AÑADIDO PARA CLÍNICAS / CENTROS MÉDICOS MULTI-DOCTOR
             [
@@ -95,7 +99,8 @@ class PlanSeeder extends Seeder
                 'max_patients_list' => 50000, 
                 'can_export_history' => true, 
                 'has_telemedicine' => true, 
-                'price' => 8500000
+                'price' => 8500000,
+                'active' => true
             ]
         ];
 
@@ -115,7 +120,8 @@ class PlanSeeder extends Seeder
                     'max_patients_list' => $planData['max_patients_list'],
                     'can_export_history' => $planData['can_export_history'],
                     'has_telemedicine' => $planData['has_telemedicine'],
-                    'price' => $planData['price']
+                    'price' => $planData['price'],
+                    'active' => $planData['active']
                 ]
             );
         }

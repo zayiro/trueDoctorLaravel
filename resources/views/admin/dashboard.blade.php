@@ -164,23 +164,29 @@
                     </div>
 
                     @if($user->role === 'admin')
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-900 p-6 rounded-[2rem] text-white">
-                            <div class="space-y-1 border-r border-slate-800 last:border-0 pr-4">
-                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Doctores Activos</span>
-                                <span class="text-2xl font-black text-indigo-400 font-mono">{{ $usersByRole['doctor'] ?? 0 }}</span>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-900 p-6 rounded-[2rem] text-white">                           
+                            <div class="col-span-6 mt-4 border-t border-slate-800 pt-4">
+                                <h4 class="text-sm font-black text-slate-400 uppercase tracking-wide mb-2">Visión general del ecosistema</h4>
+                                <div class="flex flex-col sm:flex-row gap-6">
+                                    <div class="flex-1 bg-slate-800 p-4 rounded-lg">
+                                        <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Doctores Activos</h5>
+                                        <span class="text-2xl font-black text-indigo-400 font-mono">{{ $usersByRole['doctor'] ?? 0 }}</span>
+                                    </div>
+                                    <div class="flex-1 bg-slate-800 p-4 rounded-lg">
+                                        <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Clínicas Activas</h5>
+                                        <span class="text-2xl font-black text-purple-400 font-mono">{{ $usersByRole['clinic'] ?? 0 }}</span>
+                                    </div>
+                                    <div class="flex-1 bg-slate-800 p-4 rounded-lg">
+                                        <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Pacientes</h5>
+                                        <span class="text-2xl font-black text-emerald-400 font-mono">{{ $usersByRole['patient'] ?? 0 }}</span>
+                                    </div>
+                                    <div class="flex-1 bg-slate-800 p-4 rounded-lg">
+                                        <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Administradores</h5>
+                                        <span class="text-2xl font-black text-amber-400 font-mono">{{ $usersByRole['admin'] ?? 0 }}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="space-y-1 border-r border-slate-800 last:border-0 pr-4 sm:pl-4">
-                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Clínicas Activas</span>
-                                <span class="text-2xl font-black text-purple-400 font-mono">{{ $usersByRole['clinic'] ?? 0 }}</span>
-                            </div>
-                            <div class="space-y-1 border-r border-slate-800 last:border-0 pr-4 sm:pl-4">
-                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Pacientes</span>
-                                <span class="text-2xl font-black text-emerald-400 font-mono">{{ $usersByRole['patient'] ?? 0 }}</span>
-                            </div>
-                            <div class="space-y-1 sm:pl-4">
-                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Administradores</span>
-                                <span class="text-2xl font-black text-amber-400 font-mono">{{ $usersByRole['admin'] ?? 0 }}</span>
-                            </div>
+                                             
                             <div class="col-span-6 mt-4 border-t border-slate-800 pt-4">
                                 <h4 class="text-sm font-black text-slate-400 uppercase tracking-wide mb-2">Tendencias de búsqueda global</h4>
                                 <div class="flex flex-col sm:flex-row gap-6">
