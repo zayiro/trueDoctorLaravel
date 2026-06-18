@@ -165,6 +165,15 @@ class Appointment extends Model
     }
 
     /**
+     * 📋 RELACIÓN CON EVENTOS: Event Sourcing
+     * Obtiene todos los eventos registrados para esta cita
+     */
+    public function events()
+    {
+        return $this->hasMany(\App\Models\AppointmentEvent::class, 'appointment_id');
+    }
+
+    /**
      * Obtiene el estado de la cita con la primera letra en mayúscula.
      */
     protected function statusLabel(): Attribute
