@@ -11,6 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
+        Schema::dropIfExists('api_client_logs');
+        
         Schema::create('api_client_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('api_client_id')->constrained('api_clients')->onDelete('cascade');
