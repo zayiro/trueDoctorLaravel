@@ -14,6 +14,9 @@ use App\Observers\UserObserver;
 use App\Models\Address;
 use App\Observers\AddressObserver;
 
+use App\Models\Appointment;
+use App\Observers\AppointmentObserver;
+
 use Illuminate\Support\ServiceProvider;
 use App\Events\AppointmentCancelled;
 use App\Listeners\SendCancellationEmail;
@@ -47,5 +50,7 @@ class AppServiceProvider extends ServiceProvider
         // Vinculamos el modelo con su observador
         Clinic::observe(ClinicObserver::class);
         Doctor::observe(DoctorObserver::class);
+        // Observador de citas con transacciones de base de datos para garantizar integridad
+        Appointment::observe(AppointmentObserver::class);
     }
 }
