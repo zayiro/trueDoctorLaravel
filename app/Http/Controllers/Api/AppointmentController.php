@@ -242,31 +242,68 @@ class AppointmentController extends Controller
         return $slots;
     }
 
-        /**
+    /**
      * PUT /api/appointments/{id}/cancel
      * Cancela una cita desde una aplicación externa validando las reglas de tiempo.
+     * 
+     * Rate Limit: 20 requests/minuto
+     * Requiere: X-API-Key header
      */
     public function cancel($id)
     {
-        // 1. Ejecutar la validación matemática del servicio centralizado
-        $checkStatus = $this->appointmentService->checkIfCanModify($id);
+        try {
+            // 1. Buscar la cita
+            $appointment = Appointment::findOrFail($id);
 
-        if (!$checkStatus['allowed']) {
+            // 2. Ejecutar la validación matemática del servicio centralizado
+            $checkStatus = $this->appointmentService->checkIfCanModify($id);
+
+            if (!$checkStatus['allowed']) {
+                Log::warning('API Gateway: Cancelación rechazada', [
+                    'appointment_id' => $id,
+                    'reason' => $checkStatus['message'],
+                    'api_client_id' => request()->attributes->get('api_client')?->id,
+                ]);
+
+                return response()->json([
+                    'error' => $checkStatus['message']
+                ], 422);
+            }
+
+            // 3. Actualizar estado en transacción
+            DB::transaction(function () use ($appointment) {
+                $appointment->update([
+                    'status' => 'cancelled'
+                ]);
+
+                // Registrar evento de auditoría
+                AppointmentEventSourcing::recordCancelled($appointment, 'Cancelada vía API Gateway');
+            });
+
+            Log::info('API Gateway: Cita cancelada exitosamente', [
+                'appointment_id' => $appointment->id,
+                'api_client_id' => request()->attributes->get('api_client')?->id,
+            ]);
+
             return response()->json([
-                'error' => $checkStatus['message']
-            ], 422); // Error de regla de negocio
+                'message' => 'Appointment cancelled successfully.',
+                'data'    => $appointment
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'error' => 'Appointment not found'
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('API Gateway: Error al cancelar cita', [
+                'appointment_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'error' => 'No se pudo procesar la solicitud en el servidor.'
+            ], 500);
         }
-
-        // 2. Buscar la cita y actualizar su estado a cancelado
-        $appointment = Appointment::findOrFail($id);
-        $appointment->update([
-            'status' => 'cancelled'
-        ]);
-
-        return response()->json([
-            'message' => 'Appointment cancelled successfully.',
-            'data'    => $appointment
-        ], 200);
     }
 
     /**
