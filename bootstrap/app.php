@@ -27,6 +27,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'role.redirect' => \App\Http\Middleware\RedirectByUserRole::class,
             'doctor.context' => EnsureDoctorContext::class,
             'tenant' => TenantMiddleware::class,
+            'api.rate.limit' => \App\Http\Middleware\ApiRateLimiter::class,
+            'api.validate.key' => \App\Http\Middleware\ValidateApiKey::class,
         ]);
         $middleware->validateCsrfTokens(except: [
             'api/webhooks/zoom',

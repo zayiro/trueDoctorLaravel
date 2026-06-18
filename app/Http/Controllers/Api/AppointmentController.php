@@ -8,14 +8,37 @@ use App\Models\Address;
 use App\Models\Schedule;
 use App\Models\Appointment;
 use App\Models\Unavailability;
+use App\Services\AppointmentService;
+use App\Services\AppointmentEventSourcing;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 
 class AppointmentController extends Controller
 {
     /**
+     * Instancia del servicio de citas
+     */
+    private AppointmentService $appointmentService;
+
+    /**
+     * Constructor con inyección de dependencias
+     */
+    public function __construct(AppointmentService $appointmentService)
+    {
+        $this->appointmentService = $appointmentService;
+
+        // Aplicar middlewares de seguridad al API Gateway
+        $this->middleware('api.rate.limit');
+        $this->middleware('api.validate.key')->except(['getStatus']);
+    }
+
+    /**
      * Consulta de slots disponibles (API Abierta/Externa)
+     * 
+     * GET /api/appointments/slots
+     * Rate Limit: 60 requests/minuto
      */
     public function getSlots(Request $request)
     {
@@ -44,69 +67,93 @@ class AppointmentController extends Controller
 
     /**
      * Crear una cita con doble validación de seguridad
+     * 
+     * POST /api/appointments
+     * Rate Limit: 10 requests/minuto
+     * Requiere: X-API-Key header
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'patient_id' => 'required|exists:patients,id',
-            'service_id' => 'required|exists:services,id',
-            'address_id' => 'required|exists:addresses,id',
-            'date' => 'required|date_format:Y-m-d|after_or_equal:today',
-            'start_time' => 'required|date_format:H:i',
-            'duration' => 'required|integer|min:5|max:120',
-            'price' => 'required|numeric|min:0',
-            'is_virtual' => 'required|boolean',
-            'meeting_link' => 'nullable|url',
-            'notes' => 'nullable|string|max:500'
-        ]);
-
-        $address = Address::findOrFail($request->address_id);
-        $doctorId = $address->doctor_id;
-        $startTime = Carbon::parse($request->start_time)->format('H:i:s');
-        $endTime = Carbon::parse($request->start_time)->addMinutes($request->duration)->format('H:i:s');
-
-        // REGLA DE ORO: Validar disponibilidad real en este instante exacto (Previene condiciones de carrera)
-        $slots = $this->calculateAvailableSlots(
-            $request->date,
-            $request->address_id,
-            $request->is_virtual,
-            $request->duration
-        );
-
-        // Buscar si el slot específico solicitado está marcado como "available => true"
-        $slotDisponible = collect($slots)->first(function ($slot) use ($startTime) {
-            return Carbon::parse($slot['time'])->format('H:i:s') === $startTime && $slot['available'] === true;
-        });
-
-        if (!$slotDisponible) {
-            return response()->json([
-                'error' => 'El horario seleccionado ya no está disponible o el doctor se encuentra ausente.'
-            ], 422);
-        }
-
-        // Insertar la cita de forma segura en la base de datos
         try {
-            $appointment = Appointment::create([
-                'patient_id' => $request->patient_id,
-                'doctor_id' => $doctorId,
-                'service_id' => $request->service_id,
-                'address_id' => $request->is_virtual ? null : $request->address_id,
-                'date' => $request->date,
-                'start_time' => $startTime,
-                'end_time' => $endTime,
-                'duration' => $request->duration,
-                'price' => $request->price,
-                'meeting_link' => $request->is_virtual ? $request->meeting_link : null,
-                'status' => 'pending', // O 'confirmed' según tu regla de negocio
-                'notes' => $request->notes,
+            $request->validate([
+                'patient_id' => 'required|exists:patients,id',
+                'service_id' => 'required|exists:services,id',
+                'address_id' => 'required|exists:addresses,id',
+                'date' => 'required|date_format:Y-m-d|after_or_equal:today',
+                'start_time' => 'required|date_format:H:i',
+                'duration' => 'required|integer|min:5|max:120',
+                'price' => 'required|numeric|min:0',
+                'is_virtual' => 'required|boolean',
+                'meeting_link' => 'nullable|url',
+                'notes' => 'nullable|string|max:500'
+            ]);
+
+            $address = Address::findOrFail($request->address_id);
+            $doctorId = $address->doctor_id;
+            $startTime = Carbon::parse($request->start_time)->format('H:i:s');
+            $endTime = Carbon::parse($request->start_time)->addMinutes($request->duration)->format('H:i:s');
+
+            // REGLA DE ORO: Validar disponibilidad real en este instante exacto (Previene condiciones de carrera)
+            $slots = $this->calculateAvailableSlots(
+                $request->date,
+                $request->address_id,
+                $request->is_virtual,
+                $request->duration
+            );
+
+            // Buscar si el slot específico solicitado está marcado como "available => true"
+            $slotDisponible = collect($slots)->first(function ($slot) use ($startTime) {
+                return Carbon::parse($slot['time'])->format('H:i:s') === $startTime && $slot['available'] === true;
+            });
+
+            if (!$slotDisponible) {
+                return response()->json([
+                    'error' => 'El horario seleccionado ya no está disponible o el doctor se encuentra ausente.'
+                ], 422);
+            }
+
+            // Insertar la cita de forma segura en una transacción
+            $appointment = DB::transaction(function () use ($request, $doctorId, $startTime, $endTime) {
+                $appointment = Appointment::create([
+                    'patient_id' => $request->patient_id,
+                    'doctor_id' => $doctorId,
+                    'service_id' => $request->service_id,
+                    'address_id' => $request->is_virtual ? null : $request->address_id,
+                    'date' => $request->date,
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                    'duration' => $request->duration,
+                    'price' => $request->price,
+                    'meeting_link' => $request->is_virtual ? $request->meeting_link : null,
+                    'status' => 'pending',
+                    'notes' => $request->notes,
+                ]);
+
+                // Registrar evento de auditoría
+                AppointmentEventSourcing::recordCreated($appointment, [
+                    'source' => 'api_gateway',
+                    'api_client_id' => $request->attributes->get('api_client')?->id,
+                ]);
+
+                return $appointment;
+            });
+
+            Log::info('API Gateway: Cita creada exitosamente', [
+                'appointment_id' => $appointment->id,
+                'api_client_id' => $request->attributes->get('api_client')?->id,
             ]);
 
             return response()->json([
                 'message' => 'Cita agendada con éxito.',
                 'data' => $appointment
-            ], 211);
+            ], 201);
 
         } catch (\Exception $e) {
+            Log::error('API Gateway: Error al crear cita', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return response()->json([
                 'error' => 'No se pudo procesar la solicitud en el servidor.'
             ], 500);
