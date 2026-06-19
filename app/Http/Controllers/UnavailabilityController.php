@@ -3,13 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreUnavailabilityRequest;
 use App\Models\Unavailability;
 use App\Models\Appointment;
 use App\Models\Address;
 use App\Models\User;
+use App\Events\DoctorUnavailabilityCreated;
+use App\Services\AvailabilityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class UnavailabilityController extends Controller
@@ -142,66 +146,103 @@ class UnavailabilityController extends Controller
     }
 
     /**
-     * Almacena el bloqueo validando las fechas, horas exactas y choques contra la tabla appointments.
+     * Inyección de dependencias.
      */
-    public function store(Request $request)
+    private AvailabilityService $availabilityService;
+
+    public function __construct(AvailabilityService $availabilityService)
+    {
+        $this->availabilityService = $availabilityService;
+    }
+
+    /**
+     * Almacena el bloqueo validando las fechas, horas exactas y choques contra la tabla appointments.
+     * 
+     * 🔒 BLINDADO: Usa Form Request con validaciones defensivas
+     * 🔥 EVENTOS: Dispara DoctorUnavailabilityCreated para notificaciones
+     * ⚡ CACHÉ: Invalida el caché de disponibilidad automáticamente
+     */
+    public function store(StoreUnavailabilityRequest $request)
     {
         $user = Auth::user();
         $context = session('doctor_context');
 
-        // Validación adaptada a Laravel 11 usando la regla Rule para el softdelete de sedes
-        $request->validate([
-            'start_date' => 'required|date|after_or_equal:today',
-            'end_date'   => 'required|date|after_or_equal:start_date',
-            'address_id' => [
-                // Si es doctor en contexto clínica, forzamos la selección de sede, no permitimos bloqueo global
-                ($user->role === 'doctor' && ($context['type'] ?? 'particular') === 'clinic') ? 'required' : 'nullable',
-                Rule::exists('addresses', 'id')->whereNull('deleted_at')
-            ],
-            'start_time' => 'required_with:end_time|nullable|date_format:H:i',
-            'end_time'   => 'required_with:start_time|nullable|date_format:H:i|after:start_time',
-            'reason'     => 'nullable|string|max:255',
-        ]);
+        try {
+            DB::beginTransaction();
 
-        $doctorId = $this->resolveDoctorId($request, $user);
-        $this->checkAddressOwnership($request->address_id, $user);
+            $doctorId = $this->resolveDoctorId($request, $user);
+            $this->checkAddressOwnership($request->address_id, $user);
 
-        // 🔍 MÁQUINA DE DETECCIÓN DE CONFLICTOS HORARIOS CON PACIENTES
-        $appointmentsQuery = Appointment::where('doctor_id', $doctorId)
-            ->whereBetween('date', [$request->start_date, $request->end_date])
-            ->whereIn('status', ['confirmed', 'pending']);
+            // 🔍 MÁQUINA DE DETECCIÓN DE CONFLICTOS HORARIOS CON PACIENTES
+            $appointmentsQuery = Appointment::where('doctor_id', $doctorId)
+                ->whereBetween('date', [$request->start_date, $request->end_date])
+                ->whereIn('status', ['confirmed', 'pending']);
 
-        $appointmentsQuery->when($request->address_id, function($q) use ($request) {
-            return $q->where('address_id', $request->address_id);
-        });
-
-        if ($request->filled('start_time') && $request->filled('end_time')) {
-            $appointmentsQuery->where(function ($q) use ($request) {
-                $q->whereBetween('start_time', [$request->start_time, $request->end_time])
-                  ->orWhereBetween('end_time', [$request->start_time, $request->end_time]);
+            $appointmentsQuery->when($request->address_id, function($q) use ($request) {
+                return $q->where('address_id', $request->address_id);
             });
+
+            if ($request->filled('start_time') && $request->filled('end_time')) {
+                $appointmentsQuery->where(function ($q) use ($request) {
+                    $q->whereBetween('start_time', [$request->start_time, $request->end_time])
+                      ->orWhereBetween('end_time', [$request->start_time, $request->end_time]);
+                });
+            }
+
+            $conflicts = $appointmentsQuery->with('patient.user')->get();
+
+            // Si hay conflictos y no se fuerza el guardado, retornar con advertencia
+            if ($conflicts->count() > 0 && !$request->has('force_save')) {
+                return back()->with([
+                    'conflict_appointments' => $conflicts,
+                    'old_data'              => $request->all()
+                ])->withInput();
+            }
+
+            // 🔥 CREAR LA INASISTENCIA
+            $unavailability = Unavailability::create([
+                'doctor_id'  => $doctorId,
+                'address_id' => $request->address_id,
+                'start_date' => $request->start_date,
+                'end_date'   => $request->end_date,
+                'start_time' => $request->start_time, 
+                'end_time'   => $request->end_time,   
+                'reason'     => $request->reason,
+            ]);
+
+            Log::info('Inasistencia creada exitosamente', [
+                'unavailability_id' => $unavailability->id,
+                'doctor_id' => $doctorId,
+                'affected_appointments_count' => $conflicts->count(),
+            ]);
+
+            // 🔥 DISPARAR EVENTO CON CITAS AFECTADAS
+            event(new DoctorUnavailabilityCreated($unavailability, $conflicts));
+
+            // ⚡ INVALIDAR CACHÉ DE DISPONIBILIDAD
+            $clinicId = $context['type'] === 'clinic' ? (int)$context['id'] : null;
+            $this->availabilityService->invalidateAvailabilityCache(
+                $clinicId,
+                [$doctorId],
+                $request->address_id
+            );
+
+            DB::commit();
+
+            return back()->with('success', 'Ausencia e indisponibilidad guardada correctamente. Se han notificado los pacientes afectados.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Error al crear inasistencia', [
+                'doctor_id' => $doctorId ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->with('error', 'Error al guardar la inasistencia. Por favor, intenta nuevamente.')
+                ->withInput();
         }
-
-        $conflicts = $appointmentsQuery->with('patient.user')->get();
-
-        if ($conflicts->count() > 0 && !$request->has('force_save')) {
-            return back()->with([
-                'conflict_appointments' => $conflicts,
-                'old_data'              => $request->all()
-            ])->withInput();
-        }
-
-        Unavailability::create([
-            'doctor_id'  => $doctorId,
-            'address_id' => $request->address_id,
-            'start_date' => $request->start_date,
-            'end_date'   => $request->end_date,
-            'start_time' => $request->start_time, 
-            'end_time'   => $request->end_time,   
-            'reason'     => $request->reason,
-        ]);
-
-        return back()->with('success', 'Ausencia e indisponibilidad guardada correctamente.');
     }
     /**
      * Remueve el bloqueo validando jerarquías Multi-tenant estrictas.

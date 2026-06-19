@@ -26,6 +26,7 @@ class AvailabilityService
      * 
      * ⚡ OPTIMIZADO: Utiliza caché del repositorio para consultas repetidas
      * 🆕 MEJORADO: Consolida bloques horarios de múltiples contextos (particular + clínicas)
+     * 🔒 BLINDADO: Intercepta inasistencias con validación de contexto de propiedad
      * 
      * @param array $doctorIds Matriz de IDs de los doctores a evaluar (Staff o Particular).
      * @param int $addressId ID de la sede física o virtual.
@@ -96,15 +97,8 @@ class AvailabilityService
                             continue;
                         }
 
-                        // Validación 1: Descartar si el doctor tiene un bloqueo
-                        $isDoctorUnavailable = $unavailabilities->where('doctor_id', $schedule->doctor_id)
-                            ->contains(function ($u) use ($currentTimeStr) {
-                                if (is_null($u->start_time)) return true;
-                                return $currentTimeStr >= Carbon::parse($u->start_time)->format('H:i:s') && 
-                                       $currentTimeStr < Carbon::parse($u->end_time)->format('H:i:s');
-                            });
-
-                        if ($isDoctorUnavailable) {
+                        // 🔒 VALIDACIÓN MEJORADA 1: Descartar si el doctor tiene un bloqueo (con validación de contexto)
+                        if ($this->isDoctorUnavailableAtTime($unavailabilities, $schedule->doctor_id, $currentTimeStr, $clinicId)) {
                             $blockStart->addMinutes($slotDurationMinutes);
                             continue;
                         }
@@ -139,6 +133,48 @@ class AvailabilityService
             
             return null;
         }
+    }
+
+    /**
+     * 🔒 VALIDACIÓN MEJORADA: Detecta si un doctor está indisponible en un horario específico.
+     * 
+     * Maneja correctamente:
+     * - Bloqueos de día completo (start_time y end_time son NULL)
+     * - Bloqueos horarios específicos
+     * - Validación de contexto de propiedad (particular vs clínica)
+     * 
+     * @param \Illuminate\Database\Eloquent\Collection $unavailabilities
+     * @param int $doctorId
+     * @param string $currentTimeStr Formato HH:MM:SS
+     * @param int|null $clinicId
+     * @return bool
+     */
+    private function isDoctorUnavailableAtTime($unavailabilities, int $doctorId, string $currentTimeStr, ?int $clinicId = null): bool
+    {
+        return $unavailabilities->where('doctor_id', $doctorId)
+            ->contains(function ($unavailability) use ($currentTimeStr, $clinicId) {
+                // 🔒 VALIDACIÓN DE CONTEXTO: Si es una inasistencia de clínica, solo aplica si estamos en ese contexto
+                if ($unavailability->address && $unavailability->address->clinic_id && $clinicId) {
+                    if ((int)$unavailability->address->clinic_id !== (int)$clinicId) {
+                        return false; // Esta inasistencia no aplica a este contexto
+                    }
+                }
+
+                // Caso 1: Bloqueo de día completo (sin horas específicas)
+                if (is_null($unavailability->start_time) && is_null($unavailability->end_time)) {
+                    return true; // Bloquea TODO el día
+                }
+
+                // Caso 2: Bloqueo horario específico
+                if (!is_null($unavailability->start_time) && !is_null($unavailability->end_time)) {
+                    $blockStart = Carbon::parse($unavailability->start_time)->format('H:i:s');
+                    $blockEnd = Carbon::parse($unavailability->end_time)->format('H:i:s');
+                    
+                    return $currentTimeStr >= $blockStart && $currentTimeStr < $blockEnd;
+                }
+
+                return false;
+            });
     }
 
     /**
