@@ -112,9 +112,7 @@ class ClinicAddressController extends Controller
         $clinic = $this->getClinicContext();
 
         // 1. Seguridad Multi-tenant: Confirmar propiedad de la sede
-        if ($address->clinic_id !== $clinic->id) {
-            abort(403, 'Acceso denegado.');
-        }
+        $this->validateAddressOwnership($address);
 
         // 2. 🛑 REGLA DE NEGOCIO CRÍTICA: Bloquear el borrado si es una sede virtual
         if ($address->type === 'virtual') {
