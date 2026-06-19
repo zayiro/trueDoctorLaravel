@@ -15,9 +15,13 @@ return new class extends Migration
             $table->id();
             $table->foreignId('address_id')->constrained()->onDelete('cascade');
             $table->foreignId('service_id')->constrained()->onDelete('cascade');
-            $table->decimal('price', 10, 2);
-            $table->integer('duration'); 
+            $table->decimal('price', 10, 2)->comment('Tarifa del servicio en esta sede específica');
+            $table->integer('duration')->comment('Duración en minutos del servicio en esta sede'); 
             $table->timestamps();
+
+            // 🔒 Índices para búsquedas y validación de unicidad
+            $table->index('address_id');
+            $table->index('service_id');
         });
     }
 

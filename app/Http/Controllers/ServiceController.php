@@ -6,12 +6,16 @@ use App\Models\Service;
 use App\Models\Doctor;
 use App\Models\Clinic;
 use App\Models\City;
+use App\Models\Address;
+use App\Models\Specialty;
+use App\Traits\ValidatesMultiTenantOwnership;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ServiceController extends Controller
 {
+    use ValidatesMultiTenantOwnership;
     /**
      * Resuelve dinámicamente si el usuario logueado es Doctor o Clínica (Tenant) según su rol o contexto activo.
      */
@@ -137,15 +141,16 @@ class ServiceController extends Controller
         $rules = [
             'name'          => 'required|string|max:100',
             'type'          => 'required|in:physical,virtual',
-            'duration'      => 'required|integer|min:1',
+            'duration'      => 'required|integer|min:1|max:480',
             'specialties'   => 'required|array|min:1',
             'specialties.*' => 'exists:specialties,id',
-            'price_virtual' => 'required_if:type,virtual|nullable|numeric|min:0',
+            'price_virtual' => 'required_if:type,virtual|nullable|numeric|min:0|max:999999.99',
             'address_ids'   => 'required_if:type,physical|array',
             'address_ids.*' => [
                 'exists:addresses,id,deleted_at,NULL',
                 function ($attribute, $value, $fail) use ($owner) {
-                    if (!$owner->addresses()->where('id', $value)->exists()) {
+                    $address = Address::find($value);
+                    if (!$address || !$owner->addresses()->where('id', $value)->exists()) {
                         $fail('La sede seleccionada no es válida o no le pertenece.');
                     }
                 },
@@ -155,7 +160,7 @@ class ServiceController extends Controller
 
         if ($request->has('address_ids') && $request->input('type') === 'physical') {
             foreach ($request->input('address_ids') as $id) {
-                $rules["prices.$id"] = 'required|numeric|min:0';
+                $rules["prices.$id"] = 'required|numeric|min:0|max:999999.99';
             }
         }
 
@@ -164,38 +169,58 @@ class ServiceController extends Controller
             'prices.*.numeric'  => 'El precio debe ser un número válido.',
             'prices.*.min'      => 'El precio no puede ser menor a 0.',
             'specialties.required' => 'Debes asociar este servicio a una especialidad médica.',
+            'duration.max'      => 'La duración no puede exceder 480 minutos (8 horas).',
         ]);
+
+        // 🔒 VALIDACIÓN CRÍTICA 1: Validar que todas las especialidades pertenezcan al usuario
+        $this->validateSpecialtiesOwnership($validated['specialties'], $user);
+
+        // 🔒 VALIDACIÓN CRÍTICA 2: Validar que todas las sedes pertenezcan al usuario
+        if ($validated['type'] === 'physical') {
+            $this->validateAddressesOwnership($validated['address_ids'], $user);
+        }
+
         DB::transaction(function () use ($validated, $owner, $user) {
             $service = Service::firstOrCreate([
                 'name' => trim($validated['name']),
                 'type' => trim($validated['type']),
             ]);
 
-            $specialtySyncData = [];
-            foreach ($validated['specialties'] as $specialtyId) {
-                $specialtySyncData[$specialtyId] = ['user_id' => $user->id];
-            }
-            $service->specialties()->syncWithoutDetaching($specialtySyncData);
-
-            $syncData = [];
+            // 🔒 VALIDACIÓN CRÍTICA 3: Validar tipo de sede vs tipo de servicio
             if ($validated['type'] === 'virtual') {
                 $virtualAddress = $owner->addresses()->where('type', 'virtual')->first() 
                                 ?? $owner->createVirtualAddress();
+                
+                $this->validateAddressTypeForService($virtualAddress, 'virtual');
                 
                 $syncData[$virtualAddress->id] = [
                     'price'    => round($validated['price_virtual'], 2),
                     'duration' => $validated['duration'],
                 ];
             } else {
+                $syncData = [];
                 foreach ($validated['address_ids'] as $addressId) {
+                    $address = Address::find($addressId);
+                    $this->validateAddressTypeForService($address, 'physical');
+                    
                     $syncData[$addressId] = [
                         'price'    => round($validated['prices'][$addressId], 2),
                         'duration' => $validated['duration'],
                     ];
                 }
             }
+
+            // Sincronizar especialidades con aislamiento por user_id
+            $specialtySyncData = [];
+            foreach ($validated['specialties'] as $specialtyId) {
+                $specialtySyncData[$specialtyId] = ['user_id' => $user->id];
+            }
+            $service->specialties()->syncWithoutDetaching($specialtySyncData);
+
+            // Sincronizar sedes con precios y duraciones
             $service->addresses()->syncWithoutDetaching($syncData);
 
+            // Limpiar sedes que no fueron seleccionadas (solo para servicios físicos)
             if ($validated['type'] === 'physical') {
                 $ownerPhysicalAddressIds = $owner->addresses()->where('type', 'physical')->pluck('id')->toArray();
                 $addressesToDetach = array_diff($ownerPhysicalAddressIds, $validated['address_ids']);
@@ -205,6 +230,7 @@ class ServiceController extends Controller
                 }
             }
 
+            // Limpiar especialidades que no fueron seleccionadas
             $allUserSpecialtiesInService = DB::table('service_specialty')
                 ->where('service_id', $service->id)
                 ->where('user_id', $user->id)
@@ -235,14 +261,8 @@ class ServiceController extends Controller
         $user = auth()->user();
         $owner = $this->getOwner(); 
         
-        $belongsToOwner = DB::table('service_specialty')
-            ->where('service_id', $service->id)
-            ->where('user_id', $user->id)
-            ->exists();
-        
-        if (!$belongsToOwner) {
-            abort(403, 'No tienes permisos para modificar este servicio médico.');
-        }
+        // 🔒 Validar propiedad del servicio
+        $this->validateServiceOwnership($service, $user);
 
         $addresses = $owner->addresses()
             ->with('city')
@@ -258,7 +278,12 @@ class ServiceController extends Controller
             ->pluck('specialty_id')
             ->toArray();
 
-        return view('partner.services.edit', compact('service', 'addresses', 'specialties', 'attachedSpecialtyIds'));
+        $attachedAddressIds = $service->addresses()
+            ->where('type', 'physical')
+            ->pluck('id')
+            ->toArray();
+
+        return view('partner.services.edit', compact('service', 'addresses', 'specialties', 'attachedSpecialtyIds', 'attachedAddressIds'));
     }
     /**
      * Actualiza el servicio y sincroniza de forma masiva las tarifas, duraciones y especialidades.
@@ -270,26 +295,21 @@ class ServiceController extends Controller
         $owner = $this->getOwner();
         $user = Auth::user();
         
-        $belongsToOwner = DB::table('service_specialty')
-            ->where('service_id', $service->id)
-            ->where('user_id', $user->id)
-            ->exists();
-
-        if (!$belongsToOwner) {
-            abort(403, 'No tienes permiso para modificar este servicio.');
-        }
+        // 🔒 Validar propiedad del servicio
+        $this->validateServiceOwnership($service, $user);
 
         $rules = [
             'name'          => ['required', 'string', 'max:255'], 
-            'duration'      => ['required', 'integer', 'min:1'],
+            'duration'      => ['required', 'integer', 'min:1', 'max:480'],
             'specialties'   => ['required', 'array', 'min:1'],
             'specialties.*' => ['exists:specialties,id'],
-            'price_virtual' => ['required_if:type,virtual', 'nullable', 'numeric', 'min:0'],
+            'price_virtual' => ['required_if:type,virtual', 'nullable', 'numeric', 'min:0', 'max:999999.99'],
             'address_ids'   => ['required_if:type,physical', 'array'],
             'address_ids.*' => [
                 'exists:addresses,id,deleted_at,NULL',
                 function ($attribute, $value, $fail) use ($owner) {
-                    if (!$owner->addresses()->where('id', $value)->exists()) {
+                    $address = Address::find($value);
+                    if (!$address || !$owner->addresses()->where('id', $value)->exists()) {
                         $fail('La sede seleccionada no es válida.');
                     }
                 },
@@ -299,7 +319,7 @@ class ServiceController extends Controller
 
         if ($request->has('address_ids') && $service->type === 'physical') {
             foreach ($request->input('address_ids') as $id) {
-                $rules["prices.$id"] = ['required', 'numeric', 'min:0'];
+                $rules["prices.$id"] = ['required', 'numeric', 'min:0', 'max:999999.99'];
             }
         }
 
@@ -308,19 +328,30 @@ class ServiceController extends Controller
             'prices.*.numeric'  => 'El precio debe ser un número válido.',
             'prices.*.min'      => 'El precio no puede ser menor a 0.',
             'specialties.required' => 'Debes asociar este servicio a una especialidad médica.',
+            'duration.max'      => 'La duración no puede exceder 480 minutos (8 horas).',
         ]);
+
+        // 🔒 VALIDACIÓN CRÍTICA 1: Validar que todas las especialidades pertenezcan al usuario
+        $this->validateSpecialtiesOwnership($validated['specialties'], $user);
+
+        // 🔒 VALIDACIÓN CRÍTICA 2: Validar que todas las sedes pertenezcan al usuario
+        if ($service->type === 'physical') {
+            $this->validateAddressesOwnership($validated['address_ids'], $user);
+        }
 
         DB::transaction(function () use ($validated, $service, $owner, $user) {
             $service->update([
                 'name' => trim($validated['name']),
             ]);
 
+            // Sincronizar especialidades con aislamiento por user_id
             $specialtySyncData = [];
             foreach ($validated['specialties'] as $specialtyId) {
                 $specialtySyncData[$specialtyId] = ['user_id' => $user->id];
             }
             $service->specialties()->syncWithoutDetaching($specialtySyncData);
 
+            // Limpiar especialidades que no fueron seleccionadas
             $allUserSpecialtiesInService = DB::table('service_specialty')
                 ->where('service_id', $service->id)
                 ->where('user_id', $user->id)
@@ -337,10 +368,13 @@ class ServiceController extends Controller
                     ->delete(); 
             }
 
+            // Sincronizar sedes con precios y duraciones
             $syncData = [];
             if ($service->type === 'virtual') {
                 $virtualAddress = $owner->addresses()->where('type', 'virtual')->first() 
                                 ?? $owner->createVirtualAddress();
+                
+                $this->validateAddressTypeForService($virtualAddress, 'virtual');
                 
                 $syncData[$virtualAddress->id] = [
                     'price'    => round($validated['price_virtual'], 2),
@@ -348,6 +382,9 @@ class ServiceController extends Controller
                 ];
             } else {
                 foreach ($validated['address_ids'] as $addressId) {
+                    $address = Address::find($addressId);
+                    $this->validateAddressTypeForService($address, 'physical');
+                    
                     $syncData[$addressId] = [
                         'price'    => round($validated['prices'][$addressId], 2),
                         'duration' => $validated['duration'],
@@ -356,6 +393,7 @@ class ServiceController extends Controller
             }
             $service->addresses()->syncWithoutDetaching($syncData);
 
+            // Limpiar sedes que no fueron seleccionadas (solo para servicios físicos)
             if ($service->type === 'physical') {
                 $ownerPhysicalAddressIds = $owner->addresses()->where('type', 'physical')->pluck('id')->toArray();
                 $addressesToDetach = array_diff($ownerPhysicalAddressIds, $validated['address_ids'] ?? []);
@@ -369,16 +407,4 @@ class ServiceController extends Controller
         return redirect()->route('partner.services.index')->with('success', 'Servicio médico actualizado con éxito.');
     }
 
-    /**
-     * Impide modificaciones comerciales sobre servicios institucionales en el contexto de clínicas.
-     */
-    private function denyIfInstitutionalContext()
-    {
-        $user = Auth::user();
-        $context = session('doctor_context');
-
-        if ($user->role === 'doctor' && ($context['type'] ?? 'particular') === 'clinic') {
-            abort(403, 'Accion denegada. Los catalogos y tarifas institucionales pertenecen exclusivamente a la administracion de la clínica.');
-        }
-    }
 }

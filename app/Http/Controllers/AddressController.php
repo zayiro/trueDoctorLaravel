@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Address;
 use App\Models\City;
 use App\Models\Department;
+use App\Traits\ValidatesMultiTenantOwnership;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class AddressController extends Controller
 {
+    use ValidatesMultiTenantOwnership;
     /**
      * Obtiene el modelo del perfil propietario (Doctor o Clinic) según el rol o el contexto activo.
      */
@@ -71,7 +73,7 @@ class AddressController extends Controller
 
     public function toggleStatus(Address $address)
     {
-        $this->authorizeOwner($address);
+        $this->validateAddressOwnership($address);
 
         $address->update([
             'status' => !$address->status
@@ -165,7 +167,7 @@ class AddressController extends Controller
     public function edit(Address $address)
     {
         $this->denyIfInstitutionalContext();
-        $this->authorizeOwner($address);
+        $this->validateAddressOwnership($address);
         
         $cities = City::all();
         $departments = Department::orderBy('name')->get();   
@@ -179,7 +181,7 @@ class AddressController extends Controller
     public function update(Request $request, Address $address)
     {        
         $this->denyIfInstitutionalContext();
-        $this->authorizeOwner($address);
+        $this->validateAddressOwnership($address);
         
         $user = Auth::user();
         $owner = $this->getOwner();
@@ -195,7 +197,16 @@ class AddressController extends Controller
                         : $query->where('doctor_id', $owner->id)->whereNull('deleted_at');
                 }),
             ],
-            'address' => 'required|string|max:255',
+            'address' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('addresses')->ignore($address->id)->where(function ($query) use ($user, $owner) {
+                    return $user->role === 'clinic' 
+                        ? $query->where('clinic_id', $owner->id)->whereNull('deleted_at')
+                        : $query->where('doctor_id', $owner->id)->whereNull('deleted_at');
+                }),
+            ],
             'phone' => 'nullable|string|max:20',
             'city_id'  => 'required|exists:cities,id',
         ]);
@@ -212,7 +223,7 @@ class AddressController extends Controller
     public function destroy(Address $address)
     {
         $this->denyIfInstitutionalContext();
-        $this->authorizeOwner($address);
+        $this->validateAddressOwnership($address);
 
         $hasAppointments = $address->appointments()
             ->whereIn('status', ['confirmed', 'pending'])
@@ -225,53 +236,6 @@ class AddressController extends Controller
         $address->delete();
 
         return back()->with('success', 'Sede eliminada correctamente.');
-    }
-
-    /**
-     * Filtro estricto de seguridad multi-inquilino.
-     */    
-    private function authorizeOwner(Address $address)
-    {        
-        $user = Auth::user();
-        $context = session('doctor_context');
-
-        // Si es un médico operando en el contexto de una clínica aliada
-        if ($user->role === 'doctor' && ($context['type'] ?? 'particular') === 'clinic') {
-            if ($address->clinic_id !== (int)$context['id']) {
-                abort(403, 'No tienes permiso sobre esta sede de la clínica corporativa.');
-            }
-            return; // Autorizado para verla/listar horarios
-        }
-
-        // Control de acceso estándar para Clínicas Puras (Producción)
-        if ($user->role === 'clinic' && $address->clinic_id !== $user->clinic->id) {
-            abort(403, 'No tienes permiso sobre esta sede institucional.');
-        }
-
-        // Control de acceso estándar para Doctores Independientes (Producción)
-        if ($user->role === 'doctor' && $address->doctor_id !== $user->doctor->id) {
-            abort(403, 'No tienes permiso sobre esta sede privada.');
-        }
-
-        if ($address->type === 'virtual') {
-            $hasVirtualServices = $address->services()->where('type', 'virtual')->exists();
-            if ($hasVirtualServices) {
-                abort(403, 'No puedes eliminar la sede virtual mientras tengas servicios online activos.');
-            }
-        }
-    }
-
-    /**
-     * Impide que un médico realice acciones de escritura (CRUD) sobre sedes institucionales.
-     */
-    private function denyIfInstitutionalContext()
-    {
-        $user = Auth::user();
-        $context = session('doctor_context');
-
-        if ($user->role === 'doctor' && ($context['type'] ?? 'particular') === 'clinic') {
-            abort(403, 'Acción denegada. Las sedes institucionales solo pueden ser modificadas por los administradores de la clínica.');
-        }
     }
 
     /**

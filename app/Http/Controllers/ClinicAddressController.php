@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Address;
 use App\Models\City;
 use App\Models\Department;
+use App\Traits\ValidatesMultiTenantOwnership;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ClinicAddressController extends Controller
 {
+    use ValidatesMultiTenantOwnership;
     /**
      * Helper metodológico para aislar el contexto comercial de la clínica.
      */
@@ -92,9 +94,7 @@ class ClinicAddressController extends Controller
         $clinic = $this->getClinicContext();
 
         // Seguridad Multi-tenant: Confirmar propiedad
-        if ($address->clinic_id !== $clinic->id) {
-            abort(403);
-        }
+        $this->validateAddressOwnership($address);
 
         $address->update([
             'status' => !$address->status
