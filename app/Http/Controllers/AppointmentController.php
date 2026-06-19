@@ -15,6 +15,11 @@ use Illuminate\Support\Facades\Crypt;
 use App\Services\ZoomService;
 use App\Models\User;
 use App\Events\AppointmentCancelled;
+use App\Http\Requests\SearchAppointmentByReferenceRequest;
+use App\Http\Requests\StoreAppointmentRequest;
+use App\Http\Requests\StoreAppointmentStepTwoRequest;
+use App\Http\Requests\ProcessPatientAppointmentRequest;
+use App\Http\Requests\CancelAppointmentFlowRequest;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -58,12 +63,9 @@ class AppointmentController extends Controller
      * Busca una reservación por su referencia filtrando según el rol del usuario (Lectura Pura para AJAX).
      * Responde de forma asíncrona al componente x-appointment-search-form.
      */
-    public function searchByReference(Request $request)
+    public function searchByReference(SearchAppointmentByReferenceRequest $request)
     {
-        // 1. Validar la entrada de forma estricta
-        $request->validate([
-            'reference' => 'required|string|max:20',
-        ]);
+        // Validación ya realizada por el Form Request
 
         $user = Auth::user();
 
@@ -130,17 +132,9 @@ class AppointmentController extends Controller
     /**
      * Consólida la transacción final de reserva insertando la cita médica (Multi-tenant).
      */
-    public function store(Request $request)
+    public function store(StoreAppointmentRequest $request)
     {
-        // 1. Validación estructural estricta de la reserva
-        $request->validate([
-            'service_id' => 'required|integer|exists:services,id',
-            'address_id' => 'required|integer|exists:addresses,id,deleted_at,NULL',
-            'date'       => 'required|date|after_or_equal:today',
-            'start_time' => 'required|string',
-            'doctor_id'  => 'required|integer|exists:doctors,id',
-            'clinic_id'  => 'nullable|integer|exists:clinics,id',
-        ]);
+        // Validación ya realizada por el Form Request
 
         // 2. RESOLUCIÓN DE LA ENTIDAD PACIENTE (Fin del bug de llaves users.id)
         $patient = DB::table('patients')->where('user_id', Auth::id())->first();
@@ -239,17 +233,9 @@ class AppointmentController extends Controller
     /**
      * Almacena temporalmente en sesión los datos de la cita elegida por el paciente (Multi-tenant).
      */
-    public function storeStepTwo(Request $request) 
+    public function storeStepTwo(StoreAppointmentStepTwoRequest $request) 
     {
-        // 1. Validación estructural rígida de tipos y estados en el payload JSON
-        $request->validate([
-            'service_id' => 'required|integer|exists:services,id',
-            'address_id' => 'required|integer|exists:addresses,id,deleted_at,NULL',
-            'date'       => 'required|date|after_or_equal:today',
-            'hour'       => 'required|string',
-            'doctor_id'  => 'nullable|integer|exists:doctors,id',
-            'clinic_id'  => 'nullable|integer|exists:clinics,id',
-        ]);
+        // Validación ya realizada por el Form Request
 
         $addressId = $request->integer('address_id');
         $dateInput = $request->input('date');
@@ -402,7 +388,7 @@ class AppointmentController extends Controller
     /**
      * Procesa la captura de datos del paciente, gestiona el login/registro automático y crea la transacción.     
      */
-    public function processPatient(Request $request)
+    public function processPatient(ProcessPatientAppointmentRequest $request)
     {
         // 1. Proteger el acceso al paso: si no existe intento de reserva activo, abortar
         $bookingData = session('booking_data');
@@ -410,7 +396,7 @@ class AppointmentController extends Controller
             return redirect()->to('/')->with('error', 'Sesión inválida o datos de reserva incompletos.');
         }
 
-        $rules = ['notes' => 'required|string|min:10|max:500'];
+        // Validación ya realizada por el Form Request
         $hasAccount = $request->has_account == 'yes';
 
         // 🔒 ESCUDO DE SEGURIDAD INTERNO: Bloquear si un personal del sistema intenta actuar como paciente
@@ -419,21 +405,6 @@ class AppointmentController extends Controller
                 ->withInput()
                 ->with('error', 'Tu cuenta actual pertenece al personal del sistema ('.Auth::user()->role.'). No tienes permisos para registrar citas como paciente. Por favor, cierra sesión e intenta de nuevo.');
         }
-
-        // 2. Construcción de reglas dinámicas basadas en el estado del invitado
-        if (Auth::guest()) {
-            if ($hasAccount) {
-                $rules['login_email'] = 'required|email|exists:users,email';
-                $rules['login_password'] = 'required';
-            } else {
-                $rules['name'] = 'required|string|min:3|max:100';
-                $rules['email'] = 'required|email|unique:users,email';
-                $rules['identification'] = 'required|numeric|unique:patients,identification';
-                $rules['phone'] = 'required|numeric';
-            }
-        }
-        
-        $request->validate($rules);
 
         // 3. PROCESAR AUTENTICACIÓN PREVIA (Seguridad Multi-tenant fuera de la transacción SQL)
         if (Auth::guest() && $hasAccount) {
@@ -758,8 +729,9 @@ class AppointmentController extends Controller
     /**
      * Cancela el flujo de reserva, valida la propiedad del paciente y elimina el registro de forma segura.
     */
-    public function cancelFlow(Request $request)
+    public function cancelFlow(CancelAppointmentFlowRequest $request)
     {
+        // Validación ya realizada por el Form Request
         $appointmentId = $request->integer('id');
         $user = Auth::user(); 
 

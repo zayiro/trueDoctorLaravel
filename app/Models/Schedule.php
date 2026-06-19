@@ -16,9 +16,11 @@ class Schedule extends Model
     protected $fillable = [
         'address_id', 
         'doctor_id', 
+        'clinic_id',
         'day', 
         'start_time', 
-        'end_time'
+        'end_time',
+        'is_active'
     ];
 
     /**
@@ -27,6 +29,7 @@ class Schedule extends Model
     protected $casts = [
         'start_time' => 'datetime:H:i',
         'end_time'   => 'datetime:H:i',
+        'is_active'  => 'boolean',
     ];
 
     /**
@@ -84,6 +87,14 @@ class Schedule extends Model
     public function address(): BelongsTo
     {
         return $this->belongsTo(Address::class, 'address_id');
+    }
+
+    /**
+     * 🆕 La clínica corporativa propietaria de este bloque (NULL = consultorio particular).
+     */
+    public function clinic(): BelongsTo
+    {
+        return $this->belongsTo(Clinic::class, 'clinic_id');
     }
 
     /**

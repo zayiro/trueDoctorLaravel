@@ -20,6 +20,7 @@ class Doctor extends Model
         'reviews_count', 'identification', 'gender',
         'validation_status', 'identity_card_path',
         'professional_card_path', 'active'
+        // NOTA: 'plan_id' NO está en fillable para evitar manipulación desde el frontend
     ];
 
     protected $casts = [
@@ -132,6 +133,19 @@ class Doctor extends Model
             });
         }
     }
+
+    /**
+     * Busca un médico por su número de cédula/documento.
+     * Utilizado en el flujo de invitación de médicos a clínicas.
+     * 
+     * Ejemplo:
+     * $doctor = Doctor::byIdentification('1234567890')->first();
+     */
+    public function scopeByIdentification($query, string $identification)
+    {
+        $cleanIdentification = str_replace('-', '', $identification);
+        return $query->where('identification', $cleanIdentification);
+    }
     public function canAddMoreAddresses(): bool
     {
         $plan = $this->plan;
@@ -183,9 +197,9 @@ class Doctor extends Model
         return $this->hasMany(Unavailability::class, 'doctor_id');
     }
 
-    public function schedules(): HasManyThrough
+    public function schedules(): HasMany
     {
-        return $this->hasManyThrough(Schedule::class, Address::class, 'doctor_id', 'address_id');
+        return $this->hasMany(Schedule::class, 'doctor_id');
     }
 
     public function campaigns()

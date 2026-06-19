@@ -303,6 +303,7 @@ class SearchController extends Controller
     /**
      * Calcula el próximo turno disponible leyendo el colchón logístico configurado por el médico.
      * 🛡️ CONEXIÓN MULTI-TENANT: Consume de forma nativa 'min_notice_hours' de doctor_settings.
+     * ⚡ OPTIMIZADO: Eager Loading de doctor_settings para evitar N+1 queries.
      */
     private function calculateNextTurn($addressId, array $doctorIds, $now, $currentTime)
     {
@@ -314,6 +315,7 @@ class SearchController extends Controller
         // Extraemos el valor máximo de horas de anticipación configurado por los médicos involucrados
         $bufferHours = DB::table('doctor_settings')
             ->whereIn('doctor_id', $doctorIds)
+            ->orderBy('min_notice_hours', 'desc')
             ->value('min_notice_hours');
 
         // Validación defensiva: Si no hay registro o es nulo, asume el default de 2 horas de tu migración
@@ -333,7 +335,8 @@ class SearchController extends Controller
         ];
 
         // ESCENARIO A: Buscar si quedan bloques disponibles HOY mismo que superen el margen personalizado
-        $schedule = Schedule::where('address_id', $addressId)
+        $schedule = Schedule::with(['doctor', 'address'])
+            ->where('address_id', $addressId)
             ->whereIn('doctor_id', $doctorIds)
             ->where('day', $currentDayIndex)
             ->whereTime('start_time', '>=', $currentHourStr)
@@ -350,7 +353,8 @@ class SearchController extends Controller
                 $nextDateCheck = Carbon::today()->addDays($i);
                 $checkDayIndex = $nextDateCheck->dayOfWeekIso;
 
-                $schedule = Schedule::where('address_id', $addressId)
+                $schedule = Schedule::with(['doctor', 'address'])
+                    ->where('address_id', $addressId)
                     ->whereIn('doctor_id', $doctorIds)
                     ->where('day', $checkDayIndex)
                     ->orderBy('start_time', 'asc')
@@ -384,6 +388,7 @@ class SearchController extends Controller
 
     /**
      * Despacha los resultados de coincidencia exacta de criterios.
+     * ⚡ OPTIMIZADO: Eager Loading completo para evitar N+1 queries en renderizado.
      */
     public function search(Request $request)
     {        
@@ -399,16 +404,17 @@ class SearchController extends Controller
         $doctors = Doctor::with([
             'user',
             'specialties',
-            'addresses.services',
             'addresses' => function ($query) use ($request) {
                 if ($request->filled('city')) {
                     $query->whereHas('city', function ($q) use ($request) {
                         $q->where('slug', $request->city);
                     });
                 }
-                $query->with('services'); 
             },
-            'addresses.city'
+            'addresses.city',
+            'addresses.services',
+            'clinics.addresses.city',
+            'clinics.addresses.services'
         ])
         ->where('active', true)
         ->where('validation_status', 'approved')
@@ -445,6 +451,7 @@ class SearchController extends Controller
     /**
      * Procesa el síntoma de forma asíncrona mediante OpenAI y almacena en caché e IndexedSymptom.
      * Genera de manera automática estructuras semánticas e indexación orgánica en caliente.
+     * ⚡ OPTIMIZADO: Eager Loading completo para evitar N+1 queries en renderizado.
      */
     public function searchBySymptom(Request $request): JsonResponse
     {        
@@ -543,7 +550,13 @@ class SearchController extends Controller
 
             // 4. CONSULTA RELACIONAL DE MÉDICOS DISPONIBLES
             // Buscamos los médicos calificados en la especialidad sugerida por la IA
-            $medicos = Doctor::with(['user', 'specialties', 'addresses.city'])
+            // ⚡ OPTIMIZADO: Eager Loading de user, specialties, addresses y city para evitar N+1
+            $medicos = Doctor::with([
+                'user',
+                'specialties',
+                'addresses.city',
+                'addresses.services'
+            ])
                 ->where('active', true)
                 ->where('validation_status', 'approved')
                 ->whereHas('specialties', function ($q) use ($triage) {

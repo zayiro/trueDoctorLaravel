@@ -17,7 +17,22 @@ class UserObserver
 {
     /**
      * Handle the User "created" event.
+     * 
+     * ⚠️ RESPONSABILIDAD EXCLUSIVA: Enviar correo de bienvenida
+     * 
      * Se ejecuta automáticamente inmediatamente después de insertar un usuario en la BD.
+     * Este es el ÚNICO lugar donde se envía el correo de bienvenida para evitar duplicidad.
+     * 
+     * Los controladores (RegisterDoctorController, RegisterClinicController, etc.)
+     * NO deben enviar correos de bienvenida. Solo el Observer es responsable.
+     * 
+     * Flujo:
+     * 1. Usuario se crea en la BD
+     * 2. UserObserver::created() se dispara automáticamente
+     * 3. Se envía el correo de bienvenida según el rol
+     * 4. Si falla, se notifica a los administradores
+     * 
+     * GARANTÍA: No hay duplicidad de correos porque este es el ÚNICO punto de envío.
      */
     public function created(User $user): void
     {

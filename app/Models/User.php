@@ -73,7 +73,19 @@ class User extends Authenticatable
 
     public function doctor()
     {
-        return $this->hasOne(Doctor::class); // o hasMany, según tu lógica
+        return $this->hasOne(Doctor::class);
+    }
+
+    /**
+     * Alias para acceder al perfil del doctor de forma más clara.
+     * Utilizado en contextos donde se necesita referencia explícita.
+     * 
+     * Ejemplo:
+     * $doctor = $user->doctorProfile;
+     */
+    public function doctorProfile()
+    {
+        return $this->doctor();
     }
 
     public function clinic() 

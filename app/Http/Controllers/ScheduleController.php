@@ -221,9 +221,24 @@ class ScheduleController extends Controller
                     ->exists();
 
                 if (!$hasAppointments) {
-                    $schedule->delete();
+                    // 🆕 Soft-delete usando is_active en lugar de delete()
+                    $schedule->update(['is_active' => false]);
                 }
             } else {
+                // 🆕 Validar anti-solapamiento antes de actualizar
+                if ($this->hasTimeConflict(
+                    $schedule->doctor_id,
+                    $schedule->day,
+                    $data['start_time'],
+                    $data['end_time'],
+                    $schedule->clinic_id,
+                    $schedule->id // Excluir el registro actual
+                )) {
+                    return back()->withErrors([
+                        'schedule_conflict' => "No se puede actualizar este bloque: el nuevo rango horario se solapa con otro bloque existente del especialista."
+                    ])->withInput();
+                }
+
                 $schedule->update([
                     'start_time' => $data['start_time'],
                     'end_time'   => $data['end_time'],
@@ -233,6 +248,46 @@ class ScheduleController extends Controller
 
         return redirect()->route('partner.schedules.index', $address->id)
             ->with('success', 'Los horarios y turnos de la sede han sido actualizados en lote.');
+    }
+
+    /**
+     * 🆕 Valida que NO exista solapamiento de horarios para un doctor en un día específico.
+     * Considera TODOS los contextos: particular + todas las clínicas donde trabaja.
+     * 
+     * Regla matemática: ($newStart < $existingEnd) && ($newEnd > $existingStart)
+     * 
+     * @param int $doctorId
+     * @param int $day (1-7)
+     * @param string $startTime (HH:MM:SS)
+     * @param string $endTime (HH:MM:SS)
+     * @param int|null $clinicId (NULL = particular, o ID de clínica)
+     * @param int|null $excludeScheduleId (Para ediciones, excluir el registro actual)
+     * @return bool true si hay solapamiento, false si está libre
+     */
+    private function hasTimeConflict(
+        int $doctorId,
+        int $day,
+        string $startTime,
+        string $endTime,
+        ?int $clinicId = null,
+        ?int $excludeScheduleId = null
+    ): bool
+    {
+        $query = Schedule::where('doctor_id', $doctorId)
+            ->where('day', $day)
+            ->where('is_active', true)
+            // Lógica de solapamiento: start_time < nuevo_end_time AND end_time > nuevo_start_time
+            ->where(function ($q) use ($startTime, $endTime) {
+                $q->where('start_time', '<', $endTime)
+                  ->where('end_time', '>', $startTime);
+            });
+
+        // Si estamos editando, excluir el registro actual
+        if ($excludeScheduleId) {
+            $query->where('id', '!=', $excludeScheduleId);
+        }
+
+        return $query->exists();
     }
 
     /**
@@ -281,40 +336,29 @@ class ScheduleController extends Controller
         $this->authorizeAddressOwner($address);
 
         $targetDoctorId = ($user->role === 'clinic') ? $request->doctor_id : $user->doctor->id;
+        $targetClinicId = ($user->role === 'clinic') ? $user->clinic->id : null;
 
         // Combinamos el día base con los días repetidos seleccionados por lotes (replicate_days)
         $daysToRegister = collect($request->input('replicate_days', []))
             ->push($request->day)
             ->unique();
 
-        // 🔍 VALIDACIÓN DE SUPERPOSICIÓN HORARIA GLOBAL E HÍBRIDA ADAPTADA A TELEMEDICINA
+        // 🔍 VALIDACIÓN ANTI-SOLAPAMIENTO: Detecta conflictos en TODOS los contextos del doctor
+        // Regla: ($newStart < $existingEnd) && ($newEnd > $existingStart)
         foreach ($daysToRegister as $day) {
-            $overlap = Schedule::where('day', $day)
-                ->where(function ($query) use ($request, $targetDoctorId, $address) {
-                    $query->where(function ($q) use ($request, $address) {
-                        // Conflicto 1: Choque físico en el mismo consultorio exacto de esta sede
-                        $q->where('address_id', $address->id)
-                          ->where('start_time', '<', $request->end_time)
-                          ->where('end_time', '>', $request->start_time);
-                    })->orWhere(function ($q) use ($request, $targetDoctorId, $address) {
-                        // Conflicto 2 Híbrido: El médico está en otra sede a la misma hora, 
-                        // pero solo choca si ambas ubicaciones operan en el mundo físico.
-                        $q->where('doctor_id', $targetDoctorId)
-                          ->where('start_time', '<', $request->end_time)
-                          ->where('end_time', '>', $request->start_time)
-                          ->whereHas('address', function($subQ) use ($address) {
-                              if ($address->type === 'physical') {
-                                  $subQ->where('type', 'physical');
-                              } else {
-                                  $subQ->where('type', 'virtual');
-                              }
-                          });
-                    });
-                })->exists();
-
-            if ($overlap) {
+            if ($this->hasTimeConflict(
+                $targetDoctorId,
+                $day,
+                $request->start_time,
+                $request->end_time,
+                $targetClinicId
+            )) {
                 $dayNames = [1=>'Lun', 2=>'Mar', 3=>'Mie', 4=>'Jue', 5=>'Vie', 6=>'Sab', 7=>'Dom'];
-                return back()->with('error', "Conflicto de Agenda: El rango seleccionado para el día {$dayNames[$day]} colisiona con un turno existente que comparte el mismo entorno físico o virtual.")->withInput();
+                return back()
+                    ->withErrors([
+                        'schedule_conflict' => "Conflicto de Agenda: El rango seleccionado para el día {$dayNames[$day]} ({$request->start_time} - {$request->end_time}) se solapa con un bloque horario existente del especialista. Verifique su agenda en consultorios particulares y clínicas corporativas."
+                    ])
+                    ->withInput();
             }
         }
 
@@ -323,9 +367,11 @@ class ScheduleController extends Controller
             Schedule::create([
                 'address_id' => $address->id,
                 'doctor_id'  => $targetDoctorId,
+                'clinic_id'  => $targetClinicId, // 🆕 Registra el contexto de propiedad
                 'day'        => $day,
                 'start_time' => $request->start_time,
                 'end_time'   => $request->end_time,
+                'is_active'  => true,
             ]);
         }
 
@@ -366,7 +412,8 @@ class ScheduleController extends Controller
             ]);
         }
 
-        $schedule->delete();
+        // 🆕 Soft-delete usando is_active en lugar de delete()
+        $schedule->update(['is_active' => false]);
 
         return back()->with('success', 'Franja de horario removida correctamente.');
     }
