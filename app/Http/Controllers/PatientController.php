@@ -32,6 +32,9 @@ class PatientController extends Controller
 {
     use AuthorizesRequests;
 
+    // Límite máximo de reprogramaciones permitidas
+    protected $maxReschedules = 2;
+
     /**
      * Limpia caracteres especiales y acentos.
      */
@@ -313,7 +316,9 @@ class PatientController extends Controller
             ->orderBy('start_time', 'desc')
             ->paginate(10);
 
-        return view('patient.appointments.index', compact('upcomingAppointments', 'pastAppointments'));
+        $maxReschedules = $this->maxReschedules;
+    
+        return view('patient.appointments.index', compact('upcomingAppointments', 'pastAppointments', 'maxReschedules'));
     }
     
     /**
@@ -659,10 +664,9 @@ class PatientController extends Controller
         if ($appointment->patient_id !== auth()->user()->patient->id) {
             abort(403, 'No autorizado.');
         }
-
-        $maxReschedules = 2; // Límite máximo de reprogramaciones permitidas    
+        
         $rescheduleCount = $appointment->reschedule_count ?? 0;    
-        if ($rescheduleCount >= $maxReschedules) {
+        if ($rescheduleCount >= $this->maxReschedules) {
             return back()->with('error', 'Has alcanzado el límite máximo de reprogramaciones permitidas para esta cita. Por favor, contacta con soporte para asistencia.');
         }
 

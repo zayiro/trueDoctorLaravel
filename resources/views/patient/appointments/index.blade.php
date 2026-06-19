@@ -225,15 +225,19 @@ $hasStatusFilter = filled(request('status'));
                                         @endif
 
                                         <!-- 🔄 BOTÓN AGREGADO: REAGENDAR CITA -->
-                                        @if(in_array($appointment->status_label, ['pending', 'confirmed']) && ($remainingHours >= $cancellationNoticeHours))
-                                            <button @click="openReschedule = true" 
-                                                    type="button" 
-                                                    class="inline-flex justify-center items-center gap-1.5 px-4 py-2 mt-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-xs font-black uppercase tracking-wider text-center w-full border border-indigo-100 transition-colors">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"></path>
-                                                </svg>
-                                                Reagendar Cita
-                                            </button>
+                                        @if ($appointment->reschedule_count >= $maxReschedules)
+                                            <span class="flex items-center text-sm font-medium text-gray-500">Número máximo de reagendamientos permitidos.</span>                                            
+                                        @else
+                                            @if(in_array($appointment->status_label, ['pending', 'confirmed']) && ($remainingHours >= $cancellationNoticeHours))
+                                                <button @click="openReschedule = true" 
+                                                        type="button" 
+                                                        class="inline-flex justify-center items-center gap-1.5 px-4 py-2 mt-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-xs font-black uppercase tracking-wider text-center w-full border border-indigo-100 transition-colors">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"></path>
+                                                    </svg>
+                                                    Reagendar Cita
+                                                </button>
+                                            @endif
                                         @endif
 
                                         <!-- ❌ BOTÓN DE CANCELACIÓN EXISTENTE -->

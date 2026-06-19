@@ -26,22 +26,29 @@ class TenantMiddleware
         }
 
         $user = Auth::user();
+                
         $tenantId = null;
         $tenantType = null;
+
+        // Validar si el usuario es Administrador del Sistema        
+        if ($user->role === 'admin') {
+            $tenantId = $user->id;
+            $tenantType = $user->role;
+        }
 
         // Validar si el usuario es un Doctor
         $doctor = Doctor::where('user_id', $user->id)->first();
         if ($doctor) {
             $tenantId = $doctor->id;
-            $tenantType = 'doctor';
+            $tenantType = $user->role;
         }
-
+                
         // Validar si el usuario es una Clinic
         if (!$tenantId) {
             $clinic = Clinic::where('user_id', $user->id)->first();
             if ($clinic) {
                 $tenantId = $clinic->id;
-                $tenantType = 'clinic';
+                $tenantType = $user->role;
             }
         }
 
@@ -50,7 +57,7 @@ class TenantMiddleware
             $patient = Patient::where('user_id', $user->id)->first();
             if ($patient) {
                 $tenantId = $patient->id;
-                $tenantType = 'patient';
+                $tenantType = $user->role;
             }
         }
 

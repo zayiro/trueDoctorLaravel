@@ -5,7 +5,8 @@
       x-on:submit="loading = handleSearchSubmit($event)"
       action="{{ route('search') }}" 
       method="GET" 
-      class="bg-white mt-8 p-4 rounded-[1.5rem] shadow-md flex flex-col md:flex-row items-stretch md:items-center gap-4 mb-8 border border-slate-100 w-full">
+      class="bg-white mt-8 p-4 rounded-[1.5rem] shadow-md flex flex-col md:flex-row items-stretch md:items-center gap-4 mb-8 border border-slate-100 w-full"
+      @restore-booking-buttons.window="loading = false">
     
     <!-- 🩺 AUTOCOMPLETADO INTERACTIVO: ESPECIALIDADES (DOCTORALIA STYLE) -->
     <div class="flex-1 min-w-[200px] relative" 

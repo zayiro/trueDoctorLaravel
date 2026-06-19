@@ -228,7 +228,7 @@ class SearchController extends Controller
                 $specialistsCount = count($doctorIds);
 
                 // 🚀 Cálculo veloz para el respaldo de producción
-                $availabilityService = app(\App\Services\AvailabilityService::class);
+                $availabilityService = app(AvailabilityService::class);
                 $backupTurn = $availabilityService->getNextAvailableTurn($doctorIds, $address->id, $clinic->id);
 
                 $groupedResults->put($uniqueKey, [
@@ -243,7 +243,7 @@ class SearchController extends Controller
                     'address_id'  => $address->id,
                     'subtitle'    => "{$address->name} • {$address->address}",
                     // 🔒 INYECCIÓN DE RESPALDO ANTI-ERROR: Sanará la línea 287 de tu Blade
-                    'next_turn'   => $backupTurn ? ucfirst($backupTurn->isoFormat('dddd D [de] MMMM — h:mm A')) : 'Sin turnos próximos disponibles'
+                    'next_turn'   => $backupTurn ? ($backupTurn->isToday() ? 'Hoy ' : '') . ucfirst($backupTurn->isoFormat('dddd D [de] MMMM — h:mm A')) : 'Sin turnos próximos disponibles'
                 ]);
 
             } else {
@@ -253,9 +253,9 @@ class SearchController extends Controller
                 if ($groupedResults->has($uniqueKey)) continue;
 
                 // 🚀 Cálculo veloz para el respaldo de producción
-                $availabilityService = app(\App\Services\AvailabilityService::class);
+                $availabilityService = app(AvailabilityService::class);
                 $backupTurn = $availabilityService->getNextAvailableTurn([$doctor->id], $address->id, null);
-
+                
                 $groupedResults->put($uniqueKey, [
                     'type'              => 'doctor',
                     'id'                => $doctor->id,
@@ -269,7 +269,7 @@ class SearchController extends Controller
                     'address_id'        => $address->id,
                     'subtitle'          => $address->type === 'virtual' ? 'Atención Online' : "{$address->name} • {$address->address}",
                     // 🔒 INYECCIÓN DE RESPALDO ANTI-ERROR: Sanará la línea 287 de tu Blade
-                    'next_turn'   => $backupTurn ? ucfirst($backupTurn->isoFormat('dddd D [de] MMMM — h:mm A')) : 'Sin turnos próximos disponibles'
+                    'next_turn'   => $backupTurn ? ($backupTurn->isToday() ? 'Hoy ' : '') . ucfirst($backupTurn->isoFormat('dddd D [de] MMMM — h:mm A')) : 'Sin turnos próximos disponibles'
                 ]);
             }
         }

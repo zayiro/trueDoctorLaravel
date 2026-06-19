@@ -43,7 +43,8 @@
                     x-on:submit="loading = true"
                     action="{{ route('search.symptom.view') }}" 
                     method="GET" 
-                    class="bg-white p-4 rounded-3xl shadow-2xl border border-slate-100 flex flex-col md:flex-row gap-4">
+                    class="bg-white p-4 rounded-3xl shadow-2xl border border-slate-100 flex flex-col md:flex-row gap-4"
+                    @restore-booking-buttons.window="loading = false">
                     
                     <!-- Input de Síntomas -->
                     <div class="flex-1">

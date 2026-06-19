@@ -355,7 +355,7 @@ $breadcrumbs = [
 
             if (!deptId) return;
 
-            fetch(`/api/departments/${deptId}/cities`)
+            fetch(`/departments/${deptId}/cities`)
                 .then(res => res.json())
                 .then(data => {
                     citySelect.innerHTML = '<option value="">Seleccione Ciudad...</option>';
