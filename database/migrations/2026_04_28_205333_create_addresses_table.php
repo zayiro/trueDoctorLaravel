@@ -22,13 +22,17 @@ return new class extends Migration
             
             $table->string('name');
             $table->string('address');
-            $table->string('type')->default('physical');
+            $table->enum('type', ['physical', 'virtual'])->default('physical');
             $table->string('phone')->nullable();
             $table->string('city_id', 5);
             $table->foreign('city_id')->references('id')->on('cities')->onDelete('cascade');
             $table->boolean('status')->default(true);
             $table->softDeletes();
             $table->timestamps();
+
+            // 🔒 CONSTRAINT: Al menos uno de doctor_id o clinic_id debe estar presente
+            // Nota: MySQL 8.0.16+ soporta CHECK constraints
+            $table->rawIndex('(CASE WHEN doctor_id IS NOT NULL OR clinic_id IS NOT NULL THEN 1 ELSE NULL END)', 'addresses_owner_check');
         });
     }
 
