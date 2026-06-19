@@ -82,13 +82,29 @@ class AvailabilityRepository
     {
         $cacheKey = self::CACHE_PREFIX . 'schedules:' . $addressId . ':' . implode(',', $doctorIds) . ':' . $dayOfWeek;
 
-        return Cache::remember($cacheKey, self::CACHE_TTL * 60, function () use ($addressId, $doctorIds, $dayOfWeek) {
-            return Schedule::with(['doctor', 'address'])
-                ->where('address_id', $addressId)
-                ->whereIn('doctor_id', $doctorIds)
-                ->where('day', $dayOfWeek)
-                ->get();
-        });
+        $cached = Cache::get($cacheKey);
+        
+        if ($cached !== null) {
+            // Reconstruir Collection desde array cacheado
+            return collect($cached)->map(function ($item) {
+                $schedule = new Schedule();
+                foreach ($item as $key => $value) {
+                    $schedule->setAttribute($key, $value);
+                }
+                return $schedule;
+            });
+        }
+
+        $schedules = Schedule::with(['doctor', 'address'])
+            ->where('address_id', $addressId)
+            ->whereIn('doctor_id', $doctorIds)
+            ->where('day', $dayOfWeek)
+            ->get();
+
+        // Cachear como array primitivo
+        Cache::put($cacheKey, $schedules->toArray(), self::CACHE_TTL * 60);
+
+        return $schedules;
     }
 
     /**
@@ -104,17 +120,33 @@ class AvailabilityRepository
         $dateStr = $date->toDateString();
         $cacheKey = self::CACHE_PREFIX . 'unavailabilities:' . implode(',', $doctorIds) . ':' . $dateStr . ':' . ($addressId ?? 'all');
 
-        return Cache::remember($cacheKey, self::CACHE_TTL * 60, function () use ($doctorIds, $dateStr, $addressId) {
-            return Unavailability::whereIn('doctor_id', $doctorIds)
-                ->where(function ($q) use ($dateStr, $addressId) {
-                    $q->where('start_date', '<=', $dateStr)
-                      ->where('end_date', '>=', $dateStr)
-                      ->where(function ($sub) use ($addressId) {
-                          $sub->whereNull('address_id')->orWhere('address_id', $addressId);
-                      });
-                })
-                ->get();
-        });
+        $cached = Cache::get($cacheKey);
+        
+        if ($cached !== null) {
+            // Reconstruir Collection desde array cacheado
+            return collect($cached)->map(function ($item) {
+                $unavailability = new Unavailability();
+                foreach ($item as $key => $value) {
+                    $unavailability->setAttribute($key, $value);
+                }
+                return $unavailability;
+            });
+        }
+
+        $unavailabilities = Unavailability::whereIn('doctor_id', $doctorIds)
+            ->where(function ($q) use ($dateStr, $addressId) {
+                $q->where('start_date', '<=', $dateStr)
+                  ->where('end_date', '>=', $dateStr)
+                  ->where(function ($sub) use ($addressId) {
+                      $sub->whereNull('address_id')->orWhere('address_id', $addressId);
+                  });
+            })
+            ->get();
+
+        // Cachear como array primitivo
+        Cache::put($cacheKey, $unavailabilities->toArray(), self::CACHE_TTL * 60);
+
+        return $unavailabilities;
     }
 
     /**
@@ -130,14 +162,30 @@ class AvailabilityRepository
         $dateStr = $date->toDateString();
         $cacheKey = self::CACHE_PREFIX . 'appointments:' . implode(',', $doctorIds) . ':' . $addressId . ':' . $dateStr;
 
-        return Cache::remember($cacheKey, self::CACHE_TTL * 60, function () use ($doctorIds, $addressId, $dateStr) {
-            return Appointment::with(['doctor'])
-                ->whereIn('doctor_id', $doctorIds)
-                ->where('address_id', $addressId)
-                ->where('date', $dateStr)
-                ->whereIn('status', ['pending', 'confirmed'])
-                ->get(['id', 'start_time', 'end_time', 'doctor_id']);
-        });
+        $cached = Cache::get($cacheKey);
+        
+        if ($cached !== null) {
+            // Reconstruir Collection desde array cacheado
+            return collect($cached)->map(function ($item) {
+                $appointment = new Appointment();
+                foreach ($item as $key => $value) {
+                    $appointment->setAttribute($key, $value);
+                }
+                return $appointment;
+            });
+        }
+
+        $appointments = Appointment::with(['doctor'])
+            ->whereIn('doctor_id', $doctorIds)
+            ->where('address_id', $addressId)
+            ->where('date', $dateStr)
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->get(['id', 'start_time', 'end_time', 'doctor_id']);
+
+        // Cachear como array primitivo
+        Cache::put($cacheKey, $appointments->toArray(), self::CACHE_TTL * 60);
+
+        return $appointments;
     }
 
     /**
