@@ -2,7 +2,7 @@
 
 namespace App\Mail;
 
-use App\Models\ExamAnalysis;
+use App\Models\MedicalAnalysis;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -20,7 +20,7 @@ class ExamAnalysisReady extends Mailable
     /**
      * Crear una nueva instancia del mensaje.
      */
-    public function __construct(ExamAnalysis $analysis)
+    public function __construct(MedicalAnalysis $analysis)
     {
         $this->analysis = $analysis;
     }

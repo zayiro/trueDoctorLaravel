@@ -12,6 +12,8 @@ use App\Services\AI\AIVisionManager;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Spatie\PdfToImage\Pdf;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ExamAnalysisReady;
 
 class MedicalAnalysisController extends Controller
 {
@@ -73,14 +75,14 @@ class MedicalAnalysisController extends Controller
             'redirect_url' => route('medical-analysis.show', $analysis->access_token)
         ]);
     }
-
+    
     /**
      * Analiza los PDFs/imágenes del análisis médico usando el proveedor de IA configurado.
      *
      * @param  string|null  $provider  Override manual: 'openai' | 'claude' | null (usa default de config)
      * @param  bool  $withFallback     Si true, intenta con el otro proveedor si el primario falla
      */
-    public function analyzeWithAI(MedicalAnalysis $analysis, ?string $provider = null, bool $withFallback = true)
+    public function analyzeWithAI(MedicalAnalysis $analysis, ?string $provider = null, bool $withFallback = false)
     {
         $reasons = [
             'rutina'   => 'Control de rutina anual o chequeo preventivo.',
@@ -199,11 +201,57 @@ class MedicalAnalysisController extends Controller
             ]);
 
             Log::info("Análisis #{$analysis->id} completado correctamente con proveedor '{$providerUsed}'.");
+
+            // Minimización de datos: una vez que el reporte se generó y se guardó
+            // exitosamente, los PDFs originales ya no son necesarios. Los borramos
+            // para reducir el tiempo de retención de información médica sensible.
+            $this->deleteSourceFiles($analysis, $filePaths);
+
+            // Enviar el correo electrónico al paciente
+            Mail::to($analysis->customer_email)->send(new ExamAnalysisReady($analysis));
         } catch (\Throwable $e) {
             Log::error("Fallo el procesamiento automático de la IA para el Análisis #{$analysis->id}: " . $e->getMessage());
 
             $analysis->update(['status' => 'failed']);
+            // IMPORTANTE: NO borramos los PDFs aquí. Si el análisis falló, los
+            // archivos originales deben conservarse para permitir un reintento.
         }
+    }
+
+    /**
+     * Borra del disco los PDFs/imágenes originales usados en el análisis,
+     * una vez que el reporte de IA ya fue generado y guardado exitosamente.
+     *
+     * Solo se debe llamar tras un status='completed' confirmado.
+     */
+    protected function deleteSourceFiles(MedicalAnalysis $analysis, array $filePaths): void
+    {
+        $eliminados = 0;
+        $fallidos = [];
+
+        foreach ($filePaths as $path) {
+            try {
+                if (Storage::disk('private')->exists($path)) {
+                    Storage::disk('private')->delete($path);
+                    $eliminados++;
+                }
+            } catch (\Throwable $e) {
+                // Si un archivo no se pudo borrar (permisos, disco montado raro en EC2, etc.),
+                // lo registramos pero NO marcamos el análisis como failed por esto:
+                // el reporte ya se generó correctamente, esto es solo limpieza.
+                $fallidos[] = $path;
+                Log::warning("Análisis #{$analysis->id}: no se pudo borrar el archivo origen '{$path}': " . $e->getMessage());
+            }
+        }
+
+        // Limpiamos también la referencia en la tabla, para dejar evidencia
+        // de que los archivos ya no existen (evita futuros intentos de leerlos).
+        $analysis->update([
+            'file_paths' => null,
+            'file_path' => null, // si todavía usas esta columna legacy
+        ]);
+
+        Log::info("Análisis #{$analysis->id}: limpieza de archivos origen completada. Eliminados: {$eliminados}/" . count($filePaths) . (empty($fallidos) ? '' : '. Fallidos: ' . implode(', ', $fallidos)));
     }
 
     /**

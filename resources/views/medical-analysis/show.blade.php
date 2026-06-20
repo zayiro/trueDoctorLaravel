@@ -85,7 +85,7 @@
 
                 <!-- Badge Especialidad -->
                 <div class="bg-slate-900 border border-white/5 p-4 rounded-xl flex items-center gap-3 w-full md:w-auto">
-                    <div class="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
+                    <div class="w-10 h-10 rounded-lg bg-white text-blue-400 flex items-center justify-center shrink-0">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.25 2.25 0 0 1 10.5 2.25h4.5a2.25 2.25 0 0 1 2.25 2.25M4.5 19.5a2.25 2.25 0 0 1-2.25-2.25V6.108c0-1.135.845-2.098 1.976-2.192a48.424 48.424 0 0 1 1.123-.08M12 18.75m-1.875 0a1.875 1.875 0 1 1 3.75 0 1.875 1.875 0 0 1-3.75 0Z"/>
                         </svg>
@@ -93,7 +93,12 @@
                     <div>
                         <span class="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Canalizar con:</span>
                         <p class="text-sm font-bold text-slate-200 capitalize">
-                            {{ str_replace('-', ' ', $analysis->ai_response['especialidad_slug'] ?? 'Medicina General') }}
+                            <a href="{{ url('/search') }}?specialty={{ $analysis->ai_response['especialidad_slug'] }}&city=" 
+                                class="inline-flex items-center justify-center gap-1.5 px-5 py-3 bg-indigo-600 text-white hover:bg-indigo-700 text-indigo-900 font-bold text-lg rounded-xl shadow-md active:scale-95 transition-all duration-200"
+                                target="_blank" rel="noopener noreferrer"
+                            >
+                                {{ str_replace('-', ' ', $analysis->ai_response['especialidad_slug'] ?? 'Medicina General') }}
+                            </a>
                         </p>
                     </div>
                 </div>
@@ -102,7 +107,7 @@
             <div class="bg-slate-950 rounded-2xl border border-white/10 p-6 md:p-8 space-y-4 shadow-xl relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-blue-500/5 to-transparent pointer-events-none rounded-bl-full"></div>
 
-                <div class="flex items-center gap-2 text-blue-400 font-bold text-base">
+                <div class="flex items-center gap-2 text-white font-bold text-base">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/>
                     </svg>
@@ -140,11 +145,11 @@
                                         @php
                                             $estado = strtolower($item['estado'] ?? 'normal');
                                             $badgeClasses = match($estado) {
-                                                'normal' => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-                                                'elevado' => 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-                                                'bajo' => 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                                                'normal'   => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                                                'elevado'  => 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                                                'bajo'     => 'bg-gray-500/10 text-gray-400 border-gray-500/20',
                                                 'crítico', 'critico' => 'bg-red-500/10 text-red-400 border-red-500/20 animate-pulse',
-                                                default => 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                                                default    => 'bg-slate-500/10 text-slate-400 border-slate-500/20'
                                             };
                                         @endphp
                                         <span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg border {{ $badgeClasses }}">
@@ -156,7 +161,7 @@
                             @empty
                                 <tr>
                                     <td colspan="3" class="p-6 text-center text-slate-500 text-sm">
-                                        No se detectaron biomarcadores específicos en este informe.
+                                        No se detectarón biomarcadores específicos en este informe.
                                     </td>
                                 </tr>
                             @endforelse
@@ -176,6 +181,31 @@
                     {{ $analysis->ai_response['recomendaciones'] ?? 'No se generaron recomendaciones.' }}
                 </div>
             </div>
+
+            <!--  CÓDIGO CORREGIDO Y SEGURO -->
+            @if(!empty($analysis) && isset($analysis->ai_response['especialidad_slug']))
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-1">
+                    <div class="mb-4">                                    
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Recomendación Médica</h3>
+                        <h4 class="text-lg font-black tracking-tight mt-2">¿Deseas revisar estos resultados con un profesional?</h4>
+                        <p class="text-sm text-slate-700 font-medium leading-relaxed">
+                            La Inteligencia Artificial sugiere que un especialista en <strong class="text-indigo-600 capitalize">{{ str_replace('-', ' ', $analysis->ai_response['especialidad_slug']) }}</strong> es el más idóneo para dar seguimiento a tus métricas.
+                        </p>
+                    </div>
+                    <div class="shrink-0 mt-3">
+                        <!-- URL Absoluta con Query String corregida -->
+                        <a href="{{ url('/search') }}?specialty={{ $analysis->ai_response['especialidad_slug'] }}&city=" 
+                            class="inline-flex items-center justify-center gap-1.5 px-5 py-3 bg-indigo-600 text-white hover:bg-indigo-700 text-indigo-900 font-bold text-lg rounded-xl shadow-md active:scale-95 transition-all duration-200"
+                            target="_blank" rel="noopener noreferrer"
+                        >
+                            Ver especialistas recomendados
+                            <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            @endisset
 
             <div class="flex justify-end gap-4 pt-2">
                 <button onclick="window.print()" class="bg-slate-950 hover:bg-slate-900 border border-white/10 text-slate-300 px-5 py-3 rounded-xl font-semibold text-sm transition flex items-center gap-2 shadow-md">
