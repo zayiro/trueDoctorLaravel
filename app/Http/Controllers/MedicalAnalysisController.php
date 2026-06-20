@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\Log;
 use Spatie\PdfToImage\Pdf;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ExamAnalysisReady;
+use App\Mail\ExamPaymentPendingAlert; 
+use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class MedicalAnalysisController extends Controller
 {
@@ -66,13 +69,17 @@ class MedicalAnalysisController extends Controller
             'payment_status' => 'pending'
         ]);
 
+        // Enviar correo inmediato con el enlace de rescate por si se le cierra la pestaña
+        $recoveryUrl = route('medical-analysis.show', $analysis->access_token);        
+        Mail::to($analysis->customer_email)->send(new ExamPaymentPendingAlert($recoveryUrl, $analysis));
+
         // Intentar la consulta inmediata a la IA pasándole el modelo completo
         $this->analyzeWithAI($analysis);
 
         // Responder al JavaScript para la redirección fluida en el navegador
         return response()->json([
             'status' => 'success',
-            'redirect_url' => route('medical-analysis.show', $analysis->access_token)
+            'redirect_url' => $recoveryUrl
         ]);
     }
     
@@ -137,7 +144,7 @@ class MedicalAnalysisController extends Controller
                         mkdir(dirname($tempImagePath), 0755, true);
                     }
 
-                    $pdf = new \Spatie\PdfToImage\Pdf($filePath); // ajusta el namespace según tu librería real
+                    $pdf = new Pdf($filePath); // ajusta el namespace según tu librería real
                     $pdf->saveImage($tempImagePath);
 
                     if (file_exists($tempImagePath) && filesize($tempImagePath) > 0) {
@@ -208,7 +215,7 @@ class MedicalAnalysisController extends Controller
             $this->deleteSourceFiles($analysis, $filePaths);
 
             // Enviar el correo electrónico al paciente
-            Mail::to($analysis->customer_email)->send(new ExamAnalysisReady($analysis));
+            //Mail::to($analysis->customer_email)->send(new ExamAnalysisReady($analysis));
         } catch (\Throwable $e) {
             Log::error("Fallo el procesamiento automático de la IA para el Análisis #{$analysis->id}: " . $e->getMessage());
 
@@ -269,7 +276,99 @@ class MedicalAnalysisController extends Controller
             Log::warning("Análisis #{$analysis->id}: status=completed pero ai_response está vacío. Se trata como inconsistente.");
             $analysis->status = 'failed'; // solo en memoria, no se persiste
         }
+        
+        $price = Setting::get('medical_analysis_price', 19000); 
     
-        return view('medical-analysis.show', compact('analysis'));
+        return view('medical-analysis.show', compact('analysis', 'price'));
+    }
+
+    public function preparePayment(Request $request)
+    {
+        // 1. Validar que el ID de la orden exista en la base de datos
+        $request->validate([
+            'order_id' => 'required|exists:medical_analyses,id'
+        ]);
+
+        $id = strip_tags($request->order_id);
+        $analysis = MedicalAnalysis::findOrFail($id);        
+
+        // 2. Generar la referencia única basada en el ID y guardarla en la tabla
+        $prefix = Carbon::now()->format('ymdH');                
+        $random = strtoupper(Str::random(5));                                
+        $paymentReference = $analysis->id . "-" . $prefix . "-" . $random;
+
+        $analysis->update(['payment_id' => $paymentReference]);
+
+        // 3. Convertir el total a centavos enteros (regla obligatoria de Wompi)
+        $amountInCents = (int) ($analysis->price * 100); 
+        $currency = 'COP';
+
+        // 4. Calcular la firma de integridad concatenando los valores requeridos por Wompi
+        $stringPayload = $paymentReference . $amountInCents . $currency . config('services.wompi.integrity_secret');
+        $signatureIntegrity = hash('sha256', $stringPayload);
+
+        // 5. Devolver los datos firmados en formato JSON hacia el frontend
+        return response()->json([
+            'status'              => 'success',
+            'public_key'          => config('services.wompi.public_key'),
+            'currency'            => $currency,
+            'amount_in_cents'     => $amountInCents,
+            'reference'           => $paymentReference,
+            'signature_integrity' => $signatureIntegrity,
+            'token'               => $analysis->access_token,
+            'redirect_url'        => route('medical-analysis.payment.result', $analysis->access_token), // Tu ruta local de retorno
+        ]);
+    }
+
+    public function processPaymentResult(Request $request, $token)
+    {
+        // 1. Buscar el análisis médico por su token de acceso único
+        $analysis = MedicalAnalysis::where('access_token', $token)->firstOrFail();
+        $transactionId = $request->query('id');
+
+        if (!$transactionId) {
+            return redirect()->route('home')->with('error', 'Falta el identificador del pago.');
+        }
+
+        // 2. Detectar entorno de Wompi automáticamente
+        $baseUrl = 'https://production.wompi.co/v1';
+        $paymentStatus = 'ERROR';
+
+        try {
+            // 3. Consultar la API de Wompi en segundo plano
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . config('services.wompi.public_key')
+            ])->get("{$baseUrl}/transactions/{$transactionId}");
+
+            if ($response->successful()) {
+                $paymentStatus = $response->json('data.status') ?? 'ERROR';
+
+                // 4. Evaluar el estado de la transacción
+                if ($paymentStatus === 'APPROVED') {
+                    // Evitar duplicar el correo si el usuario refresca la pantalla
+                    if ($analysis->payment_status !== 'completed') {
+                        $analysis->update([
+                            'payment_status' => 'completed'
+                        ]);
+
+                        // Enviar correo electrónico al paciente de forma segura                        
+                        if ($analysis->customer_email) {
+                            Mail::to($analysis->customer_email)->send(new ExamAnalysisReady($analysis));
+                        }
+                    }
+                } elseif ($paymentStatus === 'PENDING') {
+                    $analysis->update(['payment_status' => 'pending']);
+                } else {
+                    $analysis->update(['payment_status' => 'failed']);
+                }
+            }
+        } catch (\Exception $e) {
+            logger()->error('Error en Callback de Wompi: ' . $e->getMessage());
+            $paymentStatus = 'ERROR';
+            $analysis->update(['payment_status' => 'error']);
+        }
+
+        // 5. Retornar la nueva vista independiente con los estados
+        return view('medical-analysis.payment-result', compact('analysis', 'paymentStatus'));
     }
 }

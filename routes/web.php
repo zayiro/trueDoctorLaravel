@@ -426,3 +426,8 @@ Route::get('/medical-analysis/upload', [MedicalAnalysisController::class, 'showU
 Route::get('/medical-analysis/result/{medicalAnalysis}', [MedicalAnalysisController::class, 'show'])
     ->name('medical-analysis.show');
 
+// Ruta encargada de recibir la solicitud AJAX para preparar la orden
+Route::post('/medical-analysis/payment/prepare', [MedicalAnalysisController::class, 'preparePayment'])->name('medical-analysis.payment.prepare');
+Route::get('/medical-analysis/payment-result/{token}', [MedicalAnalysisController::class, 'processPaymentResult'])
+    ->name('medical-analysis.payment.result');
+
