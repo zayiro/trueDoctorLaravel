@@ -50,6 +50,11 @@ class MedicalAnalysisController extends Controller
             'reason_custom' => 'nullable|string'
         ]);
 
+        Log::info('Iniciando procesamiento de PDFs', [
+            'file_count' => count($request->file('pdf_files') ?? []),
+            'email' => $request->input('customer_email')
+        ]);
+
         // 1. Instanciar el Parser usando su Namespace completo (Evita el error Class 'Parser' not found)
         $parser = new Parser();
         $rawExtractedText = "";
@@ -59,29 +64,64 @@ class MedicalAnalysisController extends Controller
             foreach ($request->file('pdf_files') as $index => $pdfFile) {
                 // Optimización: Validar que el archivo subido sea realmente válido y no esté corrupto en la subida HTTP
                 if (! $pdfFile->isValid()) {
+                    Log::warning("Archivo PDF inválido en índice {$index}");
                     continue;
                 }
 
                 try {
+                    Log::info("Extrayendo texto del PDF #{$index}", [
+                        'filename' => $pdfFile->getClientOriginalName(),
+                        'size' => $pdfFile->getSize()
+                    ]);
+
                     $pdf = $parser->parseFile($pdfFile->getPathname());
                     
                     // Reajuste estético: Limpiar espacios en blanco innecesarios antes de concatenar
                     $documentText = trim($pdf->getText());
                     
+                    Log::info("Texto extraído del PDF #{$index}", [
+                        'text_length' => strlen($documentText),
+                        'is_empty' => empty($documentText)
+                    ]);
+                    
                     if (! empty($documentText)) {
                         $rawExtractedText .= "\n\n--- DOCUMENTO CLÍNICO #" . ($index + 1) . " ---\n";
                         $rawExtractedText .= $documentText;
+                    } else {
+                        Log::warning("El PDF #{$index} no contiene texto extraíble");
                     }
                 } catch (\Exception $e) {
                     // Registra el fallo en el log para auditoría técnica, pero permite que el flujo continúe
-                    Log::warning("No se pudo extraer texto del PDF índice {$index}: " . $e->getMessage());
+                    Log::error("No se pudo extraer texto del PDF índice {$index}: " . $e->getMessage(), [
+                        'exception' => get_class($e),
+                        'file' => $pdfFile->getClientOriginalName()
+                    ]);
                     continue; 
                 }
             }
         }
 
+        Log::info('Texto bruto extraído', [
+            'total_length' => strlen($rawExtractedText),
+            'is_empty' => empty($rawExtractedText)
+        ]);
+
         // 3. Sanitizar y anonimizar el texto extraído mediante tu servicio existente
         $cleaned_text = $this->anonymizer->cleanMedicalText($rawExtractedText);
+
+        Log::info('Texto después de sanitización', [
+            'original_length' => strlen($rawExtractedText),
+            'cleaned_length' => strlen($cleaned_text),
+            'content_preserved' => (strlen($cleaned_text) > 0)
+        ]);
+
+        if (empty($cleaned_text)) {
+            Log::error('El texto limpio está vacío después de la sanitización');
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No se pudo extraer contenido válido de los PDFs proporcionados.'
+            ], 422);
+        }
 
         $price = Setting::get('medical_analysis_price', 19000); 
 
@@ -94,6 +134,11 @@ class MedicalAnalysisController extends Controller
             'price'          => $price, 
             'status'         => 'pending',
             'payment_status' => 'pending'
+        ]);
+
+        Log::info('Análisis médico creado en BD', [
+            'analysis_id' => $analysis->id,
+            'cleaned_text_length' => strlen($analysis->cleaned_text)
         ]);
 
         // 5. Intentar la consulta inmediata a la IA pasándole el modelo completo
@@ -185,9 +230,16 @@ class MedicalAnalysisController extends Controller
                 }
     
                 // Si todo sale bien, guardamos el JSON estructurado y cambiamos el estado a completed
+                $aiResult = json_decode($response->json('choices.0.message.content'), true);
+                
                 $analysis->update([
-                    'ai_result' => json_decode($response->json('choices.0.message.content'), true),
+                    'ai_response' => $aiResult,
                     'status' => 'completed'
+                ]);
+
+                Log::info("Análisis IA completado exitosamente", [
+                    'analysis_id' => $analysis->id,
+                    'specialty' => $aiResult['especialidad_slug'] ?? 'unknown'
                 ]);
 
             } else {

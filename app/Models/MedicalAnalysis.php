@@ -19,6 +19,8 @@ class MedicalAnalysis extends Model
         'price',
     ];
 
+    protected $table = 'medical_analyses';
+
     // 3. Mutador crucial: Convierte automáticamente el JSON de la BD en un Array de PHP
     protected $casts = [
         'ai_response' => 'array',
