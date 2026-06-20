@@ -84,6 +84,61 @@
         </div>
     </div>
 
+    <!-- Sección de Promoción: Análisis Clínico con IA -->
+     <div class="relative bg-white pb-20 pt-10 overflow-hidden">
+        <section class="max-w-7xl mx-auto px-6">
+            <!-- Cambiado a un fondo oscuro profundo con bordes blancos semi-transparentes para contraste perfecto sobre Slate -->
+            <div class="relative bg-slate-950 rounded-3xl overflow-hidden shadow-2xl border border-white/10">
+                
+                <!-- Elementos visuales de fondo (Brillo tecnológico sutil) -->
+                <div class="absolute -top-24 -right-24 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="grid md:grid-cols-12 gap-8 p-8 md:p-12 items-center relative z-10">
+                    
+                    <!-- Columna Texto (Izquierda) -->
+                    <div class="md:col-span-7 space-y-5 text-left">    
+                        <!-- Textos Persuasivos -->
+                        <h1 class="text-5xl lg:text-7xl font-black text-white tracking-tight mb-6">
+                            ¿Tienes análisis médicos en casa que <span class="text-blue-600">no logras entender?</span>
+                        </h1>
+                        
+                        <p class="text-slate-300 text-base md:text-lg leading-relaxed">
+                            No esperes días para descifrar tus resultados clínicos. Nuestro <span class="font-bold">Asistente Médico Digital</span> analiza tus informes en PDF, elimina tus datos personales por seguridad y te explica todo en un lenguaje claro, cercano y 100% comprensible.
+                        </p>
+
+                        <!-- Pequeños checks de confianza rápida -->
+                        <div class="flex flex-wrap gap-x-6 gap-y-2 pt-2 text-xs text-slate-400 font-medium">
+                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Análisis de Biomarcadores</span>
+                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Análisis Multidocumento</span>
+                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Privacidad 100% Protegida</span>
+                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Reporte Inmediato</span>                            
+                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Copia Segura en tu Email</span>
+                        </div>
+                    </div>
+
+                    <!-- Columna Interactiva / CTA (Derecha) -->
+                    <div class="md:col-span-5 flex flex-col items-center justify-center">
+                        <!-- Caja de acción con fondo sutilmente más claro que el fondo negro para dar relieve -->
+                        <div class="w-full bg-slate-900 border border-white/5 p-6 md:p-8 rounded-2xl shadow-xl text-center space-y-6">
+
+                            <!-- Enlace directo al Index explicativo -->
+                            <a href="{{ route('medical-analysis.index') }}" class="group w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:-translate-y-0.5 shadow-lg shadow-blue-500/20 flex items-center justify-center gap-3 text-base">
+                                Descubrir Análisis con IA 
+                                <i class="fa-solid fa-arrow-right text-sm transition-transform group-hover:translate-x-1"></i>
+                            </a>
+
+                            <p class="text-[11px] text-slate-500 leading-normal">
+                                Cumple con normativas internacionales de protección de datos de salud de forma estricta.
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+    </div>
+
     <!-- Sección: Analizador de Exámenes IA -->
     <div class="relative bg-white pb-10 pt-10 lg:pt-4 overflow-hidden">
         <section class="my-16 max-w-5xl mx-auto px-4 mt-5">

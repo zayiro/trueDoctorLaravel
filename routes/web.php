@@ -47,6 +47,9 @@ use App\Http\Controllers\AppointmentStateController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\ExamAnalysisController;
+use App\Http\Controllers\Admin\SettingController;
+
+use App\Http\Controllers\MedicalAnalysisController;
 
 use Spatie\Honeypot\ProtectAgainstSpam; 
 
@@ -95,6 +98,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/medical-exams', [ExamAnalysisController::class, 'index'])->name('administrator.exams.index');    
     Route::post('/admin/exams/{exam}/resend', [ExamAnalysisController::class, 'resend'])->name('administrator.exams.resend');
     Route::patch('/admin/exams/{examAnalysis}/toggle', [ExamAnalysisController::class, 'toggleStatus'])->name('administrator.exams.toggle');
+
+    Route::get('/admin/settings', [SettingController::class, 'index'])->name('administrator.settings.index');
+    Route::put('/admin/settings', [SettingController::class, 'update'])->name('administrator.settings.update');
 });
 
 // Rutas Privadas (medical partner)
@@ -403,3 +409,20 @@ Route::get('/examenes/{id}/pago', [MedicalExamController::class, 'checkout'])->n
 Route::post('/examenes/{id}/pagar', [MedicalExamController::class, 'processPayment'])->name('exams.id_pago');
 Route::get('/examenes/{id}/resultado', [MedicalExamController::class, 'showResult'])->name('exams.result');
 Route::get('/examenes/{id}/pago', [MedicalExamController::class, 'checkout'])->name('exams.checkout');
+
+// Ruta POST en inglés para procesar los múltiples archivos PDF
+Route::post('/medical-analysis/process-documents', [MedicalAnalysisController::class, 'processDocuments'])
+    ->name('medical-analysis.process-documents');
+
+// Página de inicio corporativa / Landing Page
+Route::get('/medical-analysis', [MedicalAnalysisController::class, 'index'])
+    ->name('medical-analysis.index');
+
+// El formulario de carga ahora es el siguiente paso
+Route::get('/medical-analysis/upload', [MedicalAnalysisController::class, 'showUploadForm'])
+    ->name('medical-analysis.upload');    
+
+// Ruta dinámina en inglés con el ID del análisis médico
+Route::get('/medical-analysis/result/{medicalAnalysis}', [MedicalAnalysisController::class, 'show'])
+    ->name('medical-analysis.show');
+

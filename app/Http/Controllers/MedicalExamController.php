@@ -33,14 +33,13 @@ class MedicalExamController extends Controller
         // Guardar el archivo de forma segura
         $path = $request->file('exam_file')->store('medical-exams', 'private');
 
-        $analysis = ExamAnalysis::create([
-            'user_id'       => auth()->id(),
+        $analysis = MedicalAnalysis::create([
             'customer_email' => trim(strtolower($request->customer_email)),
-            'file_path'     => $path,
-            'reason_type'   => $request->reason_type,
-            'reason_custom' => $request->reason_custom,
-            'price'         => 18500, // Cambia al precio real de tu SaaS
-            'payment_status'=> 'pending'
+            'file_path'      => $path,
+            'reason_type'    => $request->reason_type,
+            'reason_custom'  => $request->reason_custom,
+            'price'          => 18500, // Cambia al precio real de tu SaaS
+            'payment_status' => 'pending'
         ]);
 
         // Crear una URL firmada y segura que expire en 24 horas

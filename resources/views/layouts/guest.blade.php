@@ -37,6 +37,8 @@
         <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
         <!-- JS de Flatpickr para localización en español -->
         <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+
+        @stack('meta')
     </head>
     <body class="font-sans antialiased bg-gray-100">
         @include('layouts.includes.app.navigation')

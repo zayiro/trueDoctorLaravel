@@ -4,23 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\MedicalAnalysis;
 use App\Models\Setting;
-use App\Services\AnonymizerService;
 use Illuminate\Http\Request;
 use Smalot\PdfParser\Parser;
 
 use Illuminate\Support\Facades\Http;
+use App\Services\AI\AIVisionManager;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Spatie\PdfToImage\Pdf;
 
 class MedicalAnalysisController extends Controller
 {
-    protected $anonymizer;
-
-    public function __construct(AnonymizerService $anonymizer)
-    {
-        $this->anonymizer = $anonymizer;
-    }
+    public function __construct(){}
 
     public function index()
     {
@@ -50,84 +45,17 @@ class MedicalAnalysisController extends Controller
             'reason_custom' => 'nullable|string'
         ]);
 
-        Log::info('Iniciando procesamiento de PDFs', [
-            'file_count' => count($request->file('pdf_files') ?? []),
-            'email' => $request->input('customer_email')
-        ]);
-
-        // 1. Instanciar el Parser usando su Namespace completo (Evita el error Class 'Parser' not found)
-        $parser = new Parser();
-        $rawExtractedText = "";
-
-        // 2. Validación de seguridad preventiva antes de iterar
-        if ($request->hasFile('pdf_files')) {
-            foreach ($request->file('pdf_files') as $index => $pdfFile) {
-                // Optimización: Validar que el archivo subido sea realmente válido y no esté corrupto en la subida HTTP
-                if (! $pdfFile->isValid()) {
-                    Log::warning("Archivo PDF inválido en índice {$index}");
-                    continue;
-                }
-
-                try {
-                    Log::info("Extrayendo texto del PDF #{$index}", [
-                        'filename' => $pdfFile->getClientOriginalName(),
-                        'size' => $pdfFile->getSize()
-                    ]);
-
-                    $pdf = $parser->parseFile($pdfFile->getPathname());
-                    
-                    // Reajuste estético: Limpiar espacios en blanco innecesarios antes de concatenar
-                    $documentText = trim($pdf->getText());
-                    
-                    Log::info("Texto extraído del PDF #{$index}", [
-                        'text_length' => strlen($documentText),
-                        'is_empty' => empty($documentText)
-                    ]);
-                    
-                    if (! empty($documentText)) {
-                        $rawExtractedText .= "\n\n--- DOCUMENTO CLÍNICO #" . ($index + 1) . " ---\n";
-                        $rawExtractedText .= $documentText;
-                    } else {
-                        Log::warning("El PDF #{$index} no contiene texto extraíble");
-                    }
-                } catch (\Exception $e) {
-                    // Registra el fallo en el log para auditoría técnica, pero permite que el flujo continúe
-                    Log::error("No se pudo extraer texto del PDF índice {$index}: " . $e->getMessage(), [
-                        'exception' => get_class($e),
-                        'file' => $pdfFile->getClientOriginalName()
-                    ]);
-                    continue; 
-                }
-            }
-        }
-
-        Log::info('Texto bruto extraído', [
-            'total_length' => strlen($rawExtractedText),
-            'is_empty' => empty($rawExtractedText)
-        ]);
-
-        // 3. Sanitizar y anonimizar el texto extraído mediante tu servicio existente
-        $cleaned_text = $this->anonymizer->cleanMedicalText($rawExtractedText);
-
-        Log::info('Texto después de sanitización', [
-            'original_length' => strlen($rawExtractedText),
-            'cleaned_length' => strlen($cleaned_text),
-            'content_preserved' => (strlen($cleaned_text) > 0)
-        ]);
-
-        if (empty($cleaned_text)) {
-            Log::error('El texto limpio está vacío después de la sanitización');
-            return response()->json([
-                'status' => 'error',
-                'message' => 'No se pudo extraer contenido válido de los PDFs proporcionados.'
-            ], 422);
+        // Guardar físicamente los archivos en el almacenamiento privado (OBLIGATORIO para el método de visión)
+        $storedPaths = [];
+        foreach ($request->file('pdf_files') as $file) {
+            $storedPaths[] = $file->store('medical-exams', 'private');
         }
 
         $price = Setting::get('medical_analysis_price', 19000); 
 
-        // 4. CREAR EL REGISTRO (Aquí queda tu respaldo seguro en la DB con estado 'pending')
+        // CREAR EL REGISTRO (Aquí queda tu respaldo seguro en la DB con estado 'pending')
         $analysis = MedicalAnalysis::create([
-            'cleaned_text'   => $cleaned_text, // Guardado y respaldado con éxito
+            'file_paths'     => json_encode($storedPaths),
             'customer_email' => strtolower(trim($request->input('customer_email'))),
             'reason_type'    => $request->input('reason_type'),
             'reason_custom'  => trim($request->input('reason_custom')),
@@ -136,33 +64,24 @@ class MedicalAnalysisController extends Controller
             'payment_status' => 'pending'
         ]);
 
-        Log::info('Análisis médico creado en BD', [
-            'analysis_id' => $analysis->id,
-            'cleaned_text_length' => strlen($analysis->cleaned_text)
-        ]);
-
-        // 5. Intentar la consulta inmediata a la IA pasándole el modelo completo
+        // Intentar la consulta inmediata a la IA pasándole el modelo completo
         $this->analyzeWithAI($analysis);
 
-        // 6. Responder al JavaScript para la redirección fluida en el navegador
+        // Responder al JavaScript para la redirección fluida en el navegador
         return response()->json([
             'status' => 'success',
-            'redirect_url' => route('medical-analysis.show', $analysis->id)
+            'redirect_url' => route('medical-analysis.show', $analysis->access_token)
         ]);
     }
 
     /**
-     * Ejecuta el análisis de Inteligencia Artificial multidocumento utilizando el cliente HTTP nativo de Laravel.
-     * Procesa hasta 5 archivos (PDFs o imágenes) y retorna una estructura JSON médica estricta.
+     * Analiza los PDFs/imágenes del análisis médico usando el proveedor de IA configurado.
      *
-     * @param  MedicalAnalysis  $analysis
-     * @return void
+     * @param  string|null  $provider  Override manual: 'openai' | 'claude' | null (usa default de config)
+     * @param  bool  $withFallback     Si true, intenta con el otro proveedor si el primario falla
      */
-    public function analyzeWithAI(MedicalAnalysis $analysis)
+    public function analyzeWithAI(MedicalAnalysis $analysis, ?string $provider = null, bool $withFallback = true)
     {
-        $apiKey = config('services.openai.key');
-
-        // Mapear motivos clínicos semánticos para el prompt de la IA
         $reasons = [
             'rutina'   => 'Control de rutina anual o chequeo preventivo.',
             'control'  => 'Seguimiento continuo de una patología médica existente.',
@@ -172,108 +91,137 @@ class MedicalAnalysisController extends Controller
 
         $motivoClinico = $reasons[$analysis->reason_type] ?? $analysis->reason_type;
         $detallesAdicionales = $analysis->reason_custom ?? 'No se proporcionaron detalles adicionales.';
+        $contextoPaciente = "CONTEXTO DEL PACIENTE:\n- Motivo: {$motivoClinico}\n- Detalles: {$detallesAdicionales}";
 
-        try {
-            if ($analysis->cleaned_text) {
-                // Consumo de OpenAI con el cliente HTTP oficial de Laravel
-                $response = Http::withToken($apiKey)
-                    ->timeout(60) 
-                    ->retry(3, 2000) 
-                    ->post('https://openai.com', [
-                        'model' => 'gpt-4o', // Modelo de procesamiento de lenguaje natural
-                        'messages' => [
-                            [
-                                'role' => 'system',
-                                'content' => "Eres un asistente médico experto de un SAAS de salud. Tu tarea es extraer la información consolidada de los exámenes provistos (pueden ser múltiples documentos), correlacionar los biomarcadores y obligatoriamente clasificar el caso en una especialidad médica."
-                            ],
-                            [
-                                'role' => 'user',
-                                'content' => "CONTEXTO DEL PACIENTE:\n- Motivo: {$motivoClinico}\n- Detalles: {$detallesAdicionales}\n\nTEXTO EXTRAÍDO DE LOS EXÁMENES:\n{$analysis->cleaned_text}\n\n Extrae los biomarcadores, conclusiones claras y próximos pasos. REGLA CRÍTICA: En el campo 'especialidad_slug' debes colocar OBLIGATORIAMENTE uno de estos términos en minúsculas y sin acentos según corresponda: 'medicina-general', 'neurologia', 'cardiologia', 'ginecologia', 'endocrinologia', 'pediatria', 'urologia', 'dermatologia'. Si tienes dudas, usa 'medicina-general'."
-                            ]
-                        ],
-                        'response_format' => [
-                            'type' => 'json_schema',
-                            'json_schema' => [
-                                'name' => 'analisis_clinico_pago',
-                                'strict' => true,
-                                'schema' => [
-                                    'type' => 'object',
-                                    'properties' => [
-                                        'nombre_examen' => ['type' => 'string'],
-                                        'especialidad_slug' => ['type' => 'string'],
-                                        'hallazgos_clave' => [
-                                            'type' => 'array',
-                                            'items' => [
-                                                'type' => 'object',
-                                                'properties' => [
-                                                    'parametro' => ['type' => 'string'],
-                                                    'valor_detectado' => ['type' => 'string'],
-                                                    'estado' => ['type' => 'string', 'enum' => ['Normal', 'Elevado', 'Bajo', 'Crítico']],
-                                                ],
-                                                'required' => ['parametro', 'valor_detectado', 'estado'],
-                                                'additionalProperties' => false
-                                            ]
-                                        ],
-                                        'conclusion_paciente' => ['type' => 'string'],
-                                        'recomendaciones' => ['type' => 'string']
-                                    ],
-                                    'required' => ['nombre_examen', 'especialidad_slug', 'hallazgos_clave', 'conclusion_paciente', 'recomendaciones'],
-                                    'additionalProperties' => false
-                                ]
-                            ]
-                        ],
-                        'temperature' => 0.2
-                    ]);
-    
-                if ($response->failed()) {
-                    throw new \Exception('La API de OpenAI falló o devolvió un código de error.');
-                }
-    
-                // Si todo sale bien, guardamos el JSON estructurado y cambiamos el estado a completed
-                $aiResult = json_decode($response->json('choices.0.message.content'), true);
-                
-                $analysis->update([
-                    'ai_response' => $aiResult,
-                    'status' => 'completed'
-                ]);
+        $userText = "{$contextoPaciente}\n\nAnaliza visualmente las imágenes médicas adjuntas correspondientes a los informes provistos. Extrae los biomarcadores transversales, conclusiones claras y próximos pasos comunes. REGLA CRÍTICA: En el campo 'especialidad_slug' debes colocar OBLIGATORIAMENTE uno de estos términos en minúsculas y sin acentos según corresponda: 'medicina-general', 'neurologia', 'cardiologia', 'ginecologia', 'endocrinologia', 'pediatria', 'urologia', 'dermatologia'. Si tienes dudas o el caso es mixto, usa 'medicina-general'.";
 
-                Log::info("Análisis IA completado exitosamente", [
-                    'analysis_id' => $analysis->id,
-                    'specialty' => $aiResult['especialidad_slug'] ?? 'unknown'
-                ]);
+        $systemPrompt = "Eres un asistente médico experto de un SAAS de salud. Tu tarea es extraer la información consolidada de los exámenes provistos (pueden ser múltiples documentos), correlacionar los biomarcadores y obligatoriamente clasificar el caso en una especialidad médica.";
 
-            } else {
-                Log::error("El campo cleaned_text es null para el Analisis #{$analysis->id}: ");
+        $filePaths = json_decode($analysis->file_paths, true);
+
+        if (! is_array($filePaths)) {
+            $filePaths = ! empty($analysis->file_path) ? [$analysis->file_path] : [];
+        }
+
+        if (empty($filePaths)) {
+            Log::error("Análisis #{$analysis->id} no tiene archivos asociados (file_paths vacío).");
+            $analysis->update(['status' => 'failed']);
+            return;
+        }
+
+        // --- Construcción de imágenes (independiente del proveedor) ---
+        $images = [];
+        $tempFilesToCleanup = [];
+
+        foreach ($filePaths as $index => $path) {
+            if (! Storage::disk('private')->exists($path)) {
+                Log::warning("Análisis #{$analysis->id}: el archivo '{$path}' no existe en el disco 'private'.");
+                continue;
             }
-        } catch (\Exception $e) {
-            // ¡Aquí está la magia de tu estrategia!
-            // Si hay un error con OpenAI, NO borramos el registro. Lo dejamos marcado como 'failed'
-            // pero conservamos intacto el 'cleaned_text' en la base de datos para reintentarlo después.
-            Log::error("Fallo el procesamiento automático de la IA para el Análisis #{$analysis->id}: " . $e->getMessage());
-            
+
+            $filePath = Storage::disk('private')->path($path);
+            $mimeType = mime_content_type($filePath);
+
+            if ($mimeType === false) {
+                Log::warning("Análisis #{$analysis->id}: no se pudo determinar el mime type de '{$path}'.");
+                continue;
+            }
+
+            try {
+                if ($mimeType === 'application/pdf') {
+                    $tempImagePath = storage_path('app/temp/med_batch_' . uniqid() . '_' . $index . '.jpg');
+
+                    if (! is_dir(dirname($tempImagePath))) {
+                        mkdir(dirname($tempImagePath), 0755, true);
+                    }
+
+                    $pdf = new \Spatie\PdfToImage\Pdf($filePath); // ajusta el namespace según tu librería real
+                    $pdf->saveImage($tempImagePath);
+
+                    if (file_exists($tempImagePath) && filesize($tempImagePath) > 0) {
+                        $images[] = [
+                            'base64' => base64_encode(file_get_contents($tempImagePath)),
+                            'mime' => 'image/jpeg',
+                        ];
+                        $tempFilesToCleanup[] = $tempImagePath;
+                    } else {
+                        Log::error("Análisis #{$analysis->id}: la conversión PDF->JPG de '{$path}' no generó archivo.");
+                    }
+                } elseif (in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], true)) {
+                    $images[] = [
+                        'base64' => base64_encode(file_get_contents($filePath)),
+                        'mime' => $mimeType,
+                    ];
+                } else {
+                    Log::warning("Análisis #{$analysis->id}: tipo de archivo no soportado '{$mimeType}' para '{$path}'.");
+                }
+            } catch (\Throwable $e) {
+                Log::error("Fallo la conversión visual para el archivo {$path} en el Análisis #{$analysis->id}: " . $e->getMessage());
+                continue;
+            }
+        }
+
+        foreach ($tempFilesToCleanup as $tempFile) {
+            if (file_exists($tempFile)) {
+                @unlink($tempFile);
+            }
+        }
+
+        if (empty($images)) {
+            Log::error("Cancelada la llamada a la IA para el Análisis #{$analysis->id} porque no se generaron imágenes multimedia.");
+            $analysis->update(['status' => 'failed']);
+            return;
+        }
+
+        Log::info("Análisis #{$analysis->id}: enviando " . count($images) . " imagen(es). Proveedor solicitado: " . ($provider ?? 'default de config'));
+
+        // --- Llamada al proveedor (switch transparente) ---
+        try {
+            if ($withFallback) {
+                // Intenta con $provider primero (o el orden default) y si falla, prueba el otro.
+                $order = $provider
+                    ? array_unique([$provider, $provider === 'claude' ? 'openai' : 'claude'])
+                    : ['openai', 'claude'];
+
+                $outcome = AIVisionManager::analyzeWithFallback($systemPrompt, $userText, $images, $order);
+                $aiResult = $outcome['result'];
+                $providerUsed = $outcome['provider_used'];
+            } else {
+                $driver = AIVisionManager::driver($provider);
+                $aiResult = $driver->analyzeImages($systemPrompt, $userText, $images);
+                $providerUsed = $driver->name();
+            }
+
             $analysis->update([
-                'status' => 'failed' // El estado cambia a fallido pero mantiene toda la información útil
+                'ai_response' => $aiResult,
+                'ai_provider' => $providerUsed, // opcional: agrega esta columna si quieres trazabilidad
+                'status' => 'completed',
             ]);
+
+            Log::info("Análisis #{$analysis->id} completado correctamente con proveedor '{$providerUsed}'.");
+        } catch (\Throwable $e) {
+            Log::error("Fallo el procesamiento automático de la IA para el Análisis #{$analysis->id}: " . $e->getMessage());
+
+            $analysis->update(['status' => 'failed']);
         }
     }
 
     /**
-     * Busca el análisis y lo pasa a la vista si existe; de lo contrario, redirige.
-     * 
-     * @param  mixed  $id
+     * Muestra el análisis médico identificado por su access_token público.
+     * Laravel ya resolvió $analysis automáticamente buscando por access_token;
+     * si no existe, lanza 404 antes de que este método se ejecute.
      */
-    public function show($id)
+    public function show(MedicalAnalysis $medicalAnalysis)
     {
-        // 1. Intentar buscar el registro en la base de datos sin lanzar excepciones drásticas
-        $analysis = MedicalAnalysis::find($id);
-
-        // 2. Control de contingencia: Si no existe el registro, redirige con un mensaje de alerta
-        if (! $analysis) {
-            return redirect()->route('medical-analysis.index')
-                ->with('error', 'El número de valoración médica solicitado no existe o caducó.');
+        $analysis = $medicalAnalysis;
+    
+        // Si el registro quedó inconsistente (status=completed pero sin ai_response
+        // por alguna falla silenciosa), lo tratamos igual que failed para no romper la vista.
+        if ($analysis->status === 'completed' && empty($analysis->ai_response)) {
+            Log::warning("Análisis #{$analysis->id}: status=completed pero ai_response está vacío. Se trata como inconsistente.");
+            $analysis->status = 'failed'; // solo en memoria, no se persiste
         }
-        
-        // 3. Si existe, se despacha el objeto de forma transparente a tu vista por bloques
+    
         return view('medical-analysis.show', compact('analysis'));
     }
 }
