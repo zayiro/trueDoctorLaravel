@@ -116,7 +116,7 @@ $breadcrumbs = [
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
-                                    @foreach($group as $app)
+                                    @foreach($group as $app)                                    
                                         @include('partner.appointments.partials.row', ['app' => $app])
                                     @endforeach
                                 </tbody>

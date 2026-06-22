@@ -1,32 +1,33 @@
+<!-- CAMBIAR EL x-data PRINCIPAL -->
 <div x-data="{ 
-        openReschedule: false, 
-        selectedDate: '', 
-        slots: [], 
-        loadingSlots: false,
-        fetchSlots() {
-            if (!this.selectedDate) return;
-            this.loadingSlots = true;
-            this.slots = [];
-            
-            // Evaluamos contextualmente si viaja un clinic_id en la sesión para inyectarlo en el endpoint móvil
-            @php
-                $context = session('doctor_context');
-                $clinicParam = (($context['type'] ?? 'particular') === 'clinic') ? '&clinic_id=' . $context['id'] : '';
-            @endphp
-            
-            fetch(`/slots?date=${this.selectedDate}&doctor_id={{ $app->doctor_id }}&address_id={{ $app->address_id }}{{ $clinicParam }}`)
-                .then(res => res.json())
-                .then(data => {
-                    this.slots = Array.isArray(data) ? data : (data.slots || Object.values(data));
-                    this.loadingSlots = false;
-                })
-                .catch(err => {
-                    console.error('Error cargando agendas médicos móvil:', err);
-                    this.loadingSlots = false;
-                });
-        }
-     }" 
-     class="p-5 bg-white space-y-3 relative">
+    openReschedule: false,
+    actionsOpen: false,  <!-- ✅ AGREGAR ESTO -->
+    selectedDate: '', 
+    slots: [], 
+    loadingSlots: false,
+    fetchSlots() {
+        if (!this.selectedDate) return;
+        this.loadingSlots = true;
+        this.slots = [];
+        
+        @php
+            $context = session('doctor_context');
+            $clinicParam = (($context['type'] ?? 'particular') === 'clinic') ? '&clinic_id=' . $context['id'] : '';
+        @endphp
+        
+        fetch(`/slots?date=${this.selectedDate}&doctor_id={{ $app->doctor_id }}&address_id={{ $app->address_id }}{{ $clinicParam }}`)
+            .then(res => res.json())
+            .then(data => {
+                this.slots = Array.isArray(data) ? data : (data.slots || Object.values(data));
+                this.loadingSlots = false;
+            })
+            .catch(err => {
+                console.error('Error cargando agendas médicos móvil:', err);
+                this.loadingSlots = false;
+            });
+    }
+}" 
+class="p-5 bg-white space-y-3 relative">
     
     <!-- Fila 1: Hora, Duración y Estado -->
     <div class="flex items-center justify-between gap-4">
@@ -41,19 +42,20 @@
         
         <!-- Badge de Estado -->
         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-black border uppercase tracking-wider
-            @if($app->status === 'confirmed') bg-green-50 text-green-700 border-green-200
-            @elseif($app->status === 'pending') bg-amber-50 text-amber-700 border-amber-200
-            @elseif($app->status === 'completed') bg-blue-50 text-blue-700 border-blue-200
+            @if($app->status_label === 'confirmed') bg-green-50 text-green-700 border-green-200
+            @elseif($app->status_label === 'pending') bg-amber-50 text-amber-700 border-amber-200
+            @elseif($app->status_label === 'completed') bg-blue-50 text-blue-700 border-blue-200
             @else bg-rose-50 text-rose-700 border-rose-200 @endif">
-            @switch($app->status)
+            @switch($app->status_label)
                 @case('confirmed') Confirmada @break
                 @case('pending') Pendiente @break
                 @case('completed') Atendida @break
                 @case('cancelled') Cancelada @break
-                @default {{ $app->status }}
+                @default {{ $app->status_label }}
             @endswitch
         </span>
     </div>
+
     <!-- Fila 2: Información Médica y Paciente -->
     <div class="space-y-1">
         <div class="text-xs font-bold text-slate-400 font-mono">Ref: {{ $app->reference }}</div>
@@ -74,64 +76,112 @@
             <span class="bg-purple-50 text-purple-700 text-[9px] font-black px-2 py-0.5 rounded-lg border border-purple-200 uppercase tracking-wider">💻 Telemedicina</span>
         @else
             <span class="bg-blue-50 text-blue-700 text-[9px] font-black px-2 py-0.5 rounded-lg border border-blue-200 uppercase tracking-wider">📍 Presencial</span>
-        @endif
+        @endif        
+    </div>
+
+    <!-- Fila 4: Botonera de Acción -->
+    <div class="pt-3 border-t border-slate-100">
         
-        <!-- 🌐 INICIAR TELECONSULTA ZOOM MÓVIL -->
-        @if($app->address && $app->address->type === 'virtual' && $app->status === 'confirmed' && $app->zoom_start_url)
-            <a href="{{ $app->zoom_start_url }}" target="_blank" 
-               class="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg border shadow-2xs transition
-               {{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') 
+        <!-- Botón Principal: Iniciar Consulta -->
+        <div class="mb-3">
+            @if($app->address && $app->address->type === 'virtual' && $app->status_label === 'confirmed' && $app->zoom_start_url)
+                <a href="{{ $app->zoom_start_url }}" target="_blank" 
+                   class="w-full block text-center text-xs font-black uppercase tracking-wider px-3 py-2.5 rounded-xl border shadow-sm transition
+                   {{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') 
+                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
+                       : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' }}">
+                    🚀 Iniciar Consulta
+                </a>
+            @else
+                <a href="{{ route('partner.patients.show', [$app->patient_id, $app->reference]) }}" target="_blank" 
+                   class="w-full block text-center text-xs font-black uppercase tracking-wider px-3 py-2.5 rounded-xl border shadow-sm transition
+                   {{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') 
+                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
+                       : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' }}">
+                    📋 Iniciar Consulta
+                </a>
+            @endif
+        </div>
+
+        <!-- Botón Más Acciones -->
+        <button @click="actionsOpen = true" 
+                class="w-full inline-flex justify-center items-center gap-2 text-xs font-black uppercase tracking-wider px-3 py-2 rounded-xl border shadow-sm transition
+                {{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') 
                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
-                   : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' }}">
-                🚀 Iniciar Zoom
-            </a>
-        @endif
+                   : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100' }}">
+            ⚙️ Más Acciones
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+            </svg>
+        </button>
     </div>
 
-    <!-- Fila 4: Botonera de Acción Táctil -->
-    <div class="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100">
-        <!-- Ver Notas -->
-        @if($app->notes)
-            <button type="button" @click="openNoteModal('{{ addslashes($app->notes) }}')" 
-                    class="inline-flex justify-center items-center text-center text-xs font-bold text-amber-600 bg-amber-50 hover:bg-amber-100 py-2.5 rounded-xl transition shadow-2xs">
-                👁️ Notas
-            </button>
-        @endif
+    <!-- MODAL FLOTANTE DE ACCIONES (Igual que reagendamiento) -->
+    <div x-show="actionsOpen" 
+         @click.self="actionsOpen = false"
+         class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/40 backdrop-blur-xs"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         x-cloak>
+        
+        <div @click.stop class="bg-white w-full sm:max-w-sm p-4 rounded-t-2xl sm:rounded-2xl shadow-xl border border-slate-100 text-left">
+            
+            <!-- Cabecera -->
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+                <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider">Más Acciones</h3>
+                <button @click="actionsOpen = false" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+            </div>
 
-        <!-- Botón Reagendar Móvil (Tematizado) -->
-        @if(in_array($app->status, ['pending', 'confirmed']))
-            <button type="button" @click="openReschedule = true" 
-                    class="inline-flex justify-center items-center text-center text-xs font-black py-2.5 rounded-xl transition uppercase tracking-wider shadow-2xs
-                    {{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100' : 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100' }}">
-                🔄 Reagendar
-            </button>
-        @endif
+            <!-- Acciones -->
+            <div class="space-y-2">
+                <!-- Ver Notas -->
+                @if($app->notes)
+                    <button type="button" @click="openNoteModal('{{ addslashes($app->notes) }}'); actionsOpen = false" 
+                            class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-amber-600 hover:bg-amber-50 rounded-lg transition text-left">
+                        👁️ Ver Notas
+                    </button>
+                @endif
 
-        <!-- COMPLETAR CITA MÓVIL -->
-        @if(in_array($app->status, ['pending', 'confirmed']))
-            <form action="{{ route('partner.appointments.complete', $app->id) }}" method="POST" class="w-full">
-                @csrf
-                @method('PATCH')
-                <button type="submit" class="w-full inline-flex justify-center items-center text-center text-xs font-bold text-green-600 bg-green-50 hover:bg-green-100 py-2.5 rounded-xl transition uppercase tracking-wider shadow-2xs">
-                    ✓ Atendida
-                </button>
-            </form>
-        @endif
+                <!-- Completar -->
+                @if(in_array($app->status_label, ['pending', 'confirmed']))
+                    <form action="{{ route('partner.appointments.complete', $app->id) }}" method="POST" class="w-full">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-green-600 hover:bg-green-50 rounded-lg transition text-left">
+                            ✓ Marcar Atendida
+                        </button>
+                    </form>
+                @endif
 
-        <!-- BOTÓN CANCELAR CITA MÓVIL -->
-        @if(in_array($app->status, ['pending', 'confirmed']))
-            <form action="{{ route('partner.appointments.cancel', $app->id) }}" method="POST" 
-                  onsubmit="return confirm('¿Estás seguro de que deseas cancelar esta consulta médica?');" 
-                  class="w-full">
-                @csrf
-                @method('PATCH')
-                <button type="submit" class="w-full inline-flex justify-center items-center text-center text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 py-2.5 rounded-xl transition uppercase tracking-wider shadow-2xs">
-                    ❌ Cancelar
-                </button>
-            </form>
-        @endif
+                <!-- Reagendar -->
+                @if(in_array($app->status_label, ['pending', 'confirmed']))
+                    <button type="button" @click="openReschedule = true; actionsOpen = false" 
+                            class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-indigo-600 hover:bg-indigo-50 rounded-lg transition text-left">
+                        🔄 Reagendar
+                    </button>
+                @endif
+
+                <!-- Cancelar -->
+                @if(in_array($app->status_label, ['pending', 'confirmed']))
+                    <form action="{{ route('partner.appointments.cancel', $app->id) }}" method="POST" 
+                          onsubmit="return confirm('¿Estás seguro de que deseas cancelar esta consulta médica?');" 
+                          class="w-full">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 rounded-lg transition text-left border-t border-slate-100 mt-1 pt-2">
+                            ❌ Cancelar Cita
+                        </button>
+                    </form>
+                @endif
+            </div>
+        </div>
     </div>
-    <!-- 👇 MODAL INTERACTIVO DE REAGENDAMIENTO MÓVIL (Aislado para esta Tarjeta) -->
+
+    <!-- MODAL INTERACTIVO DE REAGENDAMIENTO (Sigue igual) -->
     <div x-show="openReschedule" 
          @click.self="openReschedule = false; selectedDate = ''; slots = []"
          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs"
@@ -143,70 +193,6 @@
          x-transition:leave-end="opacity-0"
          x-cloak>
         
-        <div @click.stop class="bg-white w-full max-w-md p-6 rounded-2xl shadow-xl border border-slate-100 mx-4 text-left whitespace-normal">
-            <!-- Cabecera -->
-            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-                <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider">Reprogramación Médica</h3>
-                <button type="button" @click="openReschedule = false; selectedDate = ''; slots = []" class="text-slate-400 hover:text-slate-600 transition font-bold text-lg">&times;</button>
-            </div>
-
-            <!-- Formulario -->
-            <form action="{{ route('partner.appointments.reschedule.process', $app->id) }}" method="POST" class="mt-4 space-y-4">
-                @csrf
-                @method('PUT')
-
-                <p class="text-xs text-slate-600 leading-relaxed font-medium">
-                    Cambio de horario para el paciente <span class="font-bold text-slate-900">{{ $app->patient->user->name }}</span>.
-                </p>
-
-                <!-- Input 1: Fecha -->
-                <div>
-                    <label class="block text-[10px] font-black text-slate-700 uppercase tracking-wider mb-1">Nueva Fecha</label>
-                    <input type="date" name="new_date" min="{{ date('Y-m-d') }}" x-model="selectedDate" @change="fetchSlots()" required
-                           class="w-full text-xs font-bold text-slate-700 border-slate-200 rounded-xl shadow-sm py-2.5 px-3 bg-white focus:ring-2 {{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') ? 'focus:border-emerald-500 focus:ring-emerald-500' : 'focus:border-indigo-500 focus:ring-indigo-500' }}">
-                </div>
-
-                <!-- Input 2: Slots -->
-                <div>
-                    <label class="block text-[10px] font-black text-slate-700 uppercase tracking-wider mb-1">Turnos Libres</label>
-                    
-                    <div x-show="loadingSlots" class="text-xs font-bold py-2.5 flex items-center gap-2 {{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') ? 'text-emerald-600' : 'text-indigo-600' }}" x-cloak>
-                        <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        Consultando matriz...
-                    </div>
-
-                    <select name="new_start_time" x-show="!loadingSlots && slots.length > 0" required
-                            class="w-full text-xs font-bold text-slate-700 border-slate-200 rounded-xl shadow-sm py-2.5 px-3 bg-white focus:ring-2 {{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') ? 'focus:border-emerald-500 focus:ring-emerald-500' : 'focus:border-indigo-500 focus:ring-indigo-500' }}">
-                        <option value="">Selecciona una opción...</option>
-                        <template x-for="slot in slots" :key="slot.time">
-                            <option :value="(() => {
-                                        let [time, modifier] = slot.time.split(' ');
-                                        let [hours, minutes] = time.split(':');
-                                        if (hours === '12') hours = '00';
-                                        if (modifier === 'PM') hours = parseInt(hours, 10) + 12;
-                                        return `${hours.toString().padStart(2, '0')}:${minutes}:00`;
-                                    })()" x-text="slot.time"></option>
-                            </template>
-                    </select>
-
-                    <div x-show="!loadingSlots && selectedDate && slots.length === 0" class="text-xs font-bold text-red-600 bg-red-50 border border-red-100 p-2.5 rounded-xl" x-cloak>
-                        ⚠️ Agenda completa o sin turnos para este día.
-                    </div>
-                </div>
-
-                <!-- Botones de Control -->
-                <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
-                    <button type="button" @click="openReschedule = false; selectedDate = ''; slots = []" 
-                            class="px-3 py-2 text-xs font-black text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-xl transition tracking-wider uppercase">
-                        Cancelar
-                    </button>
-                    <button type="submit" x-bind:disabled="slots.length === 0"
-                            class="px-4 py-2 text-xs font-black text-white rounded-xl transition shadow-sm tracking-wider uppercase disabled:opacity-50 disabled:cursor-not-allowed
-                            {{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700' }}">
-                        Confirmar Cambio
-                    </button>
-                </div>
-            </form>
-        </div>
+        <!-- ... resto del modal de reagendamiento igual ... -->
     </div>
 </div>

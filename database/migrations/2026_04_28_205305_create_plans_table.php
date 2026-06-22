@@ -29,6 +29,7 @@ return new class extends Migration
             $table->integer('max_patients_list')->default(20);
             $table->boolean('can_export_history')->default(false); // Descargar PDFs
             $table->boolean('has_telemedicine')->default(true); // Video-consultas
+            $table->boolean('ai_scribe_enabled')->default(true);
             $table->decimal('price', 10, 2)->default(0);     
             $table->boolean('active')->default(true);       
             $table->timestamps();

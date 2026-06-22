@@ -138,9 +138,9 @@
                 <div class="flex justify-between items-center border-b border-slate-100 pb-4">
                     <div class="text-sm text-start text-slate-400 tracking-wider block mb-1">
                         <span class="text-slate-400 text-xs font-black uppercase tracking-wider">Forma de Pago</span>
-                        <div class="text-xs text-slate-900 font-light">Deberás abonar el importe correspondiente al momento de la consulta</div>
+                        <div class="text-xs text-slate-900 font-light"></div>
                     </div>
-                    <span class="text-sm font-bold text-slate-700">{{ $acceptsOnlinePayments ? 'Pago en línea' : 'Pago en consulta' }}</span>
+                    <span class="text-sm font-bold text-slate-700">{{ $acceptsOnlinePayments ? 'Pago en Línea' : 'Pago en Consulta' }}</span>
                 </div>
 
                 <!-- PRECIO FORMATEADO Y CONDICIONAL DE PASARELAS -->

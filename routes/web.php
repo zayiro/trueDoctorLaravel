@@ -159,7 +159,16 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     //buscador de pacientes
     Route::get('/partner/patients', [PartnerPatientController::class, 'index'])->name('partner.patients.index');
     //vista detallada del paciente
-    Route::get('partner/patients/{id}', [PartnerPatientController::class, 'show'])->name('partner.patients.show');
+    Route::get('partner/patients/{id}/{reference?}', [PartnerPatientController::class, 'show'])->name('partner.patients.show');
+
+    //guardar nota de evolución (+ medicamento opcional)
+    Route::post('partner/patients/{id}/history', [PartnerPatientController::class, 'storeHistory'])->name('partner.patients.store-history');
+    //AI Scribe: subir audio de la consulta para transcribir y estructurar
+    Route::post('partner/patients/{id}/consultation-audio', [PartnerPatientController::class, 'uploadConsultationAudio'])->name('partner.patients.consultation-audio.upload');
+    //AI Scribe: consultar estado del procesamiento (polling)
+    Route::get('partner/consultation-audio/{jobToken}/status', [PartnerPatientController::class, 'consultationAudioStatus'])->name('partner.patients.consultation-audio.status');
+    //AI Scribe: notificar que hay audio pendiente de subir por fallo de red
+    Route::post('partner/patients/{id}/consultation-audio/notify-pending', [PartnerPatientController::class, 'notifyPendingAudio'])->name('partner.patients.consultation-audio.notify-pending');
 
     // Vista de Reagendamiento Táctico (Alpine.js / API Slots compatible)
     // Vista para seleccionar el nuevo horario

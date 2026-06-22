@@ -6,7 +6,7 @@
         <span class="self-center text-xl text-heading font-semibold whitespace-nowrap">
             <div class="flex items-center gap-2">
                 <span class="text-lg font-black text-slate-900 tracking-tight">
-                    Open<span class="text-indigo-600">Doctor</span><span class="text-emerald-500">.Online</span></span>
+                    Open<span class="text-indigo-600">Doctor</span><span class="text-emerald-500">Online</span></span>
                 </span>
             </div>
         </span>

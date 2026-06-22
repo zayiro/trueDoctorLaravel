@@ -29,6 +29,7 @@ class PlanSeeder extends Seeder
                 'max_patients_list' => 20, 
                 'can_export_history' => false, 
                 'has_telemedicine' => true, 
+                'ai_scribe_enabled' => true, 
                 'price' => 0,
                 'active' => true
             ],
@@ -46,6 +47,7 @@ class PlanSeeder extends Seeder
                 'max_patients_list' => 200, 
                 'can_export_history' => true, 
                 'has_telemedicine' => true, 
+                'ai_scribe_enabled' => true, 
                 'price' => 2400000,
                 'active' => true
             ],
@@ -63,6 +65,7 @@ class PlanSeeder extends Seeder
                 'max_patients_list' => 10000, 
                 'can_export_history' => true, 
                 'has_telemedicine' => true, 
+                'ai_scribe_enabled' => true, 
                 'price' => 3500000,
                 'active' => true
             ],
@@ -81,6 +84,7 @@ class PlanSeeder extends Seeder
                 'max_patients_list' => 500, 
                 'can_export_history' => true, 
                 'has_telemedicine' => true, 
+                'ai_scribe_enabled' => true, 
                 'price' => 0,
                 'active' => true
             ],
@@ -99,6 +103,7 @@ class PlanSeeder extends Seeder
                 'max_patients_list' => 50000, 
                 'can_export_history' => true, 
                 'has_telemedicine' => true, 
+                'ai_scribe_enabled' => true, 
                 'price' => 8500000,
                 'active' => true
             ]
@@ -120,6 +125,7 @@ class PlanSeeder extends Seeder
                     'max_patients_list' => $planData['max_patients_list'],
                     'can_export_history' => $planData['can_export_history'],
                     'has_telemedicine' => $planData['has_telemedicine'],
+                    'ai_scribe_enabled' => $planData['ai_scribe_enabled'],
                     'price' => $planData['price'],
                     'active' => $planData['active']
                 ]
