@@ -43,8 +43,11 @@ class PlanController extends Controller
     }
 
     public function showPlans()
-    {
-        $plans = Plan::orderBy('price', 'asc')->get();
+    {        
+        $plans = Plan::where('active', 1)
+            ->orderBy('price', 'asc')
+             ->get();
+             
         return view('plans.index', compact('plans'));
     }
 

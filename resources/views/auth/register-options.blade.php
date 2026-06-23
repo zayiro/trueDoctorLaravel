@@ -1,24 +1,24 @@
 <x-guest-layout>
+    @if (session('info'))
+        <div id="alert-info" class="flex items-center p-4 mb-4 text-info-800 rounded-2xl bg-info-50 border border-info-100 shadow-sm transition-opacity duration-500" role="alert">
+            <svg class="flex-shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://w3.org" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L8 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+            </svg>
+            <span class="sr-only">Éxito</span>
+            <div class="ms-3 text-sm font-medium">
+                {{ session('info') }}
+            </div>
+            <button type="button" class="ms-auto -mx-1.5 -my-1.5 bg-info-50 text-info-500 rounded-lg focus:ring-2 focus:ring-info-400 p-1.5 hover:bg-info-200 inline-flex items-center justify-center h-8 w-8" onclick="document.getElementById('alert-info').remove()">
+                <span class="sr-only">Cerrar</span>
+                <svg class="w-3 h-3" aria-hidden="true" xmlns="http://w3.org" fill="none" viewBox="0 0 14 14">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                </svg>
+            </button>
+        </div>
+    @endif
     <div class="min-h-screen bg-slate-50 flex items-center justify-center py-12 px-6">
-        <div class="max-w-5xl w-full">
-            @if (session('info'))
-                <div id="alert-info" class="flex items-center p-4 mb-4 text-info-800 rounded-2xl bg-info-50 border border-info-100 shadow-sm transition-opacity duration-500" role="alert">
-                    <svg class="flex-shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://w3.org" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L8 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
-                    </svg>
-                    <span class="sr-only">Éxito</span>
-                    <div class="ms-3 text-sm font-medium">
-                        {{ session('info') }}
-                    </div>
-                    <button type="button" class="ms-auto -mx-1.5 -my-1.5 bg-info-50 text-info-500 rounded-lg focus:ring-2 focus:ring-info-400 p-1.5 hover:bg-info-200 inline-flex items-center justify-center h-8 w-8" onclick="document.getElementById('alert-success').remove()">
-                        <span class="sr-only">Cerrar</span>
-                        <svg class="w-3 h-3" aria-hidden="true" xmlns="http://w3.org" fill="none" viewBox="0 0 14 14">
-                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
-                        </svg>
-                    </button>
-                </div>
-            @endif
-
+        <div class="max-w-6xl w-full mt-3">
+            
             <div class="text-center mb-12">
                 <h2 class="text-5xl font-black text-slate-900 mb-4">Crear una cuenta gratuita</h2>
                 <p class="text-lg text-slate-600 font-medium">Selecciona tu perfil para comenzar tu experiencia</p>

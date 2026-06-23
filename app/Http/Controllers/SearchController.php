@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Http;
 use App\Models\Doctor;
 use App\Models\Specialty;
 use App\Models\City;
@@ -34,37 +35,6 @@ class SearchController extends Controller
     public function __construct(AvailabilityService $availabilityService)
     {
         $this->availabilityService = $availabilityService;
-    }
-
-    /**
-     * Método privado asíncrono para despachar el log de búsqueda.
-     * guarda en la tabla 'search_logs' cada intento de búsqueda con especialidad, ciudad, país e IP del usuario.
-     * Utiliza un Job para no afectar la experiencia del usuario y asegurar que el proceso de logging no genere latencia en la respuesta del buscador.
-     */
-    private function trackSearchAsync(Request $request): void
-    {
-        $specialty = $request->input('specialty');
-        $city = $request->input('city'); // Puede ser string o null
-
-        // Registramos únicamente si la especialidad contiene texto válido
-        if (!empty($specialty)) {
-            //afterResponse() asegura cero demoras visuales para el usuario
-            LogSearchJob::dispatch($specialty, $city, $request->ip())->afterResponse();
-        }
-    }
-
-    /**
-     * MÉTODO PRIVADO: Registra la búsqueda usando los datos analíticos.
-     */
-    private function logAiTrackSearchAsync(Request $request, $specialty)
-    {        
-        $city = $request->input('city'); // Puede ser string o null
-        
-        // Registramos únicamente si la especialidad contiene texto válido
-        if (!empty($specialty)) {
-            //afterResponse() asegura cero demoras visuales para el usuario
-            LogSearchJob::dispatch($specialty, $city, $request->ip())->afterResponse();
-        }        
     }
 
     /**
@@ -104,8 +74,39 @@ class SearchController extends Controller
             'X-Content-Type-Options' => 'nosniff' // Protección contra sniffing de código
         ]);
     }
+
+    /**
+     * Método privado asíncrono para despachar el log de búsqueda.
+     * guarda en la tabla 'search_logs' cada intento de búsqueda con especialidad, ciudad, país e IP del usuario.
+     * Utiliza un Job para no afectar la experiencia del usuario y asegurar que el proceso de logging no genere latencia en la respuesta del buscador.
+     */
+    private function trackSearchAsync(Request $request): void
+    {
+        $specialty = $request->input('specialty');
+        $city = $request->input('city'); // Puede ser string o null
+
+        // Registramos únicamente si la especialidad contiene texto válido
+        if (!empty($specialty)) {
+            //afterResponse() asegura cero demoras visuales para el usuario
+            LogSearchJob::dispatch($specialty, $city, $request->ip())->afterResponse();
+        }
+    }
+
+    /**
+     * MÉTODO PRIVADO: Registra la búsqueda usando los datos analíticos.
+     */
+    private function logAiTrackSearchAsync(Request $request, $specialty)
+    {        
+        $city = $request->input('city'); // Puede ser string o null
         
-        /**
+        // Registramos únicamente si la especialidad contiene texto válido
+        if (!empty($specialty)) {
+            //afterResponse() asegura cero demoras visuales para el usuario
+            LogSearchJob::dispatch($specialty, $city, $request->ip())->afterResponse();
+        }        
+    }
+        
+    /**
      * Vista principal del buscador global híbrido y compacto de opendoctor.online.
      */
     public function index(Request $request)
@@ -274,7 +275,6 @@ class SearchController extends Controller
             }
         }
 
-
         $page = LengthAwarePaginator::resolveCurrentPage();
         $perPage = 10;
         
@@ -297,93 +297,6 @@ class SearchController extends Controller
             'targetSpecialty'    => $targetSpecialty,
             'expertName'         => $expertName
         ]);
-    }
-
-
-    /**
-     * Calcula el próximo turno disponible leyendo el colchón logístico configurado por el médico.
-     * 🛡️ CONEXIÓN MULTI-TENANT: Consume de forma nativa 'min_notice_hours' de doctor_settings.
-     * ⚡ OPTIMIZADO: Eager Loading de doctor_settings para evitar N+1 queries.
-     */
-    private function calculateNextTurn($addressId, array $doctorIds, $now, $currentTime)
-    {
-        if (empty($doctorIds)) {
-            return null;
-        }
-
-        // 1. DETERMINAR EL MARGEN INDIVIDUALIZADO DEL ESPECIALISTA (O STAFF)
-        // Extraemos el valor máximo de horas de anticipación configurado por los médicos involucrados
-        $bufferHours = DB::table('doctor_settings')
-            ->whereIn('doctor_id', $doctorIds)
-            ->orderBy('min_notice_hours', 'desc')
-            ->value('min_notice_hours');
-
-        // Validación defensiva: Si no hay registro o es nulo, asume el default de 2 horas de tu migración
-        $hoursToKey = !is_null($bufferHours) ? (int)$bufferHours : 2;
-
-        // REGLA DE NEGOCIO EN CALIENTE: Hora actual del servidor + las horas de aviso requeridas por este médico
-        $minAvailableTime = Carbon::now()->addHours($hoursToKey);
-        
-        // Obtener los índices de control del calendario
-        $currentDayIndex = $minAvailableTime->dayOfWeekIso; // Formato numérico ISO (1 = Lunes, 7 = Domingo)
-        $currentHourStr  = $minAvailableTime->format('H:i:s');
-
-        // Mapeo en español para el formateo de los días de la semana
-        $daysMap = [
-            1 => 'lunes', 2 => 'martes', 3 => 'miércoles', 4 => 'jueves', 
-            5 => 'viernes', 6 => 'sábado', 7 => 'domingo'
-        ];
-
-        // ESCENARIO A: Buscar si quedan bloques disponibles HOY mismo que superen el margen personalizado
-        $schedule = Schedule::with(['doctor', 'address'])
-            ->where('address_id', $addressId)
-            ->whereIn('doctor_id', $doctorIds)
-            ->where('day', $currentDayIndex)
-            ->whereTime('start_time', '>=', $currentHourStr)
-            ->orderBy('day')
-            ->orderBy('start_time', 'asc')
-            ->first();
-
-        $targetDate = Carbon::today();
-
-        // ESCENARIO B: Si hoy ya no hay franjas que cumplan el margen, barremos secuencialmente los días siguientes
-        if (!$schedule) {
-            // Ciclo de inspección de los próximos 7 días del calendario
-            for ($i = 1; $i <= 7; $i++) {
-                $nextDateCheck = Carbon::today()->addDays($i);
-                $checkDayIndex = $nextDateCheck->dayOfWeekIso;
-
-                $schedule = Schedule::with(['doctor', 'address'])
-                    ->where('address_id', $addressId)
-                    ->whereIn('doctor_id', $doctorIds)
-                    ->where('day', $checkDayIndex)
-                    ->orderBy('start_time', 'asc')
-                    ->first();
-
-                if ($schedule) {
-                    $targetDate = $nextDateCheck;
-                    break; // Rompemos el ciclo inmediatamente al encontrar la jornada operativa más cercana
-                }
-            }
-        }
-
-        // 2. PROCESAMIENTO Y FORMATEO FINAL DEL RANGO EMITIDO
-        if ($schedule) {
-            // Obtenemos la hora purificada en formato H:i:s de forma segura, 
-            // sin importar si $schedule->start_time es un string o un objeto Carbon
-            $timeStr = $schedule->start_time instanceof Carbon 
-                ? $schedule->start_time->format('H:i:s') 
-                : Carbon::parse($schedule->start_time)->format('H:i:s');
-
-            // Combinamos la fecha destino calculada en el bucle con la hora purificada del turno
-            $scheduleTime = Carbon::parse($targetDate->toDateString() . ' ' . $timeStr);
-            
-            // Formateamos estilo Doctoralia: "sábado 13 de junio — 10:30 AM"
-            return $scheduleTime->isoFormat('dddd d [de] MMMM') . ' — ' . $scheduleTime->format('g:i A');
-        }
-
-        return 'Sin disponibilidad próxima';
-
     }
 
     /**
@@ -444,172 +357,199 @@ class SearchController extends Controller
      * Muestra la vista de búsqueda interactiva por sintomatología.
      */
     public function searchSymptomView(Request $request)
-    {
+    {        
         return view('search.search-symptom');
     }
 
-    /**
-     * Procesa el síntoma de forma asíncrona mediante OpenAI y almacena en caché e IndexedSymptom.
-     * Genera de manera automática estructuras semánticas e indexación orgánica en caliente.
-     * ⚡ OPTIMIZADO: Eager Loading completo para evitar N+1 queries en renderizado.
-     */
     public function searchBySymptom(Request $request): JsonResponse
-    {        
-        $queryStr = trim($request->input('symptom'));
+    {
+        $queryStr = trim($request->input('symptom', ''));
 
         if (empty($queryStr) || strlen($queryStr) < 3) {
             return response()->json([
-                'exito' => false,
+                'success' => false,
                 'mensaje' => 'El síntoma debe tener al menos 3 caracteres.',
-                'medicos' => []
+                'doctors' => []
             ], 400);
         }
 
-        // 1. Obtener especialidades mapeadas por nombre
-        $specialtiesMap = Specialty::pluck('id', 'name')->toArray(); 
+        $specialtiesMap       = Specialty::pluck('id', 'name')->toArray();
         $stringEspecialidades = implode(', ', array_keys($specialtiesMap));
-
-        $sintomaClave = 'triage_' . Str::slug($queryStr);
+        $sintomaClave         = 'triage_' . Str::slug($queryStr);
 
         try {
-            // 2. Sistema de Inteligencia Artificial estructurada con caché de 24 horas
-            $triage = Cache::remember($sintomaClave, 1440, function () use ($queryStr, $stringEspecialidades) {
-                
-                // 🔥 COMPLETADO Y BLINDADO: Estructura estricta de JSON Schema para OpenAI
-                $response = OpenAI::chat()->create([
-                    'model' => 'gpt-4o-mini',
-                    'messages' => [
-                        ['role' => 'system', 'content' => 'Eres un asistente médico experto de un SAAS de salud llamado opendoctor.online.'],
-                        ['role' => 'user', 'content' => "Analiza este síntoma: '{$queryStr}'. Selecciona una especialidad de esta lista: {$stringEspecialidades}. Si ninguna encaja de forma directa, usa 'General'."]
-                    ],
-                    'response_format' => [
-                        'type' => 'json_schema',
-                        'json_schema' => [
-                            'name' => 'triage_medico_saas',
-                            'strict' => true,
-                            'schema' => [
-                                'type' => 'object',
-                                'properties' => [
-                                    'especialidad_correcta' => [
-                                        'type' => 'string', 
-                                        'description' => 'Nombre exacto de la especialidad tomada de la lista provista.'
-                                    ],
-                                    'especialidad_slug' => [
-                                        'type' => 'string', 
-                                        'description' => 'El slug de la especialidad elegida en minúsculas y separado por guiones.'
-                                    ],
-                                    'urgencia' => [
-                                        'type' => 'string', 
-                                        'enum' => ['Alta', 'Media', 'Baja'],
-                                        'description' => 'Nivel de urgencia estimado para el cuadro clínico.'
-                                    ],
-                                    'consejo' => [
-                                        'type' => 'string', 
-                                        'description' => 'Breve orientación o recomendación preliminar al paciente.'
-                                    ],
-                                    'seo_title' => [
-                                        'type' => 'string', 
-                                        'description' => 'Título SEO optimizado para la landing automatizada de este síntoma.'
-                                    ],
-                                    'seo_description' => [
-                                        'type' => 'string', 
-                                        'description' => 'Meta-descripción SEO fluida e indexable para motores de búsqueda.'
-                                    ]
-                                ],
-                                'required' => [
-                                    'especialidad_correcta', 
-                                    'especialidad_slug', 
-                                    'urgencia', 
-                                    'consejo', 
-                                    'seo_title', 
-                                    'seo_description'
-                                ],
-                                'additionalProperties' => false
-                            ]
-                        ]
-                    ]
-                ]);
+            // ── 1. Caché (solo se guarda si la IA respondió correctamente) ──
+            $triage = Cache::get($sintomaClave);
 
-                // Decodificamos el output estructurado de GPT
-                return json_decode($response->choices[0]->message->content, true);
-            });
+            if (!$triage) {
+                $triage = $this->callAiTriage($queryStr, $stringEspecialidades);
+                $this->validateTriageResponse($triage, $queryStr);
+                Cache::put($sintomaClave, $triage, now()->addHours(24));
+            }
 
-            // 3. INDEXACIÓN AUTOMÁTICA (Persistencia SEO)
-            // Si el síntoma es nuevo, lo guardamos en la tabla indexed_symptoms para autogenerar landings
+            // ── 2. Indexación SEO
             $slugSintoma = Str::slug($queryStr);
+            $specialtyId = $specialtiesMap[$triage['especialidad_correcta']] ?? null;
+
             IndexedSymptom::firstOrCreate(
                 ['slug' => $slugSintoma],
                 [
-                    'name'            => ucfirst($queryStr),
+                    'search_query'    => $queryStr,
+                    'specialty_id'    => $specialtyId,
                     'seo_title'       => $triage['seo_title'],
                     'seo_description' => $triage['seo_description'],
                     'urgency_level'   => $triage['urgencia'],
-                    'advice'          => $triage['consejo'],
+                    'ai_advice'       => $triage['consejo'],
                 ]
             );
+            
+            // ── 3. Médicos y clínicas disponibles
 
-            // 4. CONSULTA RELACIONAL DE MÉDICOS DISPONIBLES
-            // Buscamos los médicos calificados en la especialidad sugerida por la IA
-            // ⚡ OPTIMIZADO: Eager Loading de user, specialties, addresses y city para evitar N+1
+            // Doctores
             $medicos = Doctor::with([
                 'user',
                 'specialties',
                 'addresses.city',
-                'addresses.services'
+                'addresses.services',
             ])
                 ->where('active', true)
                 ->where('validation_status', 'approved')
-                ->whereHas('specialties', function ($q) use ($triage) {
-                    $q->where('slug', $triage['especialidad_slug']);
-                })
-                ->take(6)
-                ->get();
-            
-            if (!isset($triage['especialidad_slug'])) {
-                Log::warning("El motor de triage por IA no devolvió un slug de especialidad válido para el síntoma: '{$queryStr}'. Respuesta completa: " . json_encode($triage));
-            } else {
-                $this->logAiTrackSearchAsync($request, $triage['especialidad_slug']);
-            }
+                ->whereHas('specialties', fn($q) => $q->where('slug', $triage['especialidad_slug']))
+                ->take(4)
+                ->get()
+                ->map(fn($d) => array_merge($d->toArray(), ['result_type' => 'doctor']));
 
+            // Clínicas
+            $clinicas = Clinic::with([
+                'user',
+                'doctors.specialties',
+                'addresses.city',
+                'addresses.services',
+            ])
+                ->where('active', true)
+                ->where('validation_status', 'approved')
+                ->whereHas('doctors.specialties', fn($q) => $q->where('slug', $triage['especialidad_slug']))
+                ->take(2)
+                ->get()
+                ->map(fn($c) => array_merge($c->toArray(), ['result_type' => 'clinic']));
+
+            $results = $medicos->concat($clinicas)->values();
+
+            $this->logAiTrackSearchAsync($request, $triage['especialidad_slug']);
+
+            // ── 4. Respuesta con keys en inglés para el frontend
             return response()->json([
-                'exito'         => true,
-                'triage'        => $triage,
+                'success'       => true,
+                'triage'        => [
+                    'advice'          => $triage['consejo'],
+                    'urgency'         => $triage['urgencia'],
+                    'specialty_name'  => $triage['especialidad_correcta'],
+                    'specialty_slug'  => $triage['especialidad_slug'],
+                    'seo_title'       => $triage['seo_title'],
+                    'seo_description' => $triage['seo_description'],
+                ],
                 'medicos_count' => $medicos->count(),
-                'medicos'       => $medicos
+                'results'       => $results,
             ]);
 
         } catch (\Exception $e) {
             Log::error("Fallo crítico en el motor de triage por IA: " . $e->getMessage());
-            
+
             return response()->json([
-                'exito'   => false,
+                'success' => false,
                 'mensaje' => 'No pudimos procesar tu diagnóstico por síntomas en este momento. Por favor, selecciona una especialidad manualmente.',
-                'medicos' => []
+                'doctors' => []
             ], 500);
         }
     }
 
-    /**
-     * Almacena de forma persistente las coordenadas e información geográfica del dispositivo en la sesión.
-     */
-    public function saveDeviceLocationToSession(Request $request)
+    // ─── Métodos privados de soporte ────────────────────────────────────────────
+
+    private function callAiTriage(string $queryStr, string $especialidades): array
     {
-        $validated = $request->validate([
-            'latitude'  => 'required|numeric',
-            'longitude' => 'required|numeric',
-            'city'      => 'nullable|string|max:150',
+        try {
+            return $this->callOpenAi($queryStr, $especialidades);
+        } catch (\Exception $e) {
+            Log::warning("OpenAI falló, activando fallback a DeepSeek: " . $e->getMessage());
+            return $this->callDeepSeek($queryStr, $especialidades);
+        }
+    }
+
+    private function callOpenAi(string $queryStr, string $especialidades): array
+    {
+        $response = OpenAI::chat()->create([
+            'model'    => 'gpt-4o-mini',
+            'messages' => [
+                ['role' => 'system', 'content' => 'Eres un asistente médico experto de un SAAS de salud llamado opendoctor.online.'],
+                ['role' => 'user',   'content' => "Analiza este síntoma: '{$queryStr}'. Selecciona una especialidad de esta lista: {$especialidades}. Si ninguna encaja de forma directa, usa 'medicina-general'."],
+            ],
+            'response_format' => [
+                'type'        => 'json_schema',
+                'json_schema' => [
+                    'name'   => 'triage_medico_saas',
+                    'strict' => true,
+                    'schema' => $this->triageJsonSchema(),
+                ],
+            ],
         ]);
 
-        // Almacenar en la sesión nativa de Laravel para su uso posterior en cualquier controlador
-        session([
-            'patient_latitude'  => $validated['latitude'],
-            'patient_longitude' => $validated['longitude'],
-            'patient_city_name' => $validated['city'] ?? 'Unknown'
+        return json_decode($response->choices[0]->message->content, true);
+    }
+
+    private function callDeepSeek(string $queryStr, string $especialidades): array
+    {
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . config('services.deepseek.api_key'),
+            'Content-Type'  => 'application/json',
+        ])->post('https://api.deepseek.com/chat/completions', [
+            'model'    => 'deepseek-chat',
+            'messages' => [
+                ['role' => 'system', 'content' => 'Eres un asistente médico experto. Responde SOLO en JSON válido, sin bloques de código ni explicaciones.'],
+                ['role' => 'user',   'content' => "Analiza este síntoma: '{$queryStr}'. Devuelve un JSON con los campos: especialidad_correcta, especialidad_slug, urgencia (Alta|Media|Baja), consejo, seo_title, seo_description. Usa esta lista de especialidades: {$especialidades}."],
+            ],
+            'temperature' => 0.3,
         ]);
 
-        return response()->json([
-            'status'  => true,
-            'message' => 'Device coordinates and location successfully frozen in session data.'
-        ]);
-    }    
+        if (!$response->successful()) {
+            throw new \RuntimeException("DeepSeek también falló: " . $response->body());
+        }
+
+        $content = $response->json('choices.0.message.content');
+        $content = preg_replace('/^```json\s*/i', '', trim($content));
+        $content = preg_replace('/```$/', '', trim($content));
+
+        return json_decode($content, true);
+    }
+
+    private function validateTriageResponse(?array $triage, string $queryStr): void
+    {
+        $required = ['especialidad_correcta', 'especialidad_slug', 'urgencia', 'consejo', 'seo_title', 'seo_description'];
+
+        if (!is_array($triage)) {
+            throw new \RuntimeException("La IA devolvió una respuesta no parseable para el síntoma: '{$queryStr}'");
+        }
+
+        foreach ($required as $field) {
+            if (empty($triage[$field])) {
+                throw new \RuntimeException("Campo requerido '{$field}' ausente en respuesta de IA para: '{$queryStr}'");
+            }
+        }
+    }
+
+    private function triageJsonSchema(): array
+    {
+        return [
+            'type'                 => 'object',
+            'additionalProperties' => false,
+            'required'             => ['especialidad_correcta', 'especialidad_slug', 'urgencia', 'consejo', 'seo_title', 'seo_description'],
+            'properties'           => [
+                'especialidad_correcta' => ['type' => 'string', 'description' => 'Nombre exacto de la especialidad tomada de la lista provista.'],
+                'especialidad_slug'     => ['type' => 'string', 'description' => 'Slug de la especialidad en minúsculas separado por guiones.'],
+                'urgencia'              => ['type' => 'string', 'enum' => ['Alta', 'Media', 'Baja']],
+                'consejo'               => ['type' => 'string', 'description' => 'Breve orientación preliminar al paciente.'],
+                'seo_title'             => ['type' => 'string', 'description' => 'Título SEO optimizado para la landing de este síntoma.'],
+                'seo_description'       => ['type' => 'string', 'description' => 'Meta-descripción SEO indexable.'],
+            ],
+        ];
+    }
 }
