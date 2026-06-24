@@ -17,7 +17,7 @@ class ProcessConsultationAudio implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 1;
+    public int $tries   = 1;
     public int $timeout = 300;
 
     public function __construct(
@@ -25,8 +25,8 @@ class ProcessConsultationAudio implements ShouldQueue
         protected string $tmpDisk,
         protected string $tmpPath,
         protected string $mimeType,
-        protected int $doctorId,
-        protected int $patientId,
+        protected int    $doctorId,
+        protected int    $patientId,
     ) {}
 
     public function handle(AITranscriptionDriver $transcriptionDriver, AIScribeDriver $scribeDriver): void
@@ -34,19 +34,30 @@ class ProcessConsultationAudio implements ShouldQueue
         $cacheKey = "ai_scribe:{$this->jobToken}";
 
         try {
+            // ── 1. Transcribir audio con Deepgram ────────────────────────
             Cache::put($cacheKey, ['status' => 'transcribing'], now()->addMinutes(15));
 
-            $localPath = Storage::disk($this->tmpDisk)->path($this->tmpPath);
+            $localPath  = Storage::disk($this->tmpDisk)->path($this->tmpPath);
             $transcript = $transcriptionDriver->transcribe($localPath, $this->mimeType);
 
+            // ── 2. Estructurar en SOAP con DeepSeek ──────────────────────
             Cache::put($cacheKey, ['status' => 'structuring'], now()->addMinutes(15));
 
             $structured = $scribeDriver->structureConsultation($transcript);
 
+            // ── 3. Guardar resultado en caché — ya viene en formato SOAP ─
             Cache::put($cacheKey, [
-                'status' => 'ready',
+                'status'     => 'ready',
                 'transcript' => $transcript,
-                'data' => $structured,
+                'soap'       => [
+                    'entry_type'      => $structured['entry_type'],
+                    'cie10_code'      => $structured['cie10_code'],
+                    'subjective'      => $structured['soap_subjective'],
+                    'objective'       => $structured['soap_objective'],
+                    'assessment'      => $structured['soap_assessment'],
+                    'plan'            => $structured['soap_plan'],
+                ],
+                'medication_suggestion' => $structured['medication_suggestion'],
             ], now()->addMinutes(15));
 
         } catch (\Throwable $e) {
@@ -54,11 +65,11 @@ class ProcessConsultationAudio implements ShouldQueue
 
             Cache::put($cacheKey, [
                 'status' => 'failed',
-                'error' => 'No se pudo procesar el audio. Intenta nuevamente o ingresa la nota manualmente.',
+                'error'  => 'No se pudo procesar el audio. Intenta nuevamente o ingresa la nota manualmente.',
             ], now()->addMinutes(15));
 
         } finally {
-            // El audio es temporal: se borra siempre, haya éxito o falla.
+            // Audio temporal: se borra siempre, haya éxito o falla
             Storage::disk($this->tmpDisk)->delete($this->tmpPath);
         }
     }

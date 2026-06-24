@@ -8,12 +8,16 @@ use App\Models\Patient;
 use App\Models\Doctor;
 use App\Models\PatientHistory;
 use App\Models\PatientMedication;
+use App\Models\PatientAllergy;
+use App\Models\PatientSurgery;
+use App\Models\PatientFamilyHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Jobs\ProcessConsultationAudio;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use App\Notifications\ConsultationAudioUploadFailedNotification;
+use Illuminate\Validation\Rule;
 
 class PartnerPatientController extends Controller
 {
@@ -245,5 +249,132 @@ class PartnerPatientController extends Controller
         );
 
         return response()->json(['ok' => true]);
+    }
+
+    public function updateCondition(Request $request, Patient $patient)
+    {
+        // 1. Validar la petición (permitimos que sea null o string largo)
+        $request->validate([
+            'permanent_conditions' => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            // 2. Actualizar el campo en el modelo
+            $patient->update([
+                'permanent_conditions' => $request->permanent_conditions,
+            ]);
+
+            // 3. Responder con éxito para el Fetch de Alpine
+            return response()->json([
+                'success' => true,
+                'message' => 'Condición permanente actualizada con éxito.',
+                'permanent_conditions' => $patient->permanent_conditions
+            ]);
+
+        } catch (\Exception $e) {
+            // 4. Manejo de errores internos
+            return response()->json([
+                'success' => false,
+                'message' => 'Ocurrió un error al intentar guardar los datos.'
+            ], 500);
+        }
+    }
+
+    public function storeAllergy(Request $request, Patient $patient)
+    {
+        // Validamos estrictamente contra los ENUM de tu base de datos
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'type' => ['required', Rule::in(['drug', 'food', 'environment', 'other'])],
+            'severity' => ['required', Rule::in(['mild', 'moderate', 'severe'])],
+            'reaction' => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            // Creamos la alergia vinculándola al paciente actual
+            $allergy = PatientAllergy::create([
+                'patient_id' => $patient->id,
+                'name' => $request->name,
+                'type' => $request->type,
+                'severity' => $request->severity,
+                'reaction' => $request->reaction,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Alergia agregada correctamente.',
+                'allergy' => $allergy // Devolvemos el objeto para pintarlo en la vista con Alpine
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se pudo registrar la alergia.'
+            ], 500);
+        }
+    }
+
+    public function storeSurgery(Request $request, Patient $patient)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'year' => 'nullable|integer|digits:4|between:1900,' . date('Y'),
+            'observations' => 'nullable|string|max:1000',
+            'anesthesia_complications' => 'required|boolean',
+            'anesthesia_details' => 'nullable|required_if:anesthesia_complications,1|string|max:1000',
+        ]);
+
+        try {
+            $surgery = PatientSurgery::create([
+                'patient_id' => $patient->id,
+                'name' => $request->name,
+                'year' => $request->year,
+                'observations' => $request->observations,
+                'anesthesia_complications' => $request->anesthesia_complications,
+                'anesthesia_details' => $request->anesthesia_complications ? $request->anesthesia_details : null,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cirugía registrada con éxito.',
+                'surgery' => $surgery
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se pudo registrar la cirugía.'
+            ], 500);
+        }
+    }
+
+    public function storeFamilyHistory(Request $request, Patient $patient)
+    {
+        $request->validate([
+            'condition' => 'required|string|max:255',
+            'relationship' => 'required|string|max:255',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            $history = PatientFamilyHistory::create([
+                'patient_id' => $patient->id,
+                'condition' => $request->condition,
+                'relationship' => $request->relationship,
+                'notes' => $request->notes,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Antecedente familiar registrado con éxito.',
+                'history' => $history
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se pudo registrar el antecedente familiar.'
+            ], 500);
+        }
     }
 }

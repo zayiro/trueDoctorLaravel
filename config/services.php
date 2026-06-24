@@ -72,4 +72,10 @@ return [
         'integrity_events' => env('WOMPI_INTEGRITY_EVENTS'),
     ],
 
+    'certicamara' => [
+        'url'            => env('CERTICAMARA_URL'),
+        'api_key'        => env('CERTICAMARA_API_KEY'),
+        'certificate_id' => env('CERTICAMARA_CERTIFICATE_ID'),
+    ],
+
 ];

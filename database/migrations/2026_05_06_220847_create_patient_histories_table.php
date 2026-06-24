@@ -13,15 +13,25 @@ return new class extends Migration
     {
         Schema::create('patient_histories', function (Blueprint $table) {
             $table->id();
+
+            // ── Relaciones ───────────────────────────────────────────────
             $table->foreignId('patient_id')->constrained()->onDelete('cascade');
-            $table->foreignId('doctor_id')->constrained()->onDelete('cascade'); // Quién escribe la nota
-            $table->foreignId('appointment_id')->nullable()->constrained()->onDelete('set null'); // Opcional: ligar a una cita
-            $table->string('reason_for_consultation'); // Motivo de la consulta
-            $table->enum('entry_type', ['consultation', 'follow_up', 'emergency', 'note']); // Así sabrás si la nota fue por una consulta formal o solo una anotación de seguimiento.
-            $table->text('symptoms')->nullable();
-            $table->text('diagnosis'); // Diagnóstico médico
-            $table->text('treatment_plan')->nullable(); // Plan a seguir
-            $table->timestamps(); // created_at será la fecha de la nota
+            $table->foreignId('doctor_id')->constrained()->onDelete('cascade');
+            $table->foreignId('appointment_id')->nullable()->constrained()->onDelete('set null');
+
+            // ── Metadatos (no encriptados — necesarios para filtros) ─────
+            $table->enum('entry_type', ['consultation', 'follow_up', 'emergency', 'note']);
+            $table->enum('status', ['draft', 'signed', 'amended'])->default('draft');
+            $table->string('cie10_code')->nullable();
+            $table->boolean('ai_assisted')->default(false);
+
+            // ── SOAP (se encriptan en el modelo con AES-256) ─────────────
+            $table->text('soap_subjective')->nullable();  // S — síntomas del paciente
+            $table->text('soap_objective')->nullable();   // O — examen físico y signos vitales
+            $table->text('soap_assessment')->nullable();  // A — diagnóstico
+            $table->text('soap_plan')->nullable();        // P — tratamiento y seguimiento
+
+            $table->timestamps();
         });
     }
 

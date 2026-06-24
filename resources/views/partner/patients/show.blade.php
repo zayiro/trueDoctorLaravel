@@ -142,48 +142,212 @@ switch ($patient->gender) {
             <div class="md:col-span-2 bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-8">
 
                 <!-- Condiciones permanentes -->
-                <div>
-                    <h3 class="text-gray-900 font-bold border-b pb-2 mb-3 flex items-center gap-2">
-                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                        Condiciones permanentes
-                    </h3>
-                    <div class="p-3 rounded-lg border bg-gray-50 border-gray-200 text-sm text-gray-700">
+                <!-- Envolvemos la sección con x-data para manejar el estado del formulario -->
+                <div x-data="{ open: false, nuevoDato: '{{ $patient->permanent_conditions }}', enviando: false, mensaje: '' }">
+                    
+                    <!-- Encabezado con título a la izquierda y botón a la derecha -->
+                    <div class="border-b pb-2 mb-3 flex items-center justify-between">
+                        <h3 class="text-gray-900 font-bold flex items-center gap-2">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            Condiciones permanentes
+                        </h3>
+
+                        <!-- Botón de agregar estilizado y compacto -->
+                        <button @click="open = !open" 
+                                class="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            <span>Editar</span>
+                        </button>
+                    </div>
+
+                    <!-- Div desplegable con el formulario AJAX -->
+                    <div x-show="open" 
+                        x-transition
+                        x-cloak 
+                        class="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                        
+                        <form @submit.prevent="
+                            enviando = true;
+                            fetch('{{ route('partner.patients.update-condition', $patient) }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                },
+                                body: JSON.stringify({ permanent_conditions: nuevoDato })
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                enviando = false;
+                                if(data.success) {
+                                    mensaje = 'Guardado con éxito';
+                                    setTimeout(() => { open = false; mensaje = ''; }, 1200);
+                                } else {
+                                    mensaje = 'Error al guardar';
+                                }
+                            })
+                            .catch(() => { enviar = false; mensaje = 'Error de conexión'; })
+                        ">
+                            <div class="flex gap-2">
+                                <input type="text" 
+                                    x-model="nuevoDato" 
+                                    placeholder="Ej. Hipertensión, Diabetes..." 
+                                    class="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                
+                                <button type="submit" 
+                                        :disabled="enviando"
+                                        class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition disabled:opacity-50">
+                                    <span x-text="enviando ? '...' : 'Guardar'"></span>
+                                </button>
+                            </div>
+                            <p x-show="mensaje" x-text="mensaje" class="text-xs mt-1.5 font-medium text-emerald-600" x-cloak></p>
+                        </form>
+                    </div>
+
+                    <!-- Texto descriptivo que se actualiza en tiempo real gracias a x-text -->
+                    <div class="text-sm text-gray-400 italic" 
+                        x-text="nuevoDato.trim() ? nuevoDato : 'No hay condiciones permanentes registradas.'">
                         {{ $patient->permanent_conditions ?: 'No hay condiciones permanentes registradas.' }}
                     </div>
                 </div>
 
                 <!-- Alergias -->
-                <div>
-                    <h3 class="text-gray-900 font-bold border-b pb-2 mb-3 flex items-center gap-2">
-                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                        Alergias
-                    </h3>
-                    <div class="space-y-2">
-                        @forelse($patient->allergies as $allergy)
-                        @php
-                        $severity = match($allergy->severity) {
-                            'mild' => 'Leve',
-                            'moderate' => 'Moderada',
-                            'severe' => 'Severa',
-                            default => 'No especificado',
-                        };
-                        @endphp
-                        <div class="p-3 rounded-lg border @if($allergy->severity == 'severe') bg-red-50 border-red-200 @else bg-gray-50 border-gray-200 @endif">
-                            <div class="flex justify-between items-center">
-                                <span class="font-bold text-gray-800 text-sm">{{ $allergy->name }}</span>
-                                <span class="text-xs uppercase px-2 py-1 rounded-full @if($allergy->severity == 'severe') bg-red-200 text-red-800 @else bg-gray-200 text-gray-700 @endif">
-                                    {{ $severity }}
-                                </span>
+                <div x-data="{ 
+                    open: false, 
+                    enviando: false, 
+                    mensaje: '',
+                    // Formulario reactivo
+                    form: { name: '', type: 'other', severity: 'mild', reaction: '' },
+                    // Listado inicial cargado desde el servidor en formato JSON
+                    allergies: {{ json_encode($patient->allergies) }},
+                    
+                    resetForm() {
+                        this.form = { name: '', type: 'other', severity: 'mild', reaction: '' };
+                    }
+                }" class="mt-6">
+
+                    <!-- Encabezado con título y Botón -->
+                    <div class="border-b pb-2 mb-3 flex items-center justify-between">
+                        <h3 class="text-gray-900 font-bold flex items-center gap-2">
+                            <!-- Icono de Alergia/Escudo/Advertencia -->
+                            <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            Alergias registradas
+                        </h3>
+
+                        <button @click="open = !open; if(!open) resetForm()" 
+                                class="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            <span x-text="open ? 'Cancelar' : 'Agregar'"></span>
+                        </button>
+                    </div>
+
+                    <!-- Formulario Desplegable para nueva Alergia -->
+                    <div x-show="open" x-transition x-cloak class="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-xl shadow-inner">
+                        <form @submit.prevent="
+                            enviando = true;
+                            mensaje = '';
+                            fetch('{{ route('partner.patients.store-allergy', $patient->id) }}', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                                body: JSON.stringify(form)
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                enviando = false;
+                                if(data.success) {
+                                    allergies.push(data.allergy); // Se inserta dinámicamente en el listado visual
+                                    resetForm();
+                                    open = false;
+                                } else {
+                                    mensaje = 'Error: ' + data.message;
+                                }
+                            })
+                            .catch(() => { enviando = false; mensaje = 'Error en el servidor.'; })
+                        " class="space-y-3">
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <!-- Nombre -->
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">ALERGIA / SUSTANCIA</label>
+                                    <input type="text" x-model="form.name" required placeholder="Ej. Penicilina" 
+                                        class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none">
+                                </div>
+
+                                <!-- Tipo (Enum) -->
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">TIPO</label>
+                                    <select x-model="form.type" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none">
+                                        <option value="drug">Medicamento</option>
+                                        <option value="food">Alimento</option>
+                                        <option value="environment">Ambiental</option>
+                                        <option value="other">Otro</option>
+                                    </select>
+                                </div>
+
+                                <!-- Severidad (Enum) -->
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">SEVERIDAD</label>
+                                    <select x-model="form.severity" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none">
+                                        <option value="mild">Leve</option>
+                                        <option value="moderate">Moderada</option>
+                                        <option value="severe">Severa</option>
+                                    </select>
+                                </div>
                             </div>
-                            @if($allergy->reaction)
-                            <p class="text-xs text-gray-600 mt-1 italic">{{ $allergy->reaction }}</p>
-                            @endif
-                        </div>
-                        @empty
-                        <p class="text-sm text-gray-400 italic">No hay alergias registradas.</p>
-                        @endforelse
+
+                            <!-- Reacción (Texto opcional) -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">REACCIÓN (OPCIONAL)</label>
+                                <input type="text" x-model="form.reaction" placeholder="Ej. Erupción cutánea, Anafilaxia" 
+                                    class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none">
+                            </div>
+
+                            <div class="flex items-center justify-between pt-1">
+                                <p x-show="mensaje" x-text="mensaje" class="text-xs text-red-600 font-medium" x-cloak></p>
+                                <button type="submit" :disabled="enviando"
+                                        class="ml-auto px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-md transition disabled:opacity-50">
+                                    <span x-text="enviando ? 'Guardando...' : 'Guardar Alergia'"></span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Listado Reactivo de Alergias -->
+                    <div class="space-y-2">
+                        <!-- Mensaje de lista vacía en tiempo real -->
+                        <template x-if="allergies.length === 0">
+                            <div class="text-sm text-gray-400 italic">No hay alergias registradas.</div>
+                        </template>
+
+                        <!-- Bucle para iterar las alergias añadidas -->
+                        <template x-for="allergy in allergies" :key="allergy.id">
+                            <div class="flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-lg shadow-sm text-sm">
+                                <div>
+                                    <span class="font-semibold text-gray-800" x-text="allergy.name"></span>
+                                    <span class="text-xs px-2 py-0.5 rounded-full ml-2 font-medium"
+                                        :class="{
+                                            'bg-green-100 text-green-700': allergy.severity === 'mild',
+                                            'bg-amber-100 text-amber-700': allergy.severity === 'moderate',
+                                            'bg-red-100 text-red-700': allergy.severity === 'severe'
+                                        }"
+                                        x-text="allergy.severity === 'mild' ? 'Leve' : (allergy.severity === 'moderate' ? 'Mod' : 'Grave')">
+                                    </span>
+                                    <p x-show="allergy.reaction" x-text="allergy.reaction" class="text-xs text-gray-500 mt-0.5"></p>
+                                </div>
+                                <span class="text-xs text-gray-400 capitalize" x-text="allergy.type"></span>
+                            </div>
+                        </template>
                     </div>
                 </div>
+
 
                 <!-- Medicamentos -->
                 <div>
@@ -213,61 +377,256 @@ switch ($patient->gender) {
                     </div>
                 </div>
 
-                <!-- Cirugías -->
-                <div>
-                    <h3 class="text-gray-900 font-bold border-b pb-2 mb-3 flex items-center gap-2">
-                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m-4-4h8m-9 9h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                        Cirugías
-                    </h3>
-                    <div class="space-y-2">
-                        @forelse($patient->surgeries as $surgery)
-                        <div class="p-3 rounded-lg border bg-gray-50 border-gray-200">
-                            <div class="flex justify-between items-center">
-                                <span class="font-bold text-gray-800 text-sm">{{ $surgery->name }}</span>
-                                <span class="text-xs uppercase px-2 py-1 rounded-full bg-green-200 text-green-800">
-                                    {{ \Carbon\Carbon::parse($surgery->date)->format('Y-m-d') }}
-                                </span>
+                <div x-data="{ 
+                    open: false, 
+                    enviando: false, 
+                    mensaje: '',
+                    form: { name: '', year: '', observations: '', anesthesia_complications: 0, anesthesia_details: '' },
+                    surgeries: {{ json_encode($patient->surgeries) }},
+                    
+                    resetForm() {
+                        this.form = { name: '', year: '', observations: '', anesthesia_complications: 0, anesthesia_details: '' };
+                    }
+                }" class="mt-6">
+
+                    <!-- Encabezado con título y Botón -->
+                    <div class="border-b pb-2 mb-3 flex items-center justify-between">
+                        <h3 class="text-gray-900 font-bold flex items-center gap-2">
+                            <!-- Icono de Bisturí/Cirugías -->
+                            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m14.4 14.4-4.2 4.2H6v-4.2l4.2-4.2m4.2 4.2 6.1-6.1a2.1 2.1 0 0 0-3-3l-6.1 6.1m3 3-3-3"/>
+                            </svg>
+                            Antecedentes Quirúrgicos
+                        </h3>
+
+                        <button @click="open = !open; if(!open) resetForm()" 
+                                class="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-md transition">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            <span x-text="open ? 'Cancelar' : 'Agregar'"></span>
+                        </button>
+                    </div>
+
+                    <!-- Formulario Desplegable -->
+                    <div x-show="open" x-transition x-cloak class="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-xl shadow-inner">
+                        <form @submit.prevent="
+                            enviando = true;
+                            mensaje = '';
+                            fetch('{{ route('partner.patients.store-surgery', $patient->id) }}', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                                body: JSON.stringify(form)
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                enviando = false;
+                                if(data.success) {
+                                    surgeries.push(data.surgery);
+                                    resetForm();
+                                    open = false;
+                                } else {
+                                    mensaje = 'Error: ' + data.message;
+                                }
+                            })
+                            .catch(() => { enviando = false; mensaje = 'Error en el servidor.'; })
+                        " class="space-y-3">
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                <!-- Nombre de la cirugía -->
+                                <div class="md:col-span-3">
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">NOMBRE DE LA CIRUGÍA</label>
+                                    <input type="text" x-model="form.name" required placeholder="Ej. Colecistectopía" 
+                                        class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                </div>
+
+                                <!-- Año -->
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">AÑO</label>
+                                    <input type="number" x-model="form.year" placeholder="Ej. 2021" min="1900" max="{{ date('Y') }}"
+                                        class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                </div>
                             </div>
-                            @if($surgery->observations)
-                            <p class="text-xs text-gray-600 mt-1 italic">{{ $surgery->observations }}</p>
-                            @endif
-                            @if($surgery->anesthesia_complications)
-                            <p class="text-xs text-gray-600 mt-1 italic"><span class="font-bold">Complicaciones anestésicas:</span> {{ $surgery->anesthesia_details }}</p>
-                            @endif
-                            @if($surgery->notes)
-                            <p class="text-xs text-gray-600 mt-1 italic">{{ $surgery->notes }}</p>
-                            @endif
-                        </div>
-                        @empty
-                        <p class="text-sm text-gray-400 italic">No hay cirugías registradas.</p>
-                        @endforelse
+
+                            <!-- Observaciones -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">OBSERVACIONES / DETALLES</label>
+                                <input type="text" x-model="form.observations" placeholder="Ej. Sin hallazgos adicionales, recuperación normal" 
+                                    class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            </div>
+
+                            <!-- Complicaciones de Anestesia (Switch/Select) -->
+                            <div class="bg-white p-3 border border-gray-200 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs font-bold text-gray-600">¿PRESENTÓ COMPLICACIONES CON LA ANESTESIA?</label>
+                                    <select x-model.number="form.anesthesia_complications" 
+                                            class="px-2 py-1 text-xs border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                        <option value="0">No</option>
+                                        <option value="1">Sí</option>
+                                    </select>
+                                </div>
+
+                                <!-- Detalles de Complicación (Aparece dinámicamente si elige 'Sí') -->
+                                <div x-show="form.anesthesia_complications === 1" x-transition class="mt-2.5" x-cloak>
+                                    <label class="block text-xs font-bold text-red-500 mb-1">DETALLES DE LA COMPLICACIÓN</label>
+                                    <textarea x-model="form.anesthesia_details" :required="form.anesthesia_complications === 1" rows="2" placeholder="Describa qué ocurrió..."
+                                            class="w-full px-3 py-1.5 text-sm border border-red-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-between pt-1">
+                                <p x-show="mensaje" x-text="mensaje" class="text-xs text-red-600 font-medium" x-cloak></p>
+                                <button type="submit" :disabled="enviando"
+                                        class="ml-auto px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-md transition disabled:opacity-50">
+                                    <span x-text="enviando ? 'Guardando...' : 'Guardar Cirugía'"></span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Listado Reactivo -->
+                    <div class="space-y-2">
+                        <template x-if="surgeries.length === 0">
+                            <div class="text-sm text-gray-400 italic">No hay cirugías registradas.</div>
+                        </template>
+
+                        <template x-for="surgery in surgeries" :key="surgery.id">
+                            <div class="p-3 bg-white border border-gray-100 rounded-lg shadow-sm text-sm space-y-1">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-semibold text-gray-800" x-text="surgery.name"></span>
+                                    <span class="text-xs text-gray-400 font-medium" x-text="surgery.year ? 'Año ' + surgery.year : 'Año: N/R'"></span>
+                                </div>
+                                
+                                <p x-show="surgery.observations" x-text="surgery.observations" class="text-xs text-gray-500"></p>
+                                
+                                <!-- Alerta visual si tuvo problemas de anestesia -->
+                                <div x-show="surgery.anesthesia_complications" class="mt-1 p-1.5 bg-red-50 border border-red-100 rounded text-xs text-red-700" x-cloak>
+                                    <strong>Complicación anestesia:</strong> <span x-text="surgery.anesthesia_details"></span>
+                                </div>
+                            </div>
+                        </template>
                     </div>
                 </div>
 
                 <!-- Antecedentes familiares -->
-                <div>
-                    <h3 class="text-gray-900 font-bold border-b pb-2 mb-3 flex items-center gap-2">
-                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a4 4 0 10-4-4"/></svg>
-                        Antecedentes familiares
-                    </h3>
-                    <div class="space-y-2">
-                        @forelse($patient->familyHistories as $history)
-                        <div class="p-3 rounded-lg border bg-gray-50 border-gray-200">
-                            <div class="flex justify-between items-center">
-                                <span class="font-bold text-gray-800 text-sm">{{ $history->condition }}</span>
-                                <span class="text-xs uppercase px-2 py-1 rounded-full bg-purple-200 text-purple-800">
-                                    {{ $history->relationship }}
-                                </span>
+                <div x-data="{ 
+                    open: false, 
+                    enviando: false, 
+                    mensaje: '',
+                    form: { condition: '', relationship: '', notes: '' },
+                    familyHistories: {{ json_encode($patient->familyHistories) }},
+                    
+                    resetForm() {
+                        this.form = { condition: '', relationship: '', notes: '' };
+                    }
+                }" class="mt-6">
+
+                    <!-- Encabezado con título y Botón -->
+                    <div class="border-b pb-2 mb-3 flex items-center justify-between">
+                        <h3 class="text-gray-900 font-bold flex items-center gap-2">
+                            <!-- Icono de Árbol Genealógico / Usuarios -->
+                            <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+                            </svg>
+                            Antecedentes Familiares
+                        </h3>
+
+                        <button @click="open = !open; if(!open) resetForm()" 
+                                class="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-md transition">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            <span x-text="open ? 'Cancelar' : 'Agregar'"></span>
+                        </button>
+                    </div>
+
+                    <!-- Formulario Desplegable -->
+                    <div x-show="open" x-transition x-cloak class="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-xl shadow-inner">
+                        <form @submit.prevent="
+                            enviando = true;
+                            mensaje = '';
+                            fetch('{{ route('partner.patients.store-family-history', $patient->id) }}', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                                body: JSON.stringify(form)
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                enviando = false;
+                                if(data.success) {
+                                    familyHistories.push(data.history);
+                                    resetForm();
+                                    open = false;
+                                } else {
+                                    mensaje = 'Error: ' + data.message;
+                                }
+                            })
+                            .catch(() => { enviando = false; mensaje = 'Error en el servidor.'; })
+                        " class="space-y-3">
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <!-- Condición Médica -->
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">CONDICIÓN / ENFERMEDAD</label>
+                                    <input type="text" x-model="form.condition" required placeholder="Ej. Diabetes Mellitus Tipo 2, Infarto" 
+                                        class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                                </div>
+
+                                <!-- Parentesco / Relación -->
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">PARENTESCO</label>
+                                    <select x-model="form.relationship" required
+                                            class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                                        <option value="" disabled selected>Seleccione familiar...</option>
+                                        <option value="Madre">Madre</option>
+                                        <option value="Padre">Padre</option>
+                                        <option value="Abuela Materna">Abuela Materna</option>
+                                        <option value="Abuelo Materno">Abuelo Materno</option>
+                                        <option value="Abuela Paterna">Abuela Paterna</option>
+                                        <option value="Abuelo Paterno">Abuelo Paterno</option>
+                                        <option value="Hermano/a">Hermano/a</option>
+                                        <option value="Tío/a">Tío/a</option>
+                                        <option value="Otro">Otro</option>
+                                    </select>
+                                </div>
                             </div>
-                            @if($history->notes)
-                            <p class="text-xs text-gray-600 mt-1 italic">{{ $history->notes }}</p>
-                            @endif
-                        </div>
-                        @empty
-                        <p class="text-sm text-gray-400 italic">No hay antecedentes familiares registrados.</p>
-                        @endforelse
+
+                            <!-- Notas Adicionales -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">NOTAS / OBSERVACIONES (OPCIONAL)</label>
+                                <input type="text" x-model="form.notes" placeholder="Ej. Diagnosticado a los 50 años, controlado con tratamiento" 
+                                    class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                            </div>
+
+                            <div class="flex items-center justify-between pt-1">
+                                <p x-show="mensaje" x-text="mensaje" class="text-xs text-red-600 font-medium" x-cloak></p>
+                                <button type="submit" :disabled="enviando"
+                                        class="ml-auto px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-md transition disabled:opacity-50">
+                                    <span x-text="enviando ? 'Guardando...' : 'Guardar Antecedente'"></span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Listado Reactivo -->
+                    <div class="space-y-2">
+                        <template x-if="familyHistories.length === 0">
+                            <div class="text-sm text-gray-400 italic">No hay antecedentes familiares registrados.</div>
+                        </template>
+
+                        <template x-for="history in familyHistories" :key="history.id">
+                            <div class="p-3 bg-white border border-gray-100 rounded-lg shadow-sm text-sm space-y-1">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-semibold text-gray-800" x-text="history.condition"></span>
+                                    <span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium" x-text="history.relationship"></span>
+                                </div>
+                                
+                                <p x-show="history.notes" x-text="history.notes" class="text-xs text-gray-500 mt-1"></p>
+                            </div>
+                        </template>
                     </div>
                 </div>
+
             </div>
         </div>
 
@@ -656,7 +1015,7 @@ switch ($patient->gender) {
 
                             if (data.status === 'ready') {
                                 clearInterval(this.pollInterval);
-                                this.fillForm(data.data);
+                                this.fillForm(data);  // ← pasa el objeto completo
                                 this.state = 'ready';
                                 return;
                             }
@@ -678,23 +1037,31 @@ switch ($patient->gender) {
                     const form = document.getElementById('evolution-note-form');
                     if (!form) return;
 
-                    const setField = (name, value) => {
+                    const set = (name, value) => {
                         const field = form.querySelector(`[name="${name}"]`);
                         if (field && value) field.value = value;
                     };
 
-                    setField('entry_type', data.entry_type);
-                    setField('reason_for_consultation', data.reason_for_consultation);
-                    setField('symptoms', data.symptoms);
-                    setField('diagnosis', data.diagnosis);
-                    setField('treatment_plan', data.treatment_plan);
+                    // ── Metadatos (no encriptados) ───────────────────────────────
+                    set('entry_type',  data.soap?.entry_type ?? 'consultation');
+                    set('cie10_code',  data.soap?.cie10_code ?? '');
 
-                    if (data.medication_suggestion && data.medication_suggestion.name) {
+                    // ── Campos SOAP (se encriptarán en el modelo) ────────────────
+                    set('soap_subjective', data.soap?.subjective  ?? '');
+                    set('soap_objective',  data.soap?.objective   ?? '');
+                    set('soap_assessment', data.soap?.assessment  ?? '');
+                    set('soap_plan',       data.soap?.plan        ?? '');
+
+                    // ── Medicamento sugerido (si la IA detectó uno) ──────────────
+                    const med = data.medication_suggestion;
+                    if (med?.name) {
+                        set('medication_name',      med.name);
+                        set('medication_dosage',    med.dosage);
+                        set('medication_frequency', med.frequency);
+                        set('medication_notes',     med.notes);
+
+                        // Activar el checkbox de Alpine para mostrar los campos
                         const checkbox = form.querySelector('[x-model="addMedication"]');
-                        setField('medication_name', data.medication_suggestion.name);
-                        setField('medication_dosage', data.medication_suggestion.dosage);
-                        setField('medication_frequency', data.medication_suggestion.frequency);
-                        setField('medication_notes', data.medication_suggestion.notes);
                         if (checkbox) checkbox.dispatchEvent(new Event('click'));
                     }
                 },

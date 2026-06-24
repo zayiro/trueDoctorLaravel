@@ -17,6 +17,7 @@ class PatientAllergy extends Model
         'reaction'
     ];
 
+    // Relación inversa opcional por si la necesitas
     public function patient()
     {
         return $this->belongsTo(Patient::class);

@@ -5,6 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\EnsureDoctorContext;
 use App\Http\Middleware\TenantMiddleware;
+use App\Http\Middleware\BlockSqlInjection;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -38,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SeoOptimizationMiddleware::class,
             EnsureDoctorContext::class,
             TenantMiddleware::class,
+            BlockSqlInjection::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

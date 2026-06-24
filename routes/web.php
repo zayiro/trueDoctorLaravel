@@ -36,6 +36,7 @@ use App\Http\Controllers\ClinicDoctorController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\PatientHistoryAttachmentController;
 use App\Http\Controllers\ContextDoctorController;
+use App\Http\Controllers\PrescriptionController;
 
 use App\Http\Controllers\ClinicAddressController;
 use App\Http\Controllers\ClinicServiceController;
@@ -52,6 +53,8 @@ use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\MedicalAnalysisController;
 
 use Spatie\Honeypot\ProtectAgainstSpam; 
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Support\Facades\RateLimiter;
 
 // URL central del DashboardController analítico
 Route::middleware([
@@ -60,6 +63,12 @@ Route::middleware([
     //'verified',
 ])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
+});
+
+// En AppServiceProvider::boot() o RouteServiceProvider
+RateLimiter::for('search', function (Request $request) {
+    return Limit::perMinute(20)->by($request->ip())
+                ->response(fn() => response('Demasiadas búsquedas.', 429));
 });
 
 // Rutas Privadas (admin)
@@ -178,6 +187,15 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
 
     // Ruta para cancelar la cita (la que está causando el error)
     Route::delete('/partner/appointments/{appointment}', [AppointmentController::class, 'destroy'])->name('partner.appointments.destroy');
+
+    Route::post('/partner/patients/{patient}/update-condition', [PartnerPatientController::class, 'updateCondition'])
+    ->name('partner.patients.update-condition');
+    Route::post('/partner/patients/{patient}/allergies', [PartnerPatientController::class, 'storeAllergy'])
+    ->name('partner.patients.store-allergy');
+    Route::post('/partner/patients/{patient}/surgeries', [PartnerPatientController::class, 'storeSurgery'])
+    ->name('partner.patients.store-surgery');
+    Route::post('/partner/patients/{patient}/family-histories', [PartnerPatientController::class, 'storeFamilyHistory'])
+    ->name('partner.patients.store-family-history');
 
     // ========================================================
     // SINTOMATOLOGÍAS E INDEXACIÓN DE ENFERMEDADES (SINTOMAS)
@@ -313,6 +331,11 @@ Route::middleware(['auth'])->group(function () {
 
     // Ruta para forzar el cierre desde el reloj de la interfaz
     Route::post('/api/appointments/{appointment}/end-zoom', [AppointmentController::class, 'forceEndMeeting']);
+
+    Route::post('/prescriptions/{prescription}/sign', [PrescriptionController::class, 'sign'])
+         ->name('prescription.sign');
+    Route::get('/documents/{document}/download', [PrescriptionController::class, 'download'])
+         ->name('prescription.download');
 });
 
 // ========================================================
@@ -347,9 +370,9 @@ Route::post('/register-clinic', [RegisterClinicController::class, 'store'])->nam
 
 Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
 
-Route::get('/search', [SearchController::class, 'index'])->name('search');
+Route::get('/search', [SearchController::class, 'index'])->middleware('throttle:search')->name('search');
 // Asegúrate de colocarla con método GET para que la paginación funcione correctamente
-Route::get('/search-by-symptom', [SearchController::class, 'searchBySymptom'])->name('partner.search.symptom');
+Route::get('/search-by-symptom', [SearchController::class, 'searchBySymptom'])->middleware('throttle:search')->name('partner.search.symptom');
 // Nueva vista dedicada al Triage Inteligente
 Route::get('/search-symptom', [SearchController::class, 'searchSymptomView'])->name('search.symptom.view');
 
@@ -439,4 +462,8 @@ Route::get('/medical-analysis/result/{medicalAnalysis}', [MedicalAnalysisControl
 Route::post('/medical-analysis/payment/prepare', [MedicalAnalysisController::class, 'preparePayment'])->name('medical-analysis.payment.prepare');
 Route::get('/medical-analysis/payment-result/{token}', [MedicalAnalysisController::class, 'processPaymentResult'])
     ->name('medical-analysis.payment.result');
+
+// Pública para verificación
+Route::get('/verify/{signatureHash}', [PrescriptionController::class, 'verify'])
+     ->name('document.verify');    
 

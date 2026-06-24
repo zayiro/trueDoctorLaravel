@@ -32,9 +32,13 @@ class Patient extends Model
         'emergency_contact_relationship',
     ];
 
-    // 1. Asegúrate de que Laravel trate el campo como una fecha
     protected $casts = [
-        'birth_date' => 'date',
+        'identification' => 'encrypted',
+        'permanent_conditions' => 'encrypted',
+        'phone' => 'encrypted',
+        'emergency_contact_name' => 'encrypted',
+        'emergency_contact_phone' => 'encrypted',
+        'birth_date' => 'date', 
     ];
 
     // 2. Crea un atributo virtual (Accessor)
