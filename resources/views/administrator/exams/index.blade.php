@@ -51,23 +51,29 @@ $breadcrumbs = [
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1">
                             <span class="text-xs font-bold text-indigo-600 uppercase">
-                                {{ $exam->ai_result['especialidad_slug'] ?? 'Medicina General' }}
+                                {{ $exam->ai_response['especialidad_slug'] ?? 'Medicina General' }}
                             </span>
                             <span class="text-xs text-gray-400">
                                 {{ $exam->created_at->format('d/m/Y H:i') }}
                             </span>
                         </div>
                         <h3 class="text-lg font-bold text-gray-900 truncate">
-                            {{ $exam->ai_result['nombre_examen'] ?? 'Examen sin procesar' }}
+                            {{ $exam->ai_response['nombre_examen'] ?? 'Examen sin procesar' }}
                         </h3>
                         <p class="text-sm text-gray-600">
                             Paciente: <span class="font-medium text-gray-800">{{ $exam->customer_email }}</span>
+                        </p>
+                        <p class="text-sm text-gray-600">
+                            ID: <span class="font-medium text-gray-800">{{ $exam->id }}</span>
+                        </p>
+                        <p class="text-sm text-gray-600">
+                            Token: <span class="font-medium text-gray-800">{{ $exam->access_token }}</span>
                         </p>
                     </div>
 
                     <!-- Botones de Acción -->
                     <div class="flex items-center gap-2 justify-end whitespace-nowrap">
-                        <form action="{{ route('administrator.exams.resend', $exam->id) }}" method="POST" onsubmit="return confirm('¿Reenviar este examen?')">
+                        <form action="{{ route('administrator.exams.resend', $exam) }}" method="POST" onsubmit="return confirm('¿Reenviar este examen?')">
                             @csrf
                             <button type="submit" class="text-xs bg-indigo-600 text-white font-semibold px-3 py-2 border rounded-lg shadow-sm hover:bg-indigo-700">
                                 Reenviar

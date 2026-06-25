@@ -105,7 +105,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/users/create-admin', [UserManagementController::class, 'storeAdmin'])->name('administrator.users.storeAdmin');
 
     Route::get('/medical-exams', [ExamAnalysisController::class, 'index'])->name('administrator.exams.index');    
-    Route::post('/admin/exams/{exam}/resend', [ExamAnalysisController::class, 'resend'])->name('administrator.exams.resend');
+    Route::post('/admin/exams/{medicalAnalysis}/resend', [ExamAnalysisController::class, 'resend'])->name('administrator.exams.resend');
     Route::patch('/admin/exams/{examAnalysis}/toggle', [ExamAnalysisController::class, 'toggleStatus'])->name('administrator.exams.toggle');
 
     Route::get('/admin/settings', [SettingController::class, 'index'])->name('administrator.settings.index');

@@ -300,9 +300,6 @@ class MedicalAnalysisController extends Controller
             // exitosamente, los PDFs originales ya no son necesarios. Los borramos
             // para reducir el tiempo de retención de información médica sensible.
             $this->deleteSourceFiles($analysis, $filePaths);
-
-            // Enviar el correo electrónico al paciente
-            //Mail::to($analysis->customer_email)->send(new ExamAnalysisReady($analysis));
         } catch (\Throwable $e) {
             Log::error("Fallo el procesamiento automático de la IA para el Análisis #{$analysis->id}: " . $e->getMessage());
 

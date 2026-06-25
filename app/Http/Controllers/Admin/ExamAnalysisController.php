@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ExamAnalysis;
+use App\Models\MedicalAnalysis;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ExamAnalysisReady;
@@ -16,7 +16,7 @@ class ExamAnalysisController extends Controller
      */
     public function index(Request $request)
     {
-        $query = ExamAnalysis::latest();
+        $query = MedicalAnalysis::latest();
 
         if ($request->filled('search')) {
             $query->where('customer_email', 'like', '%' . $request->search . '%');
@@ -30,31 +30,31 @@ class ExamAnalysisController extends Controller
     /**
      * Reenvía el correo electrónico con el informe del examen.
      */
-    public function resend(ExamAnalysis $exam)
+    public function resend(MedicalAnalysis $medicalAnalysis)
     {
         // Validar que el examen tenga un resultado de la IA disponible
-        if (!$exam->ai_result) {
+        if (!$medicalAnalysis->ai_response) {
             return back()->with('error', 'No se puede reenviar un examen que no ha sido procesado por la IA.');
         }
 
         try {
             // Enviar el correo electrónico al paciente
-            Mail::to($exam->customer_email)->send(new ExamAnalysisReady($exam));
+            Mail::to($medicalAnalysis->customer_email)->send(new ExamAnalysisReady($medicalAnalysis));
 
-            return back()->with('success', 'El examen médico ha sido reenviado con éxito a ' . $exam->customer_email);
+            return back()->with('success', 'El examen médico ha sido reenviado con éxito a ' . $medicalAnalysis->customer_email);
             
         } catch (\Exception $e) {
             // Registrar el error interno en los logs de Laravel
-            Log::error("Falla al reenviar correo de examen #{$exam->id}: " . $e->getMessage());
+            Log::error("Falla al reenviar correo de examen #{$medicalAnalysis->id}: " . $e->getMessage());
 
             return back()->with('error', 'Ocurrió un problema al intentar enviar el correo electrónico.');
         }
     }
-
-    public function toggleStatus(ExamAnalysis $examAnalysis)
+    
+    public function toggleStatus(MedicalAnalysis $medicalAnalysis)
     {        
-        $examAnalysis->update([
-            'payment_status' => 'paid'
+        $medicalAnalysis->update([
+            'payment_status' => 'completed'
         ]);
 
         return back()->with('success', 'El examen médico se ha pagado correctamente');

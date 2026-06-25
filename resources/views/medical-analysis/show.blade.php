@@ -84,7 +84,7 @@
                             "{{ \Illuminate\Support\Str::limit($analysis->ai_response['conclusion_paciente'] ?? '', 180, '...') }}"
                         </p>
                         
-                        <div x-data="wompiCheckout({{ $analysis->id }}, '{{ $analysis->access_token }}')" class="shrink-0 mt-5 pt-3">
+                        <div x-data="wompiCheckout({{ $analysis->id }}, '{{ $analysis->access_token }}')" class="shrink-0 mt-5 pt-3 print:hidden">
                             <form x-ref="wompiForm" action="https://checkout.wompi.co/p/" method="GET" class="hidden">
                                 <input type="hidden" name="public-key" :value="paymentData.public_key" />
                                 <input type="hidden" name="currency" :value="paymentData.currency" />
@@ -271,7 +271,7 @@
                         </div>
                     @endisset
 
-                    <div class="flex justify-end gap-4 pt-2 mb-2">
+                    <div class="flex justify-end gap-4 pt-2 mb-2 print:hidden">
                         <button onclick="window.print()" class="bg-slate-950 hover:bg-slate-900 border border-white/10 text-slate-300 px-5 py-3 rounded-xl font-semibold text-sm transition flex items-center gap-2 shadow-md">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.82l2.6-2.6m0 0l2.6 2.6m-2.6-2.6V18m6-9a3.5 3.5 0 11-7 0 3.5 3.5 0 017 0zM18 9v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V9a2.25 2.25 0 012.25-2.25h10.5A2.25 2.25 0 0118 9z"/>
@@ -342,4 +342,90 @@
     });
 
     </script>
+
+    <style>
+        @media print {
+            /* Ocultar todo lo que no es el reporte */
+            nav,
+            header,
+            footer,
+            .navbar,
+            button,
+            [x-data],
+            .print\:hidden {
+                display: none !important;
+            }
+
+            /* Fondo blanco para impresión */
+            body {
+                background-color: #ffffff !important;
+                color: #0f172a !important;
+            }
+
+            /* Contenedor principal sin padding extra */
+            .max-w-5xl {
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            /* Tarjetas con fondo blanco y borde visible */
+            .bg-slate-950,
+            .bg-slate-900 {
+                background-color: #ffffff !important;
+                border: 1px solid #e2e8f0 !important;
+                box-shadow: none !important;
+            }
+
+            /* Texto oscuro para contraste en papel */
+            .text-slate-300,
+            .text-slate-400,
+            .text-slate-500 {
+                color: #334155 !important;
+            }
+
+            .text-white {
+                color: #0f172a !important;
+            }
+
+            /* Evitar que las tarjetas se corten entre páginas */
+            .rounded-2xl {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
+            /* Márgenes de página */
+            @page {
+                margin: 1.5cm 1.5cm;
+                size: A4 portrait;
+            }
+
+            /* Tabla de biomarcadores */
+            table {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
+            tr {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
+            /* Badges de estado */
+            .bg-emerald-500\/10 { background-color: #d1fae5 !important; }
+            .bg-amber-500\/10   { background-color: #fef3c7 !important; }
+            .bg-red-500\/10     { background-color: #fee2e2 !important; }
+            .bg-gray-500\/10    { background-color: #f1f5f9 !important; }
+
+            .text-emerald-400 { color: #065f46 !important; }
+            .text-amber-400   { color: #92400e !important; }
+            .text-red-400     { color: #991b1b !important; }
+            .text-gray-400    { color: #475569 !important; }
+
+            /* Ocultar botones de acción */
+            .flex.justify-end {
+                display: none !important;
+            }
+        }
+    </style>
 </x-guest-layout>
