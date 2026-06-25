@@ -8,7 +8,7 @@
             <div class="bg-slate-950 rounded-2xl border border-blue-500/20 p-8 shadow-2xl space-y-6 text-center"
                  x-data="{}"
                  x-init="setTimeout(() => window.location.reload(), 6000)">
-                <div class="w-16 h-16 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mx-auto">
+                <div class="w-16 h-16 rounded-full bg-blue-500/10 text-white flex items-center justify-center mx-auto">
                     <svg class="w-8 h-8 animate-spin" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                     </svg>
@@ -23,7 +23,7 @@
                 </div>
 
                 <div class="flex justify-center pt-2">
-                    <div class="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
+                    <div class="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
                         <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
                         {{ $analysis->status === 'pending' ? 'En cola de procesamiento' : 'Procesando con IA' }}
                     </div>
@@ -116,7 +116,7 @@
             @else
                 <div>
                     <!-- ESTADO EXITOSO: Cabecera del Reporte -->
-                    <div class="bg-slate-950 rounded-2xl border border-white/10 p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl">
+                    <div class="bg-slate-950 rounded-2xl border border-white/10 p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl mb-2">
                         <div class="space-y-2">
                             <div class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
                                 <svg class="w-3.5 h-3.5 animate-pulse" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
@@ -152,7 +152,7 @@
                     </div>
 
                     <!-- Conclusión Simplificada para el Paciente -->
-                    <div class="bg-slate-950 rounded-2xl border border-white/10 p-6 md:p-8 space-y-4 shadow-xl relative overflow-hidden">
+                    <div class="bg-slate-950 rounded-2xl border border-white/10 p-6 md:p-8 space-y-4 shadow-xl relative overflow-hidden mb-2">
                         <div class="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-blue-500/5 to-transparent pointer-events-none rounded-bl-full"></div>
 
                         <div class="flex items-center gap-2 text-white font-bold text-base">
@@ -161,13 +161,20 @@
                             </svg>
                             ¿Qué significan estos resultados?
                         </div>
-                        <div class="text-slate-300 text-sm md:text-base leading-relaxed font-normal whitespace-pre-wrap relative z-10">
-                            {{ $analysis->ai_response['conclusion_paciente'] ?? 'No se pudo generar la conclusión.' }}
+                        <div class="prose max-w-none relative z-10
+                                    prose-headings:text-white prose-headings:font-bold
+                                    prose-h2:text-lg prose-h3:text-base
+                                    prose-p:text-slate-300 prose-p:text-sm prose-p:leading-relaxed
+                                    prose-strong:text-white prose-strong:font-semibold
+                                    prose-li:text-slate-300 prose-li:text-sm
+                                    prose-ul:my-2 prose-ol:my-2
+                                    prose-a:text-indigo-400 hover:prose-a:text-indigo-300">
+                            @markdown($analysis->ai_response['conclusion_paciente'] ?? 'No se pudo generar la conclusión.')
                         </div>
                     </div>
 
                     <!-- Tabla de Indicadores Clave -->
-                    <div class="bg-slate-950 rounded-2xl border border-white/10 shadow-xl overflow-hidden">
+                    <div class="bg-slate-950 rounded-2xl border border-white/10 shadow-xl overflow-hidden mb-2">
                         <div class="p-6 border-b border-white/5">
                             <h3 class="text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
                                 <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -220,21 +227,28 @@
                     </div>
 
                     <!-- Recomendaciones e Impresión -->
-                    <div class="bg-slate-950 rounded-2xl border border-white/10 p-6 md:p-8 space-y-4 shadow-xl">
+                    <div class="bg-slate-950 rounded-2xl border border-white/10 p-6 md:p-8 space-y-4 shadow-xl mb-2">
                         <div class="flex items-center gap-2 text-indigo-400 font-bold text-base">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.83-5.83m0 0a2.652 2.652 0 1 1-3.75-3.75M14.25 8.25V3a.75.75 0 0 0-1.41-.365L9.17 6.94M14.25 8.25H9.75M6.108 15.75c-1.135-.094-1.976-1.057-1.976-2.192V6.108c0-1.135.846-2.098 1.976-2.192a48.424 48.424 0 0 1 11.123 0"/>
                             </svg>
                             Recomendaciones y sugerencias informativas
                         </div>
-                        <div class="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
-                            {{ $analysis->ai_response['recomendaciones'] ?? 'No se generaron recomendaciones.' }}
-                        </div>
+                        <div class="prose max-w-none
+                                    prose-headings:text-white prose-headings:font-bold
+                                    prose-h2:text-lg prose-h3:text-base
+                                    prose-p:text-slate-300 prose-p:text-sm prose-p:leading-relaxed
+                                    prose-strong:text-white prose-strong:font-semibold
+                                    prose-li:text-slate-300 prose-li:text-sm
+                                    prose-ul:my-2 prose-ol:my-2
+                                    prose-a:text-indigo-400 hover:prose-a:text-indigo-300">
+                            @markdown($analysis->ai_response['recomendaciones'] ?? 'No se generaron recomendaciones.')
+                        </div>           
                     </div>
 
                     <!--  CÓDIGO CORREGIDO Y SEGURO -->
                     @if(!empty($analysis) && isset($analysis->ai_response['especialidad_slug']))
-                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-1">
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-1 mb-2">
                             <div class="mb-4">                                    
                                 <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Recomendación Médica</h3>
                                 <h4 class="text-lg font-black tracking-tight mt-2">¿Deseas revisar estos resultados con un profesional?</h4>
@@ -257,7 +271,7 @@
                         </div>
                     @endisset
 
-                    <div class="flex justify-end gap-4 pt-2">
+                    <div class="flex justify-end gap-4 pt-2 mb-2">
                         <button onclick="window.print()" class="bg-slate-950 hover:bg-slate-900 border border-white/10 text-slate-300 px-5 py-3 rounded-xl font-semibold text-sm transition flex items-center gap-2 shadow-md">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.82l2.6-2.6m0 0l2.6 2.6m-2.6-2.6V18m6-9a3.5 3.5 0 11-7 0 3.5 3.5 0 017 0zM18 9v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V9a2.25 2.25 0 012.25-2.25h10.5A2.25 2.25 0 0118 9z"/>
@@ -266,7 +280,7 @@
                         </button>
                     </div>
 
-                    <p class="text-[11px] text-slate-500 leading-normal text-center italic max-w-2xl mx-auto pt-4">
+                    <p class="text-[11px] text-slate-500 leading-normal text-center italic max-w-2xl mx-auto pt-4 mb-2">
                         Aviso importante: Esta valoración es una traducción informativa generada por inteligencia artificial generativa aplicada a la salud. Su propósito es exclusivamente educativo y de empoderamiento al paciente. No representa, sustituye ni constituye bajo ninguna circunstancia un diagnóstico, receta o dictamen médico oficial. Por favor, presente este reporte a su especialista clínico en su próxima consulta.
                     </p>                            
                 </div>

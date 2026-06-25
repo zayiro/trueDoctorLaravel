@@ -9,6 +9,7 @@
         "php": "^8.3",
         "barryvdh/laravel-dompdf": "^3.1",
         "blade-ui-kit/blade-heroicons": "^2.7",
+        "erusev/parsedown": "^1.8",
         "geoip2/geoip2": "~3.0",
         "illuminate/contracts": "*",
         "illuminate/support": "*",
@@ -25,7 +26,7 @@
         "spatie/laravel-honeypot": "^4.7",
         "spatie/laravel-permission": "^7.4",
         "spatie/laravel-webhook-client": "^3.6",
-        "spatie/pdf-to-image": "^1.2",
+        "spatie/pdf-to-image": "^3.0",
         "torann/geoip": "^3.0",
         "wireui/wireui": "^2.6"
     },

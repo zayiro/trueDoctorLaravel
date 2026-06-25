@@ -80,8 +80,8 @@
             <!-- Estados del Análisis (Ocultos al inicio) -->
             <div id="loadingStatus" class="hidden bg-slate-900 border border-blue-500/20 rounded-xl p-6 space-y-4">
                 <div class="flex items-center justify-between text-xs">
-                    <span class="text-blue-400 font-semibold" id="statusMessage"><i class="fa-solid fa-shield-halved mr-1"></i> Anonimizando documentos...</span>
-                    <span class="text-slate-400 font-bold" id="progressPercentage">0%</span>
+                    <span class="text-white font-semibold" id="statusMessage"><i class="fa-solid fa-shield-halved mr-1"></i> Anonimizando documentos...</span>
+                    <span class="text-white font-bold" id="progressPercentage">0%</span>
                 </div>
                 <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-white/5">
                     <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-emerald-500 text-white h-full w-0 transition-all duration-300"></div>

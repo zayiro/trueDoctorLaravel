@@ -2,7 +2,7 @@
 
 namespace App\Mail;
 
-use App\Models\ExamAnalysis;
+use App\Models\MedicalAnalysis;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -22,9 +22,9 @@ class ExamPaymentPendingAlert extends Mailable implements ShouldQueue
      * Crear una nueva instancia del mensaje de rescate.
      *
      * @param string $recoveryUrl
-     * @param ExamAnalysis $analysis
+     * @param MedicalAnalysis $analysis
      */
-    public function __construct(string $recoveryUrl, ExamAnalysis $analysis)
+    public function __construct(string $recoveryUrl, MedicalAnalysis $analysis)
     {
         $this->recoveryUrl = $recoveryUrl;
         $this->analysis = $analysis;

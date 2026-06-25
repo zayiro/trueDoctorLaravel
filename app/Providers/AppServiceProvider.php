@@ -21,6 +21,7 @@ use Illuminate\Support\ServiceProvider;
 use App\Events\AppointmentCancelled;
 use App\Listeners\SendCancellationEmail;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Blade;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -41,6 +42,15 @@ class AppServiceProvider extends ServiceProvider
             AppointmentCancelled::class,
             SendCancellationEmail::class
         );
+
+        //setSafeMode(true) escapa cualquier HTML crudo que venga dentro del Markdown
+        Blade::directive('markdown', function ($expression) {
+            return "<?php 
+                \$parsedown = new \Parsedown();
+                \$parsedown->setSafeMode(true);
+                echo \$parsedown->text({$expression}); 
+            ?>";
+        });
 
         User::observe(UserObserver::class);
         // Laravel escucha a el modelo Address.

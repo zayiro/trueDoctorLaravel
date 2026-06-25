@@ -17,6 +17,7 @@ use App\Mail\ExamAnalysisReady;
 use App\Mail\ExamPaymentPendingAlert; 
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Spatie\PdfToImage\Enums\OutputFormat;
 
 class MedicalAnalysisController extends Controller
 {
@@ -70,7 +71,9 @@ class MedicalAnalysisController extends Controller
         ]);
 
         // Enviar correo inmediato con el enlace de rescate por si se le cierra la pestaña
-        $recoveryUrl = route('medical-analysis.show', $analysis->access_token);        
+        $recoveryUrl = route('medical-analysis.show', $analysis->access_token);
+        
+        //Envio del correo con el token, para ingresar de nuevo si pasa algun error de conexion o no se completo el resultado
         Mail::to($analysis->customer_email)->send(new ExamPaymentPendingAlert($recoveryUrl, $analysis));
 
         // Intentar la consulta inmediata a la IA pasándole el modelo completo
@@ -102,9 +105,67 @@ class MedicalAnalysisController extends Controller
         $detallesAdicionales = $analysis->reason_custom ?? 'No se proporcionaron detalles adicionales.';
         $contextoPaciente = "CONTEXTO DEL PACIENTE:\n- Motivo: {$motivoClinico}\n- Detalles: {$detallesAdicionales}";
 
-        $userText = "{$contextoPaciente}\n\nAnaliza visualmente las imágenes médicas adjuntas correspondientes a los informes provistos. Extrae los biomarcadores transversales, conclusiones claras y próximos pasos comunes. REGLA CRÍTICA: En el campo 'especialidad_slug' debes colocar OBLIGATORIAMENTE uno de estos términos en minúsculas y sin acentos según corresponda: 'medicina-general', 'neurologia', 'cardiologia', 'ginecologia', 'endocrinologia', 'pediatria', 'urologia', 'dermatologia'. Si tienes dudas o el caso es mixto, usa 'medicina-general'.";
+        $userText = "{$contextoPaciente}\n\nAnaliza visualmente las imágenes médicas y dime como un médico experto lo que significan los valores, en un lenguaje natural de paciente. Extrae los biomarcadores transversales, conclusiones claras y próximos pasos comunes. REGLA CRÍTICA: En el campo 'especialidad_slug' debes colocar OBLIGATORIAMENTE uno de estos términos en minúsculas y sin acentos según corresponda: 'medicina-general', 'neurologia', 'cardiologia', 'ginecologia', 'endocrinologia', 'pediatria', 'urologia', 'dermatologia'. Si tienes dudas o el caso es mixto, usa 'medicina-general'.";
 
-        $systemPrompt = "Eres un asistente médico experto de un SAAS de salud. Tu tarea es extraer la información consolidada de los exámenes provistos (pueden ser múltiples documentos), correlacionar los biomarcadores y obligatoriamente clasificar el caso en una especialidad médica.";
+        $systemPrompt = "Actúa como un médico especialista clínico con excelente comunicación humana y empatía.
+        Responde SIEMPRE en español, independientemente del idioma en que estén escritos los resultados.
+
+        Tu tarea principal es: extraer la información consolidada de los exámenes provistos
+        (pueden ser múltiples documentos o imágenes), correlacionar los biomarcadores entre sí,
+        clasificar obligatoriamente el caso en una especialidad médica, y explicarle los resultados
+        al paciente en lenguaje natural, accesible y sin tecnicismos innecesarios,
+        manteniendo siempre la precisión médica.
+
+        IMPORTANTE ANTES DE ANALIZAR:
+        - Si alguna imagen no es legible, está incompleta o no contiene resultados de laboratorio,
+        indícaselo amablemente al paciente sin inventar datos.
+        - Nunca asumas ni inventes valores que no estén claramente visibles en los documentos provistos.
+        - Si se proveen múltiples documentos, consolida toda la información antes de responder;
+        no analices cada examen de forma aislada.
+
+        Por favor, estructura tu respuesta siguiendo estrictamente estas secciones:
+
+        1. INTRODUCCIÓN Y CLASIFICACIÓN ESPECIALIDAD:
+        Comienza indicando a qué especialidad médica corresponde el caso
+        (ej. Nefrología, Endocrinología, Cardiología, Medicina General, etc.) y por qué.
+        Luego ofrece una conclusión general muy clara: qué está bien y qué necesita
+        atención urgente o seguimiento.
+
+        2. SECCIONES CLÍNICAS (Usa encabezados de Markdown):
+        Divide los resultados por sistemas o bloques lógicos (ej. Función Renal, Perfil de Lípidos,
+        Hemograma, Metabolismo de Glucosa, etc.) para que el paciente entienda el contexto
+        de cada prueba. Si hay correlaciones relevantes entre biomarcadores de distintos bloques,
+        menciónalo explícitamente (ej. 'La glucosa alta junto con los triglicéridos elevados
+        sugiere un patrón metabólico que vale la pena revisar').
+
+        3. EXPLICACIÓN DE VALORES:
+        Para cada parámetro importante analizado:
+        - Menciona el nombre de la prueba y el valor exacto del paciente.
+        - Explica de forma muy sencilla qué mide ese parámetro (usa analogías si es útil,
+            como 'el filtro del riñón' o 'el camión de basura del colesterol').
+        - Indica explícitamente si el valor es Normal, Alto o Bajo, usando rangos de referencia
+            internacionales estándar (OMS o laboratorios de referencia).
+            Si el rango varía por sexo o edad, menciónalo.
+
+        4. PLAN DE ACCIÓN Y RECOMENDACIONES:
+        Agrupa los pasos prácticos que debe tomar el paciente: alimentación, ejercicio
+        y consulta médica presencial (especificando la especialidad recomendada si aplica).
+        Incluye siempre una nota pidiendo al paciente verificar su reporte impreso
+        para confirmar los datos.
+
+        5. PREGUNTAS DE SEGUIMIENTO:
+        Termina con 2 o 3 preguntas clave sobre su historial clínico (antecedentes familiares,
+        enfermedades crónicas, medicamentos actuales) para contextualizar mejor el caso.
+
+        6. DESCARGO DE RESPONSABILIDAD MÉDICA:
+        Al final, incluye un aviso legal corto en cursiva aclarando que la información
+        es educativa y no reemplaza una consulta médica presencial.
+
+        TONO Y ESTILO:
+        - Oraciones cortas (menos de 15 palabras cuando sea posible).
+        - Habla como un médico de cabecera amable, no como un libro de texto.
+        - Usa viñetas para desglosar información y negritas en palabras clave.
+        ";
 
         $filePaths = json_decode($analysis->file_paths, true);
 
@@ -137,24 +198,45 @@ class MedicalAnalysisController extends Controller
             }
 
             try {
-                if ($mimeType === 'application/pdf') {
-                    $tempImagePath = storage_path('app/temp/med_batch_' . uniqid() . '_' . $index . '.jpg');
+                if ($mimeType === 'application/pdf') {                    
+                    $pdf = new Pdf($filePath);
+                    $totalPages = $pdf->pageCount(); // Total de páginas del PDF
 
-                    if (! is_dir(dirname($tempImagePath))) {
-                        mkdir(dirname($tempImagePath), 0755, true);
-                    }
+                    Log::info("Análisis #{$analysis->id}: PDF '{$path}' tiene {$totalPages} página(s).");
 
-                    $pdf = new Pdf($filePath); // ajusta el namespace según tu librería real
-                    $pdf->saveImage($tempImagePath);
+                    for ($page = 1; $page <= $totalPages; $page++) {
 
-                    if (file_exists($tempImagePath) && filesize($tempImagePath) > 0) {
-                        $images[] = [
-                            'base64' => base64_encode(file_get_contents($tempImagePath)),
-                            'mime' => 'image/jpeg',
-                        ];
-                        $tempFilesToCleanup[] = $tempImagePath;
-                    } else {
-                        Log::error("Análisis #{$analysis->id}: la conversión PDF->JPG de '{$path}' no generó archivo.");
+                        $tempImagePath = storage_path(
+                            'app/temp/med_batch_' . uniqid() . '_doc' . $index . '_page' . $page . '.jpg'
+                        );
+
+                        if (! is_dir(dirname($tempImagePath))) {
+                            mkdir(dirname($tempImagePath), 0755, true);
+                        }
+
+                        try {
+                            $savedPaths = $pdf->selectPage($page)
+                                ->format(OutputFormat::Jpg)
+                                ->quality(90)
+                                ->save($tempImagePath);
+
+                            $savedPath = $savedPaths[0] ?? null;
+
+                            if ($savedPath && file_exists($savedPath) && filesize($savedPath) > 0) {
+                                $images[] = [
+                                    'base64' => base64_encode(file_get_contents($savedPath)),
+                                    'mime'   => 'image/jpeg',
+                                ];
+                                $tempFilesToCleanup[] = $savedPath;
+
+                                Log::info("Análisis #{$analysis->id}: página {$page}/{$totalPages} convertida OK.");
+                            } else {
+                                Log::error("Análisis #{$analysis->id}: página {$page} de '{$path}' no generó imagen.");
+                            }
+
+                        } catch (\Throwable $e) {
+                            Log::error("Análisis #{$analysis->id}: fallo página {$page} de '{$path}': " . $e->getMessage());
+                        }
                     }
                 } elseif (in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], true)) {
                     $images[] = [
@@ -180,6 +262,11 @@ class MedicalAnalysisController extends Controller
             Log::error("Cancelada la llamada a la IA para el Análisis #{$analysis->id} porque no se generaron imágenes multimedia.");
             $analysis->update(['status' => 'failed']);
             return;
+        }
+
+        if (count($images) > 20) {
+            Log::warning("Análisis #{$analysis->id}: " . count($images) . " imágenes generadas, se truncan a 20 (límite API).");
+            $images = array_slice($images, 0, 20);
         }
 
         Log::info("Análisis #{$analysis->id}: enviando " . count($images) . " imagen(es). Proveedor solicitado: " . ($provider ?? 'default de config'));
