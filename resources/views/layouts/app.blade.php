@@ -17,6 +17,14 @@
 
         <!-- Styles -->
         @livewireStyles
+
+        <script>
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    registrations.forEach(reg => reg.unregister());
+                });
+            }
+        </script>
     </head>
     <body class="font-sans antialiased">
         <x-banner />

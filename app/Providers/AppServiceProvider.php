@@ -17,11 +17,14 @@ use App\Observers\AddressObserver;
 use App\Models\Appointment;
 use App\Observers\AppointmentObserver;
 
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use App\Events\AppointmentCancelled;
 use App\Listeners\SendCancellationEmail;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Blade;
+use App\Services\Twilio\WhatsAppTemplateService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,7 +33,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(WhatsAppTemplateService::class, function () {
+            return new WhatsAppTemplateService();
+        });
     }
 
     /**
@@ -62,5 +67,10 @@ class AppServiceProvider extends ServiceProvider
         Doctor::observe(DoctorObserver::class);
         // Observador de citas con transacciones de base de datos para garantizar integridad
         Appointment::observe(AppointmentObserver::class);
+
+        // ✅ Rate limiter para búsqueda de usuarios
+        RateLimiter::for('App\Models\User::search', function () {
+            return Limit::perMinute(60);
+        });
     }
 }

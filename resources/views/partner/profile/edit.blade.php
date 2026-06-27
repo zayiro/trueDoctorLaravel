@@ -72,7 +72,7 @@
                                     
                                     <div class="flex justify-between items-center mb-2">
                                         <span class="font-black text-gray-800">{{ $plan->name }}</span>
-                                        @if($doctor->settings->plan_id == $plan->id)
+                                        @if($doctor->settings->plan_id === $plan->id)
                                             <span class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter">Activo</span>
                                         @endif
                                     </div>

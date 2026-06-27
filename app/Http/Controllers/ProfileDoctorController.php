@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 class ProfileDoctorController extends Controller
 {
     public function edit()
-    {                
+    {              
         // Traer solo los planes para doctores que estén activos
         $plans = Plan::where('applicable_role', 'doctor')
              ->where('active', true) // Añadimos el filtro por active
@@ -19,11 +19,10 @@ class ProfileDoctorController extends Controller
         
         // Obtenemos el doctor actual y sus configuraciones
         $doctor = auth()->user()->doctor;
-        $doctor->load('settings.plan');
-
+        
+        $doctor->load(['settings']);
+//dd($plans);
         $allSpecialties = Specialty::orderBy('name', 'asc')->get();
-
-        //dd($doctor);
         
         return view('partner.profile.edit', compact('doctor', 'plans', 'allSpecialties'));
     }

@@ -28,6 +28,7 @@
         "spatie/laravel-webhook-client": "^3.6",
         "spatie/pdf-to-image": "^3.0",
         "torann/geoip": "^3.0",
+        "twilio/sdk": "^8.11",
         "wireui/wireui": "^2.6"
     },
     "require-dev": {

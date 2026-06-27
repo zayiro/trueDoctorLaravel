@@ -50,17 +50,5 @@ class PlanController extends Controller
              
         return view('plans.index', compact('plans'));
     }
-
-    public function subscribe(Plan $plan)
-    {
-        if (Auth::guest()) {
-            // Guardamos el ID del plan para recuperarlo después del registro
-            session(['selected_plan_id' => $plan->id]);
-            
-            return redirect()->route('register.options')
-                ->with('info', 'Primero crea tu cuenta para activar el ' . $plan->name);
-        }
-
-        return view('plans.subscribe', compact('plan'));
-    }
+    
 }

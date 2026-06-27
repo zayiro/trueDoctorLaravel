@@ -140,15 +140,25 @@
                         <span class="text-slate-400 text-xs font-black uppercase tracking-wider">Forma de Pago</span>
                         <div class="text-xs text-slate-900 font-light"></div>
                     </div>
-                    <span class="text-sm font-bold text-slate-700">{{ $acceptsOnlinePayments ? 'Pago en Línea' : 'Pago en Consulta' }}</span>
+                     @if ($virtualPaymentRequired)
+                        <span class="text-sm font-bold text-slate-700">Pago en Línea</span>
+                    @else
+                        <span class="text-sm font-bold text-slate-700">{{ $acceptsOnlinePayments ? 'Pago en Línea' : 'Pago en Consulta' }}</span>
+                    @endif                    
                 </div>
 
                 <!-- PRECIO FORMATEADO Y CONDICIONAL DE PASARELAS -->
                 <div class="pt-4 text-center">
                     <span class="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-1">Valor Total de la Consulta</span>
+                    @if($virtualPaymentRequired && $wompiData)
+                    <p class="text-3xl font-black text-indigo-600 tracking-tight">
+                        ${{ number_format($wompiData['total'], 0, ',', '.') }}
+                    </p>
+                    @else
                     <p class="text-3xl font-black text-indigo-600 tracking-tight">
                         ${{ number_format($appointment->price, 0, ',', '.') }}
-                    </p>                                                        
+                    </p>
+                    @endif
 
                     <!-- CONTENEDOR DE ACCIONES Y NAVEGACIÓN SECURE CHECKOUT -->
                     <div class="mt-8 border-t border-slate-50 pt-6">
@@ -162,6 +172,40 @@
                                 </button>
                             </form>
                         @else
+                            @if($virtualPaymentRequired && $wompiData)
+                            <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-4">
+                                <div class="flex items-center justify-between text-sm mb-1">
+                                    <span class="text-slate-500 font-medium">Valor base</span>
+                                    <span class="font-bold text-slate-700">${{ number_format($appointment->price, 0, ',', '.') }}</span>
+                                </div>
+                                <div class="flex items-center justify-between text-sm mb-1">
+                                    <span class="text-slate-500 font-medium">Comisión plataforma</span>
+                                    <span class="font-bold text-slate-700">${{ number_format($wompiData['commission_amount'], 0, ',', '.') }}</span>
+                                </div>
+                                <div class="flex items-center justify-between text-sm border-t border-blue-200 pt-2 mt-2">
+                                    <span class="font-black text-slate-800">Total a pagar</span>
+                                    <span class="font-black text-blue-700 text-base">${{ number_format($wompiData['total'], 0, ',', '.') }}</span>
+                                </div>
+                            </div>
+
+                            <a href="{{ $wompiData['checkout_url'] }}"
+                                x-data="{ loading: false }"
+                                @click="loading = true"
+                                :class="loading ? 'opacity-70 pointer-events-none bg-blue-500' : 'bg-blue-600 hover:bg-blue-700'"
+                                class="w-full text-white py-4 rounded-2xl font-black shadow-lg shadow-blue-100 transition-all text-sm uppercase tracking-wider flex items-center justify-center gap-2">
+
+                                <svg x-show="loading" class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" x-cloak>
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+
+                                <svg x-show="!loading" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 18.75z"/>
+                                </svg>
+
+                                <span x-text="loading ? 'Redirigiendo a Wompi...' : 'Pagar cita virtual'">Pagar cita virtual</span>
+                            </a>                            
+                            @else
                             <form action="{{ route('appointments.success', $appointment) }}" method="GET" x-data="{ loading: false }" x-on:submit="loading = true">                                
                                 <button type="submit" 
                                         :disabled="loading"
@@ -176,6 +220,7 @@
                                     <span x-text="loading ? 'Procesando Reserva...' : 'Confirmar y Finalizar Reserva'">Confirmar y Finalizar Reserva</span>
                                 </button>
                             </form>
+                            @endif
 
                             <!-- Enlace de escape por si los datos no son correctos -->
                             <div class="mt-6 text-center">

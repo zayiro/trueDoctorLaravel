@@ -33,10 +33,17 @@ return new class extends Migration
              
             $table->enum('status', ['pending', 'confirmed', 'cancelled', 'completed'])->default('pending');
             $table->enum('payment_status', ['pending', 'paid', 'cancelled', 'failed'])->default('pending');
+
+            $table->string('wompi_reference')->nullable()->unique();
+            $table->decimal('commission_amount', 10, 2)->default(0);
+            $table->decimal('doctor_amount', 10, 2)->default(0);
+            $table->decimal('platform_amount', 10, 2)->default(0); // lo que queda para OpenDoctor después de Wompi
+            $table->timestamp('paid_at')->nullable();
+
             $table->enum('channel', ['app', 'web', 'whatsapp'])->default('web');
             $table->text('notes')->nullable();
             $table->boolean('email_sent')->default(false);
-            $table->unsignedInteger('reschedule_count')->default(0);
+            $table->unsignedInteger('reschedule_count')->default(0);                        
             $table->timestamps();
 
             // Índice compuesto para validación de disponibilidad

@@ -12,6 +12,7 @@
         <div class="max-w-6xl mx-auto my-16">
             <div class="text-center mb-10">
                 <h3 class="text-3xl font-bold text-gray-900 mb-2">Para Especialistas, por tiempo limitado!!</h3>
+                <p class="text-lg text-gray-600">Valido para los <strong class="text-emerald-500">primeros 50 especialistas</strong></p>    
                 <p class="text-lg text-gray-600">Planes diseñados para profesionales de la salud independientes</p>    
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -35,13 +36,21 @@
                         <ul class="space-y-4 mb-8 flex-1">
                             <li class="flex items-center gap-3 text-gray-700">
                                 <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                <span>Doctores <strong>{{ $plan->max_doctors }}</strong></span>
+                            </li>
+                            <li class="flex items-center gap-3 text-gray-700">
+                                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                 <span>Hasta <strong>{{ $plan->max_addresses }}</strong> sedes físicas</span>
                             </li>
                             <li class="flex items-center gap-3 text-gray-700">
                                 <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                <span>Sede virtual incluida (Citas por zoom)</span>
+                            </li>  
+                            <li class="flex items-center gap-3 text-gray-700">
+                                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                 <span>Hasta <strong>{{ $plan->max_services }}</strong> servicios globales</span>
                             </li>
-                            @if ($plan->ai_scribe_enabled && $plan->plan === 'gold')
+                            @if ($plan->ai_scribe_enabled)
                             <li class="flex items-center gap-3 text-gray-700">
                                 <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                 <span>Notas de Evolución Actual por voz y transcripción precisa con la IA</span>
@@ -50,11 +59,11 @@
                             <li class="flex items-center gap-3 text-gray-700">
                                 <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                 <span>Agenda en tiempo real</span>
-                            </li>                            
+                            </li>                                                         
                             <li class="flex items-center gap-3 text-gray-700">
                                 <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                <span>Sede virtual incluida (Citas por zoom)</span>
-                            </li>     
+                                <span>Citas por año: {{ $plan->max_appointments_per_year < "9999" ? $plan->max_appointments_per_year : 'Sin limite' }} </span>
+                            </li>  
                             <li class="flex items-center gap-3 text-gray-700">
                                 <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                 <span>Notificaciones por {{ $plan->plan === 'free' ? 'Email': 'Email y WhatsApp' }}</span>

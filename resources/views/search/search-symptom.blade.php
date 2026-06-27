@@ -330,12 +330,72 @@
                                             Déjanos tu correo y te notificamos en cuanto un especialista en
                                             <strong x-text="triageInfo.specialtyName"></strong> esté disponible.
                                         </p>
-                                        <div class="flex gap-2">
-                                            <input type="email" placeholder="tu@correo.com"
-                                                class="flex-1 text-xs border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-300 focus:outline-none bg-white">
-                                            <button class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition">
-                                                Avisar
-                                            </button>
+
+                                        <div x-data="{
+                                            email: '',
+                                            loading: false,
+                                            sent: false,
+                                            error: '',
+                                            async submit() {
+                                                this.error = '';
+                                                if (!this.email) { this.error = 'Ingresa tu correo.'; return; }
+                                                this.loading = true;
+                                                try {
+                                                    const res = await fetch('{{ route('availability.notify') }}', {
+                                                        method: 'POST',
+                                                        headers: {
+                                                            'Content-Type': 'application/json',
+                                                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content
+                                                        },
+                                                        body: JSON.stringify({
+                                                            email: this.email,
+                                                            specialty: triageInfo.specialtyName
+                                                        })
+                                                    });
+                                                    const data = await res.json();
+                                                    if (res.ok) {
+                                                        this.sent = true;
+                                                    } else {
+                                                        this.error = data.message ?? 'Ocurrió un error. Intenta de nuevo.';
+                                                    }
+                                                } catch (e) {
+                                                    this.error = 'No se pudo conectar. Intenta de nuevo.';
+                                                } finally {
+                                                    this.loading = false;
+                                                }
+                                            }
+                                        }">
+                                            <!-- Estado de éxito -->
+                                            <div x-show="sent" x-transition
+                                                class="flex items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                                                <span>✅</span>
+                                                <span>¡Listo! Te avisaremos cuando haya disponibilidad.</span>
+                                            </div>
+
+                                            <!-- Formulario -->
+                                            <div x-show="!sent" class="flex flex-col gap-2">
+                                                <div class="flex gap-2">
+                                                    <input
+                                                        type="email"
+                                                        x-model="email"
+                                                        placeholder="tu@correo.com"
+                                                        :disabled="loading"
+                                                        @keydown.enter="submit()"
+                                                        class="flex-1 text-xs border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-300 focus:outline-none bg-white disabled:opacity-50"
+                                                    >
+                                                    <button
+                                                        @click="submit()"
+                                                        :disabled="loading"
+                                                        class="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1"
+                                                    >
+                                                        <span x-show="loading" class="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                                                        <span x-text="loading ? 'Enviando…' : 'Avisar'"></span>
+                                                    </button>
+                                                </div>
+
+                                                <!-- Error -->
+                                                <p x-show="error" x-text="error" class="text-xs text-red-500 pl-1"></p>
+                                            </div>
                                         </div>
                                     </div>
 

@@ -34,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'api/webhooks/zoom',
             'webhooks/zoom',
+            'webhooks/wompi',
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\SeoOptimizationMiddleware::class,

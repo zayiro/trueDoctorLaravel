@@ -30,6 +30,11 @@ class Appointment extends Model
         'price',
         'status',
         'payment_status',
+        'wompi_reference',
+        'commission_amount',
+        'doctor_amount',
+        'platform_amount',
+        'paid_at',
         'channel',
         'meeting_link',     // Enlace para el paciente (o fallback interno)
         'zoom_meeting_id',  // ID identificador de Zoom

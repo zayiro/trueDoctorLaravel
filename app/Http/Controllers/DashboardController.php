@@ -32,10 +32,10 @@ class DashboardController extends Controller
             $ownerColumn = null;
 
             // Obtiene las 10 especialidades más buscadas
-            $popularSpecialties = SearchLog::topSpecialties(10);
+            $popularSpecialties = SearchLog::topSpecialties(15);
 
             // Obtiene las 5 ciudades más buscadas
-            $popularCities = SearchLog::topCities(5);
+            $popularCities = SearchLog::topCities(15);
 
             // Conteo global de usuarios agrupados por rol para el Administrador
             $usersByRole = User::select('role', DB::raw('count(*) as total'))

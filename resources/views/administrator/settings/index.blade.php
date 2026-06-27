@@ -2,7 +2,7 @@
 $breadcrumbs = [
     [
         'name' => 'Dashboard',
-        'href' => route('admin.dashboard'),
+        'href' => route('administrator.dashboard'),
     ],
     [
         'name' => 'Configuraciones',

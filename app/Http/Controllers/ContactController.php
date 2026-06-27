@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use App\Notifications\MailLimitExceededNotification;
 use Illuminate\Support\Facades\Log;
 use Throwable;
+use Illuminate\Http\JsonResponse;
 
 class ContactController extends Controller
 {
@@ -59,5 +60,40 @@ class ContactController extends Controller
 
         // 5. Redirección con mensaje de éxito de Bootstrap/Tailwind
         return back()->with('success', '¡Gracias! El mensaje se envió correctamente.');
-    }    
+    }  
+    
+    public function storeAvailabilityNotify(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email'     => ['required', 'email', 'max:255'],
+            'specialty' => ['required', 'string', 'max:255'],
+        ]);
+
+        $name = 'symptom';
+        $email = $request->input('email');
+        $subject = 'Avísame cuando haya disponibilidad';
+        $message = $request->input('message', 'No se encuentra especialista en busqueda por symptom');
+
+        // 3. Guardado en la Base de Datos
+        ContactMessage::create([
+            'name' => $name,
+            'email' => $email,
+            'subject' => $subject,
+            'message' => $message
+        ]);
+
+        /*
+        try {
+            Mail::to('ocampotecnologo@gmail.com')->queue(new ContactNotification($contactRecord));
+        } catch (Throwable $e) {
+            $admins = User::where('role', 'admin')->get();
+            foreach ($admins as $admin) {
+                $admin->notify(new MailLimitExceededNotification($e->getMessage(), $request->email));
+            }
+        }*/
+
+        return response()->json([
+            'message' => 'Solicitud registrada correctamente.',
+        ], 200);
+    }
 }

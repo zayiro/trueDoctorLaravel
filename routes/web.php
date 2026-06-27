@@ -44,6 +44,7 @@ use App\Http\Controllers\ClinicScheduleController;
 use App\Http\Controllers\ClinicAppointmentController;
 use App\Http\Controllers\SymptomDirectoryController;
 use App\Http\Controllers\AppointmentStateController;
+use App\Http\Controllers\SubscriptionController;
 
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\UserManagementController;
@@ -62,7 +63,7 @@ Route::middleware([
     config('jetstream.auth_session'),
     //'verified',
 ])->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('administrator.dashboard');
 });
 
 // En AppServiceProvider::boot() o RouteServiceProvider
@@ -110,6 +111,11 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::get('/admin/settings', [SettingController::class, 'index'])->name('administrator.settings.index');
     Route::put('/admin/settings', [SettingController::class, 'update'])->name('administrator.settings.update');
+
+    Route::get('/admin/contact', [UserManagementController::class, 'contactMessages'])->name('administrator.contact.index');
+
+    Route::get('/administrator/payouts', [AdminController::class, 'payouts'])->name('administrator.payouts.index');
+    Route::post('/administrator/payouts/{payout}/mark-paid', [AdminController::class, 'markPayoutPaid'])->name('administrator.payouts.mark-paid');
 });
 
 // Rutas Privadas (medical partner)
@@ -335,7 +341,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/prescriptions/{prescription}/sign', [PrescriptionController::class, 'sign'])
          ->name('prescription.sign');
     Route::get('/documents/{document}/download', [PrescriptionController::class, 'download'])
-         ->name('prescription.download');
+         ->name('prescription.download');    
 });
 
 // ========================================================
@@ -346,6 +352,7 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 
 Route::get('/contact', [ContactController::class, 'showContact'])->name('contact.show');
 Route::post('/contact', [ContactController::class, 'submit'])->middleware(ProtectAgainstSpam::class)->name('contact.submit');
+Route::post('/availability/notify', [ContactController::class, 'storeAvailabilityNotify'])->name('availability.notify');
 
 Route::get('/terms', [ContactController::class, 'showTerms'])->name('terms.show');
 Route::get('/privacy', [ContactController::class, 'showPrivacy'])->name('privacy.show');
@@ -376,8 +383,6 @@ Route::get('/search-by-symptom', [SearchController::class, 'searchBySymptom'])->
 // Nueva vista dedicada al Triage Inteligente
 Route::get('/search-symptom', [SearchController::class, 'searchSymptomView'])->name('search.symptom.view');
 
-Route::get('/{partner_slug}/{campaign_slug}.html', PublicLanding::class)->name('landing.public');
-
 // Ruta pública unificada para perfiles de médicos y los medicos (staff) de la clínica 
 Route::get('/medical-partner/{slug}', [PublicProfileController::class, 'show'])->name('partner.public.profile');
 
@@ -396,8 +401,7 @@ Route::get('/api/{partner}/availability', [PublicProfileController::class, 'getA
 // Endpoint unificado y ultra-seguro para el cálculo de slots en el calendario (Web y Reagendamiento)
 Route::get('/slots', [PartnerAppointmentController::class, 'getSlots'])->name('slots.index');
 
-// Catálogo dinámico de servicios por sede
-Route::get('/api/addresses/{address}/services', [PartnerAppointmentController::class, 'getServices'])->name('api.addresses.services');
+Route::get('/appointments/payment/result', [AppointmentController::class, 'paymentResult'])->name('appointments.payment.result');
 
 Route::post('/appointments/step-two', [AppointmentController::class, 'storeStepTwo'])->name('appointments.step-two');
 Route::get('/appointments/patient', [AppointmentController::class, 'patient'])->name('appointments.patient');
@@ -406,10 +410,17 @@ Route::get('/appointments/preview/{id}', [AppointmentController::class, 'preview
 Route::get('/appointments/success/{appointment}', [AppointmentController::class, 'success'])->name('appointments.success');
 Route::post('/appointments/cancel-flow', [AppointmentController::class, 'cancelFlow'])->name('appointments.cancel-flow');
 
+// Catálogo dinámico de servicios por sede
+Route::get('/api/addresses/{address}/services', [PartnerAppointmentController::class, 'getServices'])->name('api.addresses.services');
+
 // Vista de la tabla de precios
 Route::get('/plans/show', [PlanController::class, 'showPlans'])->name('plans.index');
+
 // Acción de seleccionar/suscribirse a un plan
-Route::post('/plans/{plan}/subscribe', [PlanController::class, 'subscribe'])->name('plans.subscribe');
+Route::post('/plans/{plan}/subscribe', [SubscriptionController::class, 'show'])->name('plans.subscribe');
+Route::post('/plans/{plan}/checkout', [SubscriptionController::class, 'checkout'])->name('plans.checkout');
+Route::post('/webhooks/wompi', [SubscriptionController::class, 'webhook'])->name('webhooks.wompi');
+Route::get('/plans/payment/result', [SubscriptionController::class, 'result'])->name('plans.payment.result');
 
 // routes/api.php o routes/web.php
 Route::get('/departments/{department}/cities', function ($deptId) {
@@ -465,5 +476,8 @@ Route::get('/medical-analysis/payment-result/{token}', [MedicalAnalysisControlle
 
 // Pública para verificación
 Route::get('/verify/{signatureHash}', [PrescriptionController::class, 'verify'])
-     ->name('document.verify');    
-
+     ->name('document.verify');  
+     
+Route::get('{partner_slug}/{campaign_slug}.html', PublicLanding::class)
+    ->name('landing.public')
+    ->where('partner_slug', '(?!appointments|administrator|admin|partner|patient|clinic|api|medical-analysis|verify|sintomas|medical-partner|plans)[a-zA-Z0-9\-]+');

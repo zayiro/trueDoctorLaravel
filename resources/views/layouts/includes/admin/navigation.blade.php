@@ -8,7 +8,7 @@
                     <path stroke="currentColor" stroke-linecap="round" stroke-width="2" d="M5 7h14M5 12h14M5 17h10"/>
                 </svg>
             </button>
-            <a href="https://opendoctor.online" class="flex ms-2 md:me-24">
+            <a href="https://opendoctor.online" class="flex ms-2 md:me-24" alt="OpenDoctorOnline" title="OpenDoctorOnline">
                 <img src="{{ asset('images/logoOpenDoctor.jpg') }}" class="size-8 rounded-full object-cover" alt="OpenDoctor Reservaciones Médicas" />
                 <span class="self-center text-xl text-heading font-semibold whitespace-nowrap">
                     <div class="flex items-center gap-2 ml-2">

@@ -39,6 +39,14 @@
         <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 
         @stack('meta')
+
+        <script>
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    registrations.forEach(reg => reg.unregister());
+                });
+            }
+        </script>
     </head>
     <body class="font-sans antialiased bg-gray-100">
         @include('layouts.includes.app.navigation')

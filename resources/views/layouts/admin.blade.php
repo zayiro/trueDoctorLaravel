@@ -44,7 +44,7 @@
             @include('layouts.includes.patient.sidebar')
         @endif
 
-        <div class="p-4 sm:ml-64">
+        <div class="p-4 sm:ml-64 mt-3">
             <div class="mt-14 flex items-center">
 
                 @include('layouts.includes.admin.breadcrumb')

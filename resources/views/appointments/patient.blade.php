@@ -208,8 +208,7 @@
                 // 🔒 BLINDAJE: Activamos obligación en Registro, apagamos en Login
                 inputsNew.forEach(input => input.required = true);
                 inputsExist.forEach(input => input.required = false);
-                if (phoneInput) phoneInput.required = true;
-                
+                if (phoneInput) phoneInput.required = true;                
             } else {
                 if(secNew) secNew.classList.add('hidden');
                 if(secExist) secExist.classList.remove('hidden');

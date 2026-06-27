@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\ContactMessage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Password;
@@ -38,6 +39,16 @@ class UserManagementController extends Controller
         $users = $query->latest()->paginate(15)->withQueryString();
 
         return view('administrator.users.index', compact('users'));
+    }
+
+    /**
+     * Muestra los mensajes de contactenos.
+     */
+    public function contactMessages(Request $request)
+    {
+        $contactMessages = ContactMessage::orderBy('id', 'asc')->paginate(15);
+
+        return view('administrator.conctact.index', compact('contactMessages'));
     }
 
     /**

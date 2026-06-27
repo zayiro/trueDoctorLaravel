@@ -6,6 +6,7 @@ use App\Models\Address;
 use App\Models\Appointment;
 use App\Models\Service;
 use App\Models\Patient;
+use App\Models\Setting;
 use Spatie\Permission\Models\Role;
 use App\Models\Doctor;
 use App\Models\Clinic;
@@ -14,6 +15,7 @@ use App\Models\ZoomCreationFailure;
 use Illuminate\Support\Facades\Crypt;
 use App\Services\ZoomService;
 use App\Models\User;
+use App\Models\DoctorPayout;
 use App\Events\AppointmentCancelled;
 use App\Http\Requests\SearchAppointmentByReferenceRequest;
 use App\Http\Requests\StoreAppointmentRequest;
@@ -27,6 +29,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Http;
 use App\Mail\AppointmentConfirmed;
 use Carbon\Carbon;
 use App\Notifications\MailLimitExceededNotification;
@@ -34,17 +37,23 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Throwable;
+use App\Services\Twilio\WhatsAppTemplateService;
+use App\Services\Wompi\WompiService;
+use App\Jobs\ExpireUnpaidAppointment;
+use App\Mail\PaymentFailedMail;
 
 class AppointmentController extends Controller
 {
     // Definición de propiedades protegidas para los servicios del SaaS
     protected AppointmentService $appointmentService;
     protected ZoomService $zoomService;
+    protected $whatsapp;
 
-    public function __construct(AppointmentService $service, ZoomService $zoomService)
+    public function __construct(AppointmentService $service, ZoomService $zoomService, WhatsAppTemplateService $whatsapp, protected WompiService $wompi)
     {
         $this->appointmentService = $service;
         $this->zoomService = $zoomService;
+        $this->whatsapp = $whatsapp;
     }
 
     /**
@@ -510,7 +519,7 @@ class AppointmentController extends Controller
         
         // Resolver políticas de aprobación jerárquica corporativa o privada
         $settings = $address->clinic_id ? $address->clinic->settings : $doctor->settings;
-        $requiresApproval = $settings ? (bool)$settings->requires_approval : false;
+        //$requiresApproval = $settings ? (bool)$settings->requires_approval : false;
         $acceptsPayments = $settings ? (bool)$settings->accepts_online_payments : false;
 
         if ($acceptsPayments) {
@@ -518,7 +527,8 @@ class AppointmentController extends Controller
         }
         
         // Estado por defecto según tus reglas de pre-aprobación del SaaS
-        $status = $requiresApproval ? \App\Enums\AppointmentStatus::PENDING->value : \App\Enums\AppointmentStatus::CONFIRMED->value;
+        //$status = $requiresApproval ? \App\Enums\AppointmentStatus::PENDING->value : \App\Enums\AppointmentStatus::CONFIRMED->value;
+        $status = \App\Enums\AppointmentStatus::PENDING->value;
         $payment_status = \App\Enums\PaymentStatus::PENDING->value;
                     
         // 💾 CONSOLIDACIÓN DE LA RESERVA (Encapsulada en una transacción limpia)
@@ -541,6 +551,12 @@ class AppointmentController extends Controller
                 'notes'          => trim($request->notes),                
             ]);
         });
+
+        // Después de crear el appointment virtual
+        if ($appointment->service->type === 'virtual') {
+            dispatch(new ExpireUnpaidAppointment($appointment))
+                ->delay(now()->addHours(2));
+        }
         
         // Limpieza absoluta de la memoria de sesión
         session()->forget(['booking_data', 'current_doctor_id', 'current_clinic_user_id']);
@@ -590,21 +606,33 @@ class AppointmentController extends Controller
             // bloqueamos que cualquiera acceda a la URL de previsualización sin estar logueado.
             abort(401, 'Debes iniciar sesión para visualizar el resumen de tu orden médica.');
         }
+
+        $virtualPaymentRequired = $appointment->service->type === 'virtual';
+        $wompiData = null;
+
+        if ($virtualPaymentRequired) {
+            $wompiData = $this->wompi->buildAppointmentCheckoutUrl($appointment);
+        }
         
         // 3. Despachamos la vista compactando el objeto totalmente aislado
-        return view('appointments.preview', compact('appointment'));
+        return view('appointments.preview', compact('appointment', 'virtualPaymentRequired', 'wompiData'));
     }
 
     /**
      * Muestra la pantalla de confirmación exitosa de la cita médica validando la tenencia del recurso.
     */    
-    public function success(Appointment $appointment)
+    public function success__(Appointment $appointment)
     {
         // 1. Cargar todas las relaciones necesarias desde el inicio para evitar consultas N+1
         $appointment->load(['doctor.user', 'clinic', 'service', 'address.city', 'patient.user']);
 
         $activeUser = Auth::user();
-        if (!$activeUser) {
+
+        // ✅ EXCEPCIÓN: Si la cita fue pagada hace menos de 5 minutos (viene de Wompi)
+        // permitimos el acceso sin verificar sesión
+        $comingFromPayment = $appointment->paid_at && $appointment->paid_at->diffInMinutes(now()) <= 5;
+
+        if (!$activeUser && !$comingFromPayment) {
             abort(401, 'Debes iniciar sesión para visualizar el comprobante de tu cita.');
         }
 
@@ -706,6 +734,33 @@ class AppointmentController extends Controller
                     Mail::to($doctorEmail)->send(new AppointmentConfirmed($appointment, 'partner'));
                 }
 
+                //send message whatsapp
+                /*
+                $this->whatsapp->sendConfirmed(
+                    phone:       $appointment->patient->phone,
+                    patientName: $appointment->patient->full_name,
+                    sede:        $appointment->sede->name,
+                    time:        $appointment->time->format('H:i'),
+                    doctor:      $appointment->doctor->full_name,
+                );
+                
+                $this->whatsapp->sendCancelled(
+                    phone:       $appointment->patient->phone,
+                    patientName: $appointment->patient->full_name,
+                    date:        $appointment->date->format('d/m/Y'),
+                    time:        $appointment->time->format('H:i'),
+                    doctor:      $appointment->doctor->full_name,
+                );
+                
+                $this->whatsapp->sendRescheduled(
+                    phone:       $appointment->patient->phone,
+                    patientName: $appointment->patient->full_name,
+                    newDate:     $appointment->date->format('d/m/Y'),
+                    newTime:     $appointment->time->format('H:i'),
+                    sede:        $appointment->sede->name,
+                    doctor:      $appointment->doctor->full_name,
+                );*/
+
                 $appointment->update(['email_sent' => true]);
             } catch (Throwable $e) {
                 \Log::error("Límite de correo excedido o SMTP caído en el recibo de éxito: " . $e->getMessage());
@@ -722,6 +777,62 @@ class AppointmentController extends Controller
         
         // Sincronizamos la instancia fresca final para la renderización del Blade
         $appointment = $appointment->fresh(['doctor.user', 'clinic', 'service', 'address.city', 'patient.user']);
+
+        return view('appointments.success', compact('appointment'));
+    }
+
+    public function success(Appointment $appointment)
+    {
+        // 1. Cargar todas las relaciones necesarias desde el inicio para evitar consultas N+1
+        $appointment->load(['doctor.user', 'clinic', 'service', 'address.city', 'patient.user']);
+
+        // 🔒 BLINDAJE DE PAGO: Si es virtual y no está pagada, no puede ver el éxito
+        if (
+            $appointment->service->type === 'virtual' &&
+            $appointment->payment_status !== 'paid'
+        ) {
+            return redirect()->route('home')
+                ->with('error', 'Debes completar el pago para confirmar tu cita virtual.');
+        }
+
+        $activeUser = Auth::user();
+
+        // ✅ EXCEPCIÓN: Si la cita fue pagada hace menos de 5 minutos (viene de Wompi)
+        $comingFromPayment = $appointment->paid_at && $appointment->paid_at->diffInMinutes(now()) <= 7;
+
+        if (!$activeUser && !$comingFromPayment) {
+            abort(401, 'Debes iniciar sesión para visualizar el comprobante de tu cita.');
+        }
+
+        // 🔒 BLINDAJE DE SEGURIDAD MULTI-TENANT RIGIDO — solo si hay usuario activo y no viene de pago
+        if ($activeUser && !$comingFromPayment) {
+            $hasAccess = false;
+
+            // Caso A: El usuario actual es el paciente dueño de la cita
+            if ($activeUser->role === 'patient' && $appointment->patient) {
+                if ((int)$appointment->patient->user_id === (int)$activeUser->id) {
+                    $hasAccess = true;
+                }
+            }
+            // Caso B: El usuario es el médico especialista asignado
+            elseif ($activeUser->role === 'doctor' && $appointment->doctor) {
+                if ((int)$appointment->doctor_id === (int)$activeUser->doctor?->id) {
+                    $hasAccess = true;
+                }
+            }
+            // Caso C: El usuario es el personal administrativo de la clínica
+            elseif ($activeUser->role === 'clinic') {
+                if ((int)$appointment->clinic_id === (int)$activeUser->clinic?->id) {
+                    $hasAccess = true;
+                }
+            }
+
+            if (!$hasAccess) {
+                abort(403, 'Acceso no autorizado a este recibo o comprobante transaccional de consulta médica.');
+            }
+        }
+
+        $appointment = $this->processPostConfirmation($appointment, $activeUser);
 
         return view('appointments.success', compact('appointment'));
     }
@@ -884,5 +995,73 @@ class AppointmentController extends Controller
             'success' => false,
             'message' => 'No se pudo cerrar la sesión en los servidores de Zoom.'
         ], 500);
+    }
+
+    public function paymentResult(Request $request)
+    {        
+        $transactionId = $request->query('id');
+
+        if (!$transactionId) {
+            return redirect()->route('home')->with('error', 'No se recibió información del pago.');
+        }
+
+        $response = Http::withToken(config('services.wompi.private_key'))
+            ->get("https://production.wompi.co/v1/transactions/{$transactionId}");
+
+        if (!$response->successful()) {
+            return redirect()->route('home')->with('error', 'No se pudo verificar el pago.');
+        }
+
+        $transaction = $response->json('data');
+        $reference   = $transaction['reference'];
+        $status      = strtolower($transaction['status']);
+
+        $appointment = Appointment::where('wompi_reference', $reference)->first();
+
+        if (!$appointment) {
+            return redirect()->route('home')->with('error', 'No se encontró la cita asociada al pago.');
+        }
+  
+        if ($status === 'approved') {
+            $appointment->update([
+                'payment_status' => 'paid',
+                'paid_at'        => now(),
+                'status'         => 'confirmed',
+            ]);
+
+            $payable = $appointment->clinic_id
+                ? $appointment->clinic
+                : $appointment->doctor;
+
+            $wompiFee = Setting::where('key', 'wompi_fee')->value('value') ?? 2.9;                
+
+            DoctorPayout::create([
+                'appointment_id'      => $appointment->id,
+                'payable_id'          => $payable->id,
+                'payable_type'        => get_class($payable),
+                'total_charged'       => $appointment->price + $appointment->commission_amount,
+                'wompi_fee'           => round(($appointment->price + $appointment->commission_amount) * ($wompiFee / 100), 2),
+                'platform_commission' => $appointment->commission_amount,
+                'amount_to_pay'       => $appointment->doctor_amount,
+                'status'              => 'pending',
+                'due_date'            => now()->addDays(3),
+            ]);
+
+            // ✅ Redirige a la misma vista de éxito que la presencial
+            return redirect()->route('appointments.success', $appointment);
+        }
+
+        if ($status === 'declined' || $status === 'error') {
+            $appointment->update(['payment_status' => 'pending']);
+
+            // Enviar email de recuperación
+            $patientEmail = $appointment->patient?->user?->email;
+            if ($patientEmail) {
+                Mail::to($patientEmail)->send(new PaymentFailedMail($appointment));
+            }
+        }
+
+        // Declined o pending → vista de resultado de pago
+        return view('appointments.payment-result', compact('appointment', 'transaction', 'status'));
     }
 }

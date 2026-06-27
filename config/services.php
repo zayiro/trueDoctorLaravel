@@ -68,14 +68,29 @@ return [
 
     'wompi' => [
         'public_key'       => env('WOMPI_PUBLIC_KEY'),
+        'private_key'      => env('WOMPI_PRIVATE_KEY'),
+        'events_secret'    => env('WOMPI_EVENTS_SECRET'),
         'integrity_secret' => env('WOMPI_INTEGRITY_SECRET'),
         'integrity_events' => env('WOMPI_INTEGRITY_EVENTS'),
+        'redirect_url'     => env('WOMPI_REDIRECT_URL'),
+        'checkout_url'     => 'https://checkout.wompi.co/p/',
     ],
 
     'certicamara' => [
         'url'            => env('CERTICAMARA_URL'),
         'api_key'        => env('CERTICAMARA_API_KEY'),
         'certificate_id' => env('CERTICAMARA_CERTIFICATE_ID'),
+    ],
+
+    'twilio' => [
+        'sid'            => env('TWILIO_SID'),
+        'token'          => env('TWILIO_AUTH_TOKEN'),
+        'whatsapp_from'  => env('TWILIO_WHATSAPP_FROM'),
+        'templates' => [
+            'confirmed'   => env('TWILIO_TEMPLATE_CONFIRMED'),
+            'cancelled'   => env('TWILIO_TEMPLATE_CANCELLED'),
+            'rescheduled' => env('TWILIO_TEMPLATE_RESCHEDULED'),
+        ],
     ],
 
 ];

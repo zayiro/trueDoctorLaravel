@@ -25,6 +25,11 @@ class ProcessPatientAppointmentRequest extends FormRequest
             'notes' => 'required|string|min:10|max:500',
         ];
 
+        // ✅ Si el usuario ya está logueado, no necesita validar nada más
+        if (auth()->check()) {
+            return $rules;
+        }
+        
         // Reglas dinámicas basadas en si el usuario tiene cuenta
         if ($this->input('has_account') === 'yes') {
             $rules['login_email'] = 'required|email|exists:users,email';
