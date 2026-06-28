@@ -216,6 +216,56 @@
                                     Agende una cita presencial o virtual en minutos con {{ $partner->gender === 'female' ? 'la doctora ' . $partner->user->name : 'el doctor ' . $partner->user->name }} en la sede que mejor se adapte a sus necesidades.
                                 @endif
                             </div>
+
+                            @auth
+                                @if(Auth::user()->role === 'patient')
+                                    <div x-data="{ open: false }">
+                                        <button @click="open = true"
+                                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-2xl transition flex items-center justify-center gap-2">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/>
+                                            </svg>
+                                            Enviar mensaje
+                                        </button>
+
+                                        <div x-show="open" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" style="display:none;">
+                                            <div class="bg-white rounded-3xl shadow-xl p-6 w-full max-w-md" @click.outside="open = false">
+                                                <h3 class="text-lg font-black text-slate-800 mb-1">
+                                                    Enviar mensaje a Dr(a). {{ ucfirst($partner->user->name) }}
+                                                </h3>
+                                                <p class="text-xs text-slate-400 mb-4">Tu mensaje es privado y confidencial.</p>
+
+                                                <form action="{{ route('chat.start') }}" method="POST">
+                                                    @csrf
+                                                    <input type="hidden" name="doctor_id" value="{{ $partner->id }}">
+
+                                                    <textarea name="body" required rows="4"
+                                                        placeholder="Escribe tu consulta..."
+                                                        class="w-full rounded-2xl border border-slate-200 focus:ring-2 focus:ring-blue-300 focus:outline-none px-4 py-3 text-sm text-slate-700 placeholder-slate-300 resize-none mb-4">
+                                                    </textarea>
+
+                                                    <div class="flex gap-2">
+                                                        <button type="button" @click="open = false"
+                                                            class="flex-1 border border-slate-200 text-slate-500 font-bold py-2.5 rounded-2xl text-sm hover:bg-slate-50 transition">
+                                                            Cancelar
+                                                        </button>
+                                                        <button type="submit"
+                                                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-2xl text-sm transition">
+                                                            Enviar
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                            @else
+                                <a href="{{ route('login') }}"
+                                    class="w-full border border-blue-200 text-blue-600 font-bold py-3 px-6 rounded-2xl transition hover:bg-blue-50 flex items-center justify-center gap-2">
+                                    Inicia sesión para enviar un mensaje
+                                </a>
+                            @endauth
+
                             <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100/70 space-y-4 dark:bg-gray-700/50 dark:border-gray-600">    
                                 <!-- Perfil Médico / Reseña Corta -->
                                 <div class="space-y-1">

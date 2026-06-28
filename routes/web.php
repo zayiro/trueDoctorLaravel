@@ -37,6 +37,7 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\PatientHistoryAttachmentController;
 use App\Http\Controllers\ContextDoctorController;
 use App\Http\Controllers\PrescriptionController;
+use App\Http\Controllers\ChatController;
 
 use App\Http\Controllers\ClinicAddressController;
 use App\Http\Controllers\ClinicServiceController;
@@ -116,6 +117,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::get('/administrator/payouts', [AdminController::class, 'payouts'])->name('administrator.payouts.index');
     Route::post('/administrator/payouts/{payout}/mark-paid', [AdminController::class, 'markPayoutPaid'])->name('administrator.payouts.mark-paid');
+    Route::delete('/administrator/users/{user}/delete', [UserManagementController::class, 'destroy'])->name('administrator.users.destroy');
 });
 
 // Rutas Privadas (medical partner)
@@ -341,7 +343,17 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/prescriptions/{prescription}/sign', [PrescriptionController::class, 'sign'])
          ->name('prescription.sign');
     Route::get('/documents/{document}/download', [PrescriptionController::class, 'download'])
-         ->name('prescription.download');    
+         ->name('prescription.download');  
+         
+    Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
+    Route::get('/chat/{conversation}', [ChatController::class, 'show'])->name('chat.show');
+    Route::post('/chat/{conversation}/messages', [ChatController::class, 'send'])->name('chat.send');
+    Route::get('/chat/{conversation}/poll', [ChatController::class, 'poll'])->name('chat.poll');
+    Route::patch('/chat/{conversation}/status', [ChatController::class, 'updateStatus'])->name('chat.status');
+
+    // Iniciar conversación desde perfil público
+    Route::post('/chat/start', [ChatController::class, 'start'])->name('chat.start');    
+    Route::get('/chat/attachment/{message}', [ChatController::class, 'attachment'])->name('chat.attachment')->middleware('auth');     
 });
 
 // ========================================================

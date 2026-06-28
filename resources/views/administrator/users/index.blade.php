@@ -99,8 +99,8 @@ $breadcrumbs = [
                                             $profileActive = $item->doctor?->active;
                                         } elseif ($item->role === 'clinic') {
                                             $profileActive = $item->clinic?->active;
-                                        } else {
-                                            $profileActive = !is_null($item->email_verified_at);
+                                        } elseif ($item->role === 'patient') {
+                                            $profileActive = $item->patient->active;
                                         }
                                     @endphp
                                     
@@ -133,6 +133,17 @@ $breadcrumbs = [
                                             @csrf
                                             <button type="submit" class="p-1.5 text-xs font-semibold rounded-lg bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition" title="Restablecer Contraseña">
                                                 🔑 Reestablecer
+                                            </button>
+                                        </form>
+
+                                        <!-- Eliminar usuario -->
+                                        <form action="{{ route('administrator.users.destroy', $item) }}" method="POST"
+                                            onsubmit="return confirm('¿Estás seguro? Esta acción eliminará al usuario y todos sus datos. Es irreversible.')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit"
+                                                class="text-xs bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-2 rounded-lg shadow-sm transition">
+                                                Eliminar usuario
                                             </button>
                                         </form>
 

@@ -41,6 +41,24 @@
             'visible' => true,
         ],
         [
+            'name'    => 'Mensajes',
+            'icon'    => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/></svg>',
+            'href'    => route('chat.index'),
+            'active'  => request()->routeIs('chat.*'),
+            'visible' => true,
+            'badge'   => \App\Models\Conversation::where(function($q) {
+                                $user = auth()->user();
+                                match($user?->role) {
+                                    'doctor'  => $q->where('doctor_id', $user->doctor?->id),
+                                    'clinic'  => $q->where('clinic_id', $user->clinic?->id),
+                                    'patient' => $q->where('patient_id', $user->patient?->id),
+                                    default   => $q->whereRaw('1=0'),
+                                };
+                            })
+                            ->whereHas('messages', fn($q) => $q->where('sender_id', '!=', auth()->id())->where('is_read', false))
+                            ->count() ?: null,
+        ],
+        [
             'name'    => 'Datos del perfil',
             'icon'    => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>',
             'href'    => route('partner.profile.edit'),

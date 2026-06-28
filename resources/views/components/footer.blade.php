@@ -5,7 +5,7 @@
             <!-- Lado Izquierdo: Branding / Logo -->
             <div class="flex items-center gap-2">
                 <span class="text-lg font-black text-slate-900 tracking-tight">
-                    Open<span class="text-indigo-600">Doctor</span>
+                    Open<span class="text-indigo-600">Doctor</span><span class="text-emerald-500">Online</span>
                 </span>
                 <span class="text-xs font-semibold text-slate-400">| © {{ date('Y') }}</span>
             </div>

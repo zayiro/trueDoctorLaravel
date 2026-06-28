@@ -25,6 +25,9 @@ use App\Listeners\SendCancellationEmail;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Blade;
 use App\Services\Twilio\WhatsAppTemplateService;
+use Laravel\Fortify\Fortify;
+use App\Models\Patient;
+use Illuminate\Support\Facades\Hash;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -71,6 +74,29 @@ class AppServiceProvider extends ServiceProvider
         // ✅ Rate limiter para búsqueda de usuarios
         RateLimiter::for('App\Models\User::search', function () {
             return Limit::perMinute(60);
+        });
+
+        Fortify::authenticateUsing(function ($request) {
+            $user = User::where('email', $request->email)->first();
+
+            if (!$user || !Hash::check($request->password, $user->password)) {
+                return null;
+            }
+
+            $isActive = match ($user->role) {
+                'patient' => $user->patient?->active ?? true,
+                'doctor'  => $user->doctor?->active ?? true,
+                'clinic'  => $user->clinic?->active ?? true,
+                default   => true,
+            };
+
+            if (!$isActive) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'email' => ['Tu cuenta ha sido desactivada. Contacta al administrador para más información.'],
+                ]);
+            }
+
+            return $user;
         });
     }
 }

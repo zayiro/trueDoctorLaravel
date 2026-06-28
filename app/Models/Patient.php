@@ -30,15 +30,17 @@ class Patient extends Model
         'emergency_contact_name',
         'emergency_contact_phone',
         'emergency_contact_relationship',
+        'active',
     ];
 
     protected $casts = [
-        'identification' => 'encrypted',
-        'permanent_conditions' => 'encrypted',
-        'phone' => 'encrypted',
-        'emergency_contact_name' => 'encrypted',
+        'identification'          => 'encrypted',
+        'permanent_conditions'    => 'encrypted',
+        'phone'                   => 'encrypted',
+        'emergency_contact_name'  => 'encrypted',
         'emergency_contact_phone' => 'encrypted',
-        'birth_date' => 'date', 
+        'birth_date'              => 'date', 
+        'active'                  => 'boolean',
     ];
 
     // 2. Crea un atributo virtual (Accessor)

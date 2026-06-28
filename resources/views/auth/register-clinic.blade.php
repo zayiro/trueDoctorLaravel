@@ -85,19 +85,8 @@
                     <div class="flex mt-1 rounded-xl shadow-sm border border-slate-200 bg-white focus-within:ring-2 focus-within:ring-blue-500 overflow-hidden">
                         <!-- Selector de Indicativo de País (Comienza por Colombia y Suramérica) -->
                         <select name="country_code" id="country_code" required 
-                                class="bg-slate-50 text-slate-700 text-sm border-0 border-r border-slate-200 rounded-l-xl focus:ring-0 px-5 cursor-pointer">
+                            class="bg-slate-50 text-slate-700 text-sm border-0 border-r border-slate-200 rounded-l-xl focus:ring-0 px-5 cursor-pointer px-8">
                             <option value="+57" {{ old('country_code') == '+57' ? 'selected' : '' }}>🇨🇴 +57</option>
-                            <option value="+54" {{ old('country_code') == '+54' ? 'selected' : '' }}>🇦🇷 +54</option>
-                            <option value="+591" {{ old('country_code') == '+591' ? 'selected' : '' }}>🇧🇴 +591</option>
-                            <option value="+55" {{ old('country_code') == '+55' ? 'selected' : '' }}>🇧🇷 +55</option>
-                            <option value="+56" {{ old('country_code') == '+56' ? 'selected' : '' }}>🇨🇱 +56</option>
-                            <option value="+593" {{ old('country_code') == '+593' ? 'selected' : '' }}>🇪🇨 +593</option>
-                            <option value="+595" {{ old('country_code') == '+595' ? 'selected' : '' }}>🇵🇾 +595</option>
-                            <option value="+51" {{ old('country_code') == '+51' ? 'selected' : '' }}>🇵🇪 +51</option>
-                            <option value="+598" {{ old('country_code') == '+598' ? 'selected' : '' }}>🇺🇾 +598</option>
-                            <option value="+58" {{ old('country_code') == '+58' ? 'selected' : '' }}>🇻🇪 +58</option>
-                            <option value="+592" {{ old('country_code') == '+592' ? 'selected' : '' }}>🇬🇾 +592</option>
-                            <option value="+597" {{ old('country_code') == '+597' ? 'selected' : '' }}>🇸🇷 +597</option>
                         </select>
 
                         <!-- Input del Teléfono Blindado sin bordes nativos -->

@@ -446,7 +446,7 @@ class PublicProfileController extends Controller
         if ($addressId) {
             $preSelectedAddress = $doctor->addresses->where('id', $addressId)->first();
         }
-
+        
         return view('public.public-profile', [
             'partner'            => $doctor,
             'profileType'        => 'doctor',
@@ -461,7 +461,7 @@ class PublicProfileController extends Controller
         ]);
     }
 
-        /**
+    /**
      * Muestra la pantalla del perfil unificado (Clínica o Doctor de opendoctor.online).
      * URL: /medical-partner/{slug}
      */
@@ -620,7 +620,7 @@ class PublicProfileController extends Controller
 
             session(['current_clinic_user_id' => $clinic->user_id]);
             session()->forget('current_doctor_id');
-
+            
             return view('public.profiles.clinic_decision', [
                 'clinic'                  => $clinic,
                 'specialty'               => $currentSpecialty,
@@ -848,7 +848,7 @@ class PublicProfileController extends Controller
         if ($addressId) {
             $preSelectedAddress = $doctor->addresses->where('id', $addressId)->first();
         }
-
+        
         // 🔒 DESPACHO INTEGRAL CON RETORNO SEGURO A PRODUCCIÓN
         return view('public.public-profile', [
             'partner'            => $doctor,
