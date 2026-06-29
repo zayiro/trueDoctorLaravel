@@ -40,15 +40,19 @@
                             </li>
                             <li class="flex items-center gap-3 text-gray-700">
                                 <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                <span>Hasta <strong>{{ $plan->max_addresses }}</strong> sedes físicas</span>
+                                <span>Acceso a <strong>{{ $plan->max_addresses }}</strong> {{ $plan->max_addresses > 1 ? "sedes físicas" : "sede física" }}</span>
                             </li>
                             <li class="flex items-center gap-3 text-gray-700">
                                 <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                <span>Sede virtual incluida (Citas por zoom)</span>
+                                <span><strong>Sede virtual incluida</strong> (Citas por zoom. Aplica comisión, pago exclusivo en línea)</span>
                             </li>  
                             <li class="flex items-center gap-3 text-gray-700">
                                 <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                 <span>Hasta <strong>{{ $plan->max_services }}</strong> servicios globales</span>
+                            </li>
+                            <li class="flex items-center gap-3 text-gray-700">
+                                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                <span>Chat directo con el paciente</span>
                             </li>
                             @if ($plan->ai_scribe_enabled)
                             <li class="flex items-center gap-3 text-gray-700">
@@ -62,7 +66,7 @@
                             </li>                                                         
                             <li class="flex items-center gap-3 text-gray-700">
                                 <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                <span>Citas por año: {{ $plan->max_appointments_per_year < "9999" ? $plan->max_appointments_per_year : 'Sin limite' }} </span>
+                                <span>Citas anuales: {{ $plan->max_appointments_per_year < "9999" ? $plan->max_appointments_per_year : 'Ilimitadas' }} </span>
                             </li>  
                             <li class="flex items-center gap-3 text-gray-700">
                                 <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -136,8 +140,8 @@
                             </li>
                             <li class="flex items-center gap-3 text-gray-700">
                                 <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                <span>Sede virtual incluida</span>
-                            </li>
+                                <span><strong>Sede virtual incluida</strong> (Citas por zoom. Aplica comisión, pago exclusivo en línea)</span>
+                            </li> 
                             @if($plan->plan !== 'free')
                                 <li class="flex items-center gap-3 text-gray-700">
                                     <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>

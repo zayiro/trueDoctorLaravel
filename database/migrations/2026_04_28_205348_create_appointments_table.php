@@ -43,6 +43,7 @@ return new class extends Migration
             $table->enum('channel', ['app', 'web', 'whatsapp'])->default('web');
             $table->text('notes')->nullable();
             $table->boolean('email_sent')->default(false);
+            $table->boolean('reminder_sent')->default(false);
             $table->unsignedInteger('reschedule_count')->default(0);                        
             $table->timestamps();
 

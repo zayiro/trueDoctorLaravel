@@ -38,6 +38,7 @@ use App\Http\Controllers\PatientHistoryAttachmentController;
 use App\Http\Controllers\ContextDoctorController;
 use App\Http\Controllers\PrescriptionController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\GalleryController;
 
 use App\Http\Controllers\ClinicAddressController;
 use App\Http\Controllers\ClinicServiceController;
@@ -353,7 +354,14 @@ Route::middleware(['auth'])->group(function () {
 
     // Iniciar conversación desde perfil público
     Route::post('/chat/start', [ChatController::class, 'start'])->name('chat.start');    
-    Route::get('/chat/attachment/{message}', [ChatController::class, 'attachment'])->name('chat.attachment')->middleware('auth');     
+    Route::get('/chat/attachment/{message}', [ChatController::class, 'attachment'])->name('chat.attachment')->middleware('auth');
+    
+    // para subir la galera de imagenes de la clinica o doctor
+    Route::get('/partner/gallery', [GalleryController::class, 'index'])->name('partner.gallery.index');
+    Route::post('/partner/gallery', [GalleryController::class, 'store'])->name('partner.gallery.store');
+    Route::patch('/partner/gallery/{image}', [GalleryController::class, 'update'])->name('partner.gallery.update');
+    Route::post('/partner/gallery/reorder', [GalleryController::class, 'reorder'])->name('partner.gallery.reorder');
+    Route::delete('/partner/gallery/{image}', [GalleryController::class, 'destroy'])->name('partner.gallery.destroy');
 });
 
 // ========================================================

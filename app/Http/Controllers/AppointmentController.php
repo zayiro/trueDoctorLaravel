@@ -41,6 +41,7 @@ use App\Services\Twilio\WhatsAppTemplateService;
 use App\Services\Wompi\WompiService;
 use App\Jobs\ExpireUnpaidAppointment;
 use App\Mail\PaymentFailedMail;
+use App\Jobs\SendAppointmentReminder;
 
 class AppointmentController extends Controller
 {
@@ -833,6 +834,7 @@ class AppointmentController extends Controller
         }
 
         $appointment = $this->processPostConfirmation($appointment, $activeUser);
+        $this->dispatchReminder($appointment);
 
         return view('appointments.success', compact('appointment'));
     }
@@ -1063,5 +1065,42 @@ class AppointmentController extends Controller
 
         // Declined o pending → vista de resultado de pago
         return view('appointments.payment-result', compact('appointment', 'transaction', 'status'));
+    }
+
+    private function dispatchReminder(Appointment $appointment): void
+    {
+        $tz = 'America/Bogota';
+        $appointmentDateTime = Carbon::parse(
+            $appointment->date . ' ' . $appointment->start_time, $tz
+        );
+
+        $now = Carbon::now($tz);
+        $hoursUntilAppointment = $now->diffInHours($appointmentDateTime, false);
+
+        if ($hoursUntilAppointment <= 0) {
+            // Cita ya pasó, no hacer nada
+            return;
+        }
+
+        if ($hoursUntilAppointment >= 24) {
+            // Enviar recordatorio 24 horas antes
+            $dispatchAt = $appointmentDateTime->copy()->subHours(24);
+        } else {
+            // Menos de 24 horas → enviar 1 hora antes si hay tiempo
+            $dispatchAt = $appointmentDateTime->copy()->subHour();
+
+            if ($dispatchAt->lessThanOrEqualTo($now)) {
+                // Menos de 1 hora → enviar inmediatamente
+                $dispatchAt = $now->addSeconds(10);
+            }
+        }
+
+        dispatch(new SendAppointmentReminder($appointment))
+            ->delay($dispatchAt);
+
+        \Log::info('Recordatorio programado', [
+            'appointment_id' => $appointment->id,
+            'dispatch_at'    => $dispatchAt->toDateTimeString(),
+        ]);
     }
 }

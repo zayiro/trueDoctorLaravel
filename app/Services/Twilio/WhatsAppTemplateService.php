@@ -95,6 +95,25 @@ class WhatsAppTemplateService
     }
 
     /**
+     * Recordatorio de cita.
+     * Plantilla: "Hola {{1}}, te recordamos tu cita médica el {{2}} a las {{3}} con Dr(a). {{4}}. ¡Te esperamos!"
+     */
+    public function sendReminder(
+        string $phone,
+        string $patientName,
+        string $date,
+        string $time,
+        string $doctor
+    ): bool {
+        return $this->send($phone, 'appointment_reminder', [
+            '1' => $patientName,
+            '2' => $date,
+            '3' => $time,
+            '4' => $doctor,
+        ]);
+    }
+
+    /**
      * Método base que envía cualquier plantilla.
      */
     protected function send(string $phone, string $templateKey, array $variables): bool

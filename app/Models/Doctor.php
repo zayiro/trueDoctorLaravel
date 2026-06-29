@@ -217,4 +217,11 @@ class Doctor extends Model
     {
         return $this->hasMany(MedicalExpertise::class, 'doctor_id');
     }
+
+    public function gallery()
+    {
+        return $this->morphMany(GalleryImage::class, 'galleryable')
+            ->where('active', true)
+            ->orderBy('order');
+    }
 }

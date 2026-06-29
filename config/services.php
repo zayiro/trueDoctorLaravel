@@ -90,6 +90,7 @@ return [
             'confirmed'   => env('TWILIO_TEMPLATE_CONFIRMED'),
             'cancelled'   => env('TWILIO_TEMPLATE_CANCELLED'),
             'rescheduled' => env('TWILIO_TEMPLATE_RESCHEDULED'),
+            'reminder'    => env('TWILIO_TEMPLATE_REMINDER'),
         ],
     ],
 

@@ -261,10 +261,113 @@
                                 @endif
                             @else
                                 <a href="{{ route('login') }}"
-                                    class="w-full border border-blue-200 text-blue-600 font-bold py-3 px-6 rounded-2xl transition hover:bg-blue-50 flex items-center justify-center gap-2">
+                                    class="w-full border border-blue-200 text-blue-600 font-bold py-3 px-6 rounded-2xl transition hover:bg-blue-50 flex items-center justify-center shadow gap-2">
                                     Inicia sesión para enviar un mensaje
                                 </a>
                             @endauth
+
+                            @if($partner->gallery->isNotEmpty())
+                            <div class="mt-8" 
+                                x-data="{ 
+                                    open: false, 
+                                    currentIndex: 0, 
+                                    images: [
+                                        @foreach($partner->gallery as $image)
+                                            { url: '{{ $image->url }}', caption: '{{ $image->caption ?? '' }}' },
+                                        @endforeach
+                                    ],
+                                    next() { this.currentIndex = (this.currentIndex + 1) % this.images.length },
+                                    prev() { this.currentIndex = (this.currentIndex - 1 + this.images.length) % this.images.length }
+                                }"
+                                @keydown.escape.window="open = false"
+                                @keydown.arrow-right.window="if(open) next()"
+                                @keydown.arrow-left.window="if(open) prev()">
+                                
+                                <h3 class="text-lg font-black text-slate-800 mb-4">Galería</h3>
+                                
+                                <!-- Grid de Miniaturas -->
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    @foreach($partner->gallery as $index => $image)
+                                        <button type="button"
+                                            @click="open = true; currentIndex = {{ $index }}"
+                                            class="group relative rounded-2xl overflow-hidden aspect-square bg-slate-100 shadow-sm text-left focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                            <img src="{{ $image->url }}" alt="{{ $image->caption ?? 'Imagen de galería' }}"
+                                                class="w-full h-full object-cover transition group-hover:scale-105 duration-300">
+                                            @if($image->caption)
+                                                <div class="absolute bottom-0 left-0 right-0 bg-black/40 text-white text-xs px-3 py-2 line-clamp-1">
+                                                    {{ $image->caption }}
+                                                </div>
+                                            @endif
+                                        </button>
+                                    @endforeach
+                                </div>
+                                
+                                <!-- Modal tipo Carrusel (Lightbox) - Pantalla Completa Optimizada para Móvil -->
+                                <div x-show="open" 
+                                    x-transition.opacity
+                                    @click.self="open = false"
+                                    class="fixed inset-0 z-[100] flex flex-col items-center justify-between bg-slate-950/90 backdrop-blur-md p-4 md:p-6"
+                                    style="display: none;">
+                                    
+                                    <!-- Encabezado del Modal (Botón Cerrar aislado del contenido) -->
+                                    <div class="w-full flex justify-end items-center z-50 h-12">
+                                        <button @click="open = false" 
+                                                class="text-white/80 hover:text-white p-2.5 rounded-full hover:bg-white/10 transition focus:outline-none focus:ring-2 focus:ring-white"
+                                                aria-label="Cerrar galería">
+                                            <svg xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-7">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    <!-- Área Central: Controles y Contenedor de Imagen -->
+                                    <div class="relative w-full flex-1 flex items-center justify-center select-none z-30 min-h-0">
+                                        
+                                        <!-- Controles Laterales Flotantes -->
+                                        <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 w-full flex items-center justify-between px-2 md:px-6 z-45 pointer-events-none">
+                                            <!-- Botón Anterior -->
+                                            <button @click="prev()" 
+                                                    class="pointer-events-auto text-white bg-slate-900/60 hover:bg-slate-800 p-2.5 md:p-3 rounded-full transition focus:outline-none focus:ring-2 focus:ring-emerald-500 backdrop-blur-sm shadow-md"
+                                                    aria-label="Imagen anterior">
+                                                <svg xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-5 md:size-6">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                                                </svg>
+                                            </button>
+
+                                            <!-- Botón Siguiente -->
+                                            <button @click="next()" 
+                                                    class="pointer-events-auto text-white bg-slate-900/60 hover:bg-slate-800 p-2.5 md:p-3 rounded-full transition focus:outline-none focus:ring-2 focus:ring-emerald-500 backdrop-blur-sm shadow-md"
+                                                    aria-label="Siguiente imagen">
+                                                <svg xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-5 md:size-6">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                                                </svg>
+                                            </button>
+                                        </div>
+
+                                        <!-- Imagen Activa con límites seguros dinámicos -->
+                                        <div @click.self="open = false" class="w-full h-full flex items-center justify-center p-2">
+                                            <img :src="images[currentIndex].url" 
+                                                class="max-w-[90vw] max-h-[65vh] md:max-h-[75vh] w-auto h-auto object-contain rounded-xl shadow-2xl transition-all duration-300 border border-white/10"
+                                                :alt="images[currentIndex].caption">
+                                        </div>
+
+                                    </div>
+
+                                    <!-- Pie de página: Texto y Contador -->
+                                    <div class="text-center w-full max-w-2xl px-4 z-30 pb-4 h-16 flex flex-col justify-end items-center">
+                                        <p x-text="images[currentIndex].caption" 
+                                        x-show="images[currentIndex].caption"
+                                        class="text-white text-xs md:text-sm font-medium mb-1.5 drop-shadow-md line-clamp-2"></p>
+                                        <span class="text-slate-300 text-[11px] md:text-xs tracking-wider bg-slate-900/50 px-3 py-1 rounded-full backdrop-blur-sm" 
+                                            x-text="`${currentIndex + 1} / ${images.length}`"></span>
+                                    </div>
+
+                                </div>
+
+
+                            </div>
+                        @endif
+
 
                             <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100/70 space-y-4 dark:bg-gray-700/50 dark:border-gray-600">    
                                 <!-- Perfil Médico / Reseña Corta -->

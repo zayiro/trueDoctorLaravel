@@ -34,9 +34,9 @@ $breadcrumbs = [
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
-                            <th class="p-4">Cuenta / Contacto</th>
-                            <th class="p-4">Documentación Soportada</th>
-                            <th class="p-4 text-right">Acciones de Control</th>
+                            <th class="p-4">Cuenta </th>
+                            <th class="p-4">Documentación</th>
+                            <th class="p-4 text-right">Acciones</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 text-sm text-slate-700">

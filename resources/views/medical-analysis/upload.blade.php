@@ -90,9 +90,9 @@
         </div>
     </div>
 
-    <span class="border-t border-white/5 py-4 text-center text-[10px] text-slate-600">
-        <p>openDoctor AI. Procesamiento asíncrono seguro y cifrado de punta a punta.</p>
-    </span>
+    <div class="border-t border-white/5 py-4 text-center text-[12px] text-slate-600 mb-5">
+        <p>openDoctorOnline AI. Procesamiento asíncrono seguro y cifrado de punta a punta.</p>
+    </div>
 
     <script>
     const dropzone = document.getElementById('dropzone');

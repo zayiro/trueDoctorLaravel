@@ -13,9 +13,7 @@ class SettingController extends Controller
      */
     public function index()
     {
-        // Obtenemos todas las configuraciones agrupadas para la vista
         $settings = Setting::all()->pluck('value', 'key');
-
         return view('administrator.settings.index', compact('settings'));
     }
 
@@ -25,17 +23,35 @@ class SettingController extends Controller
     public function update(Request $request)
     {
         $data = $request->validate([
+            // SaaS
             'medical_analysis_price' => 'required|numeric|min:0',
-            'support_email' => 'required|email',
+            'support_email'          => 'required|email',
+
+            // Comisiones
+            'virtual_commission_doctor'        => 'required|numeric|min:0|max:100',
+            'virtual_commission_clinic'        => 'required|numeric|min:0|max:100',
+            'presential_commission_doctor'     => 'required|numeric|min:0|max:100',
+            'presential_commission_clinic'     => 'required|numeric|min:0|max:100',
+            'wompi_fee'                        => 'required|numeric|min:0|max:100',
         ]);
+
+        $groups = [
+            'medical_analysis_price'           => 'saas',
+            'support_email'                    => 'saas',
+            'virtual_commission_doctor'        => 'commissions',
+            'virtual_commission_clinic'        => 'commissions',
+            'presential_commission_doctor'     => 'commissions',
+            'presential_commission_clinic'     => 'commissions',
+            'wompi_fee'                        => 'commissions',
+        ];
 
         foreach ($data as $key => $value) {
             Setting::updateOrCreate(
                 ['key' => $key],
-                ['value' => $value, 'group' => 'saas']
+                ['value' => $value, 'group' => $groups[$key] ?? 'general']
             );
         }
 
-        return redirect()->back()->with('success', 'Configuraciones del SaaS actualizadas con éxito.');
+        return redirect()->back()->with('success', 'Configuraciones actualizadas con éxito.');
     }
 }
