@@ -683,7 +683,7 @@ class AppointmentController extends Controller
                         return;
                     }
 
-                    $onlyDate = substr($freshAppointment->date, 0, 10); 
+                    $onlyDate = Carbon::parse($freshAppointment->date)->format('Y-m-d');
                     $startDateTime = Carbon::parse("{$onlyDate} {$freshAppointment->start_time}")->toIso8601String();
                     $topic = "Telemedicina_Ref: " . $freshAppointment->reference;
 
@@ -1070,8 +1070,9 @@ class AppointmentController extends Controller
     private function dispatchReminder(Appointment $appointment): void
     {
         $tz = 'America/Bogota';
+        
         $appointmentDateTime = Carbon::parse(
-            $appointment->date . ' ' . $appointment->start_time, $tz
+            Carbon::parse($appointment->date)->format('Y-m-d') . ' ' . $appointment->start_time, $tz
         );
 
         $now = Carbon::now($tz);
@@ -1102,5 +1103,92 @@ class AppointmentController extends Controller
             'appointment_id' => $appointment->id,
             'dispatch_at'    => $dispatchAt->toDateTimeString(),
         ]);
+    }
+
+    protected function processPostConfirmation(Appointment $appointment, ?User $activeUser): Appointment
+    {
+        // ── 1. ZOOM: solo si es virtual y no tiene sala aún
+        $hasCreationFailure = DB::table('zoom_creation_failures')
+            ->where('appointment_id', $appointment->id)
+            ->exists();
+
+        $isVirtual = ($appointment->service?->type === 'virtual')
+                || ($appointment->address?->type === 'virtual');
+
+        if ($isVirtual && !$appointment->zoom_meeting_id && !$hasCreationFailure) {
+            try {
+                DB::transaction(function () use ($appointment) {
+                    $fresh = $appointment->newQuery()->lockForUpdate()->find($appointment->id);
+
+                    if ($fresh->zoom_meeting_id) return;
+
+                    $startDateTime = Carbon::parse(Carbon::parse($fresh->date)->format('Y-m-d') . ' ' . $fresh->start_time)->toIso8601String();
+
+                    $zoomMeeting = $this->zoomService->createMeeting(
+                        "Telemedicina_Ref: {$fresh->reference}",
+                        $startDateTime,
+                        (int) $fresh->duration
+                    );
+
+                    if ($zoomMeeting) {
+                        $fresh->update([
+                            'zoom_meeting_id' => $zoomMeeting['meeting_id'],
+                            'meeting_link'    => $zoomMeeting['url_patient'],
+                            'zoom_start_url'  => $zoomMeeting['url_partner'],
+                        ]);
+                        DB::table('zoom_creation_failures')->where('appointment_id', $fresh->id)->delete();
+                        $appointment->fill($fresh->toArray())->syncOriginal();
+                    } else {
+                        Log::error('Zoom falló para referencia: ' . $fresh->reference);
+                        DB::table('zoom_creation_failures')->updateOrInsert(
+                            ['appointment_id' => $fresh->id],
+                            ['status' => 'pending', 'created_at' => now(), 'updated_at' => now()]
+                        );
+                    }
+                });
+            } catch (\Exception $e) {
+                Log::error('Error crítico Zoom: ' . $e->getMessage());
+            }
+        }
+
+        // ── 2. CORREO + WHATSAPP: solo una vez
+        if (!$appointment->email_sent) {
+            try {
+                $patientEmail = $appointment->patient?->user?->email;
+                $doctorEmail  = $appointment->doctor?->user?->email;
+
+                if ($patientEmail) {
+                    Mail::to($patientEmail)->send(new AppointmentConfirmed($appointment, 'patient'));
+                }
+
+                if ($doctorEmail && $appointment->service?->type === 'physical') {
+                    Mail::to($doctorEmail)->send(new AppointmentConfirmed($appointment, 'partner'));
+                }
+
+                // ── WhatsApp
+                $this->whatsapp->sendConfirmed(
+                    phone:       $appointment->patient->phone,
+                    patientName: $appointment->patient?->user?->name ?? 'Paciente',
+                    sede:        $appointment->address?->name ?? 'Consulta virtual',
+                    time:        Carbon::parse($appointment->start_time)->format('H:i'),
+                    doctor:      $appointment->doctor?->user?->name ?? 'el médico',
+                );
+
+                $appointment->update(['email_sent' => true]);
+
+            } catch (Throwable $e) {
+                Log::error('Error en notificaciones post-confirmación: ' . $e->getMessage());
+
+                try {
+                    $admins = User::where('role', 'admin')->get();
+                    \Notification::send($admins, new MailLimitExceededNotification($e->getMessage(), $activeUser?->email));
+                } catch (\Exception $ne) {
+                    // silencioso
+                }
+            }
+        }
+
+        // ── 3. Retornar instancia fresca para la vista ────────────────────────
+        return $appointment->fresh(['doctor.user', 'clinic', 'service', 'address.city', 'patient.user']);
     }
 }

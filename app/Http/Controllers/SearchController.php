@@ -8,9 +8,6 @@ use App\Models\Specialty;
 use App\Models\City;
 use App\Models\Clinic;
 use App\Models\Address;
-use App\Models\Schedule;
-use App\Models\Appointment;
-use App\Models\Unavailability;
 use App\Models\IndexedSymptom;
 use App\Jobs\LogSearchJob;
 
@@ -20,8 +17,6 @@ use OpenAI\Laravel\Facades\OpenAI;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Services\AvailabilityService;
 
@@ -207,7 +202,7 @@ class SearchController extends Controller
             // [Tu diccionario gramatical de especialidades permanece intacto aquí]
         }
 
-                // 2. PROCESAMIENTO HÍBRIDO CON RESPALDO MAESTRO DE DISPONIBILIDAD
+        // 2. PROCESAMIENTO HÍBRIDO CON RESPALDO MAESTRO DE DISPONIBILIDAD
         $groupedResults = collect();
 
         foreach ($addresses as $address) {
@@ -242,8 +237,7 @@ class SearchController extends Controller
                     'user'        => $clinic->user,
                     'model'       => $clinic,
                     'address_id'  => $address->id,
-                    'subtitle'    => "{$address->name} • {$address->address}",
-                    // 🔒 INYECCIÓN DE RESPALDO ANTI-ERROR: Sanará la línea 287 de tu Blade
+                    'subtitle'    => "{$address->name} • {$address->address}",                    
                     'next_turn'   => $backupTurn ? ($backupTurn->isToday() ? 'Hoy ' : '') . ucfirst($backupTurn->isoFormat('dddd D [de] MMMM — h:mm A')) : 'Sin turnos próximos disponibles'
                 ]);
 
@@ -256,7 +250,28 @@ class SearchController extends Controller
                 // 🚀 Cálculo veloz para el respaldo de producción
                 $availabilityService = app(AvailabilityService::class);
                 $backupTurn = $availabilityService->getNextAvailableTurn([$doctor->id], $address->id, null);
+
+                $langNames = ['es' => 'Español', 'en' => 'Inglés', 'pt' => 'Portugués', 'fr' => 'Francés', 'de' => 'Alemán'];
+                $rawLang = $doctor->languages;
+                $decodedLang = is_array($rawLang) ? $rawLang : (json_decode($rawLang, true) ?? []);
+
+                $langFlags = [
+                    'es' => 'es',
+                    'en' => 'us',
+                    'pt' => 'br',
+                    'fr' => 'fr',
+                    'de' => 'de',
+                    'it' => 'it',
+                    'zh' => 'cn',
+                    'ar' => 'sa',
+                ];
                 
+                $languages = array_map(fn($code) => [
+                    'code' => $code,
+                    'name' => $langNames[$code] ?? strtoupper($code),
+                    'flag' => $langFlags[$code] ?? 'un', // 'un' = bandera ONU como fallback
+                ], $decodedLang);
+                              
                 $groupedResults->put($uniqueKey, [
                     'type'              => 'doctor',
                     'id'                => $doctor->id,
@@ -267,9 +282,9 @@ class SearchController extends Controller
                     'user'              => $doctor->user,
                     'model'             => $doctor,
                     'specialties_count' => $doctor->specialties->count(),
+                    'languages'         => $languages,
                     'address_id'        => $address->id,
-                    'subtitle'          => $address->type === 'virtual' ? 'Atención Online' : "{$address->name} • {$address->address}",
-                    // 🔒 INYECCIÓN DE RESPALDO ANTI-ERROR: Sanará la línea 287 de tu Blade
+                    'subtitle'          => $address->type === 'virtual' ? 'Atención Online' : "{$address->name} • {$address->address}",                  
                     'next_turn'   => $backupTurn ? ($backupTurn->isToday() ? 'Hoy ' : '') . ucfirst($backupTurn->isoFormat('dddd D [de] MMMM — h:mm A')) : 'Sin turnos próximos disponibles'
                 ]);
             }

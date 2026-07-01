@@ -266,130 +266,200 @@
                                 </a>
                             @endauth
 
-                            @if($partner->gallery->isNotEmpty())
-                            <div class="mt-8" 
-                                x-data="{ 
-                                    open: false, 
-                                    currentIndex: 0, 
-                                    images: [
-                                        @foreach($partner->gallery as $image)
-                                            { url: '{{ $image->url }}', caption: '{{ $image->caption ?? '' }}' },
-                                        @endforeach
-                                    ],
-                                    next() { this.currentIndex = (this.currentIndex + 1) % this.images.length },
-                                    prev() { this.currentIndex = (this.currentIndex - 1 + this.images.length) % this.images.length }
-                                }"
-                                @keydown.escape.window="open = false"
-                                @keydown.arrow-right.window="if(open) next()"
-                                @keydown.arrow-left.window="if(open) prev()">
-                                
-                                <h3 class="text-lg font-black text-slate-800 mb-4">Galería</h3>
-                                
-                                <!-- Grid de Miniaturas -->
-                                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                    @foreach($partner->gallery as $index => $image)
-                                        <button type="button"
-                                            @click="open = true; currentIndex = {{ $index }}"
-                                            class="group relative rounded-2xl overflow-hidden aspect-square bg-slate-100 shadow-sm text-left focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                                            <img src="{{ $image->url }}" alt="{{ $image->caption ?? 'Imagen de galería' }}"
-                                                class="w-full h-full object-cover transition group-hover:scale-105 duration-300">
-                                            @if($image->caption)
-                                                <div class="absolute bottom-0 left-0 right-0 bg-black/40 text-white text-xs px-3 py-2 line-clamp-1">
-                                                    {{ $image->caption }}
-                                                </div>
-                                            @endif
-                                        </button>
+                            {{-- 🌐 IDIOMAS DEL ESPECIALISTA --}}
+                            @if(!empty($languages ?? []))
+                                <h3 class="text-lg font-black text-slate-800">Idiomas de atención</h3>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    @foreach($languages as $lang)
+                                        <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500">
+                                            <img 
+                                                src="{{ asset('images/flags/' . strtoupper($lang['flag']) . '.svg') }}"
+                                                width="20"
+                                                height="14"
+                                                loading="lazy"
+                                                alt="{{ $lang['name'] }}"
+                                                class="rounded-sm shadow-xs object-cover">
+                                            {{ $lang['name'] }}
+                                        </span>
+                                        @if(!$loop->last)
+                                            <span class="text-slate-300 text-xs">·</span>
+                                        @endif
                                     @endforeach
                                 </div>
-                                
-                                <!-- Modal tipo Carrusel (Lightbox) - Pantalla Completa Optimizada para Móvil -->
-                                <div x-show="open" 
-                                    x-transition.opacity
-                                    @click.self="open = false"
-                                    class="fixed inset-0 z-[100] flex flex-col items-center justify-between bg-slate-950/90 backdrop-blur-md p-4 md:p-6"
-                                    style="display: none;">
+                            @endif
+
+                            @if($partner->gallery->isNotEmpty())
+                                <div class="mt-8" 
+                                    x-data="{ 
+                                        open: false, 
+                                        currentIndex: 0, 
+                                        images: [
+                                            @foreach($partner->gallery as $image)
+                                                { url: '{{ $image->url }}', caption: '{{ $image->caption ?? '' }}' },
+                                            @endforeach
+                                        ],
+                                        next() { this.currentIndex = (this.currentIndex + 1) % this.images.length },
+                                        prev() { this.currentIndex = (this.currentIndex - 1 + this.images.length) % this.images.length }
+                                    }"
+                                    @keydown.escape.window="open = false"
+                                    @keydown.arrow-right.window="if(open) next()"
+                                    @keydown.arrow-left.window="if(open) prev()">
                                     
-                                    <!-- Encabezado del Modal (Botón Cerrar aislado del contenido) -->
-                                    <div class="w-full flex justify-end items-center z-50 h-12">
-                                        <button @click="open = false" 
-                                                class="text-white/80 hover:text-white p-2.5 rounded-full hover:bg-white/10 transition focus:outline-none focus:ring-2 focus:ring-white"
-                                                aria-label="Cerrar galería">
-                                            <svg xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-7">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                            </svg>
-                                        </button>
+                                    <h3 class="text-lg font-black text-slate-800 mb-4">Galería</h3>
+                                    
+                                    <!-- Grid de Miniaturas -->
+                                    @php
+                                        $totalImages = count($partner->gallery);
+                                        $limit = 3;
+                                    @endphp
+
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                        @foreach($partner->gallery as $index => $image)
+                                            @if($index < $limit)
+                                                @php
+                                                    $isLastVisible = ($index === $limit - 1) && ($totalImages > $limit);
+                                                    $remainingCount = $totalImages - $limit;
+                                                @endphp
+                                                
+                                                <button type="button"
+                                                    @click="open = true; currentIndex = {{ $index }}"
+                                                    class="group relative rounded-2xl overflow-hidden aspect-square bg-slate-100 shadow-sm text-left focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full">
+                                                    
+                                                    <img src="{{ $image->url }}" alt="{{ $image->caption ?? 'Imagen de galería' }}"
+                                                        class="w-full h-full object-cover transition group-hover:scale-105 duration-300">
+                                                    
+                                                    <!-- Indicador de "+ Más fotos" si excede el límite -->
+                                                    @if($isLastVisible)
+                                                        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] flex flex-col items-center justify-center text-white transition group-hover:bg-slate-900/70">
+                                                            <span class="text-2xl font-bold">+{{ $remainingCount }}</span>
+                                                            <span class="text-xs font-medium tracking-wide uppercase mt-0.5">Ver galería</span>
+                                                        </div>
+                                                    @else
+                                                        <!-- Subtítulo normal solo si no es la última foto con contador -->
+                                                        @if($image->caption)
+                                                            <div class="absolute bottom-0 left-0 right-0 bg-black/40 text-white text-xs px-3 py-2 line-clamp-1">
+                                                                {{ $image->caption }}
+                                                            </div>
+                                                        @endif
+                                                    @endif
+                                                </button>
+                                            @else
+                                                <!-- Botones ocultos para Alpine: Permiten que el modal navegue por toda la galería al hacer clic en el + -->
+                                                <button type="button" @click="open = true; currentIndex = {{ $index }}" class="hidden"></button>
+                                            @endif
+                                        @endforeach
                                     </div>
 
-                                    <!-- Área Central: Controles y Contenedor de Imagen -->
-                                    <div class="relative w-full flex-1 flex items-center justify-center select-none z-30 min-h-0">
-                                        
-                                        <!-- Controles Laterales Flotantes -->
-                                        <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 w-full flex items-center justify-between px-2 md:px-6 z-45 pointer-events-none">
-                                            <!-- Botón Anterior -->
-                                            <button @click="prev()" 
-                                                    class="pointer-events-auto text-white bg-slate-900/60 hover:bg-slate-800 p-2.5 md:p-3 rounded-full transition focus:outline-none focus:ring-2 focus:ring-emerald-500 backdrop-blur-sm shadow-md"
-                                                    aria-label="Imagen anterior">
-                                                <svg xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-5 md:size-6">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-                                                </svg>
-                                            </button>
+                                    
+                                    <!-- Modal tipo Carrusel (Lightbox) - Pantalla Completa Optimizada para Móvil -->
+                                     <template x-teleport="body">
+                                        <div x-show="open" 
+                                            x-transition.opacity
+                                            @click.self="open = false"
+                                            @keydown.escape.window="open = false"
+                                            @keydown.arrow-right.window="if(open) next()"
+                                            @keydown.arrow-left.window="if(open) prev()"
+                                            class="fixed inset-0 z-[99999] flex flex-col items-center justify-between bg-slate-950/90 backdrop-blur-md p-4 md:p-6"
+                                            style="display: none;">
+                                            
+                                            <!-- Encabezado del Modal (Botón Cerrar aislado del contenido) -->
+                                            <div class="w-full flex justify-end items-center z-50 h-12">
+                                                <button @click="open = false" 
+                                                        class="text-white/80 hover:text-white p-2.5 rounded-full hover:bg-white/10 transition focus:outline-none focus:ring-2 focus:ring-white"
+                                                        aria-label="Cerrar galería">
+                                                    <svg xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-7">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </div>
 
-                                            <!-- Botón Siguiente -->
-                                            <button @click="next()" 
-                                                    class="pointer-events-auto text-white bg-slate-900/60 hover:bg-slate-800 p-2.5 md:p-3 rounded-full transition focus:outline-none focus:ring-2 focus:ring-emerald-500 backdrop-blur-sm shadow-md"
-                                                    aria-label="Siguiente imagen">
-                                                <svg xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-5 md:size-6">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                                                </svg>
-                                            </button>
+                                            <!-- Área Central: Controles y Contenedor de Imagen -->
+                                            <div class="relative w-full flex-1 flex items-center justify-center select-none z-30 min-h-0">
+                                                
+                                                <!-- Controles Laterales Flotantes -->
+                                                <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 w-full flex items-center justify-between px-2 md:px-6 z-45 pointer-events-none">
+                                                    <!-- Botón Anterior -->
+                                                    <button @click="prev()" 
+                                                            class="pointer-events-auto text-white bg-slate-900/60 hover:bg-slate-800 p-2.5 md:p-3 rounded-full transition focus:outline-none focus:ring-2 focus:ring-emerald-500 backdrop-blur-sm shadow-md"
+                                                            aria-label="Imagen anterior">
+                                                        <svg xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-5 md:size-6">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                                                        </svg>
+                                                    </button>
+
+                                                    <!-- Botón Siguiente -->
+                                                    <button @click="next()" 
+                                                            class="pointer-events-auto text-white bg-slate-900/60 hover:bg-slate-800 p-2.5 md:p-3 rounded-full transition focus:outline-none focus:ring-2 focus:ring-emerald-500 backdrop-blur-sm shadow-md"
+                                                            aria-label="Siguiente imagen">
+                                                        <svg xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-5 md:size-6">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+
+                                                <!-- Imagen Activa con límites seguros dinámicos -->
+                                                <div @click.self="open = false" class="w-full h-full flex items-center justify-center p-2">
+                                                    <img :src="images[currentIndex].url" 
+                                                        class="max-w-[90vw] max-h-[65vh] md:max-h-[75vh] w-auto h-auto object-contain rounded-xl shadow-2xl transition-all duration-300 border border-white/10"
+                                                        :alt="images[currentIndex].caption">
+                                                </div>
+
+                                            </div>
+
+                                            <!-- Pie de página: Texto y Contador -->
+                                            <div class="text-center w-full max-w-2xl px-4 z-30 pb-4 h-16 flex flex-col justify-end items-center">
+                                                <p x-text="images[currentIndex].caption" 
+                                                x-show="images[currentIndex].caption"
+                                                class="text-white text-xs md:text-sm font-medium mb-1.5 drop-shadow-md line-clamp-2"></p>
+                                                <span class="text-slate-300 text-[11px] md:text-xs tracking-wider bg-slate-900/50 px-3 py-1 rounded-full backdrop-blur-sm" 
+                                                    x-text="`${currentIndex + 1} / ${images.length}`"></span>
+                                            </div>
+
                                         </div>
-
-                                        <!-- Imagen Activa con límites seguros dinámicos -->
-                                        <div @click.self="open = false" class="w-full h-full flex items-center justify-center p-2">
-                                            <img :src="images[currentIndex].url" 
-                                                class="max-w-[90vw] max-h-[65vh] md:max-h-[75vh] w-auto h-auto object-contain rounded-xl shadow-2xl transition-all duration-300 border border-white/10"
-                                                :alt="images[currentIndex].caption">
-                                        </div>
-
-                                    </div>
-
-                                    <!-- Pie de página: Texto y Contador -->
-                                    <div class="text-center w-full max-w-2xl px-4 z-30 pb-4 h-16 flex flex-col justify-end items-center">
-                                        <p x-text="images[currentIndex].caption" 
-                                        x-show="images[currentIndex].caption"
-                                        class="text-white text-xs md:text-sm font-medium mb-1.5 drop-shadow-md line-clamp-2"></p>
-                                        <span class="text-slate-300 text-[11px] md:text-xs tracking-wider bg-slate-900/50 px-3 py-1 rounded-full backdrop-blur-sm" 
-                                            x-text="`${currentIndex + 1} / ${images.length}`"></span>
-                                    </div>
+                                    </template>
 
                                 </div>
+                            @endif
 
 
-                            </div>
-                        @endif
-
-
-                            <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100/70 space-y-4 dark:bg-gray-700/50 dark:border-gray-600">    
+                            <div class="bg-slate-50 rounded-2xl p-2 border border-slate-100/70 space-y-4 dark:bg-gray-700/50 dark:border-gray-600">    
                                 <!-- Perfil Médico / Reseña Corta -->
                                 <div class="space-y-1">
-                                    <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider dark:text-gray-400">Sobre el especialista</h4>
+                                    <h3 class="text-lg font-black text-slate-800">Sobre el especialista</h3>                                    
                                     <div class="text-sm text-slate-600 leading-relaxed dark:text-gray-300">                                    
                                         @if($partner->bio)
                                             <span>{{ str(strip_tags($partner->bio))->limit(120, '...') }}</span>
                                         @else
-                                            <span class="text-xs text-slate-400 italic dark:text-gray-500">Perfil profesional en proceso de actualización.</span>                                        
+                                            <span class="text-sm text-slate-400 dark:text-gray-500">Perfil profesional en proceso de actualización.</span>                                        
                                         @endif
                                     </div>
                                 </div>
 
                                 <!-- Especialidades Habilitadas -->
                                 <div class="space-y-1 border-t border-slate-200/50 pt-3 dark:border-gray-700">
-                                    <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider dark:text-gray-400">Especialidades Habilitadas</h4>
-                                    <div class="text-sm text-slate-800 font-semibold dark:text-white">    
+                                    <h3 class="text-lg font-black text-slate-800">Especialidades Habilitadas</h3> 
+                                    <div class="text-sm text-slate-400 dark:text-gray-500">    
                                         @php
                                             $partnerSpecialties = $partner->specialties->isNotEmpty() ? $partner->specialties->pluck('name')->toArray() : [];
+                                            if (!empty($partnerSpecialties)) {
+                                                $specialtiesList = implode(', ', $partnerSpecialties);
+                                            }
                                         @endphp
-                                        {{ !empty($partnerSpecialties) ? implode(', ', $partnerSpecialties) : 'Medicina General' }}                                
+                                        
+                                        <div class="flex flex-wrap gap-2">
+                                            @if(!empty($partnerSpecialties) && count($partnerSpecialties) > 0)
+                                                @foreach($partnerSpecialties as $item)
+                                                    <span class="text-sm text-slate-400 dark:text-gray-500 px-2.5 py-1 rounded-lg border border-slate-200/70 font-medium shadow-2xs transition-colors hover:border-slate-300 dark:bg-gray-800 dark:border-gray-600 whitespace-nowrap">
+                                                        {{ trim($item) }}
+                                                    </span>
+                                                @endforeach
+                                            @else
+                                                <span class="text-sm text-slate-400 dark:text-gray-500 px-2.5 py-1 rounded-lg border border-slate-200/70 font-medium shadow-2xs transition-colors hover:border-slate-300 dark:bg-gray-800 dark:border-gray-600 whitespace-nowrap">
+                                                    Medicina General
+                                                </span>
+                                            @endif
+                                        </div>
+
                                     </div>
                                 </div>
                                 
@@ -397,52 +467,66 @@
                                 <div class="grid grid-cols-2 gap-4 border-t border-slate-200/50 pt-3 dark:border-gray-700">
                                     @if($profileType === 'doctor')
                                         <div class="space-y-0.5">
-                                            <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider dark:text-gray-400">Licencia Médica</h4>
-                                            <div class="text-sm font-semibold text-slate-800 dark:text-white">{{ $partner->medical_license ?? 'N/A' }}</div>
+                                            <h3 class="text-lg font-black text-slate-800">Licencia Médica</h3>
+                                            <div class="text-sm text-slate-400 dark:text-gray-500">{{ $partner->medical_license ?? 'N/A' }}</div>
                                         </div>
                                     @else
                                         <div class="space-y-0.5">
-                                            <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider dark:text-gray-400">Código REPS</h4>
-                                            <div class="text-sm font-semibold text-slate-800 dark:text-white">{{ $partner->reps_code ?? 'N/A' }}</div>
+                                            <h3 class="text-lg font-black text-slate-800">Código REPS</h3>
+                                            <div class="text-sm text-slate-400 dark:text-gray-500">{{ $partner->reps_code ?? 'N/A' }}</div>
                                         </div>
                                     @endif
                                     
                                     <div class="space-y-0.5">
-                                        <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider dark:text-gray-400">Trayectoria</h4>
-                                        <div class="text-sm font-semibold text-slate-800 dark:text-white">{{ $partner->experience_years ? $partner->experience_years . ' años' : 'N/A' }}</div>
+                                        <h3 class="text-lg font-black text-slate-800">Trayectoria</h3>
+                                        <div class="text-sm text-slate-400 dark:text-gray-500">{{ $partner->experience_years ? $partner->experience_years . ' años' : 'N/A' }}</div>
                                     </div>
                                 </div>
 
                                 <!-- Idiomas de Atención (Exclusivo Doctores) -->
                                 @if($profileType === 'doctor')
                                     <div class="space-y-1 border-t border-slate-200/50 pt-3 dark:border-gray-700">
-                                        <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider dark:text-gray-400">Idiomas de atención</h4>
-                                        <div class="text-sm font-medium text-slate-700 dark:text-gray-300">    
-                                            @php
+                                        <h3 class="text-lg font-black text-slate-800">Idiomas de atención</h3>
+                                        <div class="text-sm text-slate-400 dark:text-gray-500">    
+                                           @php
                                                 $langNames = ['es' => 'Español', 'en' => 'Inglés', 'pt' => 'Portugués', 'fr' => 'Francés', 'de' => 'Alemán'];
                                                 $rawLang = $partner->languages;
                                                 $decodedLang = is_array($rawLang) ? $rawLang : (json_decode($rawLang, true) ?? []);
                                                 $partnerLanguages = array_map(fn($code) => $langNames[$code] ?? strtoupper($code), $decodedLang);
                                             @endphp
-                                            {{ !empty($partnerLanguages) ? implode(', ', $partnerLanguages) : 'Español' }}                                
+
+                                            <div class="flex flex-wrap gap-2">
+                                                @if(!empty($partnerLanguages) && count($partnerLanguages) > 0)
+                                                    @foreach($partnerLanguages as $language)
+                                                        <span class="text-sm text-slate-400 dark:text-gray-500 px-2.5 py-1 rounded-lg border border-slate-200/70 font-medium shadow-2xs transition-colors hover:border-slate-300 dark:bg-gray-800 dark:border-gray-600 whitespace-nowrap">
+                                                            {{ $language }}
+                                                        </span>
+                                                    @endforeach
+                                                @else
+                                                    <span class="text-sm text-slate-400 dark:text-gray-500 px-2.5 py-1 rounded-lg border border-slate-200/70 font-medium shadow-2xs transition-colors hover:border-slate-300 dark:bg-gray-800 dark:border-gray-600 whitespace-nowrap">
+                                                        Español
+                                                    </span>
+                                                @endif
+                                            </div>
+
                                         </div>
                                     </div>
                                 @endif
 
                                 <!-- Experiencias y Tratamientos -->
-                                <div class="space-y-2 border-t border-slate-200/50 pt-3 dark:border-gray-700">
-                                    <h4 class="font-bold text-[10px] uppercase text-slate-400 tracking-wider dark:text-gray-400">Es experto en</h4>
-                                    <div class="flex flex-wrap gap-1.5 pt-0.5">
+                                <div class="space-y-1 border-t border-slate-200/50 pt-3 dark:border-gray-700">
+                                    <h3 class="text-lg font-black text-slate-800">Es experto en</h3>
+                                    <div class="text-sm text-slate-400 dark:text-gray-500">
                                         @if($profileType === 'doctor' && isset($partner->expertises))
                                             @forelse($partner->expertises as $expertise)
-                                                <span class="text-xs bg-white text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200/70 font-medium shadow-2xs transition-colors hover:border-slate-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600" title="Síntomas: {{ $expertise->symptoms_keywords }}">
+                                                <span class="text-sm text-slate-400 dark:text-gray-500 px-2.5 py-1 rounded-lg border border-slate-200/70 font-medium shadow-2xs transition-colors hover:border-slate-300 dark:bg-gray-800 dark:border-gray-600" title="Síntomas: {{ $expertise->symptoms_keywords }}">
                                                     🔍 {{ $expertise->disease_name }}
                                                 </span>
                                             @empty
-                                                <span class="text-xs text-slate-400 italic dark:text-gray-500">Consulta general y preventiva.</span>
+                                                <span class="text-sm text-slate-400 dark:text-gray-500">Consulta general y preventiva.</span>
                                             @endforelse
                                         @else
-                                            <span class="text-xs text-slate-400 italic dark:text-gray-500">Consulta institucional y especializada.</span>
+                                            <span class="text-sm text-slate-400 dark:text-gray-500">Consulta institucional y especializada.</span>
                                         @endif
                                     </div>
                                 </div>

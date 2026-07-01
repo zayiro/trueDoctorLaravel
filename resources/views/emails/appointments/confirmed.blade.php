@@ -109,18 +109,18 @@
                             <a href="https://opendoctor.online" style="display: inline-block; background-color: #ffffff; color: #2563eb; border: 1px solid #cbd5e1; text-decoration: none; font-size: 14px; font-weight: 600; padding: 10px 20px; border-radius: 10px;">Gestionar mi cita</a>
                         </td>
                     </tr>
-                    
+                    @if($userAction === 'patient')
                     <tr>
                         <td style="padding: 24px 32px; background-color: #fffbeb; border-top: 1px solid #fef3c7; text-align: left;">
                             <p style="margin: 0; font-size: 13px; color: #b45309; line-height: 1.5;"><strong>Recomendación importante:</strong> Por favor @if($appointment->service->type === 'virtual') conectate al menos 5 minutos @else asiste al menos 15 minutos @endif antes de la hora acordada. Si la cita requiere estudios previos, tenlos a la mano.</p>
                         </td>
                     </tr>
-
+                    @endif
                 </table>
                 <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; text-align: center; margin-top: 24px;">
                     <tr>
                         <td style="padding: 0 20px; color: #94a3b8; font-size: 12px; line-height: 1.6;">
-                            <p style="margin: 0 0 8px 0;">Mensaje automático generado por la suite de <strong>opendoctor.online</strong>. Por favor, no respondas directamente a este correo.</p>
+                            <p style="margin: 0 0 8px 0;">Mensaje automático generado por la suite de <strong>opendoctorOnline</strong>. Por favor, no respondas directamente a este correo.</p>
                             <p style="margin: 0 0 16px 0;">Soporte técnico: <a href="mailto:soporte@opendoctor.online" style="color: #6366f1; text-decoration: underline;">soporte@opendoctor.online</a>.</p>
                             <p style="margin: 0; font-size: 11px; color: #cbd5e1;">© 2026 opendoctor.online. <br><a href="https://opendoctor.online/privacy" style="color: #94a3b8; text-decoration: none;">Privacidad</a> | <a href="https://opendoctor.online/terms" style="color: #94a3b8; text-decoration: none;">Términos</a></p>
                         </td>

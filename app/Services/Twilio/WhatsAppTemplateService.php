@@ -14,9 +14,10 @@ class WhatsAppTemplateService
     // Content SIDs de tus plantillas aprobadas en Twilio
     // Cárgalos desde .env para no hardcodearlos
     protected array $templates = [
-        'appointment_confirmed'  => '',
-        'appointment_cancelled'  => '',
+        'appointment_confirmed'   => '',
+        'appointment_cancelled'   => '',
         'appointment_rescheduled' => '',
+        'appointment_reminder'    => '',
     ];
 
     public function __construct()
@@ -32,6 +33,7 @@ class WhatsAppTemplateService
             'appointment_confirmed'   => config('services.twilio.templates.confirmed'),
             'appointment_cancelled'   => config('services.twilio.templates.cancelled'),
             'appointment_rescheduled' => config('services.twilio.templates.rescheduled'),
+            'appointment_reminder'    => config('services.twilio.templates.reminder'),
         ];
     }
 

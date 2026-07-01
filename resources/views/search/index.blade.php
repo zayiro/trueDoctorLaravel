@@ -176,6 +176,28 @@
                                 @endif
                             </div>
                         @endif
+                        
+                        {{-- 🌐 IDIOMAS DEL ESPECIALISTA --}}
+                        @if(!empty($result['languages'] ?? []))
+                            <div class="flex items-center gap-1.5 flex-wrap mt-1.5">
+                                @foreach($result['languages'] as $lang)
+                                    <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500">
+                                        <img 
+                                            src="{{ asset('images/flags/' . strtoupper($lang['flag']) . '.svg') }}"
+                                            width="20"
+                                            height="14"
+                                            loading="lazy"
+                                            alt="{{ $lang['name'] }}"
+                                            class="rounded-sm shadow-xs object-cover">
+                                        {{ $lang['name'] }}
+                                    </span>
+                                    @if(!$loop->last)
+                                        <span class="text-slate-300 text-xs">·</span>
+                                    @endif
+                                @endforeach
+                            </div>
+                        @endif
+                        
                         <!-- Estrellas de Reputación Comunes -->
                         <div class="flex items-center space-x-1 mt-2.5">
                             @php $ratingScore = round($result['rating'] ?? 0); @endphp
@@ -184,7 +206,7 @@
                                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
                                 </svg>
                             @endfor
-                            <span class="ml-2 text-xs font-bold text-slate-400">Garantía OpenDoctor</span>
+                            <span class="ml-2 text-xs font-bold text-slate-400">Garantía OpenDoctorOnline</span>
                         </div>
 
                         <!-- Detalles de la Sede y Dirección Organizada por Canal -->

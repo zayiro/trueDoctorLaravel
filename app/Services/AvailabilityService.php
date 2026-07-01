@@ -33,7 +33,7 @@ class AvailabilityService
      * @param int|null $clinicId ID de la clínica si aplica, para extraer sus reglas logísticas.
      * @return Carbon|null Instancia de tiempo con el turno más cercano o NULL si no hay cupo.
      */
-    public function getNextAvailableTurn(array $doctorIds, int $addressId, ?int $clinicId = null): ?Carbon
+    public function getNextAvailableTurn__(array $doctorIds, int $addressId, ?int $clinicId = null): ?Carbon
     {
         if (empty($doctorIds)) {
             return null;
@@ -52,7 +52,7 @@ class AvailabilityService
             $startSearchingFrom = Carbon::now($tz)->addHours((int)$minNoticeHours);
             
             // ⚡ Extraer la duración del servicio en la sede con caché
-            $slotDurationMinutes = $this->repository->getSlotDurationMinutes($addressId);
+            $slotDurationMinutes = max(1, (int) $this->repository->getSlotDurationMinutes($addressId));
 
             // 2. BARRIDO SECUENCIAL DEL CALENDARIO (Próximos 14 días)
             for ($i = 0; $i < 14; $i++) {
@@ -72,6 +72,12 @@ class AvailabilityService
                 $unavailabilities = $this->repository->getUnavailabilitiesForDate($doctorIds, $currentDate, $addressId);
                 $occupiedAppointments = $this->repository->getOccupiedAppointmentsForDate($doctorIds, $addressId, $currentDate);
 
+                //valida los festivos
+                $colombianHolidays = \App\Services\ColombiaHolidayService::getHolidays($currentDate->year);
+                if (array_key_exists($currentDate->toDateString(), $colombianHolidays)) {
+                    continue;
+                }
+
                 // 4. EVALUACIÓN Y FRAGMENTACIÓN DE BLOQUES EN TIEMPO REAL
                 foreach ($schedules as $schedule) {
                     // Purificamos la hora de la base de datos asegurándonos de que sea un String limpio (HH:MM:SS)
@@ -84,8 +90,8 @@ class AvailabilityService
                         : Carbon::parse($schedule->end_time)->format('H:i:s');
 
                     // 🔒 PARSEO SEGURO PARA PRODUCCIÓN: Combinamos fecha y hora, y fijamos la zona horaria de Colombia
-                    $blockStart = Carbon::parse($currentDate->toDateString() . ' ' . $startTimeStr)->setTimezone($tz);
-                    $blockEnd = Carbon::parse($currentDate->toDateString() . ' ' . $endTimeStr)->setTimezone($tz);
+                    $blockStart = Carbon::parse($currentDate->toDateString() . ' ' . $startTimeStr, $tz);
+                    $blockEnd   = Carbon::parse($currentDate->toDateString() . ' ' . $endTimeStr, $tz);
 
                     // Caminamos dentro del bloque continuo en fracciones de tiempo del servicio (ej: 20 minutos)
                     while ($blockStart->lessThan($blockEnd)) {
@@ -131,6 +137,125 @@ class AvailabilityService
                 'trace' => $e->getTraceAsString()
             ]);
             
+            return null;
+        }
+    }
+
+    /**
+     * Calcula con precisión atómica el próximo turno real disponible.
+     * 
+     * ⚡ OPTIMIZADO: Utiliza caché del repositorio para consultas repetidas
+     * 🆕 MEJORADO: Consolida bloques horarios de múltiples contextos (particular + clínicas)
+     * 🔒 BLINDADO: Intercepta inasistencias con validación de contexto de propiedad
+     * ✅ FIX 1: Timezone aplicado desde el parseo inicial (no con setTimezone post-parse)
+     * ✅ FIX 2: slotDurationMinutes protegido contra 0 para evitar bucle infinito
+     * ✅ FIX 3: Festivos colombianos validados dentro del barrido de días
+     * 
+     * @param array $doctorIds Matriz de IDs de los doctores a evaluar (Staff o Particular).
+     * @param int $addressId ID de la sede física o virtual.
+     * @param int|null $clinicId ID de la clínica si aplica, para extraer sus reglas logísticas.
+     * @return Carbon|null Instancia de tiempo con el turno más cercano o NULL si no hay cupo.
+     */
+    public function getNextAvailableTurn(array $doctorIds, int $addressId, ?int $clinicId = null): ?Carbon
+    {
+        if (empty($doctorIds)) {
+            return null;
+        }
+
+        try {
+            // 1. DETERMINAR EL MARGEN DE AVISO MÍNIMO (COLCHÓN LOGÍSTICO)
+            $minNoticeHours = $this->repository->getMinNoticeHours($clinicId, $doctorIds);
+
+            // 🔒 BLINDAJE TOTAL DE TIEMPO: Forzamos la zona horaria real de Colombia
+            $tz = 'America/Bogota';
+            $nowLocal = Carbon::now($tz);
+            $startSearchingFrom = Carbon::now($tz)->addHours((int) $minNoticeHours);
+
+            // ✅ FIX 2: Protección contra bucle infinito si la duración es 0 o null
+            $slotDurationMinutes = max(1, (int) $this->repository->getSlotDurationMinutes($addressId));
+
+            // 2. BARRIDO SECUENCIAL DEL CALENDARIO (Próximos 14 días)
+            for ($i = 0; $i < 14; $i++) {
+                $currentDate = $nowLocal->copy()->addDays($i);
+                $dayOfWeek   = $currentDate->dayOfWeekIso; // 1=Lunes, 7=Domingo
+
+                // ✅ FIX 3: Saltar festivos colombianos
+                $colombianHolidays = \App\Services\ColombiaHolidayService::getHolidays($currentDate->year);
+                if (array_key_exists($currentDate->toDateString(), $colombianHolidays)) {
+                    continue;
+                }
+
+                // ⚡ Obtener horarios con caché
+                $schedules = $this->repository->getSchedulesForDay($addressId, $doctorIds, $dayOfWeek);
+
+                if ($schedules->isEmpty()) {
+                    continue;
+                }
+
+                // 3. EXTRACCIÓN DE INDISPONIBILIDADES Y CITAS ACTIVAS
+                $unavailabilities      = $this->repository->getUnavailabilitiesForDate($doctorIds, $currentDate, $addressId);
+                $occupiedAppointments  = $this->repository->getOccupiedAppointmentsForDate($doctorIds, $addressId, $currentDate);
+
+                // 4. EVALUACIÓN Y FRAGMENTACIÓN DE BLOQUES EN TIEMPO REAL
+                foreach ($schedules as $schedule) {
+                    $startTimeStr = $schedule->start_time instanceof Carbon
+                        ? $schedule->start_time->format('H:i:s')
+                        : Carbon::parse($schedule->start_time)->format('H:i:s');
+
+                    $endTimeStr = $schedule->end_time instanceof Carbon
+                        ? $schedule->end_time->format('H:i:s')
+                        : Carbon::parse($schedule->end_time)->format('H:i:s');
+
+                    // ✅ FIX 1: Parseo con timezone desde el inicio, no con setTimezone() posterior
+                    $blockStart = Carbon::parse($currentDate->toDateString() . ' ' . $startTimeStr, $tz);
+                    $blockEnd   = Carbon::parse($currentDate->toDateString() . ' ' . $endTimeStr, $tz);
+
+                    // Caminamos dentro del bloque en fracciones del servicio (ej: 20 min)
+                    while ($blockStart->lessThan($blockEnd)) {
+                        $currentTimeStr = $blockStart->format('H:i:s');
+
+                        // Control estricto de aviso mínimo para el día de hoy
+                        if ($currentDate->isToday() && $blockStart->lessThan($startSearchingFrom)) {
+                            $blockStart->addMinutes($slotDurationMinutes);
+                            continue;
+                        }
+
+                        // 🔒 Descartar si el doctor tiene un bloqueo (con validación de contexto)
+                        if ($this->isDoctorUnavailableAtTime($unavailabilities, $schedule->doctor_id, $currentTimeStr, $clinicId)) {
+                            $blockStart->addMinutes($slotDurationMinutes);
+                            continue;
+                        }
+
+                        // Descartar si el espacio coincide con una cita ocupada
+                        $isSlotOccupied = $occupiedAppointments
+                            ->where('doctor_id', $schedule->doctor_id)
+                            ->contains(function ($app) use ($currentTimeStr) {
+                                return $currentTimeStr >= Carbon::parse($app->start_time)->format('H:i:s')
+                                    && $currentTimeStr <  Carbon::parse($app->end_time)->format('H:i:s');
+                            });
+
+                        if ($isSlotOccupied) {
+                            $blockStart->addMinutes($slotDurationMinutes);
+                            continue;
+                        }
+
+                        // 🔥 CRITERIO DE ÉXITO: Primer espacio libre encontrado
+                        return $blockStart;
+                    }
+                }
+            }
+
+            return null;
+
+        } catch (\Exception $e) {
+            Log::error('AvailabilityService: Error al calcular próximo turno disponible', [
+                'doctor_ids' => $doctorIds,
+                'address_id' => $addressId,
+                'clinic_id'  => $clinicId,
+                'error'      => $e->getMessage(),
+                'trace'      => $e->getTraceAsString()
+            ]);
+
             return null;
         }
     }
