@@ -74,7 +74,7 @@
                                         @if ($plan->ai_scribe_enabled)
                                         <li class="flex items-center gap-3 text-gray-700">
                                             <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                            <span>Notas de Evolución Actual por voz y transcripción precisa con la IA</span>
+                                            <span>Convierte tu dictado en documentación clínica estructurada: nota clínica en formato SOAP  transcripción precisa con la IA</span>
                                         </li>
                                         @endif
                                         <li class="flex items-center gap-3 text-gray-700">

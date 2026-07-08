@@ -1174,6 +1174,8 @@ class AppointmentController extends Controller
                     doctor:      $appointment->doctor?->user?->name ?? 'el médico',
                 );
 
+                \Log::error('Envia whatsapp template: ' . $appointment->patient->phone);
+
                 $appointment->update(['email_sent' => true]);
 
             } catch (Throwable $e) {

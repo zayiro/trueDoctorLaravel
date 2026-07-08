@@ -10,7 +10,7 @@ class NotificationController extends Controller
     {
         $user = auth()->user();
         // Traemos todas las notificaciones paginadas (15 por página)
-        $notifications = $user->notifications()->paginate(15);
+        $notifications = $user->notifications()->paginate(15);       
 
         return view('notifications.index', compact('notifications'));
     }

@@ -61,7 +61,7 @@ $breadcrumbs = [
                                     
                                     <!-- Mensaje descriptivo -->
                                     <p class="text-sm mt-0.5 leading-relaxed {{ $notification->read_at ? 'text-gray-600' : 'text-gray-900 font-semibold' }}">
-                                        {{ $notification->data['message'] }}
+                                        {{ $notification->data['message'] ?? $notification->data['body'] ?? '' }}
                                     </p>
                                     
                                     <!-- Metadatos (Blindado contra errores de índices inexistentes) -->

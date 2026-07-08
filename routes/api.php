@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\ZoomWebhookController;
+use App\Http\Controllers\Api\WhatsAppWebhookController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -22,3 +23,6 @@ Route::put('/appointments/{id}/cancel', [AppointmentController::class, 'cancel']
 //Route::post('/webhooks/zoom', [ZoomWebhookController::class, 'handle'])->name('zoom.webhook');
 Route::any('/webhooks/zoom', [ZoomWebhookController::class, 'handle']);
 Route::get('/appointments/{id}/status', [AppointmentController::class, 'getStatus']);
+
+Route::get('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'verify']);
+Route::post('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'handle']);

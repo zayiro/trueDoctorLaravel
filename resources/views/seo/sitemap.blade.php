@@ -1,6 +1,6 @@
 {!! '<' . '?xml version="1.0" encoding="UTF-8"?' . '>' !!}
 <!-- 🔒 CORREGIDO: Espacio de nombres oficial de sitemaps.org para evitar rechazos en Google -->
-<urlset xmlns="http://sitemaps.org">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     
     <!-- 1. PÁGINAS ESTÁTICAS PRINCIPALES -->
     <url>
@@ -9,6 +9,36 @@
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
     </url>
+    <url>
+        <loc>{{ url('/register-options') }}</loc>
+        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>{{ url('/login') }}</loc>
+        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.7</priority>
+    </url>
+    <url>
+        <loc>{{ url('/medical-analysis') }}</loc>
+        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.9</priority>
+    </url>
+    <url>
+        <loc>{{ url('/plans/show') }}</loc>
+        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.9</priority>
+    </url>
+    <url>
+        <loc>{{ url('/contact') }}</loc>
+        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.7</priority>
+    </url>    
     <url>
         <loc>{{ route('search') }}</loc>
         <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
@@ -33,7 +63,7 @@
         <loc>{{ url('/support') }}</loc>
         <lastmod>2026-05-21T00:00:00+00:00</lastmod>
         <changefreq>monthly</changefreq>
-        <priority>0.5</priority>
+        <priority>0.4</priority>
     </url>
 
     <!-- 3. PERFILES DINÁMICOS DE LOS DOCTORES -->
@@ -43,7 +73,7 @@
             <loc>{{ route('partner.public.profile', ['slug' => $doctor->slug]) }}</loc>
             <lastmod>{{ $doctor->updated_at->toAtomString() }}</lastmod>
             <changefreq>weekly</changefreq>
-            <priority>0.8</priority>
+            <priority>0.9</priority>
         </url>
     @endforeach
     <!-- 4. PERFILES DINÁMICOS DE LAS CLÍNICAS (NUEVO) -->
@@ -53,7 +83,7 @@
             <loc>{{ route('partner.public.profile', ['slug' => $clinic->slug]) }}</loc>
             <lastmod>{{ $clinic->updated_at->toAtomString() }}</lastmod>
             <changefreq>weekly</changefreq>
-            <priority>0.8</priority>
+            <priority>0.9</priority>
         </url>
     @endforeach
     

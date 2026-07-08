@@ -384,30 +384,54 @@
                         </div>
                     </div>
                 </div>
-            @empty
-                <!-- ESTADO VACÍO EN CASO DE NO COINCIDIR FILTROS -->
-                <div class="text-center p-8 sm:p-12 border border-dashed border-slate-200 bg-white rounded-2xl flex flex-col items-center dark:bg-gray-800 dark:border-gray-700">
-                    <!-- SVG Nativo: Magnifying-Glass de Heroicons -->
-                    <svg class="w-10 h-10 text-slate-400 mb-3" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.604 10.604z" />
+           @empty
+            <div class="flex flex-col items-center text-center py-12 px-6 gap-6 bg-white rounded-3xl border border-slate-100 shadow-sm dark:bg-gray-800 dark:border-gray-700">
+                
+                <div class="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center dark:bg-indigo-950/40">
+                    <svg class="w-8 h-8 text-indigo-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/>
                     </svg>
-                    
-                    <h4 class="font-bold text-slate-900 text-lg mb-1 dark:text-white">
-                        <p>Llegaste justo en pleno lanzamiento de opendoctor.online. Aunque el especialista que buscas aún está configurando su agenda presencial, puedes agendar una telemedicina inmediata o dar clic abajo para consultar con el médico general de turno.</p>
-                    </h4>
-                    
-                    <p class="text-slate-500 text-sm max-w-md mb-5 dark:text-slate-400">
-                        Contamos con médicos generales e institucionales listos para evaluar tu caso de forma inicial y derivarte correctamente.
-                    </p>
-                    
-                    <!-- ENLACE ESTRATÉGICO: Filtra directamente por Medicina General y deja la ciudad abierta -->
-                    <a href="{{ url('/search') }}?specialty=medicina-general&city=" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black px-6 py-3 rounded-full transition shadow-sm focus:ring-4 focus:ring-blue-200">
-                        Consultar con Medicina General
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true" xmlns="http://w3.org">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
-                        </svg>
-                    </a>
                 </div>
+
+                <div class="max-w-md space-y-2">
+                    <h4 class="text-lg font-black text-slate-800 dark:text-white tracking-tight">
+                        Especialista no disponible aún en OpenDoctorOnline
+                    </h4>
+                    <p class="text-sm text-slate-500 leading-relaxed dark:text-gray-400">
+                        Estamos en pleno lanzamiento. El especialista que buscas aún está configurando su agenda, pero puedes agendar con un médico general disponible ahora mismo.
+                    </p>
+                </div>
+
+                <div class="flex flex-wrap justify-center gap-3">
+                    <div class="flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-2.5 dark:bg-emerald-950/30 dark:border-emerald-900">
+                        <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25"/>
+                        </svg>
+                        <span class="text-xs font-bold text-emerald-700 dark:text-emerald-400">Telemedicina inmediata disponible</span>
+                    </div>
+                    <div class="flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-2.5 dark:bg-indigo-950/30 dark:border-indigo-900">
+                        <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span class="text-xs font-bold text-indigo-700 dark:text-indigo-400">Médicos generales listos ahora</span>
+                    </div>
+                </div>
+
+                <a href="{{ url('/search') }}?specialty=medicina-general&city=" 
+                class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-black px-6 py-3 rounded-xl shadow-sm transition-all hover:-translate-y-0.5 active:scale-[0.99]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
+                    </svg>
+                    Consultar con medicina general
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+                    </svg>
+                </a>
+
+                <p class="text-xs text-slate-400 dark:text-gray-500">
+                    Evaluación inicial y derivación al especialista que necesitas
+                </p>
+            </div>
             @endforelse
         </div> <!-- Cierra el contenedor de las tarjetas (.space-y-6) -->
 

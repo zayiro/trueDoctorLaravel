@@ -12,8 +12,6 @@ Disallow: /api/
 Disallow: /admin/
 Disallow: /dashboard/
 Disallow: /livewire/
-Disallow: /login
-Disallow: /register
 Disallow: /password/
 Disallow: /oauth/
 
@@ -23,4 +21,4 @@ Disallow: /*?*query=
 Disallow: /*?*filter=
 
 # 4. ENLACE AL SITEMAP (Indispensable para que Google descubra los síntomas rápido)
-Sitemap: https://opendoctor.online
+Sitemap: https://opendoctor.online/sitemap.xml

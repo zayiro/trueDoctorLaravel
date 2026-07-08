@@ -100,10 +100,13 @@
                     <div class="md:col-span-7 space-y-5 text-left">    
                         <!-- Textos Persuasivos -->
                         <h1 class="text-5xl lg:text-7xl font-black text-white tracking-tight mb-6">
-                            ¿Tienes análisis médicos en casa que <span class="text-blue-600">no logras entender?</span>
+                            ¿Tienes examenes médicos que <span class="text-blue-600">no logras entender?</span>
                         </h1>
-                        
-                        <p class="text-slate-300 text-base md:text-lg leading-relaxed">
+                        <p class="text-slate-300 text-base md:text-lg leading-relaxed">                            
+                            Leer examenes médicos en línea.<br>
+                            Interpreta tus exámenes médicos con Inteligencia Artificial.
+                        </p>
+                        <p class="text-slate-300 text-base md:text-lg leading-relaxed">                            
                             No esperes días para descifrar tus resultados clínicos. Nuestro <span class="font-bold">Asistente Médico Digital</span> analiza tus informes en PDF, elimina tus datos personales por seguridad y te explica todo en un lenguaje claro, cercano y 100% comprensible.
                         </p>
 
