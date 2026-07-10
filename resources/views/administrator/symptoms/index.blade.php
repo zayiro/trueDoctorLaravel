@@ -25,7 +25,7 @@ $breadcrumbs = [
             </div>
             <button
                 @click="openCreate()"
-                class="inline-flex items-center justify-center gap-2 rounded-lg bg-[#E8735C] px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#d9614a] focus:outline-none focus:ring-2 focus:ring-[#E8735C] focus:ring-offset-2"
+                class="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#d9614a] focus:outline-none focus:ring-2 focus:ring-[#E8735C] focus:ring-offset-2"
             >
                 + Nuevo síntoma
             </button>
@@ -292,7 +292,7 @@ $breadcrumbs = [
                 @click.outside="closeModal()"
                 x-show="modalOpen"
                 x-transition
-                class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-[#F4F1EA] p-5 shadow-xl sm:p-6"
+                class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-5 shadow-xl sm:p-6"
             >
                 <h2 class="mb-4 text-xl font-semibold text-teal-900" style="font-family: 'Fraunces', serif;"
                     x-text="isEditing ? 'Editar síntoma' : 'Nuevo síntoma'"></h2>
@@ -363,7 +363,7 @@ $breadcrumbs = [
                             Cancelar
                         </button>
                         <button type="submit"
-                                class="rounded-lg bg-[#E8735C] px-4 py-2 text-sm font-medium text-white hover:bg-[#d9614a]">
+                                class="rounded-lg bg-indigo-600 hover:bg-indigo-700 px-4 py-2 text-sm font-medium text-white">
                             Guardar
                         </button>
                     </div>
