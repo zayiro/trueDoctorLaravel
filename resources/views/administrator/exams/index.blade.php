@@ -83,7 +83,7 @@ $breadcrumbs = [
                     <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 lg:justify-end whitespace-nowrap pt-3 lg:pt-0 border-t border-gray-100 lg:border-t-0">
                         <form action="{{ route('administrator.exams.resend', $exam) }}" method="POST" onsubmit="return confirm('¿Reenviar este examen?')" class="w-full sm:w-auto">
                             @csrf
-                            <button type="submit" class="w-full sm:w-auto text-xs bg-indigo-600 text-white font-semibold px-4 py-2 border border-transparent rounded-lg shadow-sm hover:bg-indigo-700 transition text-center justify-center flex items-center">
+                            <button type="submit" class="w-full sm:w-auto text-sm bg-indigo-600 text-white font-semibold px-4 py-3 border border-transparent rounded-lg shadow-sm hover:bg-indigo-700 transition text-center justify-center flex items-center">
                                 Reenviar
                             </button>
                         </form>

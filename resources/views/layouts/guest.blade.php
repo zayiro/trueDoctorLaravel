@@ -23,7 +23,7 @@
         <meta property="og:title" content="{{ $meta_title ?? 'OpenDoctor - Encuentra tu especialista y agenda tu cita' }}">
         <meta property="og:description" content="{{ $meta_description ?? 'Busca especialistas médicos, agenda tu cita y recibe recordatorios automáticos.' }}">
         <meta property="og:url" content="{{ url()->current() }}">
-        <meta property="og:image" content="{{ asset('images/logo-lg.png') }}">
+        <meta property="og:image" content="{{ asset('images/og-logo.png') }}">
         <meta property="og:image:width" content="1200">
         <meta property="og:image:height" content="630">
 
@@ -31,7 +31,7 @@
         <meta name="twitter:card" content="summary_large_image">
         <meta name="twitter:title" content="{{ $ogTitle ?? 'OpenDoctor' }}">
         <meta name="twitter:description" content="{{ $ogDescription ?? 'Busca especialistas médicos y agenda tu cita.' }}">
-        <meta name="twitter:image" content="{{ asset('images/logo-lg.png') }}">
+        <meta name="twitter:image" content="{{ asset('images/og-logo.png') }}">
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">

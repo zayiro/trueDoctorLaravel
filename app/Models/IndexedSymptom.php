@@ -22,6 +22,33 @@ class IndexedSymptom extends Model
         'search_count'
     ];
 
+    protected $casts = [
+        'search_count' => 'integer',
+    ];
+
+    /**
+     * Niveles considerados como derivación médica inmediata.
+     */
+    public const URGENCIAS_INMEDIATAS = ['Alta'];
+ 
+    public const NIVELES_URGENCIA = ['Baja', 'Media', 'Alta'];
+      
+    public function esUrgente(): bool
+    {
+        return in_array($this->urgency_level, self::URGENCIAS_INMEDIATAS, true);
+    }
+ 
+    protected static function boot()
+    {
+        parent::boot();
+ 
+        static::saving(function (IndexedSymptom $symptom) {
+            if (empty($symptom->slug) && !empty($symptom->search_query)) {
+                $symptom->slug = Str::slug($symptom->search_query);
+            }
+        });
+    }
+
     /**
      * ESTA ES LA FUNCIÓN QUE FALTA:
      * Un síntoma indexado pertenece a una única especialidad médica.

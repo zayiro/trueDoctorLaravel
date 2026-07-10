@@ -52,6 +52,7 @@ use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\ExamAnalysisController;
 use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\IndexedSymptomController;
 
 use App\Http\Controllers\MedicalAnalysisController;
 
@@ -89,7 +90,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/clear-cache', [AdminController::class, 'clearCache'])->name('administrator.clearcache.index');         
 
     // Rutas protegidas de administración
-    Route::get('/administrator/seo-sintomas', [AdminController::class, 'listIndexedSymptoms'])->name('administrator.symptoms.index');
+    Route::resource('administrator/seo-sintomas', IndexedSymptomController::class)
+    ->except(['show', 'create', 'edit'])
+    ->names('administrator.symptoms');
 
     // 1. Directorio Principal de Usuarios
     Route::get('/users', [UserManagementController::class, 'index'])
