@@ -53,6 +53,7 @@ use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\ExamAnalysisController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\IndexedSymptomController;
+use App\Http\Controllers\Admin\AnalyticsController;
 
 use App\Http\Controllers\MedicalAnalysisController;
 
@@ -93,6 +94,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::resource('administrator/seo-sintomas', IndexedSymptomController::class)
     ->except(['show', 'create', 'edit'])
     ->names('administrator.symptoms');
+
+    Route::get('/administrator/analytics', [AnalyticsController::class, 'index'])->name('administrator.analytics.index');
 
     // 1. Directorio Principal de Usuarios
     Route::get('/users', [UserManagementController::class, 'index'])
