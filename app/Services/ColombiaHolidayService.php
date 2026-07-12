@@ -16,6 +16,7 @@ class ColombiaHolidayService
         $fixedHolidays = [
             "$year-01-01", // Año Nuevo
             "$year-05-01", // Día del Trabajo
+            "$year-07-15", // Fiesta de Bogotá
             "$year-07-20", // Día de la independencia
             "$year-08-07", // Batalla de Boyacá
             "$year-12-08", // Inmaculada Concepción

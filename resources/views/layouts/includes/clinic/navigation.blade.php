@@ -46,7 +46,7 @@
                             {{ __('Manage Account') }}
                         </div>
 
-                        <x-dropdown-link href="{{ route('admin.dashboard') }}">
+                        <x-dropdown-link href="{{ route('administrator.dashboard') }}">
                             {{ __('Dashboard') }}
                         </x-dropdown-link>
 

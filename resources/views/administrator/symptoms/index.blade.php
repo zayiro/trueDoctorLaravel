@@ -11,12 +11,12 @@ $breadcrumbs = [
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-    <div x-data="symptomsAdmin()" class="min-h-screen bg-[#F4F1EA] px-4 py-8 md:px-8" style="font-family: 'Inter', sans-serif;">
+    <div x-data="symptomsAdmin()" class="min-h-screen bg-[#F4F1EA] px-4 py-8 md:px-8">
 
         {{-- Encabezado --}}
         <div class="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-                <h1 class="text-3xl md:text-4xl font-semibold text-teal-900" style="font-family: 'Fraunces', serif;">
+                <h1 class="text-3xl md:text-4xl font-semibold text-teal-900">
                     Síntomas indexados
                 </h1>
                 <p class="mt-1 text-sm text-teal-700/70">

@@ -223,9 +223,12 @@ class SearchController extends Controller
                 $doctorIds = $doctorsQuery->pluck('doctors.id')->toArray();
                 $specialistsCount = count($doctorIds);
 
-                // 🚀 Cálculo veloz para el respaldo de producción
+                // 🚀 Cálculo veloz para el respaldo de producción                
                 $availabilityService = app(AvailabilityService::class);
-                $backupTurn = $availabilityService->getNextAvailableTurn($doctorIds, $address->id, $clinic->id);
+                $backupTurn = $availabilityService->getNextAvailableTurnAnyAddress(
+                    $doctorIds,
+                    $clinic->id  // ✅ Busca en TODAS las sedes
+                );
 
                 $groupedResults->put($uniqueKey, [
                     'type'        => 'clinic',
@@ -247,15 +250,19 @@ class SearchController extends Controller
 
                 if ($groupedResults->has($uniqueKey)) continue;
 
-                // 🚀 Cálculo veloz para el respaldo de producción
+                // 🚀 Cálculo veloz para el respaldo de producción               
                 $availabilityService = app(AvailabilityService::class);
-                $backupTurn = $availabilityService->getNextAvailableTurn([$doctor->id], $address->id, null);
+                $backupTurn = $availabilityService->getNextAvailableTurnAnyAddress(
+                    [$doctor->id],  // ✅ Busca en TODAS las sedes del doctor
+                    null
+                );
 
-                $langNames = ['es' => 'Español', 'en' => 'Inglés', 'pt' => 'Portugués', 'fr' => 'Francés', 'de' => 'Alemán'];
+                $langNames = ['co' => 'Colombia', 'es' => 'Español', 'en' => 'Inglés', 'pt' => 'Portugués', 'fr' => 'Francés', 'de' => 'Alemán'];
                 $rawLang = $doctor->languages;
                 $decodedLang = is_array($rawLang) ? $rawLang : (json_decode($rawLang, true) ?? []);
 
                 $langFlags = [
+                    'co' => 'co',
                     'es' => 'es',
                     'en' => 'us',
                     'pt' => 'br',
@@ -283,13 +290,15 @@ class SearchController extends Controller
                     'model'             => $doctor,
                     'specialties_count' => $doctor->specialties->count(),
                     'languages'         => $languages,
+                    'countryName'       => $doctor->country_name,
+                    'country_code'      => $doctor->country_code,
                     'address_id'        => $address->id,
                     'subtitle'          => $address->type === 'virtual' ? 'Atención Online' : "{$address->name} • {$address->address}",                  
-                    'next_turn'   => $backupTurn ? ($backupTurn->isToday() ? 'Hoy ' : '') . ucfirst($backupTurn->isoFormat('dddd D [de] MMMM — h:mm A')) : 'Sin turnos próximos disponibles'
+                    'next_turn'         => $backupTurn ? ($backupTurn->isToday() ? 'Hoy ' : '') . ucfirst($backupTurn->isoFormat('dddd D [de] MMMM — h:mm A')) : 'Sin turnos próximos disponibles'
                 ]);
             }
         }
-
+    
         $page = LengthAwarePaginator::resolveCurrentPage();
         $perPage = 10;
         

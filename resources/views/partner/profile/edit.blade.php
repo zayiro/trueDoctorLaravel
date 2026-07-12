@@ -14,7 +14,7 @@
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">  
-    <div class="mt-10 sm:mt-0 max-w-5xl mx-auto py-6">
+    <div class="max-w-7xl mx-auto py-10 px-4 sm:px-6">
         
         {{-- Mensajes de Éxito --}}
         @if (session('success'))
@@ -276,15 +276,15 @@
 
                                 <!-- Número Celular Expandido (Corregido sin ciclos indexados) -->
                                 <div class="flex flex-col mb-2">
-                                    <x-label for="phone" value="Número celular de notificación" class="mb-1 text-slate-500 font-bold text-xs" />
+                                    <x-label for="phone" value="Número celular para notificaciónes y chat con pacientes" class="mb-1 text-slate-500 font-bold text-xs" />
                                     <div class="flex rounded-2xl border border-slate-200 bg-white focus-within:ring-2 focus-within:ring-indigo-500 overflow-hidden shadow-inner">
-                                        <select name="country_code" required class="bg-slate-50 text-slate-600 text-xs border-0 border-r border-slate-200 focus:ring-0 px-7 cursor-pointer outline-none">
-                                            <option value="+57" {{ old('country_code', substr($doctor->phone, 0, 3)) == '+57' ? 'selected' : '' }}>🇨🇴 +57</option>
-                                            <option value="+54" {{ old('country_code', substr($doctor->phone, 0, 3)) == '+54' ? 'selected' : '' }}>🇦🇷 +54</option>
-                                            <option value="+591" {{ old('country_code', substr($doctor->phone, 0, 4)) == '+591' ? 'selected' : '' }}>🇧🇴 +591</option>
-                                            <option value="+55" {{ old('country_code', substr($doctor->phone, 0, 3)) == '+55' ? 'selected' : '' }}>🇧🇷 +55</option>
-                                            <option value="+56" {{ old('country_code', substr($doctor->phone, 0, 3)) == '+56' ? 'selected' : '' }}>🇨🇱 +56</option>
-                                            <option value="+593" {{ old('country_code', substr($doctor->phone, 0, 4)) == '+593' ? 'selected' : '' }}>🇪🇨 +593</option>
+                                        <select name="phone_code" required class="bg-slate-50 text-slate-600 text-xs border-0 border-r border-slate-200 focus:ring-0 px-7 cursor-pointer outline-none">
+                                            <option value="+57" {{ old('phone_code', substr($doctor->phone, 0, 3)) == '+57' ? 'selected' : '' }}>🇨🇴 +57</option>
+                                            <option value="+54" {{ old('phone_code', substr($doctor->phone, 0, 3)) == '+54' ? 'selected' : '' }}>🇦🇷 +54</option>
+                                            <option value="+591" {{ old('phone_code', substr($doctor->phone, 0, 4)) == '+591' ? 'selected' : '' }}>🇧🇴 +591</option>
+                                            <option value="+55" {{ old('phone_code', substr($doctor->phone, 0, 3)) == '+55' ? 'selected' : '' }}>🇧🇷 +55</option>
+                                            <option value="+56" {{ old('phone_code', substr($doctor->phone, 0, 3)) == '+56' ? 'selected' : '' }}>🇨🇱 +56</option>
+                                            <option value="+593" {{ old('phone_code', substr($doctor->phone, 0, 4)) == '+593' ? 'selected' : '' }}>🇪🇨 +593</option>
                                         </select>
                                         {{-- Limpiamos el número quitando el indicativo si ya viene guardado en la BD --}}
                                         <input type="tel" name="phone" id="phone" required maxlength="10" pattern="[0-9]{10}" 
@@ -310,7 +310,67 @@
                                         class="w-full rounded-2xl border-slate-200 py-4 px-5 text-sm text-slate-500 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-inner">
                                         <option value="male" {{ old('gender', $doctor->gender) == 'male' ? 'selected' : '' }}>Masculino</option>
                                         <option value="female" {{ old('gender', $doctor->gender) == 'female' ? 'selected' : '' }}>Femenino</option>
-                                        <option value="other" {{ old('gender', $doctor->gender) == 'other' ? 'selected' : '' }}>Otro / Prefiero no decirlo</option>
+                                        <option value="other" {{ old('gender', $doctor->gender) == 'other' ? 'selected' : '' }}>Otro</option>
+                                    </select>
+                                </div>
+
+                                <!-- País (Países de América) -->
+                                <div class="flex flex-col md:col-span-2">
+                                    <x-label for="country_code" value="País" class="mb-1 text-slate-500 font-bold text-xs" />
+                                    <select id="country_code" name="country_code" required 
+                                        class="w-full rounded-2xl border-slate-200 py-4 px-5 text-sm text-slate-500 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-inner">
+                                        <option value="">-- Selecciona un país --</option>
+                                        
+                                        <!-- NORTEAMÉRICA -->
+                                        <optgroup label="Norteamérica">
+                                            <option value="ca" {{ old('country_code', $doctor->country_code ?? '') == 'ca' ? 'selected' : '' }}>Canadá</option>                                            
+                                            <option value="us" {{ old('country_code', $doctor->country_code ?? '') == 'us' ? 'selected' : '' }}>Estados Unidos</option>
+                                        </optgroup>
+                                        
+                                        <!-- CENTROAMÉRICA -->
+                                        <optgroup label="Centroamérica">
+                                            <option value="mx" {{ old('country_code', $doctor->country_code ?? '') == 'mx' ? 'selected' : '' }}>México</option>
+                                            <option value="bz" {{ old('country_code', $doctor->country_code ?? '') == 'bz' ? 'selected' : '' }}>Belice</option>
+                                            <option value="cr" {{ old('country_code', $doctor->country_code ?? '') == 'cr' ? 'selected' : '' }}>Costa Rica</option>
+                                            <option value="sv" {{ old('country_code', $doctor->country_code ?? '') == 'sv' ? 'selected' : '' }}>El Salvador</option>
+                                            <option value="gt" {{ old('country_code', $doctor->country_code ?? '') == 'gt' ? 'selected' : '' }}>Guatemala</option>
+                                            <option value="hn" {{ old('country_code', $doctor->country_code ?? '') == 'hn' ? 'selected' : '' }}>Honduras</option>
+                                            <option value="ni" {{ old('country_code', $doctor->country_code ?? '') == 'ni' ? 'selected' : '' }}>Nicaragua</option>
+                                            <option value="pa" {{ old('country_code', $doctor->country_code ?? '') == 'pa' ? 'selected' : '' }}>Panamá</option>
+                                        </optgroup>
+                                        
+                                        <!-- CARIBE -->
+                                        <optgroup label="Caribe">
+                                            <option value="ag" {{ old('country_code', $doctor->country_code ?? '') == 'ag' ? 'selected' : '' }}>Antigua y Barbuda</option>
+                                            <option value="bs" {{ old('country_code', $doctor->country_code ?? '') == 'bs' ? 'selected' : '' }}>Bahamas</option>
+                                            <option value="bb" {{ old('country_code', $doctor->country_code ?? '') == 'bb' ? 'selected' : '' }}>Barbados</option>
+                                            <option value="cu" {{ old('country_code', $doctor->country_code ?? '') == 'cu' ? 'selected' : '' }}>Cuba</option>
+                                            <option value="dm" {{ old('country_code', $doctor->country_code ?? '') == 'dm' ? 'selected' : '' }}>Dominica</option>
+                                            <option value="do" {{ old('country_code', $doctor->country_code ?? '') == 'do' ? 'selected' : '' }}>República Dominicana</option>
+                                            <option value="gd" {{ old('country_code', $doctor->country_code ?? '') == 'gd' ? 'selected' : '' }}>Granada</option>
+                                            <option value="ht" {{ old('country_code', $doctor->country_code ?? '') == 'ht' ? 'selected' : '' }}>Haití</option>
+                                            <option value="jm" {{ old('country_code', $doctor->country_code ?? '') == 'jm' ? 'selected' : '' }}>Jamaica</option>
+                                            <option value="kn" {{ old('country_code', $doctor->country_code ?? '') == 'kn' ? 'selected' : '' }}>Saint Kitts y Nevis</option>
+                                            <option value="lc" {{ old('country_code', $doctor->country_code ?? '') == 'lc' ? 'selected' : '' }}>Santa Lucía</option>
+                                            <option value="vc" {{ old('country_code', $doctor->country_code ?? '') == 'vc' ? 'selected' : '' }}>San Vicente y las Granadinas</option>
+                                            <option value="tt" {{ old('country_code', $doctor->country_code ?? '') == 'tt' ? 'selected' : '' }}>Trinidad y Tobago</option>
+                                        </optgroup>
+                                        
+                                        <!-- SUDAMÉRICA -->
+                                        <optgroup label="Sudamérica">
+                                            <option value="co" {{ old('country_code', $doctor->country_code ?? '') == 'co' ? 'selected' : '' }}>Colombia</option>
+                                            <option value="ar" {{ old('country_code', $doctor->country_code ?? '') == 'ar' ? 'selected' : '' }}>Argentina</option>
+                                            <option value="bo" {{ old('country_code', $doctor->country_code ?? '') == 'bo' ? 'selected' : '' }}>Bolivia</option>
+                                            <option value="br" {{ old('country_code', $doctor->country_code ?? '') == 'br' ? 'selected' : '' }}>Brasil</option>
+                                            <option value="cl" {{ old('country_code', $doctor->country_code ?? '') == 'cl' ? 'selected' : '' }}>Chile</option>                                            
+                                            <option value="ec" {{ old('country_code', $doctor->country_code ?? '') == 'ec' ? 'selected' : '' }}>Ecuador</option>
+                                            <option value="gy" {{ old('country_code', $doctor->country_code ?? '') == 'gy' ? 'selected' : '' }}>Guyana</option>
+                                            <option value="py" {{ old('country_code', $doctor->country_code ?? '') == 'py' ? 'selected' : '' }}>Paraguay</option>
+                                            <option value="pe" {{ old('country_code', $doctor->country_code ?? '') == 'pe' ? 'selected' : '' }}>Perú</option>
+                                            <option value="sr" {{ old('country_code', $doctor->country_code ?? '') == 'sr' ? 'selected' : '' }}>Surinam</option>
+                                            <option value="uy" {{ old('country_code', $doctor->country_code ?? '') == 'uy' ? 'selected' : '' }}>Uruguay</option>
+                                            <option value="ve" {{ old('country_code', $doctor->country_code ?? '') == 've' ? 'selected' : '' }}>Venezuela</option>
+                                        </optgroup>
                                     </select>
                                 </div>
 

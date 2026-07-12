@@ -58,7 +58,7 @@ class ProfileClinicController extends Controller
             'name'             => 'required|string|max:255',
             'email'            => 'required|email|max:255|unique:users,email,' . $user->id,
             'phone'            => 'required|string|max:10',
-            'country_code'     => 'required|string|max:5',
+            'country_code'     => 'nullable|string|alpha|size:2',
             'nit'              => 'required|string|max:20|unique:clinics,nit,' . $clinic->id,
             'reps_code'        => 'required|string|max:12|unique:clinics,reps_code,' . $clinic->id,
             'experience_years' => 'required|integer|min:0|max:150',

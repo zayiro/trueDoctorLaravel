@@ -410,6 +410,7 @@ class PublicProfileController extends Controller
         $decodedLang = is_array($rawLang) ? $rawLang : (json_decode($rawLang, true) ?? []);
 
         $langFlags = [
+            'co' => 'co',
             'es' => 'es',
             'en' => 'us',
             'pt' => 'br',
@@ -425,7 +426,7 @@ class PublicProfileController extends Controller
             'name' => $langNames[$code] ?? strtoupper($code),
             'flag' => $langFlags[$code] ?? 'un', // 'un' = bandera ONU como fallback
         ], $decodedLang);
-        
+                        
         // 🔒 DESPACHO INTEGRAL CON RETORNO SEGURO A PRODUCCIÓN
         return view('public.public-profile', [
             'partner'            => $doctor,

@@ -11,7 +11,7 @@ $breadcrumbs = [
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-    <div class="max-w-5xl mx-auto py-10 px-4 sm:px-6">
+    <div class="max-w-7xl mx-auto py-10 px-4 sm:px-6">
         
         <!-- Encabezado Principal -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">

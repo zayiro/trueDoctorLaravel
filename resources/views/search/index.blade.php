@@ -148,7 +148,7 @@
                         @endif
                         <span class="text-[12px] font-black uppercase px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md border border-indigo-100/30 tracking-wider">
                             {{ $result['type'] === 'clinic' ? 'Clínica' : 'Profesional' }}
-                        </span>
+                        </span>                                            
                     </div>
 
                     <!-- Cuerpo de Información Centralizado -->
@@ -161,6 +161,20 @@
                             <!-- 🩺 CARD DE DOCTOR -->
                             <h3 class="text-xl font-black text-slate-900 tracking-tight">{{ $result['title'] }}</h3>
                             <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="text-[12px] font-black uppercase">
+                                    @foreach($result['languages'] as $lang)
+                                        <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500">
+                                            <img 
+                                                src="{{ asset('images/flags/' . strtoupper($result['country_code']) . '.svg') }}"
+                                                width="20"
+                                                height="14"
+                                                loading="lazy"
+                                                alt="{{ $result['countryName'] }}"
+                                                class="rounded-sm shadow-xs object-cover">
+                                        </span>
+                                    @endforeach
+                                </span>
+
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900">
                                     {{ $result['badge_text'] }}
                                 </span>
@@ -180,15 +194,9 @@
                         {{-- 🌐 IDIOMAS DEL ESPECIALISTA --}}
                         @if(!empty($result['languages'] ?? []))
                             <div class="flex items-center gap-1.5 flex-wrap mt-1.5">
+                                <span class="text-xs text-slate-400">Idiomas de atención</span>
                                 @foreach($result['languages'] as $lang)
-                                    <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500">
-                                        <img 
-                                            src="{{ asset('images/flags/' . strtoupper($lang['flag']) . '.svg') }}"
-                                            width="20"
-                                            height="14"
-                                            loading="lazy"
-                                            alt="{{ $lang['name'] }}"
-                                            class="rounded-sm shadow-xs object-cover">
+                                    <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500">                                        
                                         {{ $lang['name'] }}
                                     </span>
                                     @if(!$loop->last)

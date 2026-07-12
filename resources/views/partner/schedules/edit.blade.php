@@ -15,7 +15,7 @@ $breadcrumbs = [
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">     
-    <div class="max-w-4xl mx-auto py-10 px-4">
+    <div class="max-w-7xl mx-auto py-10 px-4">
         <div class="bg-white p-8 shadow-xl rounded-3xl overflow-hidden border border-gray-100">
             <h2 class="text-2xl font-black text-slate-800 mb-1">Modificar Horarios en Lote</h2>
             

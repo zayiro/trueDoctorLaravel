@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 class Doctor extends Model
 {
     protected $fillable = [
-        'slug', 'user_id', 'medical_license', 'phone',
+        'slug', 'user_id', 'medical_license', 'phone', 'country_code', 
         'experience_years', 'languages', 'bio', 'rating',
         'reviews_count', 'identification', 'gender',
         'validation_status', 'identity_card_path',
@@ -223,5 +223,18 @@ class Doctor extends Model
         return $this->morphMany(GalleryImage::class, 'galleryable')
             ->where('active', true)
             ->orderBy('order');
+    }
+
+    public function getCountryNameAttribute()
+    {
+        $countries = [
+            'co' => 'Colombia',
+            'mx' => 'México',
+            'ar' => 'Argentina',
+            'us' => 'Estados Unidos',
+            // ... más países
+        ];
+        
+        return $countries[strtolower($this->country_code)] ?? 'Desconocido';
     }
 }

@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('nit')->unique();            
             $table->string('reps_code', 12)->unique()->nullable(false);
             $table->string('phone')->nullable();
+            $table->char('country_code', 2)->nullable()->index('idx_country_code');
             $table->text('bio')->nullable();
             $table->string('experience_years')->nullable();
             $table->json('languages')->nullable()->default('["es"]');

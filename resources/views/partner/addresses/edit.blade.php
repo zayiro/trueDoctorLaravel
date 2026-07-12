@@ -16,7 +16,7 @@ $breadcrumbs = [
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">        
     {{-- Inyectamos los IDs actuales de la BD o de la sesión (old) para la hidratación reactiva --}}
-    <div class="max-w-3xl mx-auto py-10 px-4"  
+    <div class="max-w-7xl mx-auto py-10 px-4"  
          x-data="{ 
             loading: false, 
             departmentId: '{{ old('department_id', $address->city?->department_id) }}', 
@@ -98,7 +98,7 @@ $breadcrumbs = [
                 </div>
                 <!-- BOTONERA DE ACCIÓN MANTENIENDO TU ESTRUCTURA ORIGINAL -->
                 <div class="flex flex-col-reverse sm:flex-row items-center justify-end gap-4 border-t border-slate-100 pt-5 mt-6">
-                    <a href="{{ route('partner.clinic.addresses.index') }}" 
+                    <a href="{{ route('partner.addresses.index') }}" 
                         class="w-full sm:w-auto text-center px-6 py-3.5 border border-slate-200 font-bold rounded-2xl text-slate-600 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition duration-150 text-xs uppercase tracking-wider">
                         Cancelar
                     </a>

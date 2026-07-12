@@ -20,6 +20,7 @@ return new class extends Migration
             $table->enum('gender', ['male', 'female', 'other'])->nullable();
             $table->text('bio')->nullable();
             $table->string('phone')->nullable();
+            $table->char('country_code', 2)->nullable()->index('idx_country_code');
             $table->string('experience_years')->nullable();            
             $table->json('languages')->nullable()->default('["es"]');
             $table->decimal('rating', 3, 2)->default(0);

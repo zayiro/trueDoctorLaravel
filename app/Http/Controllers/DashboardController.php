@@ -21,23 +21,17 @@ class DashboardController extends Controller
         $now = Carbon::now();
 
         $usersByRole = [];
-        // 💡 SOLUCIÓN: Definir valores por defecto para que siempre existan
         $popularSpecialties = []; 
         $popularCities = [];
 
         // 1. CONDICIONAL DE SEGURIDAD MULTI-PERFIL
         if ($user->role === 'admin') {
-            // Al ser administrador global, ve las métricas de todo el SaaS de golpe
             $owner = null;
             $ownerColumn = null;
 
-            // Obtiene las 10 especialidades más buscadas
             $popularSpecialties = SearchLog::topSpecialties(15);
-
-            // Obtiene las 5 ciudades más buscadas
             $popularCities = SearchLog::topCities(15);
 
-            // Conteo global de usuarios agrupados por rol para el Administrador
             $usersByRole = User::select('role', DB::raw('count(*) as total'))
                 ->groupBy('role')
                 ->pluck('total', 'role')
@@ -49,12 +43,10 @@ class DashboardController extends Controller
             $owner = $user->doctor;
             $ownerColumn = 'doctor_id';
         } else {
-            // El usuario tiene el rol de paciente (patient)
             $owner = $user->patient;
             $ownerColumn = 'patient_id';
         }
         
-        // Si no es admin y tampoco tiene un perfil creado, lo mandamos a completar sus datos
         if ($user->role !== 'admin' && !$owner) {
             return redirect()->route('profile.show')->with('error', 'Perfil no encontrado.');
         }
@@ -64,23 +56,20 @@ class DashboardController extends Controller
         // =========================================================================
         if ($user->role === 'patient') {
             
-            // Obtiene las próximas 5 citas pendientes o confirmadas del paciente
             $upcomingAppointments = Appointment::where('patient_id', $owner->id)
                 ->whereDate('date', '>=', $now->toDateString())
                 ->whereIn('status', ['confirmed', 'pending'])
-                ->with('doctor.user') // Carga la relación para obtener el nombre del médico
+                ->with('doctor.user')
                 ->orderBy('date', 'asc')
                 ->take(5)
                 ->get();
 
-            // Obtiene las últimas 5 citas completadas / asistidas históricas
             $pastAppointments = Appointment::where('patient_id', $owner->id)
                 ->whereIn('status', ['completed'])
                 ->orderBy('date', 'desc')
                 ->take(5)
                 ->get();
 
-            // Estructura los indicadores médicos extraídos del modelo Patient
             $healthMetrics = [
                 'bmi' => $owner->imc,
                 'bmi_status' => $owner->imc_status,
@@ -98,31 +87,41 @@ class DashboardController extends Controller
         // =========================================================================
         $appointmentsQuery = Appointment::query();
 
-        // Si no es administrador global, filtra estrictamente por su Tenant / Dueño
         if ($user->role !== 'admin') {
             $appointmentsQuery->where($ownerColumn, $owner->id);
         }
 
-        // Volumen de citas para el día de hoy
-        $appointmentsToday = (clone $appointmentsQuery)
+        // ========== CONSULTAS DE HOY - SEPARADAS POR MODALIDAD ==========
+        $appointmentsTodayQuery = (clone $appointmentsQuery)
             ->whereDate('date', $now->toDateString())
-            ->whereNotIn('status', ['cancelled'])
-            ->count();
+            ->whereNotIn('status', ['cancelled']);
 
-        // Cantidad de citas próximas o pendientes de atención médica
+        $appointmentsToday = $appointmentsTodayQuery->count();
+
+        $appointmentsTodayByModality = (clone $appointmentsTodayQuery)
+            ->join('services', 'appointments.service_id', '=', 'services.id')
+            ->select('services.type', DB::raw('count(*) as total'))
+            ->groupBy('services.type')
+            ->pluck('total', 'type')
+            ->toArray();
+
+        $appointmentsTodayVirtual = $appointmentsTodayByModality['virtual'] ?? 0;
+        $appointmentsTodayPresencial = $appointmentsTodayByModality['presencial'] ?? 0;
+
+        // ========== CITAS PRÓXIMAS ==========
         $upcomingAppointmentsCount = (clone $appointmentsQuery)
             ->whereDate('date', '>=', $now->toDateString())
             ->whereIn('status', ['confirmed', 'pending'])
             ->count();
 
-        // Facturación / Ingresos brutos mensuales de la clínica o médico
+        // ========== FACTURACIÓN MENSUAL ==========
         $monthlyRevenue = (clone $appointmentsQuery)
             ->whereMonth('date', $now->month)
             ->whereYear('date', $now->year)
             ->whereIn('status', ['confirmed', 'completed'])
             ->sum('price');
 
-        // Cálculo porcentual de la tasa de ausentismo o cancelaciones globales
+        // ========== TASA DE CANCELACIÓN ==========
         $totalHistoricalAppointments = (clone $appointmentsQuery)->count();
         $totalCancelledAppointments = (clone $appointmentsQuery)->where('status', 'cancelled')->count();
         
@@ -130,7 +129,7 @@ class DashboardController extends Controller
             ? round(($totalCancelledAppointments / $totalHistoricalAppointments) * 100, 1) 
             : 0;
 
-        // Distribución avanzada por modalidades de servicio
+        // ========== DISTRIBUCIÓN POR MODALIDADES ==========
         $modalitiesQuery = Appointment::join('services', 'appointments.service_id', '=', 'services.id');
         if ($user->role !== 'admin') {
             $modalitiesQuery->where('appointments.' . $ownerColumn, $owner->id);
@@ -141,7 +140,7 @@ class DashboardController extends Controller
             ->pluck('total', 'type')
             ->toArray();
         
-        // Distribución física por sedes o consultorios principales
+        // ========== TOP UBICACIONES CLÍNICAS ==========
         $locationQuery = Appointment::join('addresses', 'appointments.address_id', '=', 'addresses.id');
         if ($user->role !== 'admin') {
             $locationQuery->where('appointments.' . $ownerColumn, $owner->id);
@@ -153,57 +152,73 @@ class DashboardController extends Controller
             ->take(3)
             ->get();
 
-        // Historial gráfico financiero consolidado de los últimos 5 meses
+        // ========== HISTORIAL MENSUAL SEPARADO POR VIRTUAL/PRESENCIAL ==========
         $historicalQuery = Appointment::whereIn('status', ['confirmed', 'completed']);
         if ($user->role !== 'admin') {
             $historicalQuery->where($ownerColumn, $owner->id);
         }
 
-        $monthlyHistorical = $historicalQuery->select(
-                DB::raw("DATE_FORMAT(date, '%Y-%m') as mes"),
-                DB::raw('sum(price) as total'),
+        $monthlyHistorical = $historicalQuery
+            ->join('services', 'appointments.service_id', '=', 'services.id')
+            ->select(
+                DB::raw("DATE_FORMAT(appointments.date, '%Y-%m') as mes"),
+                'services.type',
+                DB::raw('sum(appointments.price) as total'),
                 DB::raw('count(*) as conteo')
             )
-            ->groupBy('mes')
-            ->orderBy('mes', 'desc')
-            ->take(5)
-            ->get()
-            ->reverse();
+            ->groupBy('mes', 'services.type')
+            ->orderBy('mes', 'asc')
+            ->limit(10)
+            ->get();
 
-        // Formateamos los últimos 5 meses para el motor gráfico de Chart.js
+        // ========== PREPARAR DATOS PARA GRÁFICO ==========
         $chartLabels = [];
         $chartData = [];
-                            
-        // Mapeo en español para los meses
+        $chartDataVirtual = [];
+        $chartDataPresencial = [];
+
         $monthNames = [
             '01'=>'Ene', '02'=>'Feb', '03'=>'Mar', '04'=>'Abr', '05'=>'May', '06'=>'Jun',
             '07'=>'Jul', '08'=>'Ago', '09'=>'Sep', '10'=>'Oct', '11'=>'Nov', '12'=>'Dic'
         ];
 
+        // Agrupar datos por mes
+        $monthlyDataMap = [];
         foreach ($monthlyHistorical as $data) {
-            // Separa '2026-05' en año y mes
             $parts = explode('-', $data->mes);
             $label = isset($parts[1]) ? ($monthNames[$parts[1]] . ' ' . substr($parts[0], 2)) : $data->mes;
             
-            $chartLabels[] = $label;
-            $chartData[] = (float) $data->total;
+            if (!isset($monthlyDataMap[$label])) {
+                $monthlyDataMap[$label] = ['virtual' => 0, 'presencial' => 0];
+            }
+            
+            $monthlyDataMap[$label][$data->type] = (float) $data->total;
         }
 
-        // 📊 GRÁFICO DE DONA: Distribución financiera consolidada por sedes
+        // Llenar arrays para Chart.js
+        foreach ($monthlyDataMap as $label => $values) {
+            $chartLabels[] = $label;
+            $virtualTotal = $values['virtual'];
+            $presencialTotal = $values['presencial'];
+            $chartData[] = $virtualTotal + $presencialTotal; // Total combinado para barras
+            $chartDataVirtual[] = $virtualTotal;
+            $chartDataPresencial[] = $presencialTotal;
+        }
+
+        // ========== DISTRIBUCIÓN FINANCIERA POR SEDES ==========
         $locationLabels = [];
         $locationRevenueData = [];
 
         foreach ($topClinicalLocations as $location) {
-            // Acortamos el nombre de la sede de forma elegante si excede los 20 caracteres
             $locationLabels[] = Str::limit($location->name, 20, '...');
             $locationRevenueData[] = (float) $location->ingresos;
         }
                
         return view('admin.dashboard', compact(
-            'user', 'owner', 'appointmentsToday', 'upcomingAppointmentsCount', 
-            'monthlyRevenue', 'cancellationRate', 'modalities', 
+            'user', 'owner', 'appointmentsToday', 'appointmentsTodayVirtual', 'appointmentsTodayPresencial',
+            'upcomingAppointmentsCount', 'monthlyRevenue', 'cancellationRate', 'modalities', 
             'topClinicalLocations', 'monthlyHistorical', 'usersByRole',
-            'chartLabels', 'chartData', 'locationLabels',
+            'chartLabels', 'chartData', 'chartDataVirtual', 'chartDataPresencial', 'locationLabels',
             'locationRevenueData', 'popularSpecialties', 'popularCities'
         ));
     }

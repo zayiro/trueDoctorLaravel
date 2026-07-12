@@ -218,37 +218,43 @@
                         </div>
                     @endif
 
+                    @if ($hasIndividualPlan || $user->role !== 'patient')
                     <!-- CUADRÍCULA DE KPIs FINANCIEROS Y OPERATIVOS -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">                        
-                        @if ($hasIndividualPlan || $user->role !== 'patient')
-                        <div class="bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100 flex items-center justify-between gap-4">
-                            <div>
-                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Ingresos Mensuales</span>
-                                <h3 class="text-2xl font-black text-emerald-600">${{ number_format($monthlyRevenue, 2) }}</h3>
-                            </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">                        
+                        <div class="lg:col-span-1 bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100">
+                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Ingresos Mensuales</span>
+                            <h3 class="text-2xl font-black text-emerald-600 mt-2">${{ number_format($monthlyRevenue, 2) }}</h3>
                         </div>
 
-                        <div class="bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100 flex items-center justify-between gap-4">
-                            <div>
-                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Consultas de Hoy</span>
-                                <h3 class="text-2xl font-black text-slate-800">{{ $appointmentsToday }}</h3>
-                            </div>
+                        <!-- CONSULTAS DE HOY - SEPARADAS POR MODALIDAD (REEMPLAZADO) -->
+                        <div class="lg:col-span-1 bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100">
+                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Total Consultas Hoy</span>
+                            <h3 class="text-2xl font-black text-slate-800 mt-2">{{ $appointmentsToday }}</h3>
                         </div>
 
-                        <div class="bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100 flex items-center justify-between gap-4">
-                            <div>
-                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Próximos espacios</span>
-                                <h3 class="text-2xl font-black text-slate-800">{{ $upcomingAppointmentsCount }}</h3>
-                            </div>
+                        <div class="lg:col-span-1 bg-gradient-to-br from-blue-50 to-blue-100 border rounded-[2rem] p-6 shadow-lg border-blue-200">
+                            <span class="text-[10px] font-black text-blue-600 uppercase tracking-wider block">📱 Virtuales</span>
+                            <h3 class="text-2xl font-black text-blue-900 mt-2">{{ $appointmentsTodayVirtual }}</h3>
                         </div>
 
-                        <div class="bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100 flex items-center justify-between gap-4">
-                            <div>
-                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Absentismo Global</span>
-                                <h3 class="text-2xl font-black text-rose-600">{{ $cancellationRate }}%</h3>
-                            </div>
+                        <div class="lg:col-span-1 bg-gradient-to-br from-emerald-50 to-emerald-100 border rounded-[2rem] p-6 shadow-lg border-emerald-200">
+                            <span class="text-[10px] font-black text-emerald-600 uppercase tracking-wider block">🏥 Presenciales</span>
+                            <h3 class="text-2xl font-black text-emerald-900 mt-2">{{ $appointmentsTodayPresencial }}</h3>
                         </div>
 
+                        <div class="lg:col-span-1 bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100">
+                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Próximos espacios</span>
+                            <h3 class="text-2xl font-black text-slate-800 mt-2">{{ $upcomingAppointmentsCount }}</h3>
+                        </div>
+
+                        <div class="lg:col-span-1 bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100">
+                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Absentismo Global</span>
+                            <h3 class="text-2xl font-black text-rose-600 mt-2">{{ $cancellationRate }}%</h3>
+                        </div>
+                    </div>
+
+                    <!-- CUADRÍCULA DE GRÁFICOS -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <!-- 📊 SECCIÓN: HISTORIAL DE FACTURACIÓN CONSOLIDADA -->
                         <div class="bg-white p-6 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-50">
                             <div class="flex items-center gap-3 mb-6">
@@ -269,8 +275,29 @@
                             </div>
                         </div>
 
+                        <!-- 📈 SECCIÓN: HISTÓRICO DE CONSULTAS SEPARADAS POR VIRTUAL/PRESENCIAL (NUEVO) -->
+                        <div class="bg-white p-6 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-50">
+                            <div class="flex items-center gap-3 mb-6">
+                                <div class="bg-purple-500 p-2 rounded-xl shadow-lg shadow-purple-200">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6M5 12a7 7 0 1114 0 7 7 0 01-14 0z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-black text-slate-800 text-sm uppercase tracking-wide">Histórico de Consultas</h4>
+                                    <p class="text-xs text-slate-400">Evolución de consultas virtuales y presenciales (últimos 5 meses).</p>
+                                </div>
+                            </div>
+
+                            <!-- Contenedor responsivo para el Canvas del gráfico de línea -->
+                            <div class="relative w-full h-72">
+                                <canvas id="historicalChart"></canvas>
+                            </div>
+                        </div>
+
                         <!-- 🏢 SECCIÓN: DISTRIBUCIÓN FINANCIERA POR SEDES -->
-                        <div class="bg-white p-6 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-50 flex flex-col justify-between">
+                        <div class="bg-white p-6 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-50">
+                            @if(($isDoctor || $isClinic) && $validationStatus === 'approved')
                             <div class="flex items-center gap-3 mb-6">
                                 <div class="bg-emerald-500 p-2 rounded-xl shadow-lg shadow-emerald-200">
                                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -287,16 +314,15 @@
                             <div class="relative w-full h-64 flex items-center justify-center">
                                 <canvas id="locationDistributionChart"></canvas>
                             </div>
+                            @endif
                         </div>
-                        @else
-                        <div class="bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100 flex items-center justify-between gap-4">
-                            <div>
-                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Consultas de Hoy</span>
-                                <h3 class="text-2xl font-black text-slate-800">{{ $appointmentsToday }}</h3>
-                            </div>
-                        </div>
-                        @endif
                     </div>
+                    @else
+                    <div class="bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100">
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Consultas de Hoy</span>
+                        <h3 class="text-2xl font-black text-slate-800 mt-2">{{ $appointmentsToday }}</h3>
+                    </div>
+                    @endif
                 @endif
 
             @endif
@@ -308,9 +334,9 @@
     <script src="{{ asset('js/chart/chart.umd.js') }}"></script>  
     <script>        
         document.addEventListener("DOMContentLoaded", function() {
+            // ========== GRÁFICO DE BARRAS: RENDIMIENTO FINANCIERO ==========
             const ctx = document.getElementById('financialHistoryChart').getContext('2d');
             
-            // Inicialización del gráfico de barras estilizado en CSSIndigo
             new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -328,7 +354,7 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { display: false }, // Ocultamos la leyenda para diseño limpio
+                        legend: { display: false },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -353,55 +379,124 @@
                     }
                 }
             });
-        });
-    
-                // Inicialización de la Gráfica de Dona para las Sedes de Atención
-        const locationCtx = document.getElementById('locationDistributionChart').getContext('2d');
-        
-        new Chart(locationCtx, {
-            type: 'doughnut',
-            data: {
-                // Inyección segura de las variables en inglés procesadas en el controlador
-                labels: {!! json_encode($locationLabels) !!},
-                datasets: [{
-                    data: {!! json_encode($locationRevenueData) !!},
-                    // Paleta de colores corporativa premium (Índigo, Esmeralda, Ámbar)
-                    backgroundColor: [
-                        'rgba(79, 70, 229, 0.85)',  
-                        'rgba(16, 185, 129, 0.85)', 
-                        'rgba(245, 158, 11, 0.85)'  
-                    ],
-                    borderColor: [
-                        'rgb(79, 70, 229)',
-                        'rgb(16, 185, 129)',
-                        'rgb(245, 158, 11)'
-                    ],
-                    borderWidth: 2,
-                    cutout: '70%', // Estilizado de dona delgada moderna
-                    radius: '90%'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom', // Muestra los nombres de las sedes abajo
-                        labels: {
-                            boxWidth: 12,
-                            padding: 15,
-                            font: { size: 11, weight: 'bold' }
+
+            // ========== GRÁFICO DE LÍNEA: HISTÓRICO DE CONSULTAS ==========
+            const historicalCtx = document.getElementById('historicalChart').getContext('2d');
+            new Chart(historicalCtx, {
+                type: 'line',
+                data: {
+                    labels: {!! json_encode($chartLabels) !!},
+                    datasets: [
+                        {
+                            label: 'Virtuales',
+                            data: {!! json_encode($chartDataVirtual) !!},
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#3b82f6',
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: 'Presenciales',
+                            data: {!! json_encode($chartDataPresencial) !!},
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#10b981',
+                            pointHoverRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            position: 'top',
+                            labels: {
+                                padding: 15,
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
                         }
                     },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return ' ' + context.label + ': $' + new Intl.NumberFormat('es-CO').format(context.raw);
+                    scales: {
+                        y: { 
+                            beginAtZero: true,
+                            grid: { borderDash: [5, 5], color: '#f1f5f9' },
+                            ticks: {
+                                stepSize: 1,
+                                font: { size: 10, weight: 'bold' }
+                            }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 11, weight: 'bold' } }
+                        }
+                    }
+                }
+            });
+
+            @if(($isDoctor || $isClinic) && $validationStatus === 'approved')
+            // ========== GRÁFICO DE DONA: DISTRIBUCIÓN POR SEDES ==========
+            const locationCtx = document.getElementById('locationDistributionChart').getContext('2d');
+            
+            new Chart(locationCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: {!! json_encode($locationLabels) !!},
+                    datasets: [{
+                        data: {!! json_encode($locationRevenueData) !!},
+                        backgroundColor: [
+                            'rgba(79, 70, 229, 0.85)',  
+                            'rgba(16, 185, 129, 0.85)', 
+                            'rgba(245, 158, 11, 0.85)'  
+                        ],
+                        borderColor: [
+                            'rgb(79, 70, 229)',
+                            'rgb(16, 185, 129)',
+                            'rgb(245, 158, 11)'
+                        ],
+                        borderWidth: 2,
+                        cutout: '70%',
+                        radius: '90%'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 15,
+                                font: { size: 11, weight: 'bold' }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ' ' + context.label + ': $' + new Intl.NumberFormat('es-CO').format(context.raw);
+                                }
                             }
                         }
                     }
                 }
-            }
+            });
+            @endif
         });
     </script>
 @endif

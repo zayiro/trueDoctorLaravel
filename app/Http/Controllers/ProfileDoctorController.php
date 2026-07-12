@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Plan;
 use App\Models\Specialty; 
 use Illuminate\Support\Facades\Auth;
+use App\Models\DoctorSetting;
 
 class ProfileDoctorController extends Controller
 {
@@ -21,10 +22,11 @@ class ProfileDoctorController extends Controller
         $doctor = auth()->user()->doctor;
         
         $doctor->load(['settings']);
-//dd($plans);
+
         $allSpecialties = Specialty::orderBy('name', 'asc')->get();
+        $user = Auth::user();
         
-        return view('partner.profile.edit', compact('doctor', 'plans', 'allSpecialties'));
+        return view('partner.profile.edit', compact('doctor', 'plans', 'allSpecialties', 'user'));
     }
 
     /**
@@ -41,16 +43,17 @@ class ProfileDoctorController extends Controller
 
         // 2. Reglas de validación estrictas
         $request->validate([
-            'identification'   => 'required|string|max:30|unique:doctors,identification,' . $doctor->id,
-            'medical_license'  => 'nullable|string|max:50',
-            'phone'            => 'nullable|string|max:20',
-            'experience_years' => 'nullable|integer|min:0|max:60',
-            'gender'           => 'required|in:male,female,other',
+            'identification'    => 'required|string|max:30|unique:doctors,identification,' . $doctor->id,
+            'medical_license'   => 'nullable|string|max:50',
+            'phone'             => 'nullable|string|max:20',
+            'country_code'      => 'nullable|string|alpha|size:2',
+            'experience_years'  => 'nullable|integer|min:0|max:60',
+            'gender'            => 'required|in:male,female,other',
             'languages'         => 'required|array|min:1', // Exige al menos un idioma
             'languages.*'       => 'string|in:es,en,pt,fr,de', // Valida que pertenezcan a la lista permitida
-            'bio'              => 'nullable|string|max:1000',
-            'specialties'      => 'required|array|min:1',
-            'specialties.*'    => 'integer|exists:specialties,id',
+            'bio'               => 'nullable|string|max:1000',
+            'specialties'       => 'required|array|min:1',
+            'specialties.*'     => 'integer|exists:specialties,id',
         ], [
             // Mensajes personalizados en español para una mejor experiencia de usuario
             'identification.required' => 'El documento de identidad es obligatorio.',
@@ -61,7 +64,7 @@ class ProfileDoctorController extends Controller
         ]);
 
         $cleanPhone = preg_replace('/[^0-9]/', '', trim($request->phone));
-        $fullPhone = $request->country_code ? $request->country_code . $cleanPhone : '+57' . $cleanPhone;
+        $fullPhone = $request->phone_code ? $request->phone_code . $cleanPhone : '+57' . $cleanPhone;
 
         // 3. Persistencia de datos de forma masiva
         // Nota: Laravel se encarga de convertir el array 'languages' en una cadena JSON de forma automática 
@@ -70,6 +73,7 @@ class ProfileDoctorController extends Controller
             'identification'   => $request->identification,
             'medical_license'  => $request->medical_license,
             'phone'            => $fullPhone,
+            'country_code'     => $request->country_code,
             'experience_years' => $request->experience_years,
             'gender'           => $request->gender,
             'languages'        => $request->languages, 

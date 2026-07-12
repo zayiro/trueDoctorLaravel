@@ -16,7 +16,7 @@ class Clinic extends Model
 {
     protected $fillable = [
         'slug', 'user_id', 'nit', 'reps_code',
-        'phone', 'bio', 'experience_years', 'languages', 'rating', 
+        'phone', 'country_code', 'bio', 'experience_years', 'languages', 'rating', 
         'reviews_count', 'validation_status',
         'identity_card_path', 'reps_code_card_path', 'active'
     ];
@@ -173,5 +173,18 @@ class Clinic extends Model
         return $this->morphMany(GalleryImage::class, 'galleryable')
             ->where('active', true)
             ->orderBy('order');
+    }
+
+    public function getCountryNameAttribute()
+    {
+        $countries = [
+            'co' => 'Colombia',
+            'mx' => 'México',
+            'ar' => 'Argentina',
+            'us' => 'Estados Unidos',
+            // ... más países
+        ];
+        
+        return $countries[strtolower($this->country_code)] ?? 'Desconocido';
     }
 }
