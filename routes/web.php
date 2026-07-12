@@ -383,6 +383,7 @@ Route::post('/availability/notify', [ContactController::class, 'storeAvailabilit
 Route::get('/terms', [ContactController::class, 'showTerms'])->name('terms.show');
 Route::get('/privacy', [ContactController::class, 'showPrivacy'])->name('privacy.show');
 Route::get('/support', [ContactController::class, 'showSupport'])->name('support.show');
+Route::get('/about', [ContactController::class, 'showAbout'])->name('about.show');
 
 Route::get('/register-options', function () {
     return view('auth.register-options');

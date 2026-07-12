@@ -239,4 +239,87 @@
             </div> <!-- Cierre del div de la tarjeta -->
         </div> <!-- Cierre del div .max-w-4xl -->
     </div> <!-- Cierre del div de espaciado general -->
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof gtag === 'function') {
+                const isVirtual = @json($appointment->service->type === 'virtual');
+                const price = @json($virtualPaymentRequired && $wompiData ? $wompiData['total'] : $appointment->price);
+                const appointmentId = @json($appointment->id);
+                
+                // 🔥 EVENTO: Cuando el usuario VE el preview (confirmación de datos)
+                gtag('event', 'add_shipping_info', {
+                    'currency': 'COP',
+                    'value': price,
+                    'appointment_type': isVirtual ? 'virtual' : 'presencial',
+                    'appointment_id': appointmentId
+                });
+            }
+
+            // 🛒 Botones de confirmación con GA4 tracking
+            const btnPayOnline = document.querySelector('form[action="{{ route('appointments.confirm', $appointment->id) ?? '' }}"] button[type="submit"]');
+            const btnPagarVirtual = document.querySelector('a[href*="wompi"]');
+            const btnConfirmPresencial = document.querySelector('form[action="{{ route('appointments.success', $appointment->id ?? '') ?? '' }}"] button[type="submit"]');
+
+            if (btnPayOnline) {
+                btnPayOnline.addEventListener('click', function() {
+                    if (typeof gtag === 'function') {
+                        gtag('event', 'purchase', {
+                            'transaction_id': @json($appointment->id),
+                            'value': @json($appointment->price),
+                            'currency': 'COP',
+                            'items': [{
+                                'item_id': @json($appointment->doctor_id),
+                                'item_name': @json($appointment->doctor->user->name),
+                                'item_category': 'appointment_online'
+                            }],
+                            'appointment_date': @json($appointment->date),
+                            'appointment_time': @json($appointment->start_time),
+                            'payment_method': 'online'
+                        });
+                    }
+                });
+            }
+
+            if (btnPagarVirtual) {
+                btnPagarVirtual.addEventListener('click', function() {
+                    if (typeof gtag === 'function') {
+                        gtag('event', 'purchase', {
+                            'transaction_id': @json($appointment->id),
+                            'value': @json($wompiData['total'] ?? $appointment->price),
+                            'currency': 'COP',
+                            'items': [{
+                                'item_id': @json($appointment->doctor_id),
+                                'item_name': @json($appointment->doctor->user->name),
+                                'item_category': 'appointment_virtual'
+                            }],
+                            'appointment_date': @json($appointment->date),
+                            'appointment_time': @json($appointment->start_time),
+                            'payment_method': 'wompi'
+                        });
+                    }
+                });
+            }
+
+            if (btnConfirmPresencial) {
+                btnConfirmPresencial.addEventListener('click', function() {
+                    if (typeof gtag === 'function') {
+                        gtag('event', 'purchase', {
+                            'transaction_id': @json($appointment->id),
+                            'value': @json($appointment->price),
+                            'currency': 'COP',
+                            'items': [{
+                                'item_id': @json($appointment->doctor_id),
+                                'item_name': @json($appointment->doctor->user->name),
+                                'item_category': 'appointment_presencial'
+                            }],
+                            'appointment_date': @json($appointment->date),
+                            'appointment_time': @json($appointment->start_time),
+                            'payment_method': 'presencial'
+                        });
+                    }
+                });
+            }
+        });
+    </script>
 </x-guest-layout>

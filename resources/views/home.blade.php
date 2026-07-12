@@ -85,7 +85,7 @@
     </div>
 
     <!-- Sección de Promoción: Análisis Clínico con IA -->
-     <div class="relative bg-white pb-20 pt-10 overflow-hidden">
+    <div class="relative bg-white pb-20 pt-10 overflow-hidden">
         <section class="max-w-7xl mx-auto px-6">
             <!-- Cambiado a un fondo oscuro profundo con bordes blancos semi-transparentes para contraste perfecto sobre Slate -->
             <div class="relative bg-slate-950 rounded-3xl overflow-hidden shadow-2xl border border-white/10">
@@ -121,14 +121,27 @@
                     </div>
 
                     <!-- Columna Interactiva / CTA (Derecha) -->
-                    <div class="md:col-span-5 flex flex-col items-center justify-center">
+                    <div class="md:col-span-5 flex flex-col items-center justify-center" x-data="{ loading: false }">
                         <!-- Caja de acción con fondo sutilmente más claro que el fondo negro para dar relieve -->
                         <div class="w-full bg-slate-900 border border-white/5 p-6 md:p-8 rounded-2xl shadow-xl text-center space-y-6">
 
                             <!-- Enlace directo al Index explicativo -->
-                            <a href="{{ route('medical-analysis.index') }}" class="group w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:-translate-y-0.5 shadow-lg shadow-blue-500/20 flex items-center justify-center gap-3 text-base">
-                                Descubrir Análisis con IA 
-                                <i class="fa-solid fa-arrow-right text-sm transition-transform group-hover:translate-x-1"></i>
+                            <a href="{{ route('medical-analysis.index') }}" 
+                            @click="
+                                loading = true;
+                                if (typeof gtag === 'function') {
+                                    gtag('event', 'start_medical_analysis', {
+                                        'action': 'discover_analysis',
+                                        'source': 'landing_promotion',
+                                        'feature_type': 'lab_analysis'
+                                    });
+                                }
+                            "
+                            :class="loading ? 'opacity-70 cursor-not-allowed' : ''"
+                            class="group w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:-translate-y-0.5 shadow-lg shadow-blue-500/20 flex items-center justify-center gap-3 text-base">
+                                <span x-show="!loading">Descubrir Análisis con IA</span>
+                                <span x-show="loading">Cargando...</span>
+                                <i class="fa-solid fa-arrow-right text-sm transition-transform group-hover:translate-x-1" x-show="!loading"></i>
                             </a>
 
                             <p class="text-[11px] text-slate-500 leading-normal">
@@ -148,5 +161,15 @@
             <x-symptom-cards-home />
         </section>
     </div>
-
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof gtag === 'function') {
+                // 🧬 EVENTO: Ver landing de análisis con IA
+                gtag('event', 'view_medical_analysis_landing', {
+                    'page_title': 'Medical Analysis with AI',
+                    'feature_type': 'lab_analysis'
+                });
+            }
+        });
+</script>
 </x-guest-layout>

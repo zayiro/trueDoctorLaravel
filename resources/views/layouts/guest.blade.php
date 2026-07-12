@@ -17,7 +17,7 @@
 
         <!-- Canonical corregida para SEO Programático -->
         <link rel="canonical" href="{{ $meta_canonical ?? url()->current() }}">
-
+        
         <meta property="og:type" content="website">
         <meta property="og:site_name" content="OpenDoctor">
         <meta property="og:title" content="{{ $meta_title ?? 'OpenDoctor - Encuentra tu especialista y agenda tu cita' }}">
@@ -62,6 +62,18 @@
                 });
             }
         </script>
+
+        @if(env('GOOGLE_ANALYTICS_ID'))
+        <!-- Google tag (gtag.js) -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id={{ env('GOOGLE_ANALYTICS_ID') }}"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', '{{ env('GOOGLE_ANALYTICS_ID') }}');
+        </script>
+        @endif
     </head>
     <body class="font-sans antialiased bg-gray-100">
         @include('layouts.includes.app.navigation')

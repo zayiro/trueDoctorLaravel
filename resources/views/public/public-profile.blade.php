@@ -742,7 +742,7 @@
             </div> <!-- Cierre .grid -->
         </div> <!-- Cierre .max-w-7xl -->
 
-                <!-- ======================================================== -->
+        <!-- ======================================================== -->
         <!-- ARQUITECTURA REACTIVA DE PRODUCCIÓN: AGENDAMIENTO        -->
         <!-- ======================================================== -->
         <script>
@@ -916,6 +916,23 @@
 
                     async confirmBooking(time) {
                         document.getElementById('loading-overlay').style.display = 'flex';
+
+                        // 📊 TRACKING: Begin Checkout (usuario selecciona hora y confirma)
+                        if (typeof gtag === 'function') {
+                            gtag('event', 'begin_checkout', {
+                                'items': [{
+                                    'item_id': '{{ $partner->id }}',
+                                    'item_name': '{{ addslashes($partner->user->name) }}',
+                                    'item_category': '{{ $profileType }}',
+                                    'price': this.availableServices.find(s => s.id === this.selectedService)?.price || 0
+                                }],
+                                'value': this.availableServices.find(s => s.id === this.selectedService)?.price || 0,
+                                'currency': 'COP',
+                                'appointment_date': this.selectedDate,
+                                'appointment_time': time
+                            });
+                        }
+
                         try {
                             const response = await fetch("{{ route('appointments.step-two') }}", {
                                 method: "POST",
@@ -943,6 +960,22 @@
                 }));
             });
         </script>
+
+        @if(isset($partner))
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Verificación de seguridad para evitar errores si GA4 está bloqueado o en local
+                    if (typeof gtag === 'function') {
+                        gtag('event', 'view_medical_profile', {
+                            'doctor_id': '{{ $partner->id }}',
+                            'doctor_name': '{{ addslashes($partner->user->name) }}',
+                            'specialty': '{{ request('specialty') }}',
+                            'address_id': '{{ request('address_id') }}'
+                        });
+                    }
+                });
+            </script>
+        @endif
 
     </div> <!-- Cierre del div del fondo .bg-gray-100 -->
 </x-guest-layout>

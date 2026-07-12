@@ -15,6 +15,14 @@ return [
     'service_account_credentials_json' => storage_path('app/analytics/service-account-credentials.json'),
 
     /*
+     * Ruta a las credenciales de Google Analytics
+     */
+    /*'service_account_credentials_json' => env(
+        'ANALYTICS_CREDENTIALS_JSON',
+        storage_path('app/analytics/service-account-credentials.json')
+    ),*/
+
+    /*
      * The amount of minutes the Google API responses will be cached.
      * If you set this to zero, the responses won't be cached at all.
      */
@@ -30,4 +38,9 @@ return [
     'cache' => [
         'store' => 'file',
     ],
+
+    /*
+     * Cache TTL para métricas (en segundos)
+     */
+    'cache_ttl' => 3600,
 ];

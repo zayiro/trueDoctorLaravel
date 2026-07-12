@@ -2,7 +2,25 @@
 
 <!-- BARRA DE BÚSQUEDA HÍBRIDA UNIFICADA (INMUNE A LIVEWIRE) -->
 <form x-data="{ loading: false }" 
-      x-on:submit="loading = handleSearchSubmit($event)"
+      x-on:submit="
+        loading = handleSearchSubmit($event)
+        
+        if (typeof gtag === 'function') {
+            const specialtyVal = document.getElementById('specialty')?.value.trim() || '';
+            
+            // 🏙️ Capturamos el valor de la ciudad si existe
+            const cityInput = document.getElementById('city');
+            const cityVal = cityInput ? cityInput.value.trim() : '';
+
+            // Solo disparamos el evento si al menos escribió una especialidad o una ciudad
+            if (specialtyVal !== '' || cityVal !== '') {
+                gtag('event', 'search_specialist', { 
+                    'search_term': specialtyVal !== '' ? specialtyVal : 'No especificada',
+                    'search_city': cityVal !== '' ? cityVal : 'No especificada'
+                });
+            }
+        }
+      "
       action="{{ route('search') }}" 
       method="GET" 
       class="bg-white mt-8 p-4 rounded-[1.5rem] shadow-md flex flex-col md:flex-row items-stretch md:items-center gap-4 mb-8 border border-slate-100 w-full"

@@ -13,6 +13,7 @@
             <!-- Centro: Enlaces de navegación rápida -->
             <div class="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm font-medium text-slate-500">
                 <a href="{{ route('contact.show') }}" class="hover:text-indigo-600 transition-colors">Contáctenos</a>
+                <a href="{{ route('about.show') }}" class="hover:text-indigo-600 transition-colors">¿Quiénes somos?</a>
                 <a href="{{ route('terms.show') }}" class="hover:text-indigo-600 transition-colors">Términos de Servicio</a>
                 <a href="{{ route('privacy.show') }}" class="hover:text-indigo-600 transition-colors">Política de Privacidad</a>
                 <a href="{{ route('support.show') }}" class="hover:text-indigo-600 transition-colors">Soporte Técnico</a>

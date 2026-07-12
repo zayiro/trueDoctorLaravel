@@ -19,9 +19,23 @@
             <p class="text-lg text-slate-600 leading-relaxed max-w-xl">
                 ¿Tienes análisis clínicos, tomografías o informes confusos? Nuestro <span class="font-bold">Asistente Médico Digital</span> avanzado traduce el lenguaje médico complejo a explicaciones claras, precisas y accionables para ti.
             </p>
-            <div class="flex flex-col sm:flex-row gap-4 pt-2">
-                <a href="{{ route('medical-analysis.upload') }}" class="bg-slate-900 hover:bg-slate-800 text-white px-8 py-4 rounded-xl font-semibold transition text-center shadow-xl shadow-slate-200 flex items-center justify-center gap-3">
-                    Analizar mis documentos <i class="fa-solid fa-arrow-right text-sm"></i>
+            <div class="flex flex-col sm:flex-row gap-4 pt-2">                
+                <a href="{{ route('medical-analysis.upload') }}" 
+                    x-data="{ loading: false }"
+                    @click="
+                        loading = true;
+                        if (typeof gtag === 'function') {
+                            gtag('event', 'start_medical_analysis_upload', {
+                                'action': 'begin_upload',
+                                'source': 'hero_cta',
+                                'feature_type': 'lab_analysis'
+                            });
+                        }
+                    "
+                    :class="loading ? 'opacity-70 cursor-not-allowed' : ''"
+                    class="bg-slate-900 hover:bg-slate-800 text-white px-8 py-4 rounded-xl font-semibold transition text-center shadow-xl shadow-slate-200 flex items-center justify-center gap-3">
+                    <span x-show="!loading">Analizar mis documentos <i class="fa-solid fa-arrow-right text-sm"></i></span>
+                    <span x-show="loading" class="flex items-center gap-2">Cargando... <i class="fa-solid fa-spinner animate-spin"></i></span>
                 </a>
             </div>
             <!-- Trust badges -->
@@ -117,9 +131,23 @@
             <p class="text-blue-100 max-w-xl mx-auto text-base">
                 No esperes semanas por una cita para entender un papel. Obtén una guía inteligente previa de manera segura, rápida y gratuita.
             </p>
-            <div class="pt-4">
-                <a href="{{ route('medical-analysis.upload') }}" class="bg-white hover:bg-slate-50 text-blue-600 px-8 py-4 rounded-xl font-bold transition inline-flex items-center gap-2 shadow-md">
-                    Comenzar Valoración Gratuita <i class="fa-solid fa-chevron-right text-sm"></i>
+            <div class="pt-4">                
+                <a href="{{ route('medical-analysis.upload') }}"
+                    x-data="{ loading: false }"
+                    @click="
+                        loading = true;
+                        if (typeof gtag === 'function') {
+                            gtag('event', 'start_medical_analysis_upload', {
+                                'action': 'begin_upload',
+                                'source': 'final_cta',
+                                'feature_type': 'lab_analysis'
+                            });
+                        }
+                    "
+                    :class="loading ? 'opacity-70 cursor-not-allowed' : ''"
+                    class="bg-white hover:bg-slate-50 text-blue-600 px-8 py-4 rounded-xl font-bold transition inline-flex items-center gap-2 shadow-md">
+                    <span x-show="!loading">Comenzar Valoración IA <i class="fa-solid fa-chevron-right text-sm"></i></span>
+                    <span x-show="loading" class="flex items-center gap-2">Cargando... <i class="fa-solid fa-spinner animate-spin"></i></span>
                 </a>
             </div>
         </div>

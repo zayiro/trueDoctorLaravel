@@ -245,4 +245,86 @@
             </a>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof gtag === 'function') {
+                const appointmentId = @json($appointment->id);
+                const isPending = @json($isPending);
+                const isVirtual = @json($appointment->service->type === 'virtual');
+                const appointmentPrice = @json($appointment->price);
+                const doctorId = @json($appointment->doctor_id);
+                const doctorName = @json($appointment->doctor->user->name ?? '');
+                
+                // 🎉 EVENTO: Confirmación de cita exitosa (sin importar estado)
+                gtag('event', 'view_confirmation', {
+                    'transaction_id': appointmentId,
+                    'value': appointmentPrice,
+                    'currency': 'COP',
+                    'appointment_status': isPending ? 'pending_approval' : 'confirmed',
+                    'appointment_type': isVirtual ? 'virtual' : 'presencial',
+                    'items': [{
+                        'item_id': doctorId,
+                        'item_name': doctorName,
+                        'item_category': 'appointment'
+                    }],
+                    'appointment_date': @json($appointment->date),
+                    'appointment_time': @json($appointment->start_time)
+                });
+
+                // 🔔 Si está pendiente de aprobación, lo mandamos como evento adicional
+                @if($isPending)
+                gtag('event', 'appointment_pending_approval', {
+                    'transaction_id': appointmentId,
+                    'value': appointmentPrice,
+                    'currency': 'COP',
+                    'appointment_reference': @json($appointment->reference),
+                    'estimated_approval_time': '24_hours'
+                });
+                @endif
+
+                // 📱 Tracking del botón de WhatsApp
+                const whatsappBtn = document.querySelector('a[href*="wa.me"]');
+                if (whatsappBtn) {
+                    whatsappBtn.addEventListener('click', function() {
+                        if (typeof gtag === 'function') {
+                            gtag('event', 'send_whatsapp_notification', {
+                                'transaction_id': appointmentId,
+                                'notification_type': isPending ? 'approval_pending' : 'confirmation',
+                                'appointment_type': isVirtual ? 'virtual' : 'presencial'
+                            });
+                        }
+                    });
+                }
+
+                // 🏥 Tracking del botón "Ir a mis citas"
+                const myAppointmentsBtn = document.querySelector('a[href*="patient.appointments.index"]');
+                if (myAppointmentsBtn) {
+                    myAppointmentsBtn.addEventListener('click', function() {
+                        if (typeof gtag === 'function') {
+                            gtag('event', 'go_to_appointments_list', {
+                                'transaction_id': appointmentId
+                            });
+                        }
+                    });
+                }
+
+                @if(!$isPending && $appointment->meeting_link)
+                // 🎥 Tracking del botón "Acceder a la Sala" (solo si es virtual y confirmado)
+                const roomBtn = document.querySelector('a[href*="appointments.room"]');
+                if (roomBtn) {
+                    roomBtn.addEventListener('click', function() {
+                        if (typeof gtag === 'function') {
+                            gtag('event', 'enter_virtual_room', {
+                                'transaction_id': appointmentId,
+                                'appointment_type': 'virtual',
+                                'meeting_link': true
+                            });
+                        }
+                    });
+                }
+                @endif
+            }
+        });
+    </script>
 </x-guest-layout>

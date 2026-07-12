@@ -11,6 +11,7 @@
         "blade-ui-kit/blade-heroicons": "^2.7",
         "erusev/parsedown": "^1.8",
         "geoip2/geoip2": "~3.0",
+        "google/analytics-data": "^0.22.3",
         "illuminate/contracts": "*",
         "illuminate/support": "*",
         "laravel-lang/common": "^6.8",

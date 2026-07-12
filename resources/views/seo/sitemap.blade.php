@@ -8,7 +8,7 @@
         <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
-    </url>
+    </url>    
     <url>
         <loc>{{ url('/register-options') }}</loc>
         <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
@@ -39,6 +39,12 @@
         <changefreq>daily</changefreq>
         <priority>0.7</priority>
     </url>    
+    <url>
+        <loc>{{ url('/about') }}</loc>
+        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.7</priority>
+    </url>
     <url>
         <loc>{{ route('search') }}</loc>
         <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>

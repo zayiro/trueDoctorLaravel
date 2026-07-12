@@ -95,141 +95,229 @@
     </div>
 
     <script>
-    const dropzone = document.getElementById('dropzone');
-    const fileInput = document.getElementById('pdf_files');
-    const fileList = document.getElementById('fileList');
-    const dropzonePrompt = document.getElementById('dropzonePrompt');
-    const uploadForm = document.getElementById('uploadForm');
-    const submitBtn = document.getElementById('submitBtn');
-    const btnText = document.getElementById('btnText');
-    const btnSpinner = document.getElementById('btnSpinner');
-    const loadingStatus = document.getElementById('loadingStatus');
-    const progressBar = document.getElementById('progressBar');
-    const progressPercentage = document.getElementById('progressPercentage');
-    const statusMessage = document.getElementById('statusMessage');
-    const resultContainer = document.getElementById('resultContainer');
-    const analysisOutput = document.getElementById('analysisOutput');
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('pdf_files');
+        const fileList = document.getElementById('fileList');
+        const dropzonePrompt = document.getElementById('dropzonePrompt');
+        const uploadForm = document.getElementById('uploadForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const btnText = document.getElementById('btnText');
+        const btnSpinner = document.getElementById('btnSpinner');
+        const loadingStatus = document.getElementById('loadingStatus');
+        const progressBar = document.getElementById('progressBar');
+        const progressPercentage = document.getElementById('progressPercentage');
+        const statusMessage = document.getElementById('statusMessage');
+        const resultContainer = document.getElementById('resultContainer');
+        const analysisOutput = document.getElementById('analysisOutput');
 
-    // 1. Eventos del Input File y Arrastre de Archivos (Drag & Drop)
-    dropzone.addEventListener('click', () => fileInput.click());
+        // 1. Eventos del Input File y Arrastre de Archivos (Drag & Drop)
+        dropzone.addEventListener('click', () => fileInput.click());
 
-    dropzone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropzone.classList.add('border-blue-500', 'bg-blue-500/5');
-    });
-
-    dropzone.addEventListener('dragleave', () => {
-        dropzone.classList.remove('border-blue-500', 'bg-blue-500/5');
-    });
-
-    dropzone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropzone.classList.remove('border-blue-500', 'bg-blue-500/5');
-        if (e.dataTransfer.files.length) {
-            fileInput.files = e.dataTransfer.files;
-            updateFileList();
-        }
-    });
-
-    fileInput.addEventListener('change', updateFileList);
-
-    function updateFileList() {
-        const files = fileInput.files;
-        
-        if (files.length > 5) {
-            alert('Por seguridad y rendimiento, solo puedes analizar un máximo de 5 archivos PDF simultáneamente.');
-            fileInput.value = "";
-            fileList.classList.add('hidden');
-            dropzonePrompt.classList.remove('hidden');
-            return;
-        }
-
-        if (files.length === 0) return;
-
-        fileList.innerHTML = '<p class="font-semibold text-slate-300 mb-1">Archivos listos para procesar:</p>';
-        Array.from(files).forEach((file, index) => {
-            // Renderizado usando un icono Document-Text de Heroicons en formato SVG inline
-            fileList.innerHTML += `
-                <div class="flex items-center text-slate-400 gap-2">
-                    <svg class="w-4 h-4 text-red-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                    </svg>
-                    <span class="truncate">${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)</span>
-                </div>`;
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('border-blue-500', 'bg-blue-500/5');
         });
-        
-        fileList.classList.remove('hidden');
-        dropzonePrompt.classList.add('hidden');
-    }
 
-    // 2. Envío Asíncrono mediante AJAX (Fetch)
-    uploadForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('border-blue-500', 'bg-blue-500/5');
+        });
 
-        if (!fileInput.files.length) {
-            alert('Por favor, selecciona al menos un archivo PDF.');
-            return;
-        }
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('border-blue-500', 'bg-blue-500/5');
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                updateFileList();
+            }
+        });
 
-        // Bloquear UI y activar loaders
-        submitBtn.disabled = true;
-        submitBtn.classList.add('opacity-60', 'cursor-not-allowed', 'pointer-events-none');
+        fileInput.addEventListener('change', updateFileList);
 
-        btnSpinner.classList.remove('hidden');
-        btnText.innerText = 'Procesando Documentos...';
-        loadingStatus.classList.remove('hidden');
-        
-        // Simular progreso visual de carga inicial
-        updateProgress(35, '<i class="fa-solid fa-user-shield mr-1 text-white"></i> Anonimizando de forma segura...');
-
-        const formData = new FormData(uploadForm);
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-        try {
-            setTimeout(() => {
-                updateProgress(65, '<i class="fa-solid fa-brain mr-1 text-white"></i> Conectando con el Motor de Análisis Clínico...');
-            }, 1000);
-
-            const response = await fetch("{{ route('medical-analysis.process-documents') }}", {
-                method: "POST",
-                headers: {
-                    "X-CSRF-TOKEN": csrfToken
-                },
-                body: formData
-            });
-
-            if (!response.ok) throw new Error('Error en el servidor médico.');
-
-            const data = await response.json();
-
-            if (data.status === 'success') {
-                updateProgress(100, '<i class="fa-solid fa-check text-white mr-1"></i> Análisis Completado.');
-
-                // 2. Redirigimos automáticamente al paciente a su vista de resultados única tras 1.5 segundos
-                setTimeout(() => {
-                    window.location.href = data.redirect_url;
-                }, 1500);                            
-            } else {
-                alert('No se pudo completar el análisis del reporte.');
+        function updateFileList() {
+            const files = fileInput.files;
+            
+            if (files.length > 5) {
+                alert('Por seguridad y rendimiento, solo puedes analizar un máximo de 5 archivos PDF simultáneamente.');
+                fileInput.value = "";
+                fileList.classList.add('hidden');
+                dropzonePrompt.classList.remove('hidden');
+                return;
             }
 
-        } catch (error) {            
-            alert('Ocurrió un error al comunicarse con el servidor de análisis.');
-        } finally {
-            // Restaurar estado del botón
-            submitBtn.disabled = false;
-            submitBtn.classList.remove('opacity-60', 'cursor-not-allowed', 'pointer-events-none');
-            btnSpinner.classList.add('hidden');
-            btnText.innerText = 'Iniciar Procesamiento con IA';
-            setTimeout(() => loadingStatus.classList.add('hidden'), 2000);
+            if (files.length === 0) return;
+
+            fileList.innerHTML = '<p class="font-semibold text-slate-300 mb-1">Archivos listos para procesar:</p>';
+            Array.from(files).forEach((file, index) => {
+                // Renderizado usando un icono Document-Text de Heroicons en formato SVG inline
+                fileList.innerHTML += `
+                    <div class="flex items-center text-slate-400 gap-2">
+                        <svg class="w-4 h-4 text-red-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                        </svg>
+                        <span class="truncate">${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                    </div>`;
+            });
+            
+            fileList.classList.remove('hidden');
+            dropzonePrompt.classList.add('hidden');
         }
-    });
 
-    function updateProgress(value, message) {
-        progressBar.style.width = `${value}%`;
-        progressPercentage.innerText = `${value}%`;
-        if (message) statusMessage.innerHTML = message;
-    }
-</script>
+        // 2. Envío Asíncrono mediante AJAX (Fetch)
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
 
+            if (!fileInput.files.length) {
+                alert('Por favor, selecciona al menos un archivo PDF.');
+                return;
+            }
+
+            // Bloquear UI y activar loaders
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-60', 'cursor-not-allowed', 'pointer-events-none');
+
+            btnSpinner.classList.remove('hidden');
+            btnText.innerText = 'Procesando Documentos...';
+            loadingStatus.classList.remove('hidden');
+            
+            // Simular progreso visual de carga inicial
+            updateProgress(35, '<i class="fa-solid fa-user-shield mr-1 text-white"></i> Anonimizando de forma segura...');
+
+            const formData = new FormData(uploadForm);
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+            try {
+                setTimeout(() => {
+                    updateProgress(65, '<i class="fa-solid fa-brain mr-1 text-white"></i> Conectando con el Motor de Análisis Clínico...');
+                }, 1000);
+
+                const response = await fetch("{{ route('medical-analysis.process-documents') }}", {
+                    method: "POST",
+                    headers: {
+                        "X-CSRF-TOKEN": csrfToken
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Error en el servidor médico.');
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    updateProgress(100, '<i class="fa-solid fa-check text-white mr-1"></i> Análisis Completado.');
+
+                    // 2. Redirigimos automáticamente al paciente a su vista de resultados única tras 1.5 segundos
+                    setTimeout(() => {
+                        window.location.href = data.redirect_url;
+                    }, 1500);                            
+                } else {
+                    alert('No se pudo completar el análisis del reporte.');
+                }
+
+            } catch (error) {            
+                alert('Ocurrió un error al comunicarse con el servidor de análisis.');
+            } finally {
+                // Restaurar estado del botón
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-60', 'cursor-not-allowed', 'pointer-events-none');
+                btnSpinner.classList.add('hidden');
+                btnText.innerText = 'Iniciar Procesamiento con IA';
+                setTimeout(() => loadingStatus.classList.add('hidden'), 2000);
+            }
+        });
+
+        function updateProgress(value, message) {
+            progressBar.style.width = `${value}%`;
+            progressPercentage.innerText = `${value}%`;
+            if (message) statusMessage.innerHTML = message;
+        }
+    </script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof gtag === 'function') {
+                // 🧬 EVENTO: Ver página de upload de análisis
+                gtag('event', 'view_medical_analysis_upload', {
+                    'page_type': 'upload_form',
+                    'feature_type': 'lab_analysis'
+                });
+            }
+        });
+
+        // 🔍 Capturar eventos de archivo (drag & drop o selección)
+        const fileInput = document.getElementById('pdf_files');
+        fileInput.addEventListener('change', function() {
+            if (typeof gtag === 'function' && this.files.length > 0) {
+                gtag('event', 'add_lab_report', {
+                    'file_count': this.files.length,
+                    'file_names': Array.from(this.files).map(f => f.name).join(','),
+                    'total_size_mb': (Array.from(this.files).reduce((sum, f) => sum + f.size, 0) / 1024 / 1024).toFixed(2),
+                    'feature_type': 'lab_analysis'
+                });
+            }
+        });
+
+        // 🚀 Interceptar el submit del formulario
+        const uploadForm = document.getElementById('uploadForm');
+        const originalSubmit = uploadForm.onsubmit;
+
+        uploadForm.addEventListener('submit', async (e) => {
+            if (typeof gtag === 'function') {
+                const reasonType = document.querySelector('select[name="reason_type"]').value;
+                const reasonCustom = document.querySelector('textarea[name="reason_custom"]').value;
+                const customerEmail = document.querySelector('input[name="customer_email"]').value;
+                const fileCount = document.getElementById('pdf_files').files.length;
+
+                // 📋 EVENTO: Comenzar análisis (submit del formulario)
+                gtag('event', 'begin_lab_analysis', {
+                    'file_count': fileCount,
+                    'reason_type': reasonType,
+                    'reason_custom': reasonCustom !== '' ? 'yes' : 'no',
+                    'email_provided': customerEmail !== '' ? 'yes' : 'no',
+                    'feature_type': 'lab_analysis'
+                });
+            }
+        });
+
+        // ✅ Interceptar respuesta exitosa
+        const submitBtn = document.getElementById('submitBtn');
+        const oldFetch = window.fetch;
+
+        window.fetch = function(...args) {
+            const fetchPromise = oldFetch.apply(this, args);
+            
+            if (args[0].includes('medical-analysis.process-documents')) {
+                fetchPromise
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success' && typeof gtag === 'function') {
+                            // 🎉 EVENTO: Análisis completado exitosamente
+                            gtag('event', 'complete_lab_analysis', {
+                                'status': 'success',
+                                'file_count': document.getElementById('pdf_files').files.length,
+                                'reason_type': document.querySelector('select[name="reason_type"]').value,
+                                'feature_type': 'lab_analysis'
+                            });
+                        } else if (data.status !== 'success' && typeof gtag === 'function') {
+                            // ❌ EVENTO: Error en análisis
+                            gtag('event', 'lab_analysis_error', {
+                                'error_type': 'processing_failed',
+                                'error_message': data.message || 'Unknown error',
+                                'feature_type': 'lab_analysis'
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        if (typeof gtag === 'function') {
+                            gtag('event', 'lab_analysis_error', {
+                                'error_type': 'network_error',
+                                'error_message': error.message,
+                                'feature_type': 'lab_analysis'
+                            });
+                        }
+                    });
+            }
+
+            return fetchPromise;
+        };
+    </script>
 </x-guest-layout>

@@ -59,4 +59,86 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof gtag === 'function') {
+                const paymentStatus = @json($paymentStatus);
+                const analysisId = @json($analysis->id ?? '');
+                const analysisToken = @json($analysis->access_token ?? '');
+
+                // 📊 EVENTO: Resultado de pago de análisis (independiente del estado)
+                gtag('event', 'lab_analysis_payment_processed', {
+                    'transaction_id': analysisId,
+                    'payment_status': paymentStatus,
+                    'payment_gateway': 'wompi',
+                    'analysis_token': analysisToken,
+                    'feature_type': 'lab_analysis'
+                });
+
+                // ✅ Si fue APPROVED → Análisis pagado exitosamente
+                @if($paymentStatus === 'APPROVED')
+                gtag('event', 'purchase', {
+                    'transaction_id': analysisId,
+                    'payment_status': 'approved',
+                    'payment_gateway': 'wompi',
+                    'items': [{
+                        'item_id': analysisId,
+                        'item_name': 'Lab Analysis Report',
+                        'item_category': 'lab_analysis_premium'
+                    }],
+                    'currency': 'COP',
+                    'feature_type': 'lab_analysis'
+                });
+
+                // 🎯 Trackear click en "Ver tu informe completo"
+                const viewReportBtn = document.querySelector('a[href*="medical-analysis.show"]');
+                if (viewReportBtn) {
+                    viewReportBtn.addEventListener('click', function() {
+                        if (typeof gtag === 'function') {
+                            gtag('event', 'view_lab_analysis_report', {
+                                'transaction_id': analysisId,
+                                'payment_status': 'approved',
+                                'feature_type': 'lab_analysis'
+                            });
+                        }
+                    });
+                }
+                @endif
+
+                // ⏳ Si está PENDING → Pago en verificación
+                @if($paymentStatus === 'PENDING')
+                gtag('event', 'lab_analysis_payment_pending', {
+                    'transaction_id': analysisId,
+                    'payment_gateway': 'wompi',
+                    'feature_type': 'lab_analysis'
+                });
+                @endif
+
+                // ❌ Si fue rechazado/fallido
+                @if($paymentStatus !== 'APPROVED' && $paymentStatus !== 'PENDING')
+                gtag('event', 'lab_analysis_payment_failed', {
+                    'transaction_id': analysisId,
+                    'payment_status': paymentStatus,
+                    'payment_gateway': 'wompi',
+                    'feature_type': 'lab_analysis'
+                });
+
+                // Trackear click en "Reintentar pago"
+                const retryBtn = document.querySelector('a[href*="medical-analysis/result"]');
+                if (retryBtn) {
+                    retryBtn.addEventListener('click', function() {
+                        if (typeof gtag === 'function') {
+                            gtag('event', 'lab_analysis_payment_retry', {
+                                'transaction_id': analysisId,
+                                'previous_status': paymentStatus,
+                                'feature_type': 'lab_analysis'
+                            });
+                        }
+                    });
+                }
+                @endif
+            }
+        });
+    </script>
 </x-guest-layout>

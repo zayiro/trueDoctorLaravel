@@ -34,6 +34,11 @@ class ContactController extends Controller
         return view('support');
     }
 
+    public function showAbout()
+    {
+        return view('about');
+    }
+
     public function submit(Request $request)
     {
         // 1. Validamos los datos reales que vienen de la vista

@@ -142,4 +142,100 @@
             @endif
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof gtag === 'function') {
+                const status = @json($status);
+                const appointmentId = @json($appointment->id);
+                const appointmentPrice = @json($appointment->price);
+                const appointmentCommission = @json($appointment->commission_amount ?? 0);
+                const totalPrice = appointmentPrice + appointmentCommission;
+                const doctorId = @json($appointment->doctor_id);
+                const doctorName = @json($appointment->doctor->user->name ?? '');
+                
+                // 🎯 EVENTO: Resultado de pago (independiente del estado)
+                gtag('event', 'payment_processed', {
+                    'transaction_id': appointmentId,
+                    'payment_status': status,
+                    'value': totalPrice,
+                    'currency': 'COP',
+                    'payment_gateway': 'wompi',
+                    'items': [{
+                        'item_id': doctorId,
+                        'item_name': doctorName,
+                        'item_category': 'appointment_virtual'
+                    }]
+                });
+
+                // ✅ Si fue APPROVED → Purchase completado
+                @if($status === 'approved')
+                gtag('event', 'purchase', {
+                    'transaction_id': appointmentId,
+                    'value': totalPrice,
+                    'currency': 'COP',
+                    'payment_method': 'wompi',
+                    'payment_status': 'approved',
+                    'items': [{
+                        'item_id': doctorId,
+                        'item_name': doctorName,
+                        'item_category': 'appointment_virtual'
+                    }],
+                    'appointment_date': @json($appointment->date),
+                    'appointment_time': @json($appointment->start_time)
+                });
+                @endif
+
+                // ❌ Si fue DECLINED → Fallo de pago
+                @if($status === 'declined')
+                gtag('event', 'payment_failed', {
+                    'transaction_id': appointmentId,
+                    'value': totalPrice,
+                    'currency': 'COP',
+                    'payment_gateway': 'wompi',
+                    'failure_reason': @json($transaction['status_message'] ?? 'Payment declined'),
+                    'appointment_id': appointmentId
+                });
+
+                // Trackear click en "Reintentar pago"
+                const retryBtn = document.querySelector('a[href*="appointments.preview"]');
+                if (retryBtn) {
+                    retryBtn.addEventListener('click', function() {
+                        if (typeof gtag === 'function') {
+                            gtag('event', 'payment_retry_clicked', {
+                                'transaction_id': appointmentId,
+                                'previous_status': 'declined'
+                            });
+                        }
+                    });
+                }
+                @endif
+
+                // ⏳ Si está PENDING → Revisión de pago
+                @if($status === 'pending')
+                gtag('event', 'payment_pending', {
+                    'transaction_id': appointmentId,
+                    'value': totalPrice,
+                    'currency': 'COP',
+                    'payment_gateway': 'wompi',
+                    'appointment_id': appointmentId
+                });
+                @endif
+
+                // 💬 Trackear click en "Hablar con soporte"
+                const supportBtn = document.querySelector('a[href*="wa.me"]');
+                if (supportBtn) {
+                    supportBtn.addEventListener('click', function() {
+                        if (typeof gtag === 'function') {
+                            gtag('event', 'contact_support', {
+                                'transaction_id': appointmentId,
+                                'payment_status': status,
+                                'support_channel': 'whatsapp'
+                            });
+                        }
+                    });
+                }
+            }
+        });
+    </script>
 </x-guest-layout>

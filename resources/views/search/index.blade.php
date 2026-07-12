@@ -348,18 +348,34 @@
                             
                             <!-- BOTÓN ADAPTATIVO: Enrutamiento quirúrgico Multi-Tenant -->
                             <a href="{{ $result['type'] === 'clinic' 
-                                            ? route('partner.clinic.public.decision', [
-                                                'slug'           => $result['slug'], 
-                                                'specialty_slug' => request('specialty'), 
-                                                'city'           => request('city')
-                                            ]) 
-                                            : route('partner.public.profile', [
-                                                'slug'       => $result['slug'], 
-                                                'clinic_id'  => null, 
-                                                'address_id' => $result['address_id'], 
-                                                'specialty'  => request('specialty')
-                                            ]) }}" 
-                                @click="redirecting = true"
+                                        ? route('partner.clinic.public.decision', [
+                                            'slug'           => $result['slug'], 
+                                            'specialty_slug' => request('specialty'), 
+                                            'city'           => request('city')
+                                        ]) 
+                                        : route('partner.public.profile', [
+                                            'slug'       => $result['slug'], 
+                                            'clinic_id'  => null, 
+                                            'address_id' => $result['address_id'], 
+                                            'specialty'  => request('specialty')
+                                        ]) }}"                                 
+                                @click="
+                                    redirecting = true;
+                                    if (typeof gtag === 'function') {
+                                        const isClinic = '{{ $result['type'] }}' === 'clinic';
+                                        if (isClinic) {
+                                            gtag('event', 'click_view_clinic_specialists', {
+                                                'clinic_name': '{{ addslashes($result['name'] ?? $result['title'] ?? 'Clínica sin nombre') }}',
+                                                'search_city': '{{ request('city', 'No especificada') }}'
+                                            });
+                                        } else {
+                                            gtag('event', 'click_schedule_appointment', {
+                                                'doctor_name': '{{ addslashes($result['name'] ?? $result['title'] ?? 'Médico sin nombre') }}',
+                                                'specialty': '{{ request('specialty', 'No especificada') }}'
+                                            });
+                                        }
+                                    }
+                                "
                                 :class="redirecting ? 'opacity-80 cursor-not-allowed bg-blue-700 pointer-events-none transform-none' : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.99] hover:-translate-y-0.5'"
                                 class="w-full sm:w-auto text-white font-black text-[11px] uppercase tracking-wider text-center py-3.5 px-6 rounded-xl shadow-md shadow-blue-500/10 transition-all transform flex items-center justify-center gap-2.5 min-h-[46px] select-none">
                                 
@@ -379,7 +395,6 @@
                                     {{ $result['type'] === 'clinic' ? 'Ver Especialistas' : 'Agendar Cita' }}
                                 </span>
                             </a>
-
                             <p class="text-[9px] text-center text-slate-400 font-bold uppercase tracking-wider">Reserva directa garantizada</p>
                         </div>
                     </div>
@@ -433,6 +448,30 @@
                 </p>
             </div>
             @endforelse
+            
+            @push('scripts')
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                if (typeof gtag === 'function' && {{ $results->count() }} > 0) {
+                    const items = [
+                        @foreach($results as $result)
+                        {
+                            item_id: '{{ $result['id'] }}',
+                            item_name: '{{ addslashes($result['name'] ?? $result['title'] ?? 'Sin nombre') }}',
+                            item_category: '{{ $result['type'] === 'clinic' ? 'clinic' : 'doctor' }}',
+                        },
+                        @endforeach
+                    ];
+
+                    gtag('event', 'view_item_list', {
+                        item_list_id: 'search_results',
+                        item_list_name: 'Search Results',
+                        items: items
+                    });
+                }
+            });
+            </script>
+            @endpush
         </div> <!-- Cierra el contenedor de las tarjetas (.space-y-6) -->
 
         <!-- ENLACES DE PAGINACIÓN ADAPTADOS -->
