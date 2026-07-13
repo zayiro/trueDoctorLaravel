@@ -66,6 +66,12 @@ return [
         'vision_model' => env('ANTHROPIC_VISION_MODEL', 'claude-sonnet-4-6'),
     ],
 
+    'deepseek' => [
+        'key' => env('DEEPSEEK_API_KEY'),
+        'vision_model' => env('DEEPSEEK_MODEL'),
+        'url' => env('DEEPSEEK_URL'),
+    ],
+
     'wompi' => [
         'public_key'       => env('WOMPI_PUBLIC_KEY'),
         'private_key'      => env('WOMPI_PRIVATE_KEY'),

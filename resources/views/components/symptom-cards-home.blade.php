@@ -37,7 +37,7 @@
         <!-- Grilla con las 2 Tarjetas Semánticas -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             @foreach($randomSymptoms as $symptom)
-                <article class="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between transition hover:shadow-md dark:bg-gray-800 dark:border-gray-700">
+                <article class="bg-teal-500 border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between transition hover:shadow-md dark:bg-gray-800 dark:border-gray-700">
                     <div>
                         <!-- Cabecera de la tarjeta -->
                         <div class="flex items-center justify-between gap-2 mb-4">

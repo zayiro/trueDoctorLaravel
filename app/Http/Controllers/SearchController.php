@@ -182,6 +182,7 @@ class SearchController extends Controller
             ->get();
 
         $showingSuggestions = false;
+        
         $targetCity = $request->city ? City::where('slug', $request->city)->first() : null;
         $targetSpecialty = $request->specialty ? Specialty::where('slug', $request->specialty)->first() : null;
         $expertName = 'especialistas';
@@ -198,8 +199,6 @@ class SearchController extends Controller
             ->orderBy('owner_rating', 'desc')
             ->limit(12)
             ->get();
-            
-            // [Tu diccionario gramatical de especialidades permanece intacto aquí]
         }
 
         // 2. PROCESAMIENTO HÍBRIDO CON RESPALDO MAESTRO DE DISPONIBILIDAD
@@ -239,7 +238,7 @@ class SearchController extends Controller
                     'badge_text'  => $specialistsCount > 0 ? "{$specialistsCount} Especialistas" : "Clínica", 
                     'user'        => $clinic->user,
                     'model'       => $clinic,
-                    'address_id'  => $address->id,
+                    'address_id'  => $request->city ? $address->id : null,
                     'subtitle'    => "{$address->name} • {$address->address}",                    
                     'next_turn'   => $backupTurn ? ($backupTurn->isToday() ? 'Hoy ' : '') . ucfirst($backupTurn->isoFormat('dddd D [de] MMMM — h:mm A')) : 'Sin turnos próximos disponibles'
                 ]);
@@ -278,7 +277,7 @@ class SearchController extends Controller
                     'name' => $langNames[$code] ?? strtoupper($code),
                     'flag' => $langFlags[$code] ?? 'un', // 'un' = bandera ONU como fallback
                 ], $decodedLang);
-                              
+                                              
                 $groupedResults->put($uniqueKey, [
                     'type'              => 'doctor',
                     'id'                => $doctor->id,
@@ -292,7 +291,7 @@ class SearchController extends Controller
                     'languages'         => $languages,
                     'countryName'       => $doctor->country_name,
                     'country_code'      => $doctor->country_code,
-                    'address_id'        => $address->id,
+                    'address_id'        => $request->city ? $address->id : null,
                     'subtitle'          => $address->type === 'virtual' ? 'Atención Online' : "{$address->name} • {$address->address}",                  
                     'next_turn'         => $backupTurn ? ($backupTurn->isToday() ? 'Hoy ' : '') . ucfirst($backupTurn->isoFormat('dddd D [de] MMMM — h:mm A')) : 'Sin turnos próximos disponibles'
                 ]);
@@ -487,7 +486,7 @@ class SearchController extends Controller
         }
     }
 
-    // ─── Métodos privados de soporte ────────────────────────────────────────────
+    // Métodos privados de soporte
 
     private function callAiTriage(string $queryStr, string $especialidades): array
     {
@@ -502,7 +501,7 @@ class SearchController extends Controller
     private function callOpenAi(string $queryStr, string $especialidades): array
     {
         $response = OpenAI::chat()->create([
-            'model'    => 'gpt-4o-mini',
+            'model'    => config('services.openai.vision_model'),
             'messages' => [
                 ['role' => 'system', 'content' => 'Eres un asistente médico experto de un SAAS de salud llamado opendoctor.online.'],
                 ['role' => 'user',   'content' => "Analiza este síntoma: '{$queryStr}'. Selecciona una especialidad de esta lista: {$especialidades}. Si ninguna encaja de forma directa, usa 'medicina-general'."],
@@ -523,10 +522,10 @@ class SearchController extends Controller
     private function callDeepSeek(string $queryStr, string $especialidades): array
     {
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . config('services.deepseek.api_key'),
+            'Authorization' => 'Bearer ' . config('services.deepseek.key'),
             'Content-Type'  => 'application/json',
-        ])->post('https://api.deepseek.com/chat/completions', [
-            'model'    => 'deepseek-chat',
+        ])->post(config('services.deepseek.url'), [
+            'model'    => config('services.deepseek.vision_model'),
             'messages' => [
                 ['role' => 'system', 'content' => 'Eres un asistente médico experto. Responde SOLO en JSON válido, sin bloques de código ni explicaciones.'],
                 ['role' => 'user',   'content' => "Analiza este síntoma: '{$queryStr}'. Devuelve un JSON con los campos: especialidad_correcta, especialidad_slug, urgencia (Alta|Media|Baja), consejo, seo_title, seo_description. Usa esta lista de especialidades: {$especialidades}."],

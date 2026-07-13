@@ -54,7 +54,7 @@
                 x-on:keydown.enter.prevent="selectHighlighted()"
                 placeholder="¿Qué especialidad buscas?" 
                 autocomplete="off" 
-                class="w-full border-0 focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 pl-11 pr-10 pl-10 text-sm shadow-inner transition-all">
+                class="w-full border-0 focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 pl-11 pr-10 text-sm shadow-inner transition-all">
             
             <!-- Heroicon: MagnifyingGlass -->
             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">

@@ -78,9 +78,9 @@
     <body class="font-sans antialiased bg-gray-100">
         @include('layouts.includes.app.navigation')
 
-        <div class="pt-5">
+        <main>
             {{ $slot }}
-        </div>        
+        </main>        
 
         @include('components.footer')
 

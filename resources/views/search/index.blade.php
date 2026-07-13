@@ -194,9 +194,9 @@
                         {{-- 🌐 IDIOMAS DEL ESPECIALISTA --}}
                         @if(!empty($result['languages'] ?? []))
                             <div class="flex items-center gap-1.5 flex-wrap mt-1.5">
-                                <span class="text-xs text-slate-400">Idiomas de atención</span>
+                                <span class="text-sm text-slate-400">Idiomas de atención</span>
                                 @foreach($result['languages'] as $lang)
-                                    <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500">                                        
+                                    <span class="inline-flex items-center gap-1 text-sm font-semibold text-slate-500">                                        
                                         {{ $lang['name'] }}
                                     </span>
                                     @if(!$loop->last)

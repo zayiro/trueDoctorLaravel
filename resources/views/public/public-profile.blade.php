@@ -209,7 +209,7 @@
 
                         <!-- Bloque Informativo Colapsable (Móviles / Desktop Abierto) -->
                         <div x-show="open" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 -translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-5 lg:!block">
-                            <div class="p-4 text-xs text-slate-600 bg-indigo-50/60 rounded-2xl text-center border border-indigo-100/30 leading-relaxed font-medium dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
+                            <div class="p-4 text-sm text-slate-600 bg-indigo-50/60 rounded-2xl text-center border border-indigo-100/30 leading-relaxed font-medium dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
                                 @if($profileType === 'clinic')
                                     Agende una cita presencial o virtual en minutos con nuestro personal de salud calificado en la sede que prefiera.
                                 @else
@@ -265,28 +265,6 @@
                                     Inicia sesión para enviar un mensaje
                                 </a>
                             @endauth
-
-                            {{-- 🌐 IDIOMAS DEL ESPECIALISTA --}}
-                            @if(!empty($languages ?? []))
-                                <h3 class="text-lg font-black text-slate-800">Idiomas de atención</h3>
-                                <div class="flex items-center gap-1.5 flex-wrap">
-                                    @foreach($languages as $lang)
-                                        <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500">
-                                            <img 
-                                                src="{{ asset('images/flags/' . strtoupper($lang['flag']) . '.svg') }}"
-                                                width="20"
-                                                height="14"
-                                                loading="lazy"
-                                                alt="{{ $lang['name'] }}"
-                                                class="rounded-sm shadow-xs object-cover">
-                                            {{ $lang['name'] }}
-                                        </span>
-                                        @if(!$loop->last)
-                                            <span class="text-slate-300 text-xs">·</span>
-                                        @endif
-                                    @endforeach
-                                </div>
-                            @endif
 
                             @if($partner->gallery->isNotEmpty())
                                 <div class="mt-8" 

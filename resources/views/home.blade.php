@@ -1,7 +1,7 @@
 <x-guest-layout>
     <!-- Sección: Buscador de especialidades medicas por ciudad (opcional) -->
-    <div class="relative bg-white pb-20 pt-16 lg:pt-32 overflow-hidden">
-        <div class="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
+    <div class="relative z-40 bg-white pb-20 pt-16 lg:pt-30">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
             <div class="text-center mb-12">
                 <h1 class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
                     Encuentra a tu <span class="text-blue-600">médico ideal</span>
@@ -26,7 +26,7 @@
     </div>
 
     <!-- Sección: buscador de sintomas de enfermedades -->
-    <div class="relative bg-white pb-10 pt-10 lg:pt-4 overflow-hidden">
+    <div class="relative z-30 bg-white pb-10 pt-8 lg:pt-4 overflow-hidden">
         <div class="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
             <div class="text-center mb-12">
                 <h1 class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
@@ -104,7 +104,7 @@
                         </h1>
                         <p class="text-slate-300 text-base md:text-lg leading-relaxed">                            
                             Leer examenes médicos en línea.<br>
-                            Interpreta tus exámenes médicos con Inteligencia Artificial.
+                            Interpreta tus exámenes médicos con <span class="font-medium">Inteligencia Artificial.</span>
                         </p>
                         <p class="text-slate-300 text-base md:text-lg leading-relaxed">                            
                             No esperes días para descifrar tus resultados clínicos. Nuestro <span class="font-bold">Asistente Médico Digital</span> analiza tus informes en PDF, elimina tus datos personales por seguridad y te explica todo en un lenguaje claro, cercano y 100% comprensible.
@@ -157,7 +157,7 @@
 
     <!-- Componente Automático de Enlazado de Síntomas para SEO -->
     <div class="relative bg-white pb-10 pt-10 lg:pt-4 overflow-hidden">
-        <section class="my-5 max-w-6xl mx-auto px-4">
+        <section class="my-5 max-w-7xl mx-auto px-4">
             <x-symptom-cards-home />
         </section>
     </div>
