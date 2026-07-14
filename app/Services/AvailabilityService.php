@@ -28,7 +28,7 @@ class AvailabilityService
     public function getNextAvailableTurnAnyAddress(array $doctorIds, ?int $clinicId = null): ?Carbon
     {
         if (empty($doctorIds)) {
-            Log::warning('AvailabilityService: doctorIds vacío');
+            //Log::warning('AvailabilityService: doctorIds vacío');
             return null;
         }
 
@@ -41,17 +41,17 @@ class AvailabilityService
                 ->toArray();
 
             if (empty($addressIds)) {
-                Log::warning('AvailabilityService: No hay sedes configuradas para estos doctores', [
+                /*Log::warning('AvailabilityService: No hay sedes configuradas para estos doctores', [
                     'doctors' => $doctorIds,
-                ]);
+                ]);*/
                 return null;
             }
 
-            Log::info('AvailabilityService: Buscando en múltiples sedes', [
+            /*Log::info('AvailabilityService: Buscando en múltiples sedes', [
                 'doctors' => $doctorIds,
                 'addressCount' => count($addressIds),
                 'addresses' => $addressIds,
-            ]);
+            ]);*/
 
             // 2️⃣ BUSCAR EN CADA SEDE Y COMPARAR RESULTADOS
             $earliestTurn = null;
@@ -73,25 +73,25 @@ class AvailabilityService
             }
 
             if ($earliestTurn) {
-                Log::info('AvailabilityService: ✅ TURNO MÁS PRÓXIMO ENCONTRADO', [
+                /*Log::info('AvailabilityService: ✅ TURNO MÁS PRÓXIMO ENCONTRADO', [
                     'dateTime' => $earliestTurn->format('Y-m-d H:i:s'),
                     'dayName' => $earliestTurn->format('l'),
-                ]);
+                ]);*/
             } else {
-                Log::warning('AvailabilityService: No hay turnos disponibles en ninguna sede', [
+                /*Log::warning('AvailabilityService: No hay turnos disponibles en ninguna sede', [
                     'doctors' => $doctorIds,
-                ]);
+                ]);*/
             }
 
             return $earliestTurn;
 
         } catch (\Exception $e) {
-            Log::error('AvailabilityService: Error en getNextAvailableTurnAnyAddress', [
+            /*Log::error('AvailabilityService: Error en getNextAvailableTurnAnyAddress', [
                 'doctor_ids' => $doctorIds,
                 'clinic_id' => $clinicId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-            ]);
+            ]);*/
 
             return null;
         }
@@ -104,7 +104,7 @@ class AvailabilityService
     public function getNextAvailableTurn(array $doctorIds, int $addressId, ?int $clinicId = null): ?Carbon
     {
         if (empty($doctorIds)) {
-            Log::warning('AvailabilityService: doctorIds vacío');
+            //Log::warning('AvailabilityService: doctorIds vacío');
             return null;
         }
 
@@ -115,7 +115,7 @@ class AvailabilityService
             $startSearchingFrom = $nowLocal->copy()->addHours((int)$minNoticeHours);
             $slotDurationMinutes = max(1, (int)$this->repository->getSlotDurationMinutes($addressId));
 
-            Log::info('AvailabilityService: Iniciando búsqueda en sede específica', [
+            /*Log::info('AvailabilityService: Iniciando búsqueda en sede específica', [
                 'doctors' => $doctorIds,
                 'address' => $addressId,
                 'clinic' => $clinicId,
@@ -123,7 +123,7 @@ class AvailabilityService
                 'nowLocal' => $nowLocal->format('Y-m-d H:i:s'),
                 'startSearching' => $startSearchingFrom->format('Y-m-d H:i:s'),
                 'slotDuration' => $slotDurationMinutes,
-            ]);
+            ]);*/
 
             // Validar festivos una sola vez
             $colombianHolidays = \App\Services\ColombiaHolidayService::getHolidays($nowLocal->year);
@@ -136,10 +136,10 @@ class AvailabilityService
 
                 // ✅ VALIDACIÓN 1: Saltar festivos
                 if (array_key_exists($dateStr, $colombianHolidays)) {
-                    Log::info("AvailabilityService: Saltando festivo", [
+                    /*Log::info("AvailabilityService: Saltando festivo", [
                         'date' => $dateStr,
                         'holiday' => $colombianHolidays[$dateStr]
-                    ]);
+                    ]);*/
                     continue;
                 }
 
@@ -147,18 +147,18 @@ class AvailabilityService
                 $schedules = $this->repository->getSchedulesForDay($addressId, $doctorIds, $dayOfWeek);
 
                 if ($schedules->isEmpty()) {
-                    Log::info("AvailabilityService: Sin horarios en address $addressId para el día", [
+                    /*Log::info("AvailabilityService: Sin horarios en address $addressId para el día", [
                         'date' => $dateStr,
                         'dayOfWeek' => $dayOfWeek
-                    ]);
+                    ]);*/
                     continue;
                 }
 
-                Log::info("AvailabilityService: Horarios encontrados", [
+                /*Log::info("AvailabilityService: Horarios encontrados", [
                     'date' => $dateStr,
                     'address' => $addressId,
                     'count' => $schedules->count(),
-                ]);
+                ]);*/
 
                 // 3. EXTRACCIÓN DE INDISPONIBILIDADES Y CITAS
                 $unavailabilities = $this->repository->getUnavailabilitiesForDate($doctorIds, $currentDate, $addressId);
@@ -219,12 +219,12 @@ class AvailabilityService
             return null;
 
         } catch (\Exception $e) {
-            Log::error('AvailabilityService: Error en getNextAvailableTurn', [
+            /*Log::error('AvailabilityService: Error en getNextAvailableTurn', [
                 'doctor_ids' => $doctorIds,
                 'address_id' => $addressId,
                 'clinic_id' => $clinicId,
                 'error' => $e->getMessage(),
-            ]);
+            ]);*/
 
             return null;
         }

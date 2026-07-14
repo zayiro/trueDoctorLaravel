@@ -236,16 +236,16 @@ class AvailabilityRepository
                 }
             }
 
-            Log::info('AvailabilityRepository: Caché invalidado', [
+            /*Log::info('AvailabilityRepository: Caché invalidado', [
                 'clinic_id' => $clinicId,
                 'doctor_ids' => $doctorIds,
                 'address_id' => $addressId
-            ]);
+            ]);*/
         } catch (\Exception $e) {
-            Log::error('AvailabilityRepository: Error al invalidar caché', [
+            /*Log::error('AvailabilityRepository: Error al invalidar caché', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
-            ]);
+            ]);*/
         }
     }
 
@@ -259,11 +259,11 @@ class AvailabilityRepository
     {
         try {
             Cache::tags(['availability'])->flush();
-            Log::warning('AvailabilityRepository: Caché completo de disponibilidad limpiado');
+            //Log::warning('AvailabilityRepository: Caché completo de disponibilidad limpiado');
         } catch (\Exception $e) {
-            Log::error('AvailabilityRepository: Error al limpiar caché completo', [
+            /*Log::error('AvailabilityRepository: Error al limpiar caché completo', [
                 'error' => $e->getMessage()
-            ]);
+            ]);*/
         }
     }
 

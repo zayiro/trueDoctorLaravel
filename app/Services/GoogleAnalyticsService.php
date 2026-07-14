@@ -38,10 +38,10 @@ class GoogleAnalyticsService
                 'credentials' => $this->getCredentials()
             ]);
         } catch (Exception $e) {
-            Log::error('Error inicializando Google Analytics Service', [
+            /*Log::error('Error inicializando Google Analytics Service', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
-            ]);
+            ]);*/
             throw $e;
         }
     }
@@ -87,11 +87,11 @@ class GoogleAnalyticsService
             return $metrics;
 
         } catch (Exception $e) {
-            Log::error('Error obteniendo métricas de eventos', [
+            /*Log::error('Error obteniendo métricas de eventos', [
                 'events' => $eventNames,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
-            ]);
+            ]);*/
 
             return [
                 'error' => $e->getMessage(),
@@ -177,10 +177,10 @@ class GoogleAnalyticsService
             return $metrics;
 
         } catch (Exception $e) {
-            Log::error('Error obteniendo métricas de página', [
+            /*Log::error('Error obteniendo métricas de página', [
                 'page' => $pagePath,
                 'error' => $e->getMessage()
-            ]);
+            ]);*/
 
             return [
                 'error' => $e->getMessage(),
@@ -206,6 +206,8 @@ class GoogleAnalyticsService
             $initialCount = $this->getEventCount($initialEvent, $startDate, $endDate);
             $finalCount = $this->getEventCount($finalEvent, $startDate, $endDate);
 
+            $initialCount = (int)($initialCount ?? 0);
+            $finalCount = (int)($finalCount ?? 0);
             $conversionRate = $initialCount > 0 ? round(($finalCount / $initialCount) * 100, 2) : 0;
 
             $result = [
@@ -220,11 +222,11 @@ class GoogleAnalyticsService
             return $result;
 
         } catch (Exception $e) {
-            Log::error('Error calculando conversión', [
+            /*Log::error('Error calculando conversión', [
                 'initial' => $initialEvent,
                 'final' => $finalEvent,
                 'error' => $e->getMessage()
-            ]);
+            ]);*/
 
             return [
                 'error' => $e->getMessage(),
@@ -332,10 +334,10 @@ class GoogleAnalyticsService
             return $metrics;
 
         } catch (Exception $e) {
-            Log::error('Error obteniendo métricas de línea de negocio', [
+            /*Log::error('Error obteniendo métricas de línea de negocio', [
                 'events' => $eventNames,
                 'error' => $e->getMessage()
-            ]);
+            ]);*/
 
             return [
                 'error' => $e->getMessage(),

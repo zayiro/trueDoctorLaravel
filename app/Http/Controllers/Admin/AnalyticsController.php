@@ -94,10 +94,10 @@ class AnalyticsController extends Controller
             ));
 
         } catch (\Exception $e) {
-            Log::error('Error en Analytics Dashboard', [
+            /*Log::error('Error en Analytics Dashboard', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
-            ]);
+            ]);*/
 
             return view('administrator.analytics.index')
                 ->with('error', 'Error cargando analytics: ' . $e->getMessage());
