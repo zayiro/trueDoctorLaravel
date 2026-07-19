@@ -42,6 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
             TenantMiddleware::class,
             BlockSqlInjection::class,
         ]);
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

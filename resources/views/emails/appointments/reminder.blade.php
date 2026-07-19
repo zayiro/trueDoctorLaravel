@@ -1,4 +1,3 @@
-{{-- resources/views/emails/appointments/reminder.blade.php --}}
 @component('mail::message')
 # ⏰ Recordatorio de tu cita médica
 
@@ -34,5 +33,5 @@ Ver detalles
 Si necesitas cancelar o reagendar, hazlo con anticipación.
 
 Gracias,
-**Equipo OpenDoctorOnline**
+**El Equipo de {{ config('app.name') }}**
 @endcomponent

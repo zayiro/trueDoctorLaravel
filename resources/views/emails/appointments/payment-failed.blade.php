@@ -1,4 +1,3 @@
-// resources/views/emails/appointments/payment-failed.blade.php
 @component('mail::message')
 # ⏳ Tu cita está reservada
 

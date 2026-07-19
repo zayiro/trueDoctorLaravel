@@ -117,9 +117,17 @@ class SearchController extends Controller
             'services', // 🔥 Crucial: Carga los servicios en memoria para Blade
             'doctor.user',
             'doctor.specialties',
+            // 🔥 SOLUCIÓN: Filtramos las otras sedes del doctor en el Eager Loading
+            'doctor.addresses' => function ($query) {
+                $query->where('status', true)->whereNull('deleted_at');
+            },
             'doctor.addresses.services', // 🔥 Trae todas las sedes del doctor en el mismo viaje
             'clinic.user',
             'clinic.doctors.specialties',
+            // 🔥 SOLUCIÓN: Hacemos lo mismo para las sedes de las clínicas por si acaso
+            'clinic.addresses' => function ($query) {
+                $query->where('status', true)->whereNull('deleted_at');
+            },
             'clinic.addresses.services' // 🔥 Trae todas las sedes de la clínica en el mismo viaje
         ])
         ->addSelect([
@@ -143,20 +151,24 @@ class SearchController extends Controller
                     ->limit(1);
             }
         ])
+        // 1. Filtros globales estrictos para la dirección (SIEMPRE SE DEBEN CUMPLIR)
         ->where('addresses.status', true)
         ->whereNull('addresses.deleted_at')
         
+        // 2. Filtro agrupado encapsulado en paréntesis para los propietarios
         ->where(function ($query) {
-            $query->whereHas('clinic', function ($q) {
-                $q->where('active', true)->where('validation_status', 'approved');
+            $query->where(function ($q1) {
+                $q1->whereHas('clinic', function ($q) {
+                    $q->where('active', true)->where('validation_status', 'approved');
+                });
             })
-            ->orWhere(function ($sub) {
-                $sub->whereHas('doctor', function ($q) {
+            ->orWhere(function ($q2) {
+                $q2->whereHas('doctor', function ($q) {
                     $q->where('active', true)->where('validation_status', 'approved');
                 });
             });
         });
-
+        
         // Filtro condicional por Especialidad Médica (Slug)
         $searchQuery->when($request->specialty, function ($query) use ($request) {
             $query->where(function ($sub) use ($request) {
@@ -181,6 +193,8 @@ class SearchController extends Controller
             ->orderBy('owner_rating', 'desc')                          
             ->get();
 
+        //dd($addresses);
+        
         $showingSuggestions = false;
         
         $targetCity = $request->city ? City::where('slug', $request->city)->first() : null;
@@ -203,7 +217,7 @@ class SearchController extends Controller
 
         // 2. PROCESAMIENTO HÍBRIDO CON RESPALDO MAESTRO DE DISPONIBILIDAD
         $groupedResults = collect();
-
+        
         foreach ($addresses as $address) {
             $isClinic = !is_null($address->clinic_id);
 

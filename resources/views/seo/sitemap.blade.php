@@ -71,6 +71,12 @@
         <changefreq>monthly</changefreq>
         <priority>0.4</priority>
     </url>
+    <url>
+        <loc>{{ url('/sintomas') }}</loc>
+        <lastmod>2026-05-21T00:00:00+00:00</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
 
     <!-- 3. PERFILES DINÁMICOS DE LOS DOCTORES -->
     @foreach($doctors as $doctor)

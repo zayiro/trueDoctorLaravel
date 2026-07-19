@@ -19,11 +19,19 @@ class IndexedSymptom extends Model
         'seo_description',
         'urgency_level',
         'ai_advice',
-        'search_count'
+        'search_count',
+        'clinical_description',
+        'common_causes',
+        'alarm_signs',
+        'risk_factors',
+        'self_care_advice',
+        'image_url'
     ];
 
     protected $casts = [
         'search_count' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     /**
