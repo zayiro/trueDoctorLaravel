@@ -23,7 +23,21 @@ class AnalyticsController extends Controller
             $period = Period::days(7);
 
             // === DATOS GENERALES (Spatie Analytics) ===
-            $generalStats = Analytics::fetchVisitorsAndPageViewsByDate($period);
+            $rawStats = Analytics::fetchVisitorsAndPageViewsByDate($period);
+
+            // ✅ AGRUPA POR FECHA PARA EVITAR DUPLICADOS
+            $generalStats = $rawStats
+                ->groupBy('date')
+                ->map(function($group) {
+                    return [
+                        'date' => $group->first()['date'],
+                        'screenPageViews' => $group->sum('screenPageViews'),
+                        'activeUsers' => $group->sum('activeUsers') ?? 0
+                    ];
+                })
+                ->sortBy('date')
+                ->values();
+
             $maxViews = $generalStats->max('screenPageViews') ?: 1;
             $mostVisited = Analytics::fetchMostVisitedPages($period, 5);
             $topReferrers = Analytics::fetchTopReferrers($period, 5);

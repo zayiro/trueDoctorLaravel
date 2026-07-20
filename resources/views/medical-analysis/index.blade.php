@@ -14,7 +14,7 @@
                 IA Generativa Médica de Vanguardia
             </div>
             <h1 class="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 leading-tight">
-                Entiende tus informes médicos en <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">segundos</span>
+                Interpreta tus exámenes médicos con Inteligencia Artificial en <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">segundos</span>
             </h1>
             <p class="text-lg text-slate-600 leading-relaxed max-w-xl">
                 ¿Tienes análisis clínicos, tomografías o informes confusos? Nuestro <span class="font-bold">Asistente Médico Digital</span> avanzado traduce el lenguaje médico complejo a explicaciones claras, precisas y accionables para ti.
@@ -34,8 +34,8 @@
                     "
                     :class="loading ? 'opacity-70 cursor-not-allowed' : ''"
                     class="bg-slate-900 hover:bg-slate-800 text-white px-8 py-4 rounded-xl font-semibold transition text-center shadow-xl shadow-slate-200 flex items-center justify-center gap-3">
-                    <span x-show="!loading">Analizar mis documentos <i class="fa-solid fa-arrow-right text-sm"></i></span>
-                    <span x-show="loading" class="flex items-center gap-2">Cargando... <i class="fa-solid fa-spinner animate-spin"></i></span>
+                    <span x-show="!loading">Analizar mis exámenes médicos <i class="fa-solid fa-arrow-right text-sm"></i></span>
+                    <span x-show="loading" class="flex items-center gap-2">Iniciando el proceso de analisis... <i class="fa-solid fa-spinner animate-spin"></i></span>
                 </a>
             </div>
             <!-- Trust badges -->
@@ -47,26 +47,37 @@
         <!-- Right side graphic placeholder -->
         <div class="relative hidden md:block">
             <div class="absolute inset-0 bg-gradient-to-tr from-blue-100 to-emerald-100 rounded-3xl transform rotate-3 scale-95 opacity-50 blur-lg"></div>
-            <div class="relative bg-white border border-slate-100 p-8 rounded-3xl shadow-xl space-y-6">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold">1</div>
-                    <div>
-                        <h4 class="font-bold text-slate-900 text-sm">Carga tus PDF clínicos</h4>
-                        <p class="text-xs text-slate-500">Historiales, laboratorios o recetas.</p>
-                    </div>
+            <div class="relative bg-white border border-slate-100 p-8 rounded-3xl shadow-xl flex gap-6">
+                
+                <!-- Imagen izquierda -->
+                <div class="flex-1">
+                    <img src="{{ asset('images/examenes-medicos-con-ia.jpg') }}" 
+                        alt="Análisis médico" 
+                        class="w-full h-auto rounded-lg">
                 </div>
-                <div class="flex items-center gap-4 border-t border-b border-slate-50 py-4">
-                    <div class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold">2</div>
-                    <div>
-                        <h4 class="font-bold text-slate-900 text-sm">Ocultación automática de datos</h4>
-                        <p class="text-xs text-slate-500">Borramos tu nombre y cédula,  al instante.</p>
+                
+                <!-- Pasos derecha -->
+                <div class="flex-1 space-y-6">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold">1</div>
+                        <div>
+                            <h4 class="font-bold text-slate-900 text-sm">Carga tus PDF clínicos</h4>
+                            <p class="text-xs text-slate-500">Historiales, laboratorios o recetas.</p>
+                        </div>
                     </div>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold">3</div>
-                    <div>
-                        <h4 class="font-bold text-slate-900 text-sm">Segunda Opinión por IA</h4>
-                        <p class="text-xs text-slate-500">Explicación humana y correlación de síntomas.</p>
+                    <div class="flex items-center gap-4 border-t border-b border-slate-50 py-4">
+                        <div class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold">2</div>
+                        <div>
+                            <h4 class="font-bold text-slate-900 text-sm">Ocultación automática de datos</h4>
+                            <p class="text-xs text-slate-500">Borramos tu nombre y cédula, al instante.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold">3</div>
+                        <div>
+                            <h4 class="font-bold text-slate-900 text-sm">Segunda Opinión por IA</h4>
+                            <p class="text-xs text-slate-500">Explicación humana y correlación de síntomas.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -77,7 +88,7 @@
     <section id="features" class="bg-white border-t border-b border-slate-100 py-20">
         <div class="max-w-7xl mx-auto px-6">
             <div class="text-center max-w-2xl mx-auto space-y-4 mb-16">
-                <h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">¿Por qué usar Inteligencia Artificial Sanitaria?</h2>
+                <h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">¿Por qué usar Inteligencia Artificial para entender tus exámenes clínicos?</h2>
                 <p class="text-slate-500">La IA no reemplaza a tu médico, empodera tu conocimiento para tomar mejores decisiones en tu próxima consulta.</p>
             </div>
 

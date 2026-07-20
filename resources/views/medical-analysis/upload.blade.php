@@ -44,8 +44,10 @@
                                 placeholder="ejemplo@correo.com" 
                                 class="w-full pl-10 p-3 bg-slate-900 border border-white/10 rounded-xl font-medium text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-500 shadow-sm">
                         </div>
-                        <p class="text-xs text-slate-400 font-medium">Te enviaremos el resultado digital a esta dirección</p>
+                        <p class="text-sm text-slate-400 font-medium">Te enviaremos el resultado digital a esta dirección</p>
                     </div>
+
+                    <div class="mt-2 text-gray-600 text-base md:col-span-2">Esta información permite mayor precisión en el informe generado por la IA</div>
 
                     <!-- Campo del Motivo -->
                     <div class="space-y-1.5">
@@ -62,7 +64,7 @@
                     <div class="space-y-1.5">
                         <label class="text-sm font-bold tracking-wider text-white">Detalles o síntomas adicionales (Opcional)</label>
                         <textarea name="reason_custom" rows="1" placeholder="Ej: Sufro de colesterol alto..." class="w-full p-3 bg-slate-900 border border-white/10 rounded-xl font-medium text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm placeholder:text-slate-500 resize-none"></textarea>
-                    </div>
+                    </div>                    
                 </div>
 
                 <!-- Botón de Envío -->

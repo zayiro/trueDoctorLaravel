@@ -1,6 +1,6 @@
 {!! '<' . '?xml version="1.0" encoding="UTF-8"?' . '>' !!}
 <!-- 🔒 CORREGIDO: Espacio de nombres oficial de sitemaps.org para evitar rechazos en Google -->
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
     
     <!-- 1. PÁGINAS ESTÁTICAS PRINCIPALES -->
     <url>
@@ -26,6 +26,12 @@
         <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
         <changefreq>daily</changefreq>
         <priority>0.9</priority>
+    </url>
+    <url>
+        <loc>{{ url('/medical-analysis/upload') }}</loc>
+        <lastmod>2026-05-21T00:00:00+00:00</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
     </url>
     <url>
         <loc>{{ url('/plans/show') }}</loc>
@@ -71,6 +77,7 @@
         <changefreq>monthly</changefreq>
         <priority>0.4</priority>
     </url>
+
     <url>
         <loc>{{ url('/sintomas') }}</loc>
         <lastmod>2026-05-21T00:00:00+00:00</lastmod>

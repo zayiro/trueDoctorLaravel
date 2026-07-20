@@ -34,6 +34,7 @@ class AdminController extends Controller
         Artisan::call('config:clear');
         Artisan::call('route:clear');
         Artisan::call('permission:cache-reset');
+        Artisan::call('optimize:clear');
         
         return response()->json([
             'status' => 'success',
