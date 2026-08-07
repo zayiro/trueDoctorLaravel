@@ -4,6 +4,7 @@ namespace App\Models; // Asegúrate de importar el modelo User para las notifica
 namespace App\Observers;
 
 use App\Models\User;
+use App\Models\PromoCode;
 use App\Mail\WelcomePatientMail;
 use App\Mail\WelcomeDoctorMail;
 use App\Mail\WelcomeClinicMail;
@@ -11,6 +12,8 @@ use App\Mail\WelcomeAdminMail;
 use App\Notifications\MailLimitExceededNotification;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
 use Throwable;
 
 class UserObserver
@@ -57,6 +60,19 @@ class UserObserver
                 case 'admin':
                     Mail::to($userEmail)->send(new WelcomeAdminMail($user));
                     break;
+            }
+
+            //solo para doctores y pacientes
+            if ($user->role == 'doctor' || $user->role == 'patient') {
+                PromoCode::create([
+                    'user_id'    => $user->id,
+                    'code'       => Str::upper(Str::random(7)), // Ej: EXF83KL
+                    'type'       => 'percent',
+                    'reward'     => 100.00, // 100% de descuento
+                    'max_uses'   => 1, // Solo lo puede usar una vez
+                    'expires_at' => null, //Carbon::now()->addDays(30), // Válido por 30 días
+                    'is_active'  => true,
+                ]);
             }
         } catch (Throwable $e) {
             // 1. Registramos el fallo técnico detallado en el log (storage/logs/laravel.log)

@@ -135,4 +135,16 @@ class User extends Authenticatable
             'id'                  // Clave primaria en la tabla 'doctors'
         );
     }
+
+    // Un usuario puede tener muchos códigos asignados a lo largo del tiempo
+    public function promoCodes()
+    {
+        return $this->hasMany(PromoCode::class);
+    }
+
+    // O si solo quieres acceder al código de bienvenida activo actual:
+    public function currentPromoCode()
+    {
+        return $this->hasOne(PromoCode::class)->where('is_active', true)->where('uses', 0);
+    }
 }

@@ -192,8 +192,6 @@ class SearchController extends Controller
         $addresses = $searchQuery->orderBy('owner_plan_price', 'desc') 
             ->orderBy('owner_rating', 'desc')                          
             ->get();
-
-        //dd($addresses);
         
         $showingSuggestions = false;
         
@@ -215,6 +213,9 @@ class SearchController extends Controller
             ->get();
         }
 
+        $hasPhysical = $addresses->contains('type', 'physical');
+        $hasVirtual = $addresses->contains('type', 'virtual');
+        
         // 2. PROCESAMIENTO HÍBRIDO CON RESPALDO MAESTRO DE DISPONIBILIDAD
         $groupedResults = collect();
         
@@ -332,7 +333,9 @@ class SearchController extends Controller
             'showingSuggestions' => $showingSuggestions,
             'targetCity'         => $targetCity,
             'targetSpecialty'    => $targetSpecialty,
-            'expertName'         => $expertName
+            'expertName'         => $expertName,
+            'hasPhysical'        => $hasPhysical,
+            'hasVirtual'         => $hasVirtual,
         ]);
     }
 
@@ -341,7 +344,7 @@ class SearchController extends Controller
      * ⚡ OPTIMIZADO: Eager Loading completo para evitar N+1 queries en renderizado.
      */
     public function search(Request $request)
-    {        
+    {                
         $request->validate([
             'specialty' => 'required',
         ], [

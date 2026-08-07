@@ -9,7 +9,7 @@ $breadcrumbs = [
         'href' => route('partner.addresses.index'),
     ],
     [
-        'name' => 'Registrar Sede',
+        'name' => 'Sedes fisicas (Consultorios)',
     ]
 ];
 @endphp
@@ -88,7 +88,7 @@ $breadcrumbs = [
                         class="w-full sm:w-auto text-center px-6 py-3.5 border border-slate-200 font-bold rounded-2xl text-slate-600 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition duration-150 text-xs uppercase tracking-wider">
                         Cancelar
                     </a>   
-                    
+                    @if ($canAddAddress)
                     <button type="submit" :disabled="loading"
                         class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 px-8 rounded-2xl shadow-md transition duration-150 tracking-wider uppercase text-xs flex items-center justify-center gap-2">
                         <!-- Spinner Animado -->
@@ -97,7 +97,8 @@ $breadcrumbs = [
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
                         <span x-text="loading ? 'Procesando...' : 'Registrar Sede'"></span>
-                    </button>                         
+                    </button>   
+                    @endif                      
                 </div>
             </form>
         </div>

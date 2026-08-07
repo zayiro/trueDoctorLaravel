@@ -276,15 +276,17 @@ class ServiceController extends Controller
             ->where('service_id', $service->id)
             ->where('user_id', $user->id)
             ->pluck('specialty_id')
-            ->toArray();
+            ->toArray(); 
 
+        // 🔥 CORRECCIÓN AQUÍ: Calificamos 'addresses.type' y 'addresses.id'
         $attachedAddressIds = $service->addresses()
-            ->where('type', 'physical')
-            ->pluck('id')
+            ->where('addresses.type', 'physical')
+            ->pluck('addresses.id')
             ->toArray();
-
+        
         return view('partner.services.edit', compact('service', 'addresses', 'specialties', 'attachedSpecialtyIds', 'attachedAddressIds'));
     }
+
     /**
      * Actualiza el servicio y sincroniza de forma masiva las tarifas, duraciones y especialidades.
      */

@@ -5,7 +5,7 @@ $breadcrumbs = [
         'href' => route('admin.dashboard'),
     ],
     [
-        'name' => 'Consultorios',
+        'name' => 'Sedes fisicas (Consultorios)',
     ]
 ];
 @endphp
@@ -48,18 +48,25 @@ $breadcrumbs = [
         </div>
     @else
         <!-- Control de Botón / Límite del Plan SaaS (Tu lógica original de producción para consultorio particular o clínica pura) -->
-        @if($owner->canAddMoreAddresses())
-            <div class="flex justify-between items-center mb-6">            
-                <a class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition flex items-center gap-2" href="{{ route('partner.addresses.create') }}">
-                    <i class="fa-regular fa-map-location"></i>
-                    Nueva sede
-                </a>        
-            </div>
+        @if ($canAddAddress)
+            @if($owner->canAddMoreAddresses())
+                <div class="flex justify-between items-center mb-6">            
+                    <a class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition flex items-center gap-2" href="{{ route('partner.addresses.create') }}">
+                        <i class="fa-regular fa-map-location"></i>
+                        Nueva sede
+                    </a>        
+                </div>
+            @else
+                <div class="text-sm text-amber-600 font-medium italic mb-4 p-4 bg-amber-50 rounded-xl border border-amber-100">
+                    Has alcanzado el límite de <strong>{{ $owner->plan->max_addresses ?? 2 }}</strong> sedes de tu plan {{ $owner->plan->name ?? 'Esencial' }}.
+                    <a href="{{ route('partner.profile.edit') }}" class="underline font-bold ml-1 hover:text-amber-800">Mejora tu plan aquí</a>.
+                </div>
+            @endif
         @else
-            <div class="text-sm text-amber-600 font-medium italic mb-4 p-4 bg-amber-50 rounded-xl border border-amber-100">
-                Has alcanzado el límite de <strong>{{ $owner->plan->max_addresses ?? 2 }}</strong> sedes de tu plan {{ $owner->plan->name ?? 'Básico' }}.
-                <a href="{{ route('partner.profile.edit') }}" class="underline font-bold ml-1 hover:text-amber-800">Mejora tu plan aquí</a>.
-            </div>
+        <div class="text-sm text-amber-600 font-medium italic mb-4 p-4 bg-amber-50 rounded-xl border border-amber-100">
+            Actualiza tu plan para poder crear sedes fisicas (Consultorios)
+            <a href="{{ route('partner.profile.edit') }}" class="underline font-bold ml-1 hover:text-amber-800">Mejora tu plan aquí</a>.
+        </div>
         @endif
 
         <!-- Indicador Estadístico de Uso (Solo visible en entornos comerciales propios con planes asignados) -->

@@ -35,7 +35,7 @@ $breadcrumbs = [
                             @php 
                                 $currentDuration = old('duration', $service->addresses->first()?->pivot->duration);
                             @endphp
-                            @foreach([15, 20, 30, 45, 60] as $t)
+                            @foreach([15, 20, 30] as $t)
                                 <option value="{{ $t }}" {{ $currentDuration == $t ? 'selected' : '' }}>{{ $t }} min</option>
                             @endforeach
                         </select>
@@ -72,7 +72,7 @@ $breadcrumbs = [
                     @error('specialties') <p class="mt-2 text-xs text-red-600 font-bold">{{ $message }}</p> @enderror
                 </div>
                 <!-- Input exclusivo para Precio Virtual en Edición -->
-                <div x-show="type === 'virtual'" class="p-6 bg-purple-50 rounded-3xl border border-purple-100 mt-6">
+                <div  class="p-6 bg-purple-50 rounded-3xl border border-purple-100 mt-6">
                     <label class="block text-sm font-bold text-purple-900 mb-2">Valor del Servicio Virtual ($)</label>
                     <input type="number" name="price_virtual" step="0.01" min="0" 
                         value="{{ old('price_virtual', $service->addresses->firstWhere('type', 'virtual')?->pivot->price) }}"

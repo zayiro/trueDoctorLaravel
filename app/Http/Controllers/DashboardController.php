@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Models\User;
 use App\Models\Doctor;
 use App\Models\SearchLog;
+use App\Models\PromoCode;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,7 +17,7 @@ use Illuminate\Support\Str;
 class DashboardController extends Controller
 {
     public function index()
-    {        
+    {                
         $user = Auth::user()->load('doctorSettings');        
         $now = Carbon::now();
 
@@ -49,6 +50,27 @@ class DashboardController extends Controller
         
         if ($user->role !== 'admin' && !$owner) {
             return redirect()->route('profile.show')->with('error', 'Perfil no encontrado.');
+        }
+
+        $promoCode = null;
+        
+        if ($user->role === 'doctor' || $user->role === 'patient') {
+            // Busca el código si es GLOBAL o si pertenece al USUARIO LOGUEADO
+            $promoCode = PromoCode::where('user_id', $user->id)->first();            
+            if(!$promoCode) {
+                $promoCode = Str::upper(Str::random(7));
+
+                // Si no lo tiene, lo crea y lo retorna automáticamente
+                PromoCode::create([
+                    'user_id'    => $user->id,
+                    'code'       => $promoCode, // Ej: DA8F3KL
+                    'type'       => 'percent',
+                    'reward'     => 100.00, // 100% de descuento de bienvenida
+                    'max_uses'   => 1,     // Un solo uso permitido
+                    'expires_at' => null,  // Nunca expira (nulable)
+                    'is_active'  => true,
+                ]);
+            }
         }
 
         // =========================================================================
@@ -219,7 +241,7 @@ class DashboardController extends Controller
             'upcomingAppointmentsCount', 'monthlyRevenue', 'cancellationRate', 'modalities', 
             'topClinicalLocations', 'monthlyHistorical', 'usersByRole',
             'chartLabels', 'chartData', 'chartDataVirtual', 'chartDataPresencial', 'locationLabels',
-            'locationRevenueData', 'popularSpecialties', 'popularCities'
+            'locationRevenueData', 'popularSpecialties', 'popularCities', 'promoCode'
         ));
     }
 }

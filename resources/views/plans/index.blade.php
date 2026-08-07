@@ -50,27 +50,27 @@
                                         </div>
                                     </div>
 
-                                    <ul class="space-y-4 mb-8 flex-1">
+                                    <ul class="space-y-4 mb-8 flex-1">                                                                                
                                         <li class="flex items-center gap-3 text-gray-700">
                                             <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                            <span>Doctores <strong>{{ $plan->max_doctors }}</strong></span>
+                                            <span><strong>Sede virtual incluida</strong> (Citas virtuales por Zoom con pago en línea. Aplica comisión por consulta)</span>
+                                        </li> 
+                                        <li class="flex items-center gap-3 text-gray-700">
+                                            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            <span>Hasta <strong>{{ $plan->max_services }}</strong> servicios médicos configurables</span>
+                                        </li> 
+                                        @if ($plan->max_addresses)
+                                        <li class="flex items-center gap-3 text-gray-700">
+                                            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            <span>Permite crear <strong>{{ $plan->max_addresses }}</strong> {{ $plan->max_addresses > 1 ? " sedes físicas" : "sede física" }}</span>
                                         </li>
+                                        @endif                                        
+                                        @if ($plan->can_see_whatsapp_contact_button)
                                         <li class="flex items-center gap-3 text-gray-700">
                                             <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                            <span>Acceso a <strong>{{ $plan->max_addresses }}</strong> {{ $plan->max_addresses > 1 ? "sedes físicas" : "sede física" }}</span>
+                                            <span>Botón de chat directo en tu perfil web para recibir mensajes de pacientes potenciales.</span>
                                         </li>
-                                        <li class="flex items-center gap-3 text-gray-700">
-                                            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                            <span><strong>Sede virtual incluida</strong> (Citas por zoom. Aplica comisión, pago exclusivo en línea)</span>
-                                        </li>  
-                                        <li class="flex items-center gap-3 text-gray-700">
-                                            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                            <span>Hasta <strong>{{ $plan->max_services }}</strong> servicios globales</span>
-                                        </li>
-                                        <li class="flex items-center gap-3 text-gray-700">
-                                            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                            <span>Chat directo con el paciente</span>
-                                        </li>
+                                        @endif
                                         @if ($plan->ai_scribe_enabled)
                                         <li class="flex items-center gap-3 text-gray-700">
                                             <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -83,40 +83,47 @@
                                         </li>                                                         
                                         <li class="flex items-center gap-3 text-gray-700">
                                             <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                            <span>Citas anuales: {{ $plan->max_appointments_per_year < "9999" ? $plan->max_appointments_per_year : 'Ilimitadas' }} </span>
+                                            <span> 
+                                            @if ($plan->max_appointments_per_year < "9999")
+                                                Capacidad para gestionar hasta <strong>{{ $plan->max_appointments_per_year }}</strong> citas anuales
+                                            @else
+                                                Citas anuales ilimitadas
+                                            @endif
+                                            </span>
                                         </li>  
                                         <li class="flex items-center gap-3 text-gray-700">
                                             <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                            <span>Notificaciones por {{ $plan->plan === 'free' ? 'Email': 'Email y WhatsApp' }}</span>
+                                            <span>Notificaciones por Email</span>
                                         </li>                                                   
-                                        @if($plan->plan !== 'free')
-                                            <li class="flex items-center gap-3 text-gray-700">
-                                                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                                <span>Analítica</span>
-                                            </li>
-                                            @if ($plan->plan === 'gold' || $plan->plan === 'clinic_gold')
-                                            <li class="flex items-center gap-3 text-gray-700">
-                                                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                                <span>Rendimiento financiero (KPI)</span>
-                                            </li>
-                                            <li class="flex items-center gap-3 text-gray-700">
-                                                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                                <span>Ingresos por consultorio (KPI)</span>
-                                            </li>
-                                            @endif
-                                        @endif
+                                        <li class="flex items-center gap-3 text-gray-700">
+                                            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            <span>Analítica</span>
+                                        </li>                                      
+                                        <li class="flex items-center gap-3 text-gray-700">
+                                            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            <span>Rendimiento financiero (KPI)</span>
+                                        </li>
+                                        <li class="flex items-center gap-3 text-gray-700">
+                                            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            <span>Ingresos por consultorio (KPI)</span>
+                                        </li>
                                         <li class="flex items-center gap-3 text-gray-700">
                                             <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                             <span>Soporte</span>
                                         </li>                        
                                     </ul>
-
+                                    @if ($plan->id != 1)
                                     <form action="{{ route('plans.subscribe', $plan) }}" method="POST">
                                         @csrf
-                                        <button type="submit" class="w-full py-4 rounded-2xl font-black transition {{ $plan->plan === 'premium' ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg' : 'bg-gray-100 text-gray-800 hover:bg-gray-200' }}">
+                                        <button type="submit" class="w-full py-4 rounded-2xl text-white bg-indigo-600 hover:bg-indigo-800">
                                             Seleccionar {{ $plan->name }}
                                         </button>
                                     </form>
+                                    @else
+                                    <button type="submit" class="w-full py-4 rounded-2xl text-gray bg-gray-200">
+                                        Plan predeterminado al crear tu cuenta
+                                    </button>
+                                    @endif
                                 </div>
                             @endforeach
                         </div>
@@ -163,7 +170,7 @@
                                             <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                             <span><strong>Sede virtual incluida</strong> (Citas por zoom. Aplica comisión, pago exclusivo en línea)</span>
                                         </li> 
-                                        @if($plan->plan !== 'free')
+                                        @if($plan->plan !== 'esencial')
                                             <li class="flex items-center gap-3 text-gray-700">
                                                 <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                                 <span>Analítica</span>

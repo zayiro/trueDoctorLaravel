@@ -102,7 +102,7 @@ $breadcrumbs = [
                             {{ $groupCount }} {{ Str::plural('CITA', $groupCount) }}
                         </span>
                     </div>
-                    <div class="bg-white shadow-xl rounded-b-3xl overflow-hidden border-x border-b border-gray-100">
+                    <div class="bg-white shadow-xl rounded-b-3xl border-x border-b border-gray-100">
                         <!-- Tabla para Pantallas de Escritorio (Desktop) -->
                         <div class="hidden md:block overflow-x-auto">
                             <table class="w-full text-left border-collapse">

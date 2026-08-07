@@ -21,6 +21,71 @@
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">    
+    @if($promoCode)
+    <div class="m-3 mb-5">
+        <div class="bg-slate-900 border border-white/10 rounded-2xl p-6 shadow-xl"
+            x-data="{ 
+                code: '{{ $promoCode?->code ?? 'SIN-CODIGO' }}', 
+                copied: false,
+                copyToClipboard() {
+                    navigator.clipboard.writeText(this.code);
+                    this.copied = true;
+                    setTimeout(() => this.copied = false, 2000);
+                }
+            }">
+            <div class="flex items-start justify-between gap-4">
+                <div class="space-y-1">
+                    <!-- Título y Badge de Estado -->
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-sm font-bold tracking-wider text-slate-400 uppercase">Tu Regalo de Bienvenida</h3>
+                        <span class="inline-flex items-center rounded-md bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-400 ring-1 ring-inset ring-emerald-500/20">
+                            Activo
+                        </span>
+                    </div>
+                    <!-- Descripción corta del beneficio -->
+                    <p class="text-2xl font-black text-white tracking-tight">
+                        {{ $promoCode?->type === 'percent' ? intval($promoCode->reward) . '%' : '$' . number_of_format($promoCode->reward) }} de Descuento
+                    </p>
+                    <p class="text-md text-slate-400">
+                        Úsalo en tu próximo análisis de exámenes médicos. No tiene fecha de vencimiento.
+                    </p>
+                </div>
+                
+                <!-- Icono Decorativo de Ticket -->
+                <div class="p-3 bg-white/5 rounded-xl border border-white/10 text-blue-400 hidden sm:block">
+                    <svg xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-3-12h.008v.008H13.5V6Zm0 6h.008v.008H13.5V12Zm0 6h.008v.008H13.5V18ZM6 6h.008v.008H6V6Zm0 6h.008v.008H6V12Zm0 6h.008v.008H6V18Zm16.5-6a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 13.5 3h-3a3.375 3.375 0 0 0-3.375 3.375v1.5A1.125 1.125 0 0 1 6 9H4.5A3.375 3.375 0 0 0 1 12.375v3a3.375 3.375 0 0 0 3.375 3.375H6c.41 0 .796.221 1.004.576l.162.274A3.375 3.375 0 0 0 10.051 21h3.897a3.375 3.375 0 0 0 2.885-1.626l.162-.274c.208-.355.595-.576 1.004-.576h1.5A3.375 3.375 0 0 0 23 15.375v-3Z" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Caja del Código e Interacción -->
+            <div class="mt-5 flex items-center justify-between gap-2 bg-white/5 border border-white/10 rounded-xl p-2 pl-4 group hover:border-blue-500/50 transition-all duration-200">
+                <span class="font-mono text-lg font-bold tracking-widest text-blue-400 select-all uppercase" x-text="code"></span>
+                
+                <!-- Botón Copiar -->
+                <button @click="copyToClipboard()" 
+                        type="button"
+                        :class="copied ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'"
+                        class="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 h-9 min-w-[90px] justify-center">
+                    
+                    <!-- Icono Copiar Estándar -->
+                    <svg x-show="!copied" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.346.102.637.311.83.597l.66 1.14a2.25 2.25 0 0 1 .24 1.93l-.403 1.528A2.25 2.25 0 0 1 15.07 12h-6.14a2.25 2.25 0 0 1-2.193-1.638l-.403-1.528a2.25 2.25 0 0 1 .24-1.93l.66-1.14a2.25 2.25 0 0 1 .83-.597M12 13.5v-3m0 3 1.5-1.5m-1.5 1.5L10.5 12" />
+                    </svg>
+                    
+                    <!-- Icono Check de Éxito -->
+                    <svg x-show="copied" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="size-3.5" x-cloak>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+
+                    <span x-text="copied ? '¡Copiado!' : 'Copiar'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <div>     
         @if($isAdmin || (($isDoctor || $isClinic) && $validationStatus === 'approved'))
             <div class="mb-5">

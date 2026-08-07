@@ -219,7 +219,16 @@
 
                         <!-- Detalles de la Sede y Dirección Organizada por Canal -->
                         <div class="mt-4 pt-3 border-t border-slate-100 space-y-4">
-                            <div class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Citas Disponibles: En Consultorio o Por Videollamada</div>
+                            <div class="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                                <strong>Citas Disponibles</strong> 
+                                @if($hasPhysical && $hasVirtual)
+                                    <p>En Consultorio o Por Teleconsulta</p>
+                                @elseif($hasPhysical)
+                                    <p>Solo en Consultorio</p>
+                                @elseif($hasVirtual)
+                                    <p>Solo por Teleconsulta(virtuales)</p>
+                                @endif
+                            </div>
 
                             @php
                                 // Extraemos todas las sedes asociadas al modelo Eloquent de forma segura
@@ -440,7 +449,7 @@
                     </div>
                 </div>
 
-                <a href="{{ url('/search') }}?specialty=medicina-general&city=" 
+                <a href="{{ url('/search') }}?specialty=medicina-general" 
                 class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-black px-6 py-3 rounded-xl shadow-sm transition-all hover:-translate-y-0.5 active:scale-[0.99]">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>

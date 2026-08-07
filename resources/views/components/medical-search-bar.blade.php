@@ -1,4 +1,8 @@
-@props(['specialties', 'cities'])
+@props([
+    'specialties',
+    'cities',
+    'showCity' => true,
+])
 
 <!-- BARRA DE BÚSQUEDA HÍBRIDA UNIFICADA (INMUNE A LIVEWIRE) -->
 <form x-data="{ loading: false }" 
@@ -83,7 +87,9 @@
             <div x-show="filteredItems().length === 0" class="px-4 py-3 text-center text-xs font-bold text-slate-400 italic">No encontramos esa especialidad...</div>
         </div>
     </div>
+
     <!-- 📍 AUTOCOMPLETADO INTERACTIVO: CIUDADES (ZOCDOC STYLE) -->
+    @if($showCity)
     <div class="flex-1 min-w-[200px] relative" 
          x-data="cityAutocomplete([
              @foreach($cities as $c)
@@ -140,6 +146,7 @@
             <div x-show="filteredItems().length === 0" class="px-4 py-3 text-center text-xs font-bold text-slate-400 italic">No encontramos esa ciudad...</div>
         </div>
     </div>
+    @endif
 
     <!-- 🚀 BOTÓN DE ACCIÓN CON ICONO Y SPINNER DINÁMICO -->
     <div class="pt-5 w-full md:w-auto">

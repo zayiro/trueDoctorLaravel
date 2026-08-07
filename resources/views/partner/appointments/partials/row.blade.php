@@ -26,7 +26,7 @@
                 });
         }
     }" 
-    class="hover:bg-slate-50/80 transition-colors">
+    class="hover:bg-slate-50/80 transition-colors relative">
     
     <!-- Columna 1: Hora de la Cita -->
     <td class="px-6 py-4 whitespace-nowrap">
@@ -185,11 +185,13 @@
                 </svg>
             </button>
 
-            <!-- Menú Desplegable -->
-            <div x-show="actionsOpen" 
+            <!-- Menú Desplegable con Teleport -->
+            <div x-teleport="body"
+                x-show="actionsOpen" 
                 @click.away="actionsOpen = false"
-                class="absolute right-0 mt-1 w-52 bg-white border border-slate-200 rounded-xl shadow-lg z-40 overflow-hidden"
-                x-transition>
+                class="fixed right-0 mt-1 w-52 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden"
+                x-transition
+                x-cloak>
                 
                 <div class="p-1">
                     <!-- 🌐 INICIAR CONSULTA (Principal) -->

@@ -19,11 +19,17 @@
             <p class="text-lg text-slate-600 leading-relaxed max-w-xl">
                 ¿Tienes análisis clínicos, tomografías o informes confusos? Nuestro <span class="font-bold">Asistente Médico Digital</span> avanzado traduce el lenguaje médico complejo a explicaciones claras, precisas y accionables para ti.
             </p>
+            <p class="text-lg text-slate-600 leading-relaxed max-w-xl">
+                Valor del informe <strong>{{ $price }} COP</strong>
+            </p>
             <div class="flex flex-col sm:flex-row gap-4 pt-2">                
                 <a href="{{ route('medical-analysis.upload') }}" 
                     x-data="{ loading: false }"
+                    @pageshow.window="loading = false"
                     @click="
+                        if (loading) return;
                         loading = true;
+                        
                         if (typeof gtag === 'function') {
                             gtag('event', 'start_medical_analysis_upload', {
                                 'action': 'begin_upload',
@@ -32,10 +38,20 @@
                             });
                         }
                     "
-                    :class="loading ? 'opacity-70 cursor-not-allowed' : ''"
+                    :class="loading ? 'opacity-70 cursor-not-allowed pointer-events-none' : ''"
                     class="bg-slate-900 hover:bg-slate-800 text-white px-8 py-4 rounded-xl font-semibold transition text-center shadow-xl shadow-slate-200 flex items-center justify-center gap-3">
-                    <span x-show="!loading">Analizar mis exámenes médicos <i class="fa-solid fa-arrow-right text-sm"></i></span>
-                    <span x-show="loading" class="flex items-center gap-2">Iniciando el proceso de analisis... <i class="fa-solid fa-spinner animate-spin"></i></span>
+                    
+                    <span class="inline-flex items-center gap-x-2" x-show="!loading">
+                        Analizar mis exámenes médicos 
+                        <svg xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                        </svg>
+                    </span>
+
+                    <span x-show="loading" class="flex items-center gap-2" x-cloak>
+                        Iniciando el proceso de análisis... 
+                        <i class="fa-solid fa-spinner animate-spin"></i>
+                    </span>
                 </a>
             </div>
             <!-- Trust badges -->

@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Address;
 use App\Models\City;
+use App\Models\Clinic;
 use App\Models\Department;
+use App\Models\Plan;
+use App\Models\DoctorSetting;
 use App\Traits\ValidatesMultiTenantOwnership;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,7 +31,7 @@ class AddressController extends Controller
         // Si es doctor y está en contexto de clínica aliada, el "owner" de este entorno es la clínica
         if ($user->role === 'doctor' && ($context['type'] ?? 'particular') === 'clinic') {
             // Buscamos la clínica aliada a la que pertenece
-            return \App\Models\Clinic::with(['plan', 'addresses'])->find($context['id']);
+            return Clinic::with(['plan', 'addresses'])->find($context['id']);
         }
         
         // Por defecto: Modo médico particular (Tu lógica original de producción intacta)
@@ -41,6 +44,7 @@ class AddressController extends Controller
     public function index()
     {
         $owner = $this->getOwner();
+        
         $user = Auth::user();
         $context = session('doctor_context');
 
@@ -65,10 +69,19 @@ class AddressController extends Controller
         }
 
         // Cargar departamentos DIVIPOLA para el formulario de alta
-        $departments = Department::orderBy('name')->get();            
+        $departments = Department::orderBy('name')->get();      
+        
+        // Obtener el plan del doctor
+        $doctorSettings = DoctorSetting::where('doctor_id', $user->doctor->id)->first();
+        $canAddAddress = false;
+        
+        if ($doctorSettings && $doctorSettings->plan_id) {
+            $plan = Plan::find($doctorSettings->plan_id);
+            $canAddAddress = $plan && $plan->max_addresses > 0;
+        }
 
         // Enviamos la variable genérica $owner para validar canAddMoreAddresses() en la misma vista Blade
-        return view('partner.addresses.index', compact('addresses', 'owner', 'departments'));
+        return view('partner.addresses.index', compact('addresses', 'owner', 'departments', 'canAddAddress'));
     }
 
     public function toggleStatus(Address $address)
@@ -87,6 +100,8 @@ class AddressController extends Controller
     {
         $this->denyIfInstitutionalContext();
 
+        $user = Auth::user();
+
         $cities = City::all();
         $owner = $this->getOwner();
 
@@ -99,8 +114,17 @@ class AddressController extends Controller
 
         // Cargar departamentos DIVIPOLA para el formulario de alta
         $departments = Department::orderBy('name')->get();   
+
+        // Obtener el plan del doctor
+        $doctorSettings = DoctorSetting::where('doctor_id', $user->doctor->id)->first();
+        $canAddAddress = false;
         
-        return view('partner.addresses.create', compact('departments', 'cities'));
+        if ($doctorSettings && $doctorSettings->plan_id) {
+            $plan = Plan::find($doctorSettings->plan_id);
+            $canAddAddress = $plan && $plan->max_addresses > 0;
+        }
+        
+        return view('partner.addresses.create', compact('departments', 'cities', 'canAddAddress'));
     }
 
     /**

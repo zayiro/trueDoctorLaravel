@@ -4,7 +4,7 @@
         <div class="bg-slate-950 rounded-2xl border border-white/10 p-8 shadow-2xl space-y-6">
             
             <div class="space-y-2">
-                <h1 class="text-2xl font-black text-white">Centro de Análisis Clínico Avanzado</h1>
+                <h1 class="text-2xl font-black text-white">Análisis Clínico Avanzado por IA</h1>
                 <p class="text-sm text-slate-400">Arrastra o selecciona uno o múltiples informes médicos en formato PDF y obtén una interpretación médica guiada por Inteligencia Artificial.</p>
             </div>
 
@@ -30,7 +30,7 @@
                 <!-- Nuevos Campos de Información del Paciente -->
                 <div class="grid md:grid-cols-2 gap-6 text-left">
                     <!-- Campo de Correo Electrónico -->
-                    <div class="space-y-1.5 md:col-span-2">
+                    <div class="space-y-1.5">
                         <label class="text-sm font-bold tracking-wider text-white">¿A qué correo electrónico enviamos tu resultado?</label>
                         <div class="relative">
                             <span class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400">
@@ -47,7 +47,19 @@
                         <p class="text-sm text-slate-400 font-medium">Te enviaremos el resultado digital a esta dirección</p>
                     </div>
 
-                    <div class="mt-2 text-gray-600 text-base md:col-span-2">Esta información permite mayor precisión en el informe generado por la IA</div>
+                    <div class="space-y-1.5">
+                        <label class="text-sm font-bold tracking-wider text-white">¿En que idioma quieres ver el resultado?</label>
+                        <select name="selected_language" required class="w-full p-3 bg-slate-900 border border-white/10 rounded-xl font-medium text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm">
+                            <option value="es" class="bg-slate-950" selected>Español</option>
+                            <option value="en" class="bg-slate-950">Ingles</option>
+                        </select>
+                    </div>
+
+                    <div class="mt-2 md:col-span-2">
+                        <h1 class="text-2xl font-black text-white">
+                            Estos datos aumentan la exactitud del informe generado
+                        </h1>
+                    </div>
 
                     <!-- Campo del Motivo -->
                     <div class="space-y-1.5">
@@ -64,19 +76,30 @@
                     <div class="space-y-1.5">
                         <label class="text-sm font-bold tracking-wider text-white">Detalles o síntomas adicionales (Opcional)</label>
                         <textarea name="reason_custom" rows="1" placeholder="Ej: Sufro de colesterol alto..." class="w-full p-3 bg-slate-900 border border-white/10 rounded-xl font-medium text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm placeholder:text-slate-500 resize-none"></textarea>
-                    </div>                    
+                    </div>                                                   
                 </div>
 
-                <!-- Botón de Envío -->
-                <button type="submit" id="submitBtn" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg shadow-blue-500/10 flex items-center justify-center gap-3">
-                    <span id="btnText">Iniciar Procesamiento con IA</span>
-                    <!-- Spinner animado con clases nativas de Tailwind -->
-                    <svg id="btnSpinner" class="animate-spin h-5 w-5 text-white hidden" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                </button>
-
+                <div class="grid md:grid-cols-2 gap-6 text-left">
+                    <!-- Contenedor del Input -->
+                    <div class="space-y-1.5">  
+                        <label class="text-sm font-bold tracking-wider text-white" for="promotional_code">¿Tienes un código promocional?</label>                  
+                        <textarea name="promotional_code" id="promotional_code" autocomplete="off" rows="1" placeholder="Ej: DF972ED" class="w-full p-3 bg-slate-900 border border-white/10 rounded-xl font-medium text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm placeholder:text-slate-500 resize-none"></textarea>
+                        <small class="text-sm text-slate-400 font-medium">✨ Regístrate gratis en nuestra web y recibe tu código al instante.</small>
+                    </div>
+                    
+                    <!-- Contenedor del Botón (Alineado abajo) -->
+                    <div class="flex flex-col pt-6">
+                        <!-- Botón de Envío con padding vertical ajustado -->
+                        <button type="submit" id="submitBtn" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3.5 px-3 rounded-xl transition-all shadow-lg shadow-blue-500/10 flex items-center justify-center">
+                            <span id="btnText">Iniciar análisis con IA</span>
+                            <!-- Spinner animado con clases nativas de Tailwind -->
+                            <svg id="btnSpinner" class="animate-spin h-5 w-5 text-white hidden" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             </form>
 
             <!-- Estados del Análisis (Ocultos al inicio) -->
@@ -235,91 +258,80 @@
     </script>
     
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof gtag === 'function') {
-                // 🧬 EVENTO: Ver página de upload de análisis
-                gtag('event', 'view_medical_analysis_upload', {
-                    'page_type': 'upload_form',
-                    'feature_type': 'lab_analysis'
+    // ✅ NO declaramos nada aquí, usamos las variables del primer script
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof gtag === 'function') {
+            gtag('event', 'view_medical_analysis_upload', {
+                'page_type': 'upload_form',
+                'feature_type': 'lab_analysis'
+            });
+        }
+    });
+
+    fileInput.addEventListener('change', function() {
+        if (typeof gtag === 'function' && this.files.length > 0) {
+            gtag('event', 'add_lab_report', {
+                'file_count': this.files.length,
+                'file_names': Array.from(this.files).map(f => f.name).join(','),
+                'total_size_mb': (Array.from(this.files).reduce((sum, f) => sum + f.size, 0) / 1024 / 1024).toFixed(2),
+                'feature_type': 'lab_analysis'
+            });
+        }
+    });
+
+    uploadForm.addEventListener('submit', async (e) => {
+        if (typeof gtag === 'function') {
+            const reasonType = document.querySelector('select[name="reason_type"]').value;
+            const reasonCustom = document.querySelector('textarea[name="reason_custom"]').value;
+            const customerEmail = document.querySelector('input[name="customer_email"]').value;
+            const fileCount = document.getElementById('pdf_files').files.length;
+
+            gtag('event', 'begin_lab_analysis', {
+                'file_count': fileCount,
+                'reason_type': reasonType,
+                'reason_custom': reasonCustom !== '' ? 'yes' : 'no',
+                'email_provided': customerEmail !== '' ? 'yes' : 'no',
+                'feature_type': 'lab_analysis'
+            });
+        }
+    });
+
+    const oldFetch = window.fetch;
+    window.fetch = function(...args) {
+        const fetchPromise = oldFetch.apply(this, args);
+        
+        if (args[0].includes('medical-analysis.process-documents')) {
+            fetchPromise
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success' && typeof gtag === 'function') {
+                        gtag('event', 'complete_lab_analysis', {
+                            'status': 'success',
+                            'file_count': document.getElementById('pdf_files').files.length,
+                            'reason_type': document.querySelector('select[name="reason_type"]').value,
+                            'feature_type': 'lab_analysis'
+                        });
+                    } else if (data.status !== 'success' && typeof gtag === 'function') {
+                        gtag('event', 'lab_analysis_error', {
+                            'error_type': 'processing_failed',
+                            'error_message': data.message || 'Unknown error',
+                            'feature_type': 'lab_analysis'
+                        });
+                    }
+                })
+                .catch(error => {
+                    if (typeof gtag === 'function') {
+                        gtag('event', 'lab_analysis_error', {
+                            'error_type': 'network_error',
+                            'error_message': error.message,
+                            'feature_type': 'lab_analysis'
+                        });
+                    }
                 });
-            }
-        });
+        }
 
-        // 🔍 Capturar eventos de archivo (drag & drop o selección)
-        const fileInput = document.getElementById('pdf_files');
-        fileInput.addEventListener('change', function() {
-            if (typeof gtag === 'function' && this.files.length > 0) {
-                gtag('event', 'add_lab_report', {
-                    'file_count': this.files.length,
-                    'file_names': Array.from(this.files).map(f => f.name).join(','),
-                    'total_size_mb': (Array.from(this.files).reduce((sum, f) => sum + f.size, 0) / 1024 / 1024).toFixed(2),
-                    'feature_type': 'lab_analysis'
-                });
-            }
-        });
-
-        // 🚀 Interceptar el submit del formulario
-        const uploadForm = document.getElementById('uploadForm');
-        const originalSubmit = uploadForm.onsubmit;
-
-        uploadForm.addEventListener('submit', async (e) => {
-            if (typeof gtag === 'function') {
-                const reasonType = document.querySelector('select[name="reason_type"]').value;
-                const reasonCustom = document.querySelector('textarea[name="reason_custom"]').value;
-                const customerEmail = document.querySelector('input[name="customer_email"]').value;
-                const fileCount = document.getElementById('pdf_files').files.length;
-
-                // 📋 EVENTO: Comenzar análisis (submit del formulario)
-                gtag('event', 'begin_lab_analysis', {
-                    'file_count': fileCount,
-                    'reason_type': reasonType,
-                    'reason_custom': reasonCustom !== '' ? 'yes' : 'no',
-                    'email_provided': customerEmail !== '' ? 'yes' : 'no',
-                    'feature_type': 'lab_analysis'
-                });
-            }
-        });
-
-        // ✅ Interceptar respuesta exitosa
-        const submitBtn = document.getElementById('submitBtn');
-        const oldFetch = window.fetch;
-
-        window.fetch = function(...args) {
-            const fetchPromise = oldFetch.apply(this, args);
-            
-            if (args[0].includes('medical-analysis.process-documents')) {
-                fetchPromise
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.status === 'success' && typeof gtag === 'function') {
-                            // 🎉 EVENTO: Análisis completado exitosamente
-                            gtag('event', 'complete_lab_analysis', {
-                                'status': 'success',
-                                'file_count': document.getElementById('pdf_files').files.length,
-                                'reason_type': document.querySelector('select[name="reason_type"]').value,
-                                'feature_type': 'lab_analysis'
-                            });
-                        } else if (data.status !== 'success' && typeof gtag === 'function') {
-                            // ❌ EVENTO: Error en análisis
-                            gtag('event', 'lab_analysis_error', {
-                                'error_type': 'processing_failed',
-                                'error_message': data.message || 'Unknown error',
-                                'feature_type': 'lab_analysis'
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        if (typeof gtag === 'function') {
-                            gtag('event', 'lab_analysis_error', {
-                                'error_type': 'network_error',
-                                'error_message': error.message,
-                                'feature_type': 'lab_analysis'
-                            });
-                        }
-                    });
-            }
-
-            return fetchPromise;
-        };
-    </script>
+        return fetchPromise;
+    };
+</script>
 </x-guest-layout>

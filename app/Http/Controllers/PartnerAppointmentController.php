@@ -15,7 +15,7 @@ use App\Services\AppointmentService;
 
 class PartnerAppointmentController extends Controller
 {
-        /**
+    /**
      * Muestra el cronograma de citas unificado filtrado por el espacio de trabajo activo.
      */
     public function index(Request $request)
@@ -174,6 +174,24 @@ class PartnerAppointmentController extends Controller
         // 3. Retornamos la respuesta en un JSON limpio para que Alpine.js no se rompa
         return response()->json($services);
     }
+
+    private function validateAppointmentAccess(Appointment $appointment)
+    {
+        $user = auth()->user();
+        $context = session('doctor_context');
+
+        if ($context['type'] === 'particular') {
+            // Solo puede acceder a sus propias citas particulares
+            if ($appointment->doctor_id !== $user->doctor->id || $appointment->clinic_id !== null) {
+                abort(403, 'No tienes permiso para gestionar esta cita.');
+            }
+        } elseif ($context['type'] === 'clinic') {
+            // Solo puede acceder a citas de su clínica
+            if ($appointment->clinic_id !== $context['id']) {
+                abort(403, 'No tienes permiso para gestionar esta cita.');
+            }
+        }
+    }
         
     /**
      * Filtro estricto de seguridad multi-inquilino para las acciones de la cita.
@@ -187,18 +205,32 @@ class PartnerAppointmentController extends Controller
             if ($appointment->clinic_id !== $user->clinic->id) {
                 abort(403, 'No tienes permiso para gestionar esta cita institucional.');
             }
-        } else {
-            // El doctor opera si la cita le pertenece a su perfil
-            if ($appointment->doctor_id !== $user->doctor->id) {
-                abort(403, 'No tienes permiso para gestionar esta cita privada.');
+        } else if ($user->role === 'doctor') {
+            // ⭐ NUEVO: Doctor en contexto de clínica
+            $doctorContext = session('doctor_context');
+            
+            if ($doctorContext && $doctorContext['type'] === 'clinic') {
+                // Validar contra clinic_id si está en contexto de clínica
+                if ($appointment->clinic_id !== $doctorContext['id']) {
+                    abort(403, 'No tienes permiso para gestionar esta cita institucional.');
+                }
+            } else {
+                // Validar contra doctor_id si está en contexto particular
+                if ($appointment->doctor_id !== $user->doctor->id) {
+                    abort(403, 'No tienes permiso para gestionar esta cita privada.');
+                }
             }
         }
     }
 
     public function complete(Appointment $appointment)
     {        
+        // Primero valida el acceso (que no sea URL directo de otro doctor)
+        $this->validateAppointmentAccess($appointment);
+
         // 🔥 CORREGIDO: Validación de seguridad multiperfil sin bugs de IDs cruzados
         $this->authorizeAppointmentAction($appointment);
+        
      
         $appointment->update([
             'status' => 'completed'
@@ -209,6 +241,9 @@ class PartnerAppointmentController extends Controller
 
     public function cancel(Appointment $appointment)
     {        
+        // Primero valida el acceso (que no sea URL directo de otro doctor)
+        $this->validateAppointmentAccess($appointment);
+
         $this->authorizeAppointmentAction($appointment);
      
         $appointment->update([
@@ -220,6 +255,9 @@ class PartnerAppointmentController extends Controller
 
     public function destroy(Appointment $appointment)
     {
+        // Primero valida el acceso (que no sea URL directo de otro doctor)
+        $this->validateAppointmentAccess($appointment);
+
         $this->authorizeAppointmentAction($appointment);
 
         $appointment->delete();
@@ -233,6 +271,9 @@ class PartnerAppointmentController extends Controller
      */
     public function rescheduleProcess(Request $request, Appointment $appointment)
     {
+        // Primero valida el acceso (que no sea URL directo de otro doctor)
+        $this->validateAppointmentAccess($appointment);
+
         $user = auth()->user();
 
         // 1. CONTROL DE ACCESO MULTI-TENANT (Abstracción del Owner)
@@ -296,7 +337,6 @@ class PartnerAppointmentController extends Controller
 
         return back()->with('success', 'La consulta médica ha sido reprogramada y confirmada exitosamente.');
     }
-
     public function updateStatus(Request $request, Appointment $appointment)
     {
         $validated = $request->validate([
@@ -309,5 +349,5 @@ class PartnerAppointmentController extends Controller
         ]);
 
         return back()->with('success', 'El estado de la consulta ha sido actualizado correctamente.');
-    }
+    }    
 }

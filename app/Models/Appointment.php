@@ -192,20 +192,20 @@ class Appointment extends Model
      */
     public function scopeForCurrentContext(Builder $query): Builder
     {
-        // 1. Recuperar el entorno guardado en la sesión por el middleware EnsureDoctorContext
+        $user = auth()->user();
         $context = session('doctor_context');
 
-        // 🛡️ Blindaje: Si la sesión no se ha inicializado, retornar la consulta global sin filtros
         if (!$context) {
             return $query;
         }
 
-        // 2. Si el médico trabaja de forma independiente/particular, ocultamos citas de clínicas
+        // 2. Si el médico trabaja de forma independiente/particular
         if ($context['type'] === 'particular') {
-            return $query->whereNull('clinic_id');
+            // ⭐ AGREGAR ESTA LÍNEA: Filtrar por doctor_id también
+            return $query->where('doctor_id', $user->doctor->id)->whereNull('clinic_id');
         }
 
-        // 3. En entorno institucional corporativo, filtramos estrictamente por el ID de dicha clínica
+        // 3. En entorno institucional corporativo
         if ($context['type'] === 'clinic') {
             return $query->where('clinic_id', $context['id']);
         }
