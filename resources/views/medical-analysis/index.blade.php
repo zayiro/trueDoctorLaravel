@@ -1,4 +1,7 @@
-<x-guest-layout>
+<x-guest-layout 
+    :meta-title-medical-analysis="$meta_title_medicalAnalysis" 
+    :meta-description-medical-analysis="$meta_description_medicalAnalysis"
+>
     @if(session('error'))
         <div class="max-w-4xl mx-auto my-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400 text-center">
             {{ session('error') }}

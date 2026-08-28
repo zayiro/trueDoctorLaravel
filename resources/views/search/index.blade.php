@@ -63,7 +63,7 @@
             </div>
         @endif
         <!-- BARRA DE FILTROS NATIVA (INMUNE A LIVEWIRE) -->
-        <x-medical-search-bar :specialties="$specialties" :cities="$cities" />
+        <x-medical-search-bar :specialties="$specialties" :cities="$cities" :symptoms="$symptoms" />
 
         <!-- ENCABEZADO DE RESULTADOS ESTILIZADO -->
         <div class="mb-8 bg-white border border-slate-150/60 rounded-3xl shadow-sm overflow-hidden animate-fade-in">
@@ -425,11 +425,11 @@
                     </svg>
                 </div>
 
-                <div class="max-w-md space-y-2">
+                <div class="max-w-lg space-y-2">
                     <h4 class="text-lg font-black text-slate-800 dark:text-white tracking-tight">
                         Especialista no disponible aún en OpenDoctorOnline
                     </h4>
-                    <p class="text-sm text-slate-500 leading-relaxed dark:text-gray-400">
+                    <p class="text-md text-slate-500 leading-relaxed dark:text-gray-400">
                         Estamos en pleno lanzamiento. El especialista que buscas aún está configurando su agenda, pero puedes agendar con un médico general disponible ahora mismo.
                     </p>
                 </div>
@@ -450,7 +450,7 @@
                 </div>
 
                 <a href="{{ url('/search') }}?specialty=medicina-general" 
-                class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-black px-6 py-3 rounded-xl shadow-sm transition-all hover:-translate-y-0.5 active:scale-[0.99]">
+                class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-md font-black px-6 py-3 rounded-xl shadow-sm transition-all hover:-translate-y-0.5 active:scale-[0.99]">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
                     </svg>
@@ -463,6 +463,8 @@
                 <p class="text-xs text-slate-400 dark:text-gray-500">
                     Evaluación inicial y derivación al especialista que necesitas
                 </p>
+
+                <x-search-empty-fallback />
             </div>
             @endforelse
             

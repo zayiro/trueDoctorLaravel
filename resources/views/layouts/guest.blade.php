@@ -1,3 +1,69 @@
+@php
+    $title = $meta_title ?? 'Plataforma de agendamiento médico en línea';
+    $description = $meta_description;
+    $schemaJson = json_encode([
+        '@context' => 'https://schema.org',
+        '@type' => 'MedicalBusiness',
+        '@id' => config('app.url'),
+        'name' => 'OpenDoctorOnline',
+        'description' => 'Plataforma de agendamiento médico en línea. Consulta especialistas, realiza análisis con IA y agenda citas médicas en tiempo real. Telemedicina solicita y recibe tu cita',
+        'url' => config('app.url'),
+        'logo' => asset('images/logoOpenDoctor.jpg'),
+        'image' => asset('images/logoOpenDoctor.jpg'),
+        'telephone' => '+573026433874',
+        'email' => 'contacto@opendoctor.online',
+        'areaServed' => [
+            [
+                '@type' => 'Country',
+                'name' => 'Colombia'
+            ],
+            [
+                '@type' => 'Country',
+                'name' => 'México'
+            ],
+            [
+                '@type' => 'Country',
+                'name' => 'Perú'
+            ],
+            [
+                '@type' => 'Country',
+                'name' => 'Argentina'
+            ]
+        ],
+        'offers' => [
+            [
+                '@type' => 'Service',
+                'name' => 'Agendamiento de Citas Médicas',
+                'description' => 'Agenda consultas con especialistas en línea o presenciales',
+                'areaServed' => 'CO,MX,PE,AR'
+            ],
+            [
+                '@type' => 'Service',
+                'name' => 'Analisis Médico con IA',
+                'description' => 'Análisis instantaáneo de síntomas con inteligencia artificial',
+                'areaServed' => 'CO,MX,PE,AR'
+            ]
+        ]
+    ], JSON_UNESCAPED_SLASHES);
+    $keywords = 'Agenda cita médica online, consulta especialista, telemedicina Colombia, plataforma agendamiento, cita médica virtual, Exámenes de laboratorio online';
+
+    if (isset($metaTitleMedicalAnalysis)) {        
+        $title = $metaTitleMedicalAnalysis;
+        $description = $metaDescriptionMedicalAnalysis;
+        $schemaJson = json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'MedicalBusiness',
+            'name' => 'OpenDoctorOnline',
+            'url' => config('app.url'),
+            'logo' => asset('images/logoOpenDoctor.jpg'),
+            'description' => $meta_description,
+            'telephone' => '+573026433874',
+            'areaServed' => ['CO', 'MX', 'PE', 'AR']            
+        ]);
+        $keywords ='Análisis médico IA, Interpreta tus exámenes médicos con Inteligencia Artificial, interpretar análisis de sangre online gratis, evaluación médica rápida,  Lee e interpreta tus resultados online médicos con IA, Interpretación de pruebas de laboratorio en línea, análisis de síntomas gratis, Interpreta tus análisis de sangre, orina y heces online con IA en minutos, Como leer resultados de laboratorio de sangre, Interpretación de exámenes de laboratorio PDF gratis, valores normales de exámenes de laboratorio pdf, Lector de exámenes médicos gratis, ia para leer resultados de laboratorio gratis';
+    }
+        
+@endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
@@ -8,29 +74,29 @@
         <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
         
         @if (isset($seo) && $seo->isNotEmpty())
-            {{ $seo }}
-        @else
-            <title>{{ $meta_title ?? 'OpenDoctor | Orientación Médica' }}</title>
-            <meta name="description" content="{{ $meta_description ?? 'Encuentra especialistas médicos y agenda tu cita en línea.' }}">
+            {{ $seo }}            
+        @else        
+            <title>{{ $title ?? 'OpenDoctorOnline | Orientacion Medica' }}</title>            
+            <meta name="description" content="{{ $description ?? 'Análisis médico online con IA. Consulta especialistas en Colombia, diagnostico instantaneo, cita médica virtual y presencial disponible.' }}">
             <meta name="robots" content="{{ $meta_robots ?? 'index, follow' }}">
         @endif
 
-        <!-- Canonical corregida para SEO Programático -->
+        <meta name="keywords" content="{{ $keywords }}">
+    
         <link rel="canonical" href="{{ $meta_canonical ?? url()->current() }}">
         
         <meta property="og:type" content="website">
-        <meta property="og:site_name" content="OpenDoctor">
-        <meta property="og:title" content="{{ $meta_title ?? 'OpenDoctor - Encuentra tu especialista y agenda tu cita' }}">
-        <meta property="og:description" content="{{ $meta_description ?? 'Busca especialistas médicos, agenda tu cita y recibe recordatorios automáticos.' }}">
+        <meta property="og:site_name" content="OpenDoctorOnline">
+        <meta property="og:title" content="{{ $title ?? 'OpenDoctorOnline - Encuentra tu especialista y agenda tu cita' }}">
+        <meta property="og:description" content="{{ $description ?? 'Busca especialistas medicos, agenda tu cita y recibe recordatorios automaticos.' }}">
         <meta property="og:url" content="{{ url()->current() }}">
         <meta property="og:image" content="{{ asset('images/og-logo.png') }}">
         <meta property="og:image:width" content="1200">
         <meta property="og:image:height" content="630">
-
-        <!-- Opcional pero recomendado: mejora también la vista previa en Twitter/X -->
+        
         <meta name="twitter:card" content="summary_large_image">
-        <meta name="twitter:title" content="{{ $ogTitle ?? 'OpenDoctor' }}">
-        <meta name="twitter:description" content="{{ $ogDescription ?? 'Busca especialistas médicos y agenda tu cita.' }}">
+        <meta name="twitter:title" content="{{ $ogTitle ?? 'OpenDoctorOnline' }}">
+        <meta name="twitter:description" content="{{ $description ?? 'Busca especialistas medicos y agenda tu cita.' }}">
         <meta name="twitter:image" content="{{ asset('images/og-logo.png') }}">
 
         <!-- Fonts -->
@@ -74,6 +140,10 @@
         gtag('config', '{{ env('GOOGLE_ANALYTICS_ID') }}');
         </script>
         @endif
+
+        <script type="application/ld+json">
+            {!! $schemaJson ?? '{}' !!}
+        </script>
     </head>
     <body class="font-sans antialiased bg-gray-100">
         @include('layouts.includes.app.navigation')

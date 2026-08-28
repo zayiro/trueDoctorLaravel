@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\MedicalAnalysis;
 use App\Models\Setting;
 use Illuminate\Http\Request;
-use Smalot\PdfParser\Parser;
 
 use Illuminate\Support\Facades\Http;
 use App\Services\AI\AIVisionManager;
@@ -33,8 +32,10 @@ class MedicalAnalysisController extends Controller
     {
         $priceSetting = Setting::get('medical_analysis_price', 19000); 
         $price = number_format($priceSetting, 0, ',', '.');
-
-        return view('medical-analysis.index', compact('price'));
+        $meta_title_medicalAnalysis = 'OpenDoctorOnline | Lectura de examenes de laboratorio online';
+        $meta_description_medicalAnalysis = 'Analisis medico online con IA. Consulta especialistas en Colombia, diagnostico instantaneo, cita medica virtual y presencial disponible.';            
+        
+        return view('medical-analysis.index', compact('price', 'meta_title_medicalAnalysis', 'meta_description_medicalAnalysis'));
     }
 
     /**

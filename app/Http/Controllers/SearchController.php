@@ -44,6 +44,8 @@ class SearchController extends Controller
             ->orderBy('updated_at', 'desc')
             ->get();
 
+        $specialties = Specialty::where('status', true)->orderBy('name', 'asc')->get();
+
         // 🔒 ADICIÓN MULTI-TENANT: Consultamos los centros médicos institucionales aprobados y activos
         $clinics = Clinic::select(['id', 'slug', 'updated_at'])
             ->where('active', true)
@@ -58,6 +60,7 @@ class SearchController extends Controller
         // 3. Compilamos la vista XML pasando todas las entidades del SaaS
         $sitemapContent = view('seo.sitemap', compact(
             'doctors', 
+            'specialties', 
             'clinics', 
             'indexedSymptoms'
         ))->render();
@@ -109,7 +112,8 @@ class SearchController extends Controller
         $this->trackSearchAsync($request);
 
         $specialties = Specialty::where('status', true)->orderBy('name', 'asc')->get();
-        $cities = City::where('state', true)->orderBy('name', 'asc')->get();                        
+        $cities = City::where('state', true)->orderBy('name', 'asc')->get();
+        $symptoms = IndexedSymptom::inRandomOrder()->limit(10)->pluck('search_query')->toArray();
         
         // 1. Consulta base unificada con Eager Loading estricto
         $searchQuery = Address::with([
@@ -330,6 +334,7 @@ class SearchController extends Controller
             'results'            => $resultsPage,
             'specialties'        => $specialties,
             'cities'             => $cities,
+            'symptoms'           => $symptoms,
             'showingSuggestions' => $showingSuggestions,
             'targetCity'         => $targetCity,
             'targetSpecialty'    => $targetSpecialty,

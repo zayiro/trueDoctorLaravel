@@ -138,7 +138,7 @@
                 <div class="flex justify-between items-center border-b border-slate-100 pb-4">
                     <div class="text-sm text-start text-slate-400 tracking-wider block mb-1">
                         <span class="text-slate-400 text-xs font-black uppercase tracking-wider">Forma de Pago</span>
-                        <div class="text-xs text-slate-900 font-light"></div>
+                        <div class="text-xs text-slate-900 font-light"></div>                        
                     </div>
                      @if ($virtualPaymentRequired)
                         <span class="text-sm font-bold text-slate-700">Pago en Línea</span>
@@ -147,16 +147,60 @@
                     @endif                    
                 </div>
 
+                <div class="flex items-start sm:items-center bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-4 text-slate-500" role="alert">
+                    <svg class="w-4 h-4 me-2 shrink-0 mt-0.5 sm:mt-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11h2v5m-2 0h4m-2.592-8.5h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                    <p><span class="text-slate-500 font-medium me-1">La disponibilidad y el precio de la consulta médica no están garantizados hasta que finalice el pago.</span></p>
+                </div>
+
+                <div class="w-full py-12 px-4">
+                    <div class="max-w-5xl mx-auto">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        
+                            <!-- Item 1: Opciones de pago seguro -->
+                            <div class="flex flex-col items-center text-center">
+                                <div class="mb-4">
+                                <svg class="w-12 h-12 text-green-600 mx-auto" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                                    <path d="M1 10h22"></path>
+                                </svg>
+                                </div>
+                                <p class="text-gray-600 text-sm leading-relaxed">Opciones de pago seguro</p>
+                            </div>
+
+                            <!-- Item 2: Privacidad segura -->
+                            <div class="flex flex-col items-center text-center">
+                                <div class="mb-4">
+                                <svg class="w-12 h-12 text-green-600 mx-auto" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                </svg>
+                                </div>
+                                <p class="text-gray-600 text-sm leading-relaxed">Privacidad segura</p>
+                            </div>
+
+                            <!-- Item 3: Protección de compra -->
+                            <div class="flex flex-col items-center text-center">
+                                <div class="mb-4">
+                                <svg class="w-12 h-12 text-green-600 mx-auto" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                </div>
+                                <p class="text-gray-600 text-sm leading-relaxed">Protección de compra</p>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
                 <!-- PRECIO FORMATEADO Y CONDICIONAL DE PASARELAS -->
                 <div class="pt-4 text-center">
                     <span class="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-1">Valor Total de la Consulta</span>
                     @if($virtualPaymentRequired && $wompiData)
                     <p class="text-3xl font-black text-indigo-600 tracking-tight">
-                        ${{ number_format($wompiData['total'], 0, ',', '.') }}
+                        ${{ number_format($wompiData['total'], 0, ',', '.') }} COP
                     </p>
                     @else
                     <p class="text-3xl font-black text-indigo-600 tracking-tight">
-                        ${{ number_format($appointment->price, 0, ',', '.') }}
+                        ${{ number_format($appointment->price, 0, ',', '.') }} COP
                     </p>
                     @endif
 
@@ -174,15 +218,15 @@
                         @else
                             @if($virtualPaymentRequired && $wompiData)
                             <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-4">
-                                <div class="flex items-center justify-between text-sm mb-1">
+                                <div class="flex items-center justify-between text-md mb-1">
                                     <span class="text-slate-500 font-medium">Valor base</span>
                                     <span class="font-bold text-slate-700">${{ number_format($appointment->price, 0, ',', '.') }}</span>
                                 </div>
-                                <div class="flex items-center justify-between text-sm mb-1">
+                                <div class="flex items-center justify-between text-md mb-1">
                                     <span class="text-slate-500 font-medium">Comisión plataforma</span>
                                     <span class="font-bold text-slate-700">${{ number_format($wompiData['commission_amount'], 0, ',', '.') }}</span>
                                 </div>
-                                <div class="flex items-center justify-between text-sm border-t border-blue-200 pt-2 mt-2">
+                                <div class="flex items-center justify-between text-md border-t border-blue-200 pt-2 mt-2">
                                     <span class="font-black text-slate-800">Total a pagar</span>
                                     <span class="font-black text-blue-700 text-base">${{ number_format($wompiData['total'], 0, ',', '.') }}</span>
                                 </div>

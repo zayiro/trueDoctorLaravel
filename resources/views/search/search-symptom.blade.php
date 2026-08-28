@@ -104,7 +104,7 @@
                                     </p>
                                     <p class="text-sm opacity-90">
                                         Contamos con profesionales calificados para atenderte.
-                                        <a :href="`{{ route('search') }}?specialty=${triageInfo.slug}&city=null`"
+                                        <a :href="`{{ route('search') }}?specialty=${triageInfo.slug}`"
                                         class="underline font-bold ml-1 hover:opacity-80 transition">
                                             Ver nuestros especialistas en <span x-text="triageInfo.specialtyName.toLowerCase()"></span> recomendados →
                                         </a>
@@ -408,7 +408,7 @@
                                         <p class="text-xs text-slate-500 leading-relaxed mb-3">
                                             Mientras conseguimos al especialista ideal, un médico general puede orientarte y darte tranquilidad hoy mismo.
                                         </p>
-                                        <a href="{{ route('search') }}?specialty=medicina-general&city="
+                                        <a href="{{ route('search') }}?specialty=medicina-general"
                                         class="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition">
                                             Ver médicos generales
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

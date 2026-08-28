@@ -1,5 +1,5 @@
 {!! '<' . '?xml version="1.0" encoding="UTF-8"?' . '>' !!}
-<!-- 🔒 CORREGIDO: Espacio de nombres oficial de sitemaps.org para evitar rechazos en Google -->
+
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
     
     <!-- 1. PÁGINAS ESTÁTICAS PRINCIPALES -->
@@ -87,18 +87,17 @@
 
     <!-- 3. PERFILES DINÁMICOS DE LOS DOCTORES -->
     @foreach($doctors as $doctor)
-        <url>
-            <!-- 🔒 CORREGIDO: Cambiado 'partner' por 'slug' en el parámetro de la ruta -->
+        <url>            
             <loc>{{ route('partner.public.profile', ['slug' => $doctor->slug]) }}</loc>
             <lastmod>{{ $doctor->updated_at->toAtomString() }}</lastmod>
             <changefreq>weekly</changefreq>
             <priority>0.9</priority>
         </url>
     @endforeach
+
     <!-- 4. PERFILES DINÁMICOS DE LAS CLÍNICAS (NUEVO) -->
     @foreach($clinics as $clinic)
-        <url>
-            <!-- 🔒 MULTI-TENANT: Indexación unificada usando la firma 'slug' del centro médico -->
+        <url>            
             <loc>{{ route('partner.public.profile', ['slug' => $clinic->slug]) }}</loc>
             <lastmod>{{ $clinic->updated_at->toAtomString() }}</lastmod>
             <changefreq>weekly</changefreq>
@@ -116,4 +115,13 @@
         </url>
     @endforeach
 
+    <!-- 6. LANDINGS ESPECIALIDADES -->
+    @foreach($specialties as $specialty)
+        <url>            
+            <loc>{{ url('/search') }}?specialty={{ $specialty->slug }}</loc>
+            <lastmod>{{ $specialty->updated_at->toAtomString() }}</lastmod>
+            <changefreq>weekly</changefreq>
+            <priority>0.9</priority>
+        </url>
+    @endforeach
 </urlset>

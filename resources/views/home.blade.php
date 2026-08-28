@@ -1,44 +1,6 @@
 <x-guest-layout>
-    <section class="py-16 px-4 bg-gray-50">
-        <div class="max-w-5xl mx-auto">
-            <h2 class="text-4xl text-indigo-900 font-bold text-center mb-4">Agende su cita médica en línea</h2>
-            <p class="text-center text-gray-600 mb-12 text-lg">Desde buscar hasta pagar, todo en 5 pasos</p>
-            
-            <div class="space-y-6">                               
-            <!-- Beneficios finales -->
-            <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="text-center">
-                    <div class="flex justify-center mb-4">
-                        <svg class="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                    </div>
-                    <p class="font-black text-gray-900">Menos de 5 minutos</p>
-                    <p class="text-sm text-gray-600">Proceso rápido y fácil</p>
-                </div>
-                <div class="text-center">
-                    <div class="flex justify-center mb-4">
-                        <svg class="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                        </svg>
-                    </div>
-                    <p class="font-black text-gray-900">100% Seguro</p>
-                    <p class="text-sm text-gray-600">Encriptado de principio a fin</p>
-                </div>
-                <div class="text-center">
-                    <div class="flex justify-center mb-4">
-                        <svg class="w-12 h-12 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                    </div>
-                    <p class="font-black text-gray-900">Confirmación Inmediata</p>
-                    <p class="text-sm text-gray-600">Recibe enlace y recordatorios</p>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Sección: Buscador de especialidades medicas por ciudad (opcional) -->
+    <!-- Sección: Buscador de medicos por especialidades medicas y por ciudad (opcional) o por sintomas -->
     <div class="relative z-40 bg-white pb-20 pt-16 lg:pt-30">
         <div class="max-w-7xl mx-auto px-6 lg:px-8">
             <div class="text-center mb-12">
@@ -52,7 +14,7 @@
 
             <!-- Buscador Flotante -->
             <div class="max-w-4xl mx-auto">
-                <x-medical-search-bar :specialties="$specialties" :cities="$cities" :show-city="false" />
+                <x-medical-search-bar :specialties="$specialties" :cities="$cities" :symptoms="$symptoms" :show-city="false" />
             </div>
 
             <!-- Decoración de fondo (Opcional) -->
@@ -63,6 +25,47 @@
             </div>
         </div>
     </div>
+
+    <section class="py-16 px-4 bg-gray-50">
+        <div class="max-w-5xl mx-auto">            
+            <div class="text-center mb-6">
+                <h1 class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
+                    Agende su cita médica <span class="text-blue-600">en línea</span>
+                </h1>
+            </div>
+            <div class="space-y-6">                               
+            <!-- Beneficios finales -->
+            <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="text-center">
+                    <div class="flex justify-center mb-4">
+                        <svg class="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <p class="font-black text-gray-900 text-lg max-w-2xl mx-auto">Menos de 5 minutos</p>
+                    <p class="text-sm text-gray-600">Proceso rápido y fácil</p>
+                </div>
+                <div class="text-center">
+                    <div class="flex justify-center mb-4">
+                        <svg class="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                        </svg>
+                    </div>
+                    <p class="font-black text-gray-900 text-lg max-w-2xl mx-auto">100% Seguro</p>
+                    <p class="text-sm text-gray-600">Encriptado de principio a fin</p>
+                </div>
+                <div class="text-center">
+                    <div class="flex justify-center mb-4">
+                        <svg class="w-12 h-12 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <p class="font-black text-gray-900 text-lg max-w-2xl mx-auto">Confirmación Inmediata</p>
+                    <p class="text-sm text-gray-600">Recibe enlace y recordatorios</p>
+                </div>
+            </div>
+        </div>
+    </section>    
 
     <section class="py-12 px-4">
         <div class="max-w-6xl mx-auto">            
@@ -77,10 +80,10 @@
                 </div>
                 
                 <!-- COLUMNA DERECHA: Texto -->
-                <div class="order-1 md:order-2">                    
-                    <h2 class="text-4xl font-black text-indigo-900 mb-4">
-                        <span class="text-3xl">Consultas Médicas en Línea</span>
-                    </h2>
+                <div class="order-1 md:order-2">             
+                    <h1 class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
+                        Consultas Médicas <span class="text-blue-600">en línea</span>
+                    </h1>
                     <p class="text-lg text-gray-600 mb-6 leading-relaxed">                        
                         Servicio de Teleconsulta, atención médica desde cualquier lugar
                     </p>
@@ -104,7 +107,7 @@
                             <span class="text-gray-700">Precios accesibles</span>
                         </li>
                     </ul>
-                    <a href="{{ url('/search') }}?specialty=medicina-general" class="inline-block px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition shadow-lg">
+                    <a href="{{ url('/search') }}?specialty=medicina-general" class="block w-full md:w-auto md:inline-block px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white text-center font-bold rounded-lg transition shadow-lg">
                         Agendar Cita
                     </a>
                 </div>
@@ -112,69 +115,12 @@
         </div>
     </section>
 
-    <!-- Sección: buscador de sintomas de enfermedades -->
-    <div class="relative z-30 bg-white pb-10 pt-8 lg:pt-4 overflow-hidden">
-        <div class="max-w-7xl mx-auto px-6 lg:px-8 relative z-10 mt-5">
-            <div class="text-center mb-12">
-                <h1 class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
-                    ¿No sabes a que <span class="text-blue-600">médico acudir?</span>
-                </h1>
-                <p class="text-lg text-slate-600 max-w-2xl mx-auto">
-                    Describe tu síntoma, dolor o enfermedad y nosotros te sugerimos las opciones.
-                </p>
-            </div>
-
-            <!-- Buscador Flotante -->
-            <div class="max-w-4xl mx-auto mb-4">
-                <form x-data="{ loading: false }" 
-                    x-on:submit="loading = true"
-                    action="{{ route('search.symptom.view') }}" 
-                    method="GET" 
-                    class="bg-white p-4 rounded-3xl shadow-2xl border border-slate-100 flex flex-col md:flex-row gap-4"
-                    @restore-booking-buttons.window="loading = false">
-                    
-                    <!-- Input de Síntomas -->
-                    <div class="flex-1">
-                        <label for="symptom" class="block text-xs font-black text-slate-400 uppercase ml-3 mb-1">¿Qué síntomas tienes?</label>
-                        <input type="search" 
-                            name="symptom" 
-                            id="symptom" 
-                            value="{{ request('symptom') }}" 
-                            placeholder="Ej: Siento que la habitación me da vueltas al acostarme..." 
-                            required 
-                            minlength="3" 
-                            class="w-full border-0 focus:ring-0 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 px-4 placeholder-slate-400">                        
-                    </div>
-
-                    <!-- Botón Buscar Dinámico con Alpine.js -->
-                    <button type="submit" 
-                            :disabled="loading"
-                            :class="loading ? 'opacity-75 cursor-not-allowed bg-blue-500' : 'bg-blue-600 hover:bg-blue-700'"
-                            class="text-white font-black px-10 py-4 rounded-2xl transition shadow-lg shadow-blue-200 flex items-center justify-center gap-2 min-w-[160px]">
-                        
-                        <!-- Icono de Lupa (Oculto al cargar) -->
-                        <svg x-show="!loading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                        </svg>
-
-                        <!-- Icono Spinner SVG Animado (Solo visible al cargar) -->
-                        <svg x-show="loading" class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" style="display: none;">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-
-                        <!-- Texto Dinámico -->
-                        <span x-text="loading ? 'Buscando...' : 'Buscar'">Buscar</span>
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <section class="py-16 px-4 bg-white">
+    <section class="py-16 pt-10 px-4 bg-white">
         <div class="max-w-6xl mx-auto">
-            <h2 class="text-4xl font-black text-center mb-12">¿Por qué elegir <span class="font-black text-slate-900 tracking-tight">
-                        Open<span class="text-indigo-600">Doctor</span><span class="text-emerald-500">Online</span></span>?</h2>
+            <h2 class="text-3xl lg:text-6xl font-black text-slate-900 text-center tracking-tight mb-6">
+                ¿Por qué elegir <span class="text-blue-600"><span class="font-black text-slate-900 tracking-tight">
+                        Open<span class="text-indigo-600">Doctor</span><span class="text-emerald-500">Online</span></span>?</span>
+            </h2>            
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <!-- Card 1 -->

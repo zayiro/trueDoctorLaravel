@@ -460,6 +460,10 @@ Route::get('/departments/{department}/cities', function ($deptId) {
 // Ruta pública para que Google rastree todos tus enlaces indexables
 Route::get('/sitemap.xml', [SearchController::class, 'generateSitemap'])->name('seo.sitemap');
 
+Route::get('/robots.txt', function () {
+    return response()->view('robots', [], 200)->header('Content-Type', 'text/plain');
+});
+
 // Ruta pública para congelar la geolocalización del paciente en la sesión de Laravel
 Route::post('/api/session/location', [SearchController::class, 'saveDeviceLocationToSession'])->name('api.session.location');
 

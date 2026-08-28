@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'OpenDoctor'),
+    'name' => env('APP_NAME', 'OpenDoctorOnline'),
 
     /*
     |--------------------------------------------------------------------------
