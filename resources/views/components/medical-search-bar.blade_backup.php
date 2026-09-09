@@ -8,7 +8,7 @@
 <!-- BARRA DE BÚSQUEDA CON TABS RESPONSIVOS -->
 <div x-data="{ activeTab: 'specialty' }">
     
-    <!-- Desktop: Pestañas de Navegación -->
+    <!-- Desktop: Tabs -->
     <div class="hidden md:flex gap-0 border-b border-slate-200 mb-6">
         <button 
             @click="activeTab = 'specialty'"
@@ -26,7 +26,7 @@
         </button>
     </div>
 
-    <!-- Mobile: Menú desplegable alternativo -->
+    <!-- Mobile: Dropdown -->
     <div class="md:hidden mb-6">
         <select 
             @change="activeTab = $event.target.value"
@@ -37,6 +37,19 @@
             <option value="symptom">Buscar por Síntoma</option>
         </select>
     </div>
+
+    <!-- 📝 DESCRIPCIONES DINÁMICAS DE CADA TAB -->
+    <!--<div x-show="activeTab === 'specialty'" x-transition class="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <p class="text-sm text-slate-700">
+            <span class="font-bold text-blue-600">Selecciona la especialidad médica</span> que necesitas y nosotros te mostramos los mejores doctores disponibles en tu ciudad.
+        </p>
+    </div>-->
+
+    <!--<div x-show="activeTab === 'symptom'" x-transition class="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <p class="text-sm text-slate-700">
+            <span class="font-bold text-blue-600">Describe tu síntoma, dolor o enfermedad</span> y nosotros te sugerimos la especialidad correcta y los doctores más calificados para atenderte.
+        </p>
+    </div>-->
 
     <!-- TAB 1: BÚSQUEDA DE ESPECIALIDADES -->
     <div x-show="activeTab === 'specialty'" x-transition>
@@ -60,7 +73,9 @@
               action="{{ route('search') }}" 
               method="GET" 
               class="bg-white p-4 rounded-[1.5rem] shadow-md flex flex-col md:flex-row items-stretch md:items-center gap-4 border border-slate-100 w-full"
-              @restore-booking-buttons.window="loading = false">            
+              @restore-booking-buttons.window="loading = false">
+            
+            <!-- 🩺 AUTOCOMPLETADO: ESPECIALIDADES -->
             <div class="flex-1 min-w-[200px] relative" 
                  x-data="specialtyAutocomplete([
                      @foreach($specialties as $s)
@@ -70,15 +85,16 @@
                  x-on:click.away="closeDropdown()"
                  x-on:keydown.escape="closeDropdown()"
             >
+                
                 <input type="hidden" name="specialty" :value="selectedSlug">
+                
                 <label for="specialty" class="block text-xs font-black text-slate-400 uppercase ml-1 mb-1 tracking-wider">Especialidad Médica</label>
                 
                 <div class="relative">
                     <input 
                         type="text"
                         id="specialty" 
-                        x-model="searchQuery"  
-                        @click="$el.select()"                      
+                        x-model="searchQuery"
                         x-on:focus="openDropdown()"
                         x-on:input="openDropdown()"
                         x-on:keydown.arrow-down.prevent="highlightNext()"
@@ -112,85 +128,63 @@
                     <div x-show="filteredItems().length === 0" class="px-4 py-3 text-center text-xs font-bold text-slate-400 italic">No encontramos esa especialidad...</div>
                 </div>
             </div>
-            <!-- 📍 AUTOCOMPLETADO: CIUDADES (FUSIONADO CON COMPONENTE API / GPS) -->
+
+            <!-- 📍 AUTOCOMPLETADO: CIUDADES -->
             @if($showCity)
             <div class="flex-1 min-w-[200px] relative" 
-                 x-data="cityAutocomplete()"
+                 x-data="cityAutocomplete([
+                     @foreach($cities as $c)
+                         { id: '{{ $c->slug }}', name: '{{ addslashes($c->name) }}' },
+                     @endforeach
+                 ])"
                  x-on:click.away="closeDropdown()"
                  x-on:keydown.escape="closeDropdown()"
             >
-                <!-- Campos ocultos para enviar al backend (Mapean con los estados reactivos) -->
                 
-                <input type="hidden" name="city_id" :value="selectedCity.id || ''" />
-                <input type="hidden" name="city_countryCode" :value="selectedCity.countryCode || ''" />
-                <input type="hidden" name="city_lat" :value="selectedCity.lat || ''" />
-                <input type="hidden" name="city_lng" :value="selectedCity.lng || ''" />
-                <input type="hidden" name="city_name" :value="selectedCity.name || ''" />
-                <input type="hidden" name="city_countryName" :value="selectedCity.countryName || ''" />
+                <input type="hidden" name="city" :value="selectedSlug">
                 
-                <label for="city" class="block text-xs font-black text-slate-400 uppercase ml-1 mb-1 tracking-wider">En qué ciudad?</label>
+                <label for="city" class="block text-xs font-black text-slate-400 uppercase ml-1 mb-1 tracking-wider">¿Dónde?</label>
                 
                 <div class="relative">
                     <input 
                         type="text"
-                        name="city"
                         id="city"
                         x-model="searchQuery"
-                        @click="$el.select()"
                         x-on:focus="openDropdown()"
-                        x-on:input="search()"
+                        x-on:input="openDropdown()"
                         x-on:keydown.arrow-down.prevent="highlightNext()"
                         x-on:keydown.arrow-up.prevent="highlightPrevious()"
                         x-on:keydown.enter.prevent="selectHighlighted()"
                         placeholder="Todas las ciudades" 
                         autocomplete="off" 
-                        class="w-full border-0 focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 pl-11 pr-12 text-sm shadow-inner transition-all">
+                        class="w-full border-0 focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 pl-11 pr-10 text-sm shadow-inner transition-all">
                     
-                    <!-- Ícono de ubicación inicial (Izquierda) -->
                     <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
                     </div>
 
-                    <!-- Botoneras de control integradas (Derecha) -->
-                    <div class="absolute inset-y-0 right-0 pr-2 flex items-center gap-0.5">
-                        <!-- Limpiar selección -->
+                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
                         <button type="button" x-show="searchQuery.length > 0" x-on:click="clearSelection()" class="text-slate-400 hover:text-slate-600 focus:outline-none p-1 rounded-full hover:bg-slate-200/50">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
-                        
-                        <!-- Desplegar por defecto si está vacío -->
                         <button type="button" x-show="searchQuery.length === 0" x-on:click="toggleDropdown()" class="text-slate-400 hover:text-slate-600 focus:outline-none p-1">
                             <svg class="w-4 h-4 transition-transform duration-250" :class="isOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                         </button>
                     </div>
                 </div>
 
-                <!-- Desplegable unificado con estructura original y contenido dinámico de API -->
-                <div x-show="isOpen && filteredItems().length > 0" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95 translate-y-1" x-transition:enter-end="opacity-100 scale-100 translate-y-0" x-transition:leave="transition ease-in duration-100" class="absolute z-50 w-full min-w-[280px] md:min-w-[340px] mt-2 bg-white border border-slate-150/80 rounded-2xl shadow-xl max-h-72 overflow-y-auto p-1.5 space-y-0.5" style="display: none;">
+                <div x-show="isOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95 translate-y-1" x-transition:enter-end="opacity-100 scale-100 translate-y-0" x-transition:leave="transition ease-in duration-100" class="absolute z-50 w-full min-w-[280px] md:min-w-[340px] mt-2 bg-white border border-slate-150/80 rounded-2xl shadow-xl max-h-72 overflow-y-auto p-1.5 space-y-0.5" style="display: none;">
                     <template x-for="(city, index) in filteredItems().slice(0, 10)" :key="city.id">
                         <button type="button" x-on:click="selectItem(city)" x-on:mouseenter="highlightedIndex = index" :class="highlightedIndex === index ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-50'" class="w-full text-left px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wide transition flex items-center justify-between group">
-                            <div>
-                                <span x-text="city.name"></span>
-                                <span class="block text-base font-normal lowercase tracking-normal text-slate-400 group-hover:text-indigo-200 mt-0.5" :class="highlightedIndex === index ? 'text-indigo-200' : 'text-slate-400'">
-                                    <span x-text="city.adminName1 || ''"></span><span x-show="city.adminName1">, </span><span x-text="city.countryName || ''"></span>
-                                </span>
-                            </div>
-                            <svg x-show="selectedSlug == city.id" class="w-4 h-4 flex-shrink-0" :class="highlightedIndex === index ? 'text-white' : 'text-indigo-600'" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                            <span x-text="city.name"></span>
+                            <svg x-show="selectedSlug === city.id" class="w-4 h-4 flex-shrink-0" :class="highlightedIndex === index ? 'text-white' : 'text-indigo-600'" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                         </button>
                     </template>
-                </div>
-                
-                <!-- Feedback visual de carga del Componente 1 -->
-                <div x-show="loading" class="absolute right-14 top-[54%] -translate-y-1/2 flex items-center text-xs font-bold text-slate-400 italic bg-slate-50 pl-2">
-                    Buscando...
-                </div>
-                
-                <!-- Mensaje de no coincidencia -->
-                <div x-show="isOpen && filteredItems().length === 0" class="absolute z-50 w-full min-w-[280px] md:min-w-[340px] mt-2 bg-white border border-slate-150/80 rounded-2xl shadow-xl p-4 text-center text-xs font-bold text-slate-400 italic">
-                    No encontramos esa ciudad...
+                    <div x-show="filteredItems().length === 0" class="px-4 py-3 text-center text-xs font-bold text-slate-400 italic">No encontramos esa ciudad...</div>
                 </div>
             </div>
             @endif
+
             <!-- 🚀 BOTÓN BUSCAR ESPECIALIDADES -->
             <div class="pt-5 w-full md:w-auto">
                 <button type="submit" 
@@ -220,11 +214,13 @@
             x-on:submit="loading = true"
             action="{{ route('search.symptom.view') }}" 
             method="GET" 
-            class="bg-white p-4 rounded-[1.5rem] shadow-md flex flex-col md:flex-row items-stretch md:items-center gap-4 border border-slate-100 w-full"
+            class="bg-white p-4 rounded-[1.5rem] shadow-md border border-slate-100 flex flex-col md:flex-row gap-4"
             @restore-booking-buttons.window="loading = false">
-                        
-            <div class="flex-1 min-w-[200px] relative">                
-                <label for="symptom" class="block text-xs font-black text-slate-400 uppercase ml-1 mb-1 tracking-wider">¿Qué síntomas tienes?</label>
+            
+            <label for="symptom" class="block text-xs font-black text-slate-400 uppercase w-full md:w-auto md:hidden mb-2">¿Qué síntomas tienes?</label>
+
+            <div class="flex-1 min-w-[200px] relative">
+                <label for="symptom" class="hidden md:block text-xs font-black text-slate-400 uppercase mb-1">¿Qué síntomas tienes?</label>
                 <div class="relative">                    
                     <input type="search" 
                     name="symptom" 
@@ -261,7 +257,9 @@
             </div>
         </form>
     </div>
+
 </div>
+
 <script>
     window.handleSearchSubmit = function(event) {
         const specialtyInput = document.querySelector('input[name="specialty"]');
@@ -280,11 +278,10 @@
     };
 
     document.addEventListener('alpine:init', () => {
-        // Motor base para Especialidades
-        Alpine.data('specialtyAutocomplete', (itemsList) => ({
+        const createAutocompleteEngine = (itemsList, urlParameterName) => ({
             items: itemsList,
             searchQuery: '',
-            selectedSlug: new URLSearchParams(window.location.search).get('specialty') || '',
+            selectedSlug: new URLSearchParams(window.location.search).get(urlParameterName) || '',
             isOpen: false,
             highlightedIndex: -1,
             init() {
@@ -319,164 +316,24 @@
                     this.selectItem(activeList[this.highlightedIndex]);
                 }
             }
-        }));
+        });
 
-        // Motor Inteligente para Ciudades (API Asíncrona + GPS)
-        Alpine.data('cityAutocomplete', () => ({
-            searchQuery: '',
-            suggestions: [],
-            isOpen: false,
-            loading: false,
-            selectedSlug: new URLSearchParams(window.location.search).get('city_id') || '',
-            selectedCity: {},
-            highlightedIndex: -1,
-            searchTimeout: null,
-            
-            init() {
-                const defaults = this.getDefaultCities();
-                const activeItem = defaults.find(i => i.id == this.selectedSlug || i.slug == this.selectedSlug);
-                if (activeItem) {
-                    this.selectedCity = activeItem;
-                    this.searchQuery = activeItem.name + ', ' + activeItem.countryName;
-                    this.selectedSlug = activeItem.id;
-                }
-            },
-            filteredItems() {
-                return this.suggestions;
-            },
-            openDropdown() { 
-                this.isOpen = true; 
-                this.highlightedIndex = -1; 
-                if (this.searchQuery.length < 2) {
-                    this.suggestions = this.getDefaultCities();
-                }
-            },
-            closeDropdown() { this.isOpen = false; this.highlightedIndex = -1; },
-            toggleDropdown() { this.isOpen ? this.closeDropdown() : this.openDropdown(); },
-            
-            search() {
-                this.isOpen = true;
-                clearTimeout(this.searchTimeout);
-
-                console.log(this.selectedCity);
-
-                // 🔥 Si ya hay una ciudad seleccionada y el query es igual a su nombre, no busques
-                if (this.selectedCity.id && this.searchQuery === this.selectedCity.name) {
-                    this.suggestions = [this.selectedCity]; // Muestra solo la seleccionada
-                    return;
-                }
-                
-                if (this.searchQuery.length < 3) {
-                    this.suggestions = this.getDefaultCities();
-                    return;
-                }
-                
-                this.loading = true;
-                this.searchTimeout = setTimeout(() => {
-                    fetch(`{{ route('cities.search') }}?q=${encodeURIComponent(this.searchQuery)}`)
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.data && data.data.length > 0) {
-                                this.suggestions = data.data;
-                            } else {
-                                this.suggestions = [];
-                            }
-                            this.loading = false;
-                        })
-                        .catch(err => {
-                            console.error('Error:', err);
-                            this.suggestions = [];
-                            this.loading = false;
-                        });
-                }, 300);
-            },
-            
-            selectItem(city) {
-                this.selectedCity = city;
-                this.selectedSlug = city.id;
-                this.searchQuery = `${city.name}, ${city.countryName || 'Colombia'}`;
-                this.closeDropdown();
-            },
-            clearSelection() { 
-                this.selectedSlug = ''; 
-                this.searchQuery = ''; 
-                this.selectedCity = {};
-                this.suggestions = this.getDefaultCities();
-                this.closeDropdown(); 
-            },
-            highlightNext() {
-                const maxIndex = Math.min(this.filteredItems().length, 10) - 1;
-                this.highlightedIndex = this.highlightedIndex < maxIndex ? this.highlightedIndex + 1 : 0;
-            },
-            highlightPrevious() {
-                const maxIndex = Math.min(this.filteredItems().length, 10) - 1;
-                this.highlightedIndex = this.highlightedIndex > 0 ? this.highlightedIndex - 1 : maxIndex;
-            },
-            selectHighlighted() {
-                const activeList = this.filteredItems().slice(0, 10);
-                if (this.highlightedIndex >= 0 && activeList[this.highlightedIndex]) {
-                    this.selectItem(activeList[this.highlightedIndex]);
-                }
-            },
-            
-            getCurrentLocation() {
-                if (!navigator.geolocation) {
-                    alert('La geolocalización no está disponible en tu navegador');
-                    return;
-                }
-                
-                this.loading = true;
-                this.isOpen = true;
-                
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const { latitude, longitude } = position.coords;
-                        
-                        fetch(`{{ route('cities.nearby') }}?lat=${latitude}&lng=${longitude}`)
-                            .then(res => res.json())
-                            .then(data => {
-                                if (data.data && data.data.length > 0) {
-                                    this.selectItem(data.data[0]);
-                                } else {
-                                    alert('No se encontraron ciudades cercanas');
-                                }
-                                this.loading = false;
-                            })
-                            .catch(err => {
-                                console.error('Error:', err);
-                                alert('Error al buscar tu ubicación');
-                                this.loading = false;
-                            });
-                    },
-                    (error) => {
-                        console.error('Error de geolocalización:', error);
-                        alert('No pudimos detectar tu ubicación');
-                        this.loading = false;
-                    }
-                );
-            },
-            
-            getDefaultCities() {
-                return [
-                    { id: 3686110, name: 'Bogotá', countryName: 'Colombia', countryCode: 'CO', adminName1: 'Bogotá' },
-                    { id: 3674730, name: 'Medellín', countryName: 'Colombia', countryCode: 'CO', adminName1: 'Antioquia' },
-                    { id: 3687238, name: 'Cali', countryName: 'Colombia', countryCode: 'CO', adminName1: 'Valle del Cauca' },
-                    { id: 3668740, name: 'Barranquilla', countryName: 'Colombia', countryCode: 'CO', adminName1: 'Atlántico' },
-                    { id: 3657050, name: 'Cartagena', countryName: 'Colombia', countryCode: 'CO', adminName1: 'Bolívar' },
-                ];
-            }
-        }));
+        Alpine.data('specialtyAutocomplete', (list) => createAutocompleteEngine(list, 'specialty'));
+        Alpine.data('cityAutocomplete', (list) => createAutocompleteEngine(list, 'city'));
     });
 
     function symptomForm() {
         return {
             loading: false,
+            // Inyectamos el array de PHP de forma segura y mapeamos los textos
             placeholders: (@json($symptoms) || []).map(text => 'Ej: ' + text),
             currentIndex: 0,
             init() {
+                // Si la base de datos no arrojó resultados, usamos un respaldo
                 if (this.placeholders.length === 0) {
                     this.placeholders = ['Ej: Siento que la habitación me da vueltas al acostarme...'];
                 }
+
                 setInterval(() => {
                     this.currentIndex = (this.currentIndex + 1) % this.placeholders.length;
                 }, 5000);

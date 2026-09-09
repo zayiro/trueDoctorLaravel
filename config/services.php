@@ -79,7 +79,8 @@ return [
         'integrity_secret' => env('WOMPI_INTEGRITY_SECRET'),
         'integrity_events' => env('WOMPI_INTEGRITY_EVENTS'),
         'redirect_url'     => env('WOMPI_REDIRECT_URL'),
-        'checkout_url'     => 'https://checkout.wompi.co/p/',
+        'checkout_url'     => env('WOMPI_CHECKOUT_URL'),
+        'endpoint'         => env('WOMPI_ENDPOINT'),
     ],
 
     'certicamara' => [
@@ -102,6 +103,15 @@ return [
 
     'whatsapp' => [
         'verify_token' => env('WHATSAPP_VERIFY_TOKEN'),
+    ],
+
+    'geonames' => [
+        'username' => env('GEONAMES_USERNAME'),
+    ],
+
+    'mail_site' => [
+        'mail_admin_address' => env('MAIL_ADMIN_ADDRESS'),
+        'support' => env('SUPPORT_EMAIL'),
     ],
 
 ];

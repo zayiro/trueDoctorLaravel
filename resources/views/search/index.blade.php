@@ -24,7 +24,7 @@
                             <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 uppercase tracking-wider dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-900">Cobertura Ampliada</span>
                         </h3>
                         <p class="text-sm text-slate-600 leading-relaxed font-medium dark:text-gray-300">
-                            No encontramos <span class="font-extrabold text-amber-600 dark:text-amber-400">{{ $expertName }}</span> con atención física en <span class="font-black text-slate-900 dark:text-white underline decoration-amber-400 decoration-2">{{ $targetCity->name }}</span>, pero estos especialistas están disponibles en otras ubicaciones de manera virtual o presencial.
+                            No encontramos <span class="font-extrabold text-amber-600 dark:text-amber-400">{{ $expertName }}</span> con atención física en <span class="font-black text-slate-900 dark:text-white underline decoration-amber-400 decoration-2">{{ $targetCity }}</span>, pero estos especialistas están disponibles en otras ubicaciones de manera virtual o presencial.
                         </p>
                     </div>
                 </div>
@@ -66,7 +66,7 @@
         <x-medical-search-bar :specialties="$specialties" :cities="$cities" :symptoms="$symptoms" />
 
         <!-- ENCABEZADO DE RESULTADOS ESTILIZADO -->
-        <div class="mb-8 bg-white border border-slate-150/60 rounded-3xl shadow-sm overflow-hidden animate-fade-in">
+        <div class="mt-8 mb-8 bg-white border border-slate-150/60 rounded-3xl shadow-sm overflow-hidden animate-fade-in">
             <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-50">
                 <div class="flex items-center gap-3">
                     <div class="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl shadow-inner border border-indigo-100/40 flex-shrink-0">
@@ -98,7 +98,7 @@
                         @if(request()->filled('specialty'))
                             <span class="px-2.5 py-1 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-lg border border-slate-200 uppercase tracking-wide">{{ str_replace('-', ' ', request('specialty')) }}</span>
                         @endif
-                        @if(request()->filled('city'))
+                        @if(request()->filled('city_name'))
                             <span class="px-2.5 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded-lg border border-indigo-100/30 uppercase tracking-wide">{{ str_replace('-', ' ', request('city')) }}</span>
                         @endif
                     </div>
@@ -106,7 +106,7 @@
             </div>
 
             <!-- Fila Inferior Condicional: Aviso de Ubicación Integrado -->
-            @if(request()->missing('city') || empty(request('city')))
+            @if(request()->missing('city_name') || empty(request('city_name')))
                 <div class="px-5 py-3.5 bg-slate-50/70 border-t border-slate-100 flex items-center gap-3">
                     <div class="p-1.5 bg-amber-50 text-amber-600 rounded-lg border border-amber-100/40 flex-shrink-0">
                         <!-- Heroicon: MapPin -->
@@ -368,7 +368,7 @@
                                         ? route('partner.clinic.public.decision', [
                                             'slug'           => $result['slug'], 
                                             'specialty_slug' => request('specialty'), 
-                                            'city'           => request('city')
+                                            'city'           => request('city_name')
                                         ]) 
                                         : route('partner.public.profile', [
                                             'slug'       => $result['slug'], 
@@ -383,7 +383,7 @@
                                         if (isClinic) {
                                             gtag('event', 'click_view_clinic_specialists', {
                                                 'clinic_name': '{{ addslashes($result['name'] ?? $result['title'] ?? 'Clínica sin nombre') }}',
-                                                'search_city': '{{ request('city', 'No especificada') }}'
+                                                'search_city': '{{ request('city_name', 'No especificada') }}'
                                             });
                                         } else {
                                             gtag('event', 'click_schedule_appointment', {

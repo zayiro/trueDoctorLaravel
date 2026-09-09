@@ -40,6 +40,9 @@ return new class extends Migration
             $table->decimal('platform_amount', 10, 2)->default(0); // lo que queda para OpenDoctor después de Wompi
             $table->timestamp('paid_at')->nullable();
 
+            $table->string('promo_code')->nullable();
+            $table->decimal('discount_amount', 10, 2)->default(0);
+
             $table->enum('channel', ['app', 'web', 'whatsapp'])->default('web');
             $table->text('notes')->nullable();
             $table->boolean('email_sent')->default(false);

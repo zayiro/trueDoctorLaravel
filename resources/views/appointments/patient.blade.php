@@ -114,7 +114,7 @@
                             {{-- SECCIÓN: LOGIN (EXISTENTE) — CONTROLADO SILENCIOSAMENTE --}}
                             <div id="section-exist" class="space-y-5 hidden">
                                 <div class="bg-amber-50 p-4 rounded-2xl text-sm text-amber-800 border border-amber-100 font-medium">
-                                    Ingresa tus credenciales para continuar con tu cuenta de OpenDoctor.
+                                    Ingresa tus credenciales para continuar con tu cuenta de OpenDoctorOnline.
                                 </div>
                                 <div>
                                     <label for="login_email" class="block text-sm font-bold text-gray-700 mb-1">Email</label>

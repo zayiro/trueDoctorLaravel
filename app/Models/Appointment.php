@@ -28,6 +28,8 @@ class Appointment extends Model
         'end_time',
         'duration',
         'price',
+        'promo_code',
+        'discount_amount',
         'status',
         'payment_status',
         'wompi_reference',
@@ -49,11 +51,12 @@ class Appointment extends Model
      * Garantiza que la fecha sea un objeto Carbon y el precio mantenga precisión flotante.
      */
     protected $casts = [
-        'date'           => 'date',
-        'price'          => 'float',
-        'status'         => \App\Enums\AppointmentStatus::class,
-        'payment_status' => \App\Enums\PaymentStatus::class,
+        'date'             => 'date',
+        'price'            => 'float',
+        'status'           => \App\Enums\AppointmentStatus::class,
+        'payment_status'   => \App\Enums\PaymentStatus::class,
         'reschedule_count' => 'integer',
+        'paid_at'          => 'datetime'
     ];
 
     protected static function booted()

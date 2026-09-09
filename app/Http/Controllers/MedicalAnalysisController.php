@@ -766,8 +766,8 @@ class MedicalAnalysisController extends Controller
             return redirect()->route('home')->with('error', 'Falta el identificador del pago.');
         }
 
-        // 2. Detectar entorno de Wompi automáticamente
-        $baseUrl = 'https://production.wompi.co/v1';
+        // 2. Detectar entorno de Wompi automáticamente        
+        $baseUrl = config('services.wompi.endpoint');
         $paymentStatus = 'ERROR';
 
         try {

@@ -55,7 +55,7 @@ class ContactController extends Controller
         $contactRecord = ContactMessage::create($validated);
 
         try {
-            Mail::to('ocampotecnologo@gmail.com')->queue(new ContactNotification($contactRecord));
+            Mail::to(config('services.mail_site.support'))->queue(new ContactNotification($contactRecord));
         } catch (Throwable $e) {
             $admins = User::where('role', 'admin')->get();
             foreach ($admins as $admin) {

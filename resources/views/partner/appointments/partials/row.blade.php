@@ -71,7 +71,7 @@
             <div x-data="{ open: false }" class="mt-2">
 
                 <!-- Botón para abrir el Popup -->
-                <div @click="open = true" class="text-blue-600 hover:text-blue-800 underline-offset-4 hover:underline font-medium transition-colors">
+                <div @click="open = true" class="text-blue-600 hover:text-blue-800 underline-offset-4 hover:underline font-medium transition-colors cursor-pointer">
                     Datos del paciente
                 </div>
 
@@ -171,77 +171,101 @@
 
     <!-- Columna 5: Acciones Administrativas del Médico / Clínica -->
     <td class="px-6 py-4 whitespace-nowrap text-right">
-        
-        <div x-data="{ actionsOpen: false }" class="relative inline-block">
-            <!-- Botón Principal -->
-            <button @click="actionsOpen = !actionsOpen" 
-                    class="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider px-3 py-2 rounded-xl border shadow-sm transition
-                    {{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') 
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
-                    : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' }}">
-                ⚙️ Acciones
-                <svg :class="{'rotate-180': actionsOpen}" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
-                </svg>
-            </button>
+        <div x-data="{ open: false }" class="mt-2">
 
-            <!-- Menú Desplegable con Teleport -->
-            <div x-teleport="body"
-                x-show="actionsOpen" 
-                @click.away="actionsOpen = false"
-                class="fixed right-0 mt-1 w-52 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden"
-                x-transition
+            <!-- Botón para abrir el Popup -->
+            <div @click="open = true" class="text-blue-600 hover:text-blue-800 underline-offset-4 hover:underline font-medium transition-colors cursor-pointer">
+                ⚙️ Acciones
+            </div>
+
+            <!-- Fondo oscuro (Overlay) y Contenedor del Popup -->
+            <div x-show="open" 
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
                 x-cloak>
                 
-                <div class="p-1">
-                    <!-- 🌐 INICIAR CONSULTA (Principal) -->
-                    @if($app->address && $app->address->type === 'virtual' && $app->status_label === 'confirmed' && $app->zoom_start_url)
-                        <a href="{{ $app->zoom_start_url }}" target="_blank" 
-                        class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition w-full text-left">
-                            💻 Iniciar Consulta
-                        </a>
-                    @else
-                        <a href="{{ route('partner.patients.show', [$app->patient_id, $app->reference]) }}" target="_blank" 
-                        class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition w-full text-left">
-                            📋 Iniciar Consulta
-                        </a>
-                    @endif
+                <!-- Caja del Popup -->
+                <div @click.away="open = false" 
+                    x-show="open"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 scale-100"
+                    x-transition:leave-end="opacity-0 scale-95"
+                    class="w-full max-w-md bg-white rounded-xl shadow-xl overflow-hidden transform transition-all">
                     
-                    <!-- Completar -->
-                    @if(in_array($app->status_label, ['pending', 'confirmed']))
-                        <form action="{{ route('partner.appointments.complete', $app->id) }}" method="POST" class="w-full">
-                            @csrf
-                            @method('PATCH')
-                            <button type="submit" class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-green-600 hover:bg-green-50 rounded-lg transition w-full text-left">
-                                ✓ Marcar Completada
-                            </button>
-                        </form>
-                    @endif
+                    <!-- Encabezado -->
+                    <div class="px-6 py-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+                        <h3 class="text-lg font-semibold text-gray-900">Acciones</h3>
+                        <button @click="open = false" class="text-gray-400 hover:text-gray-600 text-2xl font-semibold">&times;</button>
+                    </div>
 
-                    <!-- Reagendar -->
-                    @if(in_array($app->status_label, ['pending', 'confirmed']))
-                        <button type="button" @click="openReschedule = true; actionsOpen = false" 
-                                class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-indigo-600 hover:bg-indigo-50 rounded-lg transition w-full text-left">
-                            🔄 Reagendar
+                    <!-- Contenido -->
+                    <div class="p-6 space-y-3">
+                       <div class="p-1">
+                            <!-- 🌐 INICIAR CONSULTA (Principal) -->
+                            @if($app->address && $app->address->type === 'virtual' && $app->status_label === 'confirmed' && $app->zoom_start_url)
+                                <a href="{{ route('appointments.room', ['appointment' => $app->id]) }}" target="_blank" 
+                                class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition w-full text-left">
+                                    💻 Iniciar Consulta
+                                </a>
+                            @else
+                                <a href="{{ route('partner.patients.show', [$app->patient_id, $app->reference]) }}" target="_blank" 
+                                class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition w-full text-left">
+                                    📋 Iniciar Consulta
+                                </a>
+                            @endif
+                            
+                            <!-- Completar -->
+                            @if(in_array($app->status_label, ['pending', 'confirmed']))
+                                <form action="{{ route('partner.appointments.complete', $app->id) }}" method="POST" class="w-full">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-green-600 hover:bg-green-50 rounded-lg transition w-full text-left">
+                                        ✓ Marcar Completada
+                                    </button>
+                                </form>
+                            @endif
+
+                            <!-- Reagendar -->
+                            @if(in_array($app->status_label, ['pending', 'confirmed']))
+                                <button type="button" @click="openReschedule = true; actionsOpen = false" 
+                                        class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-indigo-600 hover:bg-indigo-50 rounded-lg transition w-full text-left">
+                                    🔄 Reagendar
+                                </button>
+                            @endif
+
+                            <!-- Cancelar -->
+                            @if(in_array($app->status_label, ['pending', 'confirmed']))
+                                <form action="{{ route('partner.appointments.cancel', $app->id) }}" method="POST" 
+                                    onsubmit="return confirm('¿Estás seguro de que deseas cancelar esta consulta médica de forma definitiva? Se notificará al paciente.');" 
+                                    class="w-full">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 rounded-lg transition w-full text-left border-t border-slate-100 mt-1 pt-2">
+                                        ❌ Cancelar Cita
+                                    </button>
+                                </form>
+                            @endif
+                        </div>                          
+                    </div>
+
+                    <!-- Botones de Acción -->
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end space-x-3">
+                        <button @click="open = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                            Cerrar
                         </button>
-                    @endif
-
-                    <!-- Cancelar -->
-                    @if(in_array($app->status_label, ['pending', 'confirmed']))
-                        <form action="{{ route('partner.appointments.cancel', $app->id) }}" method="POST" 
-                            onsubmit="return confirm('¿Estás seguro de que deseas cancelar esta consulta médica de forma definitiva? Se notificará al paciente.');" 
-                            class="w-full">
-                            @csrf
-                            @method('PATCH')
-                            <button type="submit" class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 rounded-lg transition w-full text-left border-t border-slate-100 mt-1 pt-2">
-                                ❌ Cancelar Cita
-                            </button>
-                        </form>
-                    @endif
+                    </div>
                 </div>
             </div>
         </div>
-
+                
         <!-- MODAL INTERACTIVO DE REAGENDAMIENTO (Sigue siendo lo mismo) -->
         <div x-show="openReschedule" 
             @click.self="openReschedule = false; selectedDate = ''; slots = []"

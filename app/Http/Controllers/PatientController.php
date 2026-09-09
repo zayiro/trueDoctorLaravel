@@ -53,7 +53,7 @@ class PatientController extends Controller
      */
     public function index()
     {
-        $patient = auth()->user()->patient;
+        $patient = auth()->user()->patient;        
         
         // Carga maestra de catálogos para los selectores de la interfaz
         $insurances = Insurance::all(); 
@@ -258,7 +258,7 @@ class PatientController extends Controller
     /**
      * Muestra el listado completo de citas médicas del paciente autenticado (Soporte Híbrido).
      */
-    public function appointments()
+    public function appointments_()
     {        
         $user = auth()->user();
         
@@ -318,6 +318,64 @@ class PatientController extends Controller
 
         $maxReschedules = $this->maxReschedules;
     
+        return view('patient.appointments.index', compact('upcomingAppointments', 'pastAppointments', 'maxReschedules'));
+    }
+
+    public function appointments()
+    {        
+        $user = auth()->user();
+        
+        if (!$user->hasRole('patient')) {
+            \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'patient']);
+            $user->assignRole('patient');
+        }
+        
+        $patient = $user->patient;
+
+        if (!$patient) {
+            return redirect()->route('profile.show')->with('error', 'No se encontró un perfil de paciente asociado a tu cuenta.');
+        }
+
+        $now = Carbon::now('America/Bogota'); 
+        $statusFilter = request('status');
+
+        // 1. PRÓXIMAS CONSULTAS - Usa end_time para incluir citas en curso
+        $upcomingAppointments = Appointment::where('patient_id', $patient->id)
+            ->where(function($query) use ($now) {
+                $query->whereDate('date', '>', $now->toDateString())
+                    ->orWhere(function($q) use ($now) {
+                        $q->whereDate('date', $now->toDateString())
+                        ->where('end_time', '>', $now->toTimeString()); // ← CAMBIO
+                    });
+            })
+            ->whereIn('status', ['confirmed', 'pending'])
+            ->when($statusFilter, function($query) use ($statusFilter) {
+                return $query->where('status', $statusFilter);
+            })
+            ->with(['doctor.user', 'clinic', 'service', 'address.city'])
+            ->orderBy('date', 'asc')
+            ->orderBy('start_time', 'asc')
+            ->get();
+
+        // 2. HISTORIAL DE CONSULTAS
+        $pastAppointments = Appointment::where('patient_id', $patient->id)
+            ->where(function($query) use ($now) {
+                $query->where(function($sub) use ($now) {
+                    $sub->whereDate('date', '<', $now->toDateString())
+                        ->orWhere(function($q) use ($now) {
+                            $q->whereDate('date', $now->toDateString())
+                            ->where('end_time', '<=', $now->toTimeString()); // ← CAMBIO
+                        });
+                })
+                ->orWhereIn('status', ['completed', 'cancelled']);
+            })
+            ->with(['doctor.user', 'clinic', 'service', 'address.city'])
+            ->orderBy('date', 'desc')
+            ->orderBy('start_time', 'desc')
+            ->paginate(10);
+
+        $maxReschedules = $this->maxReschedules;
+
         return view('patient.appointments.index', compact('upcomingAppointments', 'pastAppointments', 'maxReschedules'));
     }
     

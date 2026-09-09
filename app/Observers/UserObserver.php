@@ -122,4 +122,15 @@ class UserObserver
     {
         //
     }
+
+    public function updating(User $user)
+    {
+        if ($user->isDirty('name') && $user->hasRole('doctor')) {
+            if ($user->doctor) {
+                $user->doctor->update([
+                    'slug' => Str::slug($user->name),
+                ]);
+            }
+        }
+    }
 }

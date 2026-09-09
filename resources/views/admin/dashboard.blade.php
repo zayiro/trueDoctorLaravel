@@ -21,7 +21,7 @@
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">    
-    @if($promoCode)
+    @if(isset($promoCode))
     <div class="m-3 mb-5">
         <div class="bg-slate-900 border border-white/10 rounded-2xl p-6 shadow-xl"
             x-data="{ 

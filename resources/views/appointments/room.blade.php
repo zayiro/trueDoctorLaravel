@@ -20,83 +20,201 @@
             <div class="flex items-center space-x-2 font-semibold text-sm transition-all duration-300"
                 :class="timerClass">
                 
-                <!-- Contador Regresivo -->
-                <div class="flex items-center space-x-2 font-semibold text-sm transition-all duration-300"
-                    :class="timerClass">
-                    
-                    <!-- CORRECCIÓN: Agregamos "this.startTime" para evitar el ReferenceError -->
-                    <svg class="w-5 h-5 flex-shrink-0" 
-                        :class="(new Date() >= this.startTime && minutesRemaining < 5) ? 'animate-pulse' : ''" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    
-                    <span x-text="timerText" x-cloak>Calculando tiempo...</span>
-                </div>
+                <svg class="w-5 h-5 flex-shrink-0" 
+                    :class="(new Date() >= this.startTime && minutesRemaining < 5) ? 'animate-pulse' : ''" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                
+                <span x-text="timerText" x-cloak>Calculando tiempo...</span>
             </div>
 
             @if(auth()->user()->role === 'doctor' || auth()->user()->role === 'clinic')
-                <!-- 🥼 VISTA DOCTOR/CLÍNICA: Termina la llamada en Zoom y expulsa a todos -->
                 <button @click="if(confirm('¿Estás seguro de que deseas dar por terminada la teleconsulta? Esto cerrará la videollamada para el paciente.')) forceCloseZoomMeeting()" 
                     class="px-4 py-2 bg-red-600 text-white hover:bg-red-700 text-sm font-medium rounded-lg transition shadow-sm">
                     Finalizar Consulta
                 </button>
             @else
-                <!-- 👤 VISTA PACIENTE: Solo se sale de la pantalla sin cerrar la sala de Zoom -->
                 <a href="{{ route('admin.dashboard') }}" 
                     class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 text-sm font-medium rounded-lg transition">
                     Salir de la Sala
                 </a>
             @endif
-
         </div>
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <!-- CONTENEDOR DEL VIDEO DE ZOOM -->
-            <div class="lg:col-span-3 bg-black rounded-xl overflow-hidden shadow-lg relative min-h-[600px] flex items-center justify-center">
+
+        <!-- GRID PRINCIPAL: Video + Panel Lateral (Formulario SOAP) -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- VIDEO DE ZOOM (Más grande: 2/3 del ancho) -->
+            <div class="lg:col-span-2 bg-black rounded-xl overflow-hidden shadow-lg relative min-h-[600px] flex items-center justify-center">
                 <div id="meetingSDKElement" class="w-full h-full absolute inset-0" x-ref="zoomContainer"></div>
             </div>
 
-            <!-- PANEL DE CONTROL LATERAL (Ficha Clínica) -->
-            <div class="bg-white p-5 rounded-xl shadow-md border border-gray-100 h-fit flex flex-col justify-between">
-                <div>
+            <!-- PANEL LATERAL: Grabación SOAP + Formulario (1/3 del ancho) -->
+            <div class="bg-white rounded-xl shadow-md border border-gray-100 h-fit flex flex-col overflow-y-auto max-h-[700px]">
+                
+                <!-- Información de la Cita -->
+                <div class="p-5 border-b border-gray-100">
                     <h3 class="font-bold text-gray-700 text-sm uppercase tracking-wider mb-3">Ficha de Consulta</h3>
-                    <div class="space-y-3 text-sm border-b border-gray-100 pb-4 mb-4">
-                        <p><span class="text-gray-400">Médico:</span> <span class="font-medium text-gray-800">Dr(a). {{ $appointment->doctor->user->name }}</span></p>
+                    <div class="space-y-2 text-xs">
+                        <p><span class="text-gray-400">Médico:</span> <span class="font-medium text-gray-800">{{ $appointment->doctor->user->name }}</span></p>
                         <p><span class="text-gray-400">Servicio:</span> <span class="text-gray-800">{{ $appointment->service->name }}</span></p>
-                        <p><span class="text-gray-400">Fecha:</span> <span class="text-gray-800">{{ ucfirst(\Carbon\Carbon::parse($appointment->date)->locale('es')->isoFormat('dddd D [de] MMMM [de] Y')) }}
-a las {{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }}
-</span></p>
-                        <p><span class="text-gray-400">Duración máxima:</span> <span class="text-gray-800">{{ $appointment->duration }} minutos</span></p>
+                        <p><span class="text-gray-400">Fecha:</span> <span class="text-gray-800">{{ ucfirst(\Carbon\Carbon::parse($appointment->date)->locale('es')->isoFormat('dddd D [de] MMMM')) }}</span></p>
+                        
+                        <!-- Enlace a Historia Clínica (Solo para doctores) -->
+                        @if(auth()->user()->role === 'doctor' || auth()->user()->role === 'clinic')
+                            <p class="pt-2">
+                                <a href="{{ route('partner.patients.show', $appointment->patient->id) }}" 
+                                   target="_blank" 
+                                   class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium text-xs underline">
+                                    📋 Abrir Historia Clínica
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                </a>
+                            </p>
+                        @endif
                     </div>
                 </div>
-                <!-- Sección condicional según el Rol del usuario logueado -->
-                @if(auth()->user()->role === 'doctor')
-                    <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Evolución Médica (En Vivo)</label>
-                        <textarea x-model="notes" 
-                                class="w-full text-sm border border-gray-200 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none" 
-                                rows="8" 
-                                placeholder="Escribe el diagnóstico, síntomas o recetas aquí..."></textarea>
-                        
-                        <button @click="saveNotes()"
-                                :disabled="saving"
-                                class="w-full mt-3 text-white text-sm py-2 rounded-lg font-medium transition flex items-center justify-center space-x-2"
-                                :class="saving ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'">
-                            <template x-if="saving">
-                                <span class="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
-                            </template>
-                            <span x-text="saving ? 'Guardando...' : 'Guardar Ficha Clínica'"></span>
+
+                <!-- GRABACIÓN SOAP (Solo para doctores) -->
+                @if(auth()->user()->role === 'doctor' || auth()->user()->role === 'clinic')
+                <div class="p-5 border-b border-gray-100"
+                    x-data="consultationScribe({
+                        patientId: {{ $appointment->patient->id }},
+                        appointmentId: {{ $appointment->id }},
+                        uploadUrl: '{{ route('partner.patients.consultation-audio.upload', $appointment->patient->id) }}',
+                        statusUrlBase: '{{ url('partner/consultation-audio') }}',
+                        notifyPendingUrl: '{{ route('partner.patients.consultation-audio.notify-pending', $appointment->patient->id) }}',
+                        recordingId: 'rec_{{ $appointment->patient->id }}_{{ $appointment->id }}',
+                    })">
+                    
+                    <h3 class="font-bold text-gray-700 text-sm uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-14 0m7 7v3m-3.5 0h7M12 14a3 3 0 003-3V5a3 3 0 10-6 0v6a3 3 0 003 3z"/></svg>
+                        Asistente IA
+                    </h3>
+
+                    <!-- Estado: Idle -->
+                    <template x-if="state === 'idle'">
+                        <button type="button" @click="startRecording()"
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-md py-2 px-3 rounded-lg transition inline-flex items-center justify-center gap-2 shadow-lg">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>
+                            Iniciar Grabación
                         </button>
-                        
-                        <p x-show="saved" x-transition class="text-green-600 text-xs mt-2 font-medium text-center">✓ Notas guardadas exitosamente</p>
-                    </div>
-                @else
-                    <div class="p-3 bg-green-50 text-green-800 rounded-lg text-xs">
+                    </template>
+
+                    <!-- Estado: Recording -->
+                    <template x-if="state === 'recording'">
+                        <div class="space-y-2">
+                            <p class="text-xs text-gray-700 flex items-center gap-2 font-medium">
+                                <span class="relative flex h-2 w-2">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                </span>
+                                Grabando: <span x-text="elapsedLabel" class="font-mono"></span>
+                            </p>
+                            <button type="button" @click="stopRecording()"
+                                class="w-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs py-2 px-3 rounded-lg transition">
+                                Detener
+                            </button>
+                        </div>
+                    </template>
+
+                    <!-- Estado: Processing -->
+                    <template x-if="state === 'uploading' || state === 'transcribing' || state === 'structuring'">
+                        <div class="flex items-center gap-2 text-xs text-gray-600">
+                            <svg class="animate-spin h-3 w-3 text-blue-600" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            <span x-text="statusLabel"></span>
+                        </div>
+                    </template>
+
+                    <!-- Estado: Ready -->
+                    <template x-if="state === 'ready'">
+                        <div class="rounded-lg bg-green-50 border border-green-200 p-2 text-xs text-green-800 font-medium">
+                            ✓ Nota generada — Los campos SOAP se rellenaron automáticamente abajo.
+                        </div>
+                    </template>
+
+                    <!-- Estado: Error/Upload Failed -->
+                    <template x-if="state === 'error' || state === 'upload_failed'">
+                        <div class="rounded-lg bg-red-50 border border-red-200 p-2 text-xs text-red-700 space-y-2">
+                            <p x-text="errorMessage"></p>
+                            <button type="button" @click="state === 'upload_failed' ? retryUpload() : reset()"
+                                class="w-full bg-red-600 hover:bg-red-700 text-white text-xs py-1 px-2 rounded transition">
+                                Reintentar
+                            </button>
+                        </div>
+                    </template>
+                </div>
+                @endif
+
+                <!-- FORMULARIO SOAP (Solo para doctores) -->
+                @if(auth()->user()->role === 'doctor' || auth()->user()->role === 'clinic')
+                <div class="p-5">
+                    <h3 class="font-bold text-gray-700 text-sm uppercase tracking-wider mb-3">Nota de Evolución</h3>
+                    
+                    <form id="evolution-note-form" action="{{ route('partner.patients.store-history', $appointment->patient->id) }}" method="POST" class="space-y-3">
+                        @csrf
+                        <input type="hidden" name="appointment_id" value="{{ $appointment->id }}">
+
+                        <!-- Tipo de Entrada -->
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Tipo de Entrada</label>
+                            <select name="entry_type" class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <option value="consultation">Consulta</option>
+                                <option value="follow_up">Seguimiento</option>
+                                <option value="procedure">Procedimiento</option>
+                            </select>
+                        </div>
+
+                        <!-- Código CIE-10 -->
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Código CIE-10</label>
+                            <input type="text" name="cie10_code" placeholder="ej: J45.9" class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        </div>
+
+                        <!-- Subjetivo (S) -->
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Subjetivo <span class="font-bold text-red-700">(S)</span></label>
+                            <textarea name="soap_subjective" rows="3" placeholder="Síntomas reportados por el paciente..." class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"></textarea>
+                        </div>
+
+                        <!-- Objetivo (O) -->
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Objetivo <span class="font-bold text-red-700">(O)</span></label>
+                            <textarea name="soap_objective" rows="3" placeholder="Hallazgos clínicos observados..." class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"></textarea>
+                        </div>
+
+                        <!-- Evaluación (A) -->
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Evaluación <span class="font-bold text-red-700">(A)</span></label>
+                            <textarea name="soap_assessment" rows="3" placeholder="Diagnóstico e impresión clínica..." class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"></textarea>
+                        </div>
+
+                        <!-- Plan (P) -->
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Plan <span class="font-bold text-red-700">(P)</span></label>
+                            <textarea name="soap_plan" rows="3" placeholder="Tratamiento recomendado y seguimiento..." class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"></textarea>
+                        </div>
+
+                        <!-- Botón Guardar -->
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-md py-2 px-3 rounded-lg transition shadow-lg">
+                            Guardar Nota
+                        </button>
+                    </form>
+                </div>
+                @endif
+
+                <!-- VISTA PACIENTE -->
+                @if(auth()->user()->role !== 'doctor' && auth()->user()->role !== 'clinic')
+                <div class="p-5">
+                    <div class="p-3 bg-green-50 text-green-800 rounded-lg text-xs border border-green-200">
                         <p class="font-semibold mb-1">Sala de Espera Virtual</p>
                         <p class="text-gray-600">Por seguridad de datos médicos, permanecerás aquí hasta que el doctor autorice tu ingreso a la videollamada.</p>
                     </div>
+                </div>
                 @endif
             </div>
         </div>
@@ -109,6 +227,10 @@ a las {{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }}
     <script src="https://source.zoom.us/3.11.0/lib/vendor/redux-thunk.min.js"></script>
     <script src="https://source.zoom.us/3.11.0/lib/vendor/lodash.min.js"></script>
     <script src="https://source.zoom.us/3.11.0/zoom-meeting-embedded-3.11.0.min.js"></script>
+    
+    <!-- AIScribeStorage y consultationScribe (del script que pasaste) -->
+    @include('partner.patients.partials.consultation-scribe-script')
+
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('telemedicineRoom', (config) => ({
@@ -121,36 +243,30 @@ a las {{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }}
                 endTime: null,
                 
                 initRoom() {
-                    // 1. Limpiamos espacios y creamos la base del tiempo de la cita
                     const cleanDate = String(config.date).trim();
                     const cleanTime = String(config.startTime).trim();
                     const isoString = `${cleanDate}T${cleanTime}`;
 
-                    // 2. CORRECCIÓN CRÍTICA: Inicializamos la variable startTime que le falta a tu contador
                     this.startTime = new Date(isoString);
                     
-                    // 3. Inicializamos el endTime sumándole los minutos de duración a partir del startTime
                     this.endTime = new Date(this.startTime.getTime());
                     this.endTime.setMinutes(this.endTime.getMinutes() + parseInt(config.duration));
                     
-                    // 4. Encendemos el conteo y monitoreo
                     this.startCountdown();
                     this.listenToMeetingEnd();
 
-                    // Verificamos de forma segura si el objeto ya existe en el navegador
                     const checkZoomLoaded = setInterval(() => {
                         if (typeof ZoomMtg !== 'undefined') {
                             clearInterval(checkZoomLoaded);
                             const now = new Date();
                             if (now >= this.startTime) {
-                                this.initZoomSDK(); // Encendemos el SDK solo cuando el archivo terminó de descargar
+                                this.initZoomSDK();
                             }                            
                         }
-                    }, 2000); // Revisa cada 2 segundos
+                    }, 2000);
                 },
                 
                 initZoomSDK() {
-                    // Obliga al SDK a buscar los archivos de audio/video en el servidor de Zoom, no en el tuyo
                     ZoomMtg.setZoomJSLib('https://source.zoom.us', '/av');
                     
                     const client = ZoomMtg.createClient();
@@ -173,43 +289,17 @@ a las {{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }}
                     }).catch((err) => console.error("Error inicializando el motor:", err));
                 },
 
-                saveNotes() {
-                    this.saving = true;
-                    this.saved = false;
-
-                    fetch(`/api/appointments/${config.appointmentId}/notes`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        },
-                        body: JSON.stringify({ notes: this.notes })
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        this.saving = false;
-                        this.saved = true;
-                        setTimeout(() => this.saved = false, 3000);
-                    })
-                    .catch(err => {
-                        this.saving = false;
-                        alert('Error al guardar el historial médico.');
-                    });
-                },
-                
                 startCountdown() {
                     let interval = null;
 
                     const updateTimer = () => {
                         const now = new Date();
 
-                        // 🟦 ESTADO 1: LA CITA ES EN EL FUTURO (Aún no empieza)
                         if (now < this.startTime) {
                             this.minutesRemaining = config.duration;
                             const timeToStart = this.startTime - now;
                             const oneDayInMs = 24 * 60 * 60 * 1000;
 
-                            // Si falta más de 24 horas
                             if (timeToStart > oneDayInMs) {
                                 const days = Math.ceil(timeToStart / oneDayInMs);
                                 this.timerText = `La reunión aún no empieza (Faltan ${days} ${days === 1 ? 'día' : 'días'})`;
@@ -217,7 +307,6 @@ a las {{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }}
                                 return;
                             }
 
-                            // Mismo día, falta menos de 24 horas (Cuenta regresiva de inicio)
                             const totalSeconds = Math.floor(timeToStart / 1000);
                             const hours = Math.floor(totalSeconds / 3600);
                             const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -229,7 +318,6 @@ a las {{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }}
                             return;
                         }
 
-                        // 🟩/🟥 ESTADO 2: LA REUNIÓN ESTÁ EN CURSO o FINALIZADA
                         const difference = this.endTime - now;
 
                         if (difference <= 0) {
@@ -244,7 +332,6 @@ a las {{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }}
                             return;
                         }
 
-                        // Cómputo y formateo estable de minutos restantes (Evita brincos visuales)
                         const totalSeconds = Math.floor(difference / 1000);
                         const minutes = Math.floor(totalSeconds / 60);
                         const seconds = totalSeconds % 60;
@@ -255,7 +342,6 @@ a las {{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }}
                         const paddedSeconds = String(seconds).padStart(2, '0');
                         this.timerText = `Tiempo restante: ${paddedMinutes}m ${paddedSeconds}s`;
 
-                        // Estilos dinámicos basados en el tiempo
                         if (minutes < 5) {
                             this.timerClass = "bg-red-50 text-red-600 font-bold animate-pulse border border-red-200 px-4 py-2 rounded-full";
                         } else if (minutes < 10) {

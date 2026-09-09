@@ -4,6 +4,7 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use App\Jobs\ProcessPendingZoomMeetings;
 use Illuminate\Support\Facades\Schedule;
+use Illuminate\Support\Facades\Cache;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -22,3 +23,14 @@ Schedule::job(new ProcessPendingZoomMeetings)
 // Realiza un backup de la DB diariamente a las 12:00 AM y limpia los antiguos
 Schedule::command('backup:clean')->daily()->at('00:00');
 Schedule::command('backup:run --only-db')->daily()->at('00:05');
+
+// Limpia el caché de ciudades a las 3 AM diariamente
+Schedule::call(function () {
+    Cache::tags(['geonames_cities'])->flush();
+    \Log::info('✅ Caché de ciudades limpiado exitosamente');
+})
+->timezone('America/Bogota')
+->daily()
+->at('03:00')
+->name('clear-cities-cache')
+->withoutOverlapping();

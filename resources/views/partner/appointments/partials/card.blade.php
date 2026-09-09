@@ -1,7 +1,7 @@
 <!-- CAMBIAR EL x-data PRINCIPAL -->
 <div x-data="{ 
     openReschedule: false,
-    actionsOpen: false,  <!-- ✅ AGREGAR ESTO -->
+    actionsOpen: false,
     selectedDate: '', 
     slots: [], 
     loadingSlots: false,
@@ -85,7 +85,7 @@ class="p-5 bg-white space-y-3 relative">
         <!-- Botón Principal: Iniciar Consulta -->
         <div class="mb-3">
             @if($app->address && $app->address->type === 'virtual' && $app->status_label === 'confirmed' && $app->zoom_start_url)
-                <a href="{{ $app->zoom_start_url }}" target="_blank" 
+                <a href="{{ route('appointments.room', ['appointment' => $app->id]) }}" target="_blank" 
                    class="w-full block text-center text-xs font-black uppercase tracking-wider px-3 py-2.5 rounded-xl border shadow-sm transition
                    {{ (auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic') 
                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 

@@ -106,9 +106,14 @@ class SearchController extends Controller
         
     /**
      * Vista principal del buscador global híbrido y compacto de opendoctor.online.
-     */
-    public function index(Request $request)
-    {             
+     * 
+     * REFACTOR FINAL (Sept 1, 2026):
+     * - Filtra por geoname_id (addresses.city_id)
+     * - Si encuentra resultados en la ciudad, agrega otras ciudades del país
+     * - Si no encuentra, busca en todo el país por country_code
+    */
+    public function index__(Request $request)
+    {                    
         $this->trackSearchAsync($request);
 
         $specialties = Specialty::where('status', true)->orderBy('name', 'asc')->get();
@@ -185,7 +190,7 @@ class SearchController extends Controller
             });
         });
 
-        $backupSearchQuery = clone $searchQuery;
+        $backupSearchQuery = clone $searchQuery;      
 
         $searchQuery->when($request->city, function ($query) use ($request) {
             $query->whereHas('city', function ($q) use ($request) {
@@ -344,12 +349,264 @@ class SearchController extends Controller
         ]);
     }
 
+    public function index(Request $request)
+    {                    
+        $this->trackSearchAsync($request);
+
+        $specialties = Specialty::where('status', true)->orderBy('name', 'asc')->get();
+        $cities = City::where('state', true)->orderBy('name', 'asc')->get();
+        $symptoms = IndexedSymptom::inRandomOrder()->limit(10)->pluck('search_query')->toArray();
+        
+        // 1. Consulta base unificada con Eager Loading estricto
+        $searchQuery = Address::with([
+            'city',
+            'services',
+            'doctor.user',
+            'doctor.specialties',
+            'doctor.addresses' => function ($query) {
+                $query->where('status', true)->whereNull('deleted_at');
+            },
+            'doctor.addresses.services',
+            'clinic.user',
+            'clinic.doctors.specialties',
+            'clinic.addresses' => function ($query) {
+                $query->where('status', true)->whereNull('deleted_at');
+            },
+            'clinic.addresses.services'
+        ])
+        ->addSelect([
+            'owner_plan_price' => function ($subQuery) {
+                $subQuery->select('plans.price')
+                    ->from('plans')
+                    ->leftJoin('clinic_settings', 'plans.id', '=', 'clinic_settings.plan_id')
+                    ->leftJoin('doctor_settings', 'plans.id', '=', 'doctor_settings.plan_id')
+                    ->where(function ($query) {
+                        $query->whereColumn('clinic_settings.clinic_id', 'addresses.clinic_id')
+                            ->orWhereColumn('doctor_settings.doctor_id', 'addresses.doctor_id');
+                    })
+                    ->limit(1);
+            },
+            'owner_rating' => function ($subQuery) {
+                $subQuery->selectRaw('COALESCE(clinics.rating, doctors.rating)')
+                    ->from('addresses as addr')
+                    ->leftJoin('clinics', 'clinics.id', '=', 'addr.clinic_id')
+                    ->leftJoin('doctors', 'doctors.id', '=', 'addr.doctor_id')
+                    ->whereColumn('addr.id', 'addresses.id')
+                    ->limit(1);
+            }
+        ])
+        // Filtros globales estrictos para la dirección
+        ->where('addresses.status', true)
+        ->whereNull('addresses.deleted_at')
+        
+        // Filtro agrupado para los propietarios
+        ->where(function ($query) {
+            $query->where(function ($q1) {
+                $q1->whereHas('clinic', function ($q) {
+                    $q->where('active', true)->where('validation_status', 'approved');
+                });
+            })
+            ->orWhere(function ($q2) {
+                $q2->whereHas('doctor', function ($q) {
+                    $q->where('active', true)->where('validation_status', 'approved');
+                });
+            });
+        });
+        
+        // Filtro condicional por Especialidad Médica (Slug)
+        $searchQuery->when($request->specialty, function ($query) use ($request) {
+            $query->where(function ($sub) use ($request) {
+                $sub->whereHas('doctor.specialties', function ($q) use ($request) {
+                    $q->where('specialties.slug', $request->specialty);
+                })
+                ->orWhereHas('clinic.doctors.specialties', function ($q) use ($request) {
+                    $q->where('specialties.slug', $request->specialty);
+                });
+            });
+        });
+
+        $backupSearchQuery = clone $searchQuery;      
+
+        // 🔥 CAMBIO 1: Filtra por geoname_id (addresses.city_id) - directo, sin join a cities
+        $searchQuery->when($request->city_id, function ($query) use ($request) {
+            $query->where('addresses.city_id', $request->city_id);
+        });
+
+        $addresses = $searchQuery->orderBy('owner_plan_price', 'desc') 
+            ->orderBy('owner_rating', 'desc')                          
+            ->get();
+        
+        $showingSuggestions = false;
+        
+        // 🔥 CAMBIO 2: Lógica de fallback mejorada
+        if ($request->city_id) {
+            // Si encontró resultados en la ciudad, agrega otras ciudades del país
+            if (!$addresses->isEmpty()) {
+                $otherCities = $backupSearchQuery
+                    ->when($request->country_code, function ($query) use ($request) {
+                        // Busca en el país PERO EXCLUYENDO la ciudad actual
+                        $query->where('addresses.country_code', $request->country_code)
+                              ->where('addresses.city_id', '!=', $request->city_id);
+                    })
+                    ->orderBy('owner_plan_price', 'desc') 
+                    ->orderBy('owner_rating', 'desc')
+                    ->get();
+                
+                // Combina: primero ciudad, luego otras ciudades del país
+                $addresses = $addresses->merge($otherCities);
+                $showingSuggestions = false;
+            
+            // Si NO encontró en la ciudad, busca en todo el país
+            } else {
+                $showingSuggestions = true;
+                $addresses = $backupSearchQuery
+                    ->when($request->country_code, function ($query) use ($request) {
+                        $query->where('addresses.country_code', $request->country_code);
+                    })
+                    ->orderBy('owner_plan_price', 'desc') 
+                    ->orderBy('owner_rating', 'desc')
+                    ->limit(12)
+                    ->get();
+            }
+        }
+
+        // Obtener ciudad objetivo (solo para mostrar info, no para filtrar)
+        $targetCity = $request->filled('city_name') ? $request->input('city_name') . ' - ' . $request->input('city_countryName') : 'Bogotá, Colombia';
+        //$targetCity = $request->city_id ? City::where('id', $request->city_id)->first() : null;
+        $targetSpecialty = $request->specialty ? Specialty::where('slug', $request->specialty)->first() : null;
+        $expertName = 'especialistas';
+
+        $hasPhysical = $addresses->contains('type', 'physical');
+        $hasVirtual = $addresses->contains('type', 'virtual');
+        
+        // PROCESAMIENTO HÍBRIDO CON RESPALDO MAESTRO DE DISPONIBILIDAD
+        $groupedResults = collect();
+        
+        foreach ($addresses as $address) {
+            $isClinic = !is_null($address->clinic_id);
+
+            if ($isClinic) {
+                $clinic = $address->clinic;
+                $uniqueKey = 'clinic_' . $clinic->id;
+
+                if ($groupedResults->has($uniqueKey)) continue;
+
+                $doctorsQuery = $clinic->doctors();
+                if ($request->filled('specialty')) {
+                    $doctorsQuery->whereHas('specialties', function ($q) use ($request) {
+                        $q->where('specialties.slug', $request->specialty);
+                    });
+                }
+                $doctorIds = $doctorsQuery->pluck('doctors.id')->toArray();
+                $specialistsCount = count($doctorIds);
+
+                $availabilityService = app(AvailabilityService::class);
+                $backupTurn = $availabilityService->getNextAvailableTurnAnyAddress(
+                    $doctorIds,
+                    $clinic->id
+                );
+
+                $groupedResults->put($uniqueKey, [
+                    'type'        => 'clinic',
+                    'id'          => $clinic->id,
+                    'title'       => $clinic->user->name,
+                    'slug'        => $clinic->slug,
+                    'rating'      => $clinic->rating,
+                    'badge_text'  => $specialistsCount > 0 ? "{$specialistsCount} Especialistas" : "Clínica", 
+                    'user'        => $clinic->user,
+                    'model'       => $clinic,
+                    'address_id'  => $request->city_id ? $address->id : null,
+                    'subtitle'    => "{$address->name} • {$address->address}",                    
+                    'next_turn'   => $backupTurn ? ($backupTurn->isToday() ? 'Hoy ' : '') . ucfirst($backupTurn->isoFormat('dddd D [de] MMMM — h:mm A')) : 'Sin turnos próximos disponibles'
+                ]);
+
+            } else {
+                $doctor = $address->doctor;
+                $uniqueKey = 'doctor_' . $doctor->id;
+
+                if ($groupedResults->has($uniqueKey)) continue;
+
+                $availabilityService = app(AvailabilityService::class);
+                $backupTurn = $availabilityService->getNextAvailableTurnAnyAddress(
+                    [$doctor->id],
+                    null
+                );
+
+                $langNames = ['co' => 'Colombia', 'es' => 'Español', 'en' => 'Inglés', 'pt' => 'Portugués', 'fr' => 'Francés', 'de' => 'Alemán'];
+                $rawLang = $doctor->languages;
+                $decodedLang = is_array($rawLang) ? $rawLang : (json_decode($rawLang, true) ?? []);
+
+                $langFlags = [
+                    'co' => 'co',
+                    'es' => 'es',
+                    'en' => 'us',
+                    'pt' => 'br',
+                    'fr' => 'fr',
+                    'de' => 'de',
+                    'it' => 'it',
+                    'zh' => 'cn',
+                    'ar' => 'sa',
+                ];
+                
+                $languages = array_map(fn($code) => [
+                    'code' => $code,
+                    'name' => $langNames[$code] ?? strtoupper($code),
+                    'flag' => $langFlags[$code] ?? 'un',
+                ], $decodedLang);
+                                              
+                $groupedResults->put($uniqueKey, [
+                    'type'              => 'doctor',
+                    'id'                => $doctor->id,
+                    'title'             => ($doctor->gender === 'female' ? 'Dra. ' : 'Dr. ') . ucfirst($doctor->user->name),
+                    'slug'              => $doctor->slug,
+                    'rating'            => $doctor->rating,
+                    'badge_text'        => $targetSpecialty ? $targetSpecialty->name : ($doctor->specialties->first()->name ?? 'Consultorio Privado'), 
+                    'user'              => $doctor->user,
+                    'model'             => $doctor,
+                    'specialties_count' => $doctor->specialties->count(),
+                    'languages'         => $languages,
+                    'countryName'       => $doctor->country_name,
+                    'country_code'      => $doctor->country_code,
+                    'address_id'        => $request->city_id ? $address->id : null,
+                    'subtitle'          => $address->type === 'virtual' ? 'Atención Online' : "{$address->name} • {$address->address}",                  
+                    'next_turn'         => $backupTurn ? ($backupTurn->isToday() ? 'Hoy ' : '') . ucfirst($backupTurn->isoFormat('dddd D [de] MMMM — h:mm A')) : 'Sin turnos próximos disponibles'
+                ]);
+            }
+        }
+    
+        $page = LengthAwarePaginator::resolveCurrentPage();
+        $perPage = 10;
+        
+        $resultsPage = new LengthAwarePaginator(
+            $groupedResults->values()->forPage($page, $perPage)->values(),
+            $groupedResults->count(),
+            $perPage,
+            $page,
+            ['path' => LengthAwarePaginator::resolveCurrentPath()]
+        );
+
+        $resultsPage->appends($request->all());
+        
+        return view('search.index', [
+            'results'            => $resultsPage,
+            'specialties'        => $specialties,
+            'cities'             => $cities,
+            'symptoms'           => $symptoms,
+            'showingSuggestions' => $showingSuggestions,
+            'targetCity'         => $targetCity,
+            'targetSpecialty'    => $targetSpecialty,
+            'expertName'         => $expertName,
+            'hasPhysical'        => $hasPhysical,
+            'hasVirtual'         => $hasVirtual,
+        ]);
+    }
+
     /**
      * Despacha los resultados de coincidencia exacta de criterios.
      * ⚡ OPTIMIZADO: Eager Loading completo para evitar N+1 queries en renderizado.
      */
     public function search(Request $request)
-    {                
+    {               
         $request->validate([
             'specialty' => 'required',
         ], [

@@ -24,8 +24,8 @@ return new class extends Migration
             $table->string('address');
             $table->enum('type', ['physical', 'virtual'])->default('physical');
             $table->string('phone')->nullable();
-            $table->string('city_id', 5);
-            $table->foreign('city_id')->references('id')->on('cities')->onDelete('cascade');
+            $table->string('country_code', 2)->nullable();
+            $table->string('city_id', 9)->nullable();
             $table->boolean('status')->default(true);
             $table->softDeletes();
             $table->timestamps();

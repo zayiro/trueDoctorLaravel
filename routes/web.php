@@ -56,6 +56,7 @@ use App\Http\Controllers\Admin\IndexedSymptomController;
 use App\Http\Controllers\Admin\AnalyticsController;
 
 use App\Http\Controllers\MedicalAnalysisController;
+use App\Http\Controllers\CityController;
 
 use Spatie\Honeypot\ProtectAgainstSpam; 
 use Illuminate\Cache\RateLimiting\Limit;
@@ -88,7 +89,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/document/view/{type}', [ValidationController::class, 'viewDocument'])->name('administrator.document.view');
 
     //borrar cache desde el navegador cuando este logueado con role de admin
-    Route::get('/clear-cache', [AdminController::class, 'clearCache'])->name('administrator.clearcache.index');         
+    Route::get('/clear-cache', [AdminController::class, 'clearCache'])->name('administrator.clearcache.index'); 
+    
+    Route::post('/cache/cities/clear', [CityController::class, 'clearCitiesCache'])->name('administrator.cache.city');
 
     // Rutas protegidas de administración
     Route::resource('administrator/seo-sintomas', IndexedSymptomController::class)
@@ -436,6 +439,8 @@ Route::post('/appointments/process-patient', [AppointmentController::class, 'pro
 Route::get('/appointments/preview/{id}', [AppointmentController::class, 'preview'])->name('appointments.preview');
 Route::get('/appointments/success/{appointment}', [AppointmentController::class, 'success'])->name('appointments.success');
 Route::post('/appointments/cancel-flow', [AppointmentController::class, 'cancelFlow'])->name('appointments.cancel-flow');
+// Agregar esta ruta en tu archivo de rutas
+Route::post('/appointments/promo/validate', [AppointmentController::class, 'validatePromoCode'])->name('appointments.promo.validate');
 
 // Catálogo dinámico de servicios por sede
 Route::get('/api/addresses/{address}/services', [PartnerAppointmentController::class, 'getServices'])->name('api.addresses.services');
@@ -512,3 +517,6 @@ Route::get('/verify/{signatureHash}', [PrescriptionController::class, 'verify'])
 Route::get('{partner_slug}/{campaign_slug}.html', PublicLanding::class)
     ->name('landing.public')
     ->where('partner_slug', '(?!appointments|administrator|admin|partner|patient|clinic|api|medical-analysis|verify|sintomas|medical-partner|plans)[a-zA-Z0-9\-]+');
+
+Route::get('/cities/search', [CityController::class, 'search'])->name('cities.search');
+Route::get('/cities/nearby', [CityController::class, 'searchByCoordinates'])->name('cities.nearby');

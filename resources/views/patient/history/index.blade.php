@@ -11,7 +11,7 @@ $breadcrumbs = [
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-    <div class="max-w-5xl mx-auto py-10 px-4">
+    <div class="max-w-7xl mx-auto py-10 px-4">
         {{-- Banner de alertas de éxito o error --}}
         @if (session('success'))
             <div class="w-full text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-4 py-3 rounded-xl mb-2">

@@ -12,6 +12,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Support\Str;
 
 class User extends Authenticatable
 {
@@ -69,6 +70,22 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    protected static function booted()
+    {
+        // Cuando se actualiza el nombre del usuario
+        static::updating(function ($user) {
+            // Si cambió el nombre y es un doctor
+            if ($user->isDirty('name') && $user->hasRole('doctor')) {
+                // Regenerar el slug en la tabla doctors
+                if ($user->doctor) {
+                    $user->doctor->update([
+                        'slug' => Str::slug($user->name),
+                    ]);
+                }
+            }
+        });
     }
 
     public function doctor()

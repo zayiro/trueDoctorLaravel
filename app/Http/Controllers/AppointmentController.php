@@ -17,6 +17,7 @@ use App\Services\ZoomService;
 use App\Models\User;
 use App\Models\DoctorPayout;
 use App\Events\AppointmentCancelled;
+use App\Models\PromoCode;
 use App\Http\Requests\SearchAppointmentByReferenceRequest;
 use App\Http\Requests\StoreAppointmentRequest;
 use App\Http\Requests\StoreAppointmentStepTwoRequest;
@@ -42,6 +43,9 @@ use App\Services\Wompi\WompiService;
 use App\Jobs\ExpireUnpaidAppointment;
 use App\Mail\PaymentFailedMail;
 use App\Jobs\SendAppointmentReminder;
+
+use App\Enums\PaymentStatus;
+use \App\Enums\AppointmentStatus;
 
 class AppointmentController extends Controller
 {
@@ -182,8 +186,8 @@ class AppointmentController extends Controller
         }
 
         // Estado por defecto según tus reglas de pre-aprobación del SaaS
-        $status = \App\Enums\AppointmentStatus::CONFIRMED->value; 
-        $payment_status = \App\Enums\PaymentStatus::PENDING->value;
+        $status = AppointmentStatus::CONFIRMED->value; 
+        $payment_status = PaymentStatus::PENDING->value;
 
         // 3. Preparación molecular de la matriz de datos transaccionales
         $appointmentData = [
@@ -529,8 +533,8 @@ class AppointmentController extends Controller
         
         // Estado por defecto según tus reglas de pre-aprobación del SaaS
         //$status = $requiresApproval ? \App\Enums\AppointmentStatus::PENDING->value : \App\Enums\AppointmentStatus::CONFIRMED->value;
-        $status = \App\Enums\AppointmentStatus::PENDING->value;
-        $payment_status = \App\Enums\PaymentStatus::PENDING->value;
+        $status = AppointmentStatus::PENDING->value;
+        $payment_status = PaymentStatus::PENDING->value;
                     
         // 💾 CONSOLIDACIÓN DE LA RESERVA (Encapsulada en una transacción limpia)
         //reference lo hace en el modelo Appointment en el boot method, así que no es necesario generarla aquí
@@ -618,179 +622,43 @@ class AppointmentController extends Controller
         // 3. Despachamos la vista compactando el objeto totalmente aislado
         return view('appointments.preview', compact('appointment', 'virtualPaymentRequired', 'wompiData'));
     }
-
-    /**
-     * Muestra la pantalla de confirmación exitosa de la cita médica validando la tenencia del recurso.
-    */    
-    public function success__(Appointment $appointment)
-    {
-        // 1. Cargar todas las relaciones necesarias desde el inicio para evitar consultas N+1
-        $appointment->load(['doctor.user', 'clinic', 'service', 'address.city', 'patient.user']);
-
-        $activeUser = Auth::user();
-
-        // ✅ EXCEPCIÓN: Si la cita fue pagada hace menos de 5 minutos (viene de Wompi)
-        // permitimos el acceso sin verificar sesión
-        $comingFromPayment = $appointment->paid_at && $appointment->paid_at->diffInMinutes(now()) <= 5;
-
-        if (!$activeUser && !$comingFromPayment) {
-            abort(401, 'Debes iniciar sesión para visualizar el comprobante de tu cita.');
-        }
-
-        // 🔒 BLINDAJE DE SEGURIDAD MULTI-TENANT RIGIDO
-        $hasAccess = false;
-
-        // Caso A: El usuario actual es el paciente dueño de la cita
-        if ($activeUser->role === 'patient' && $appointment->patient) {
-            if ((int)$appointment->patient->user_id === (int)$activeUser->id) {
-                $hasAccess = true;
-            }
-        }
-        // Caso B: El usuario es el médico especialista asignado
-        elseif ($activeUser->role === 'doctor' && $appointment->doctor) {
-            if ((int)$appointment->doctor_id === (int)$activeUser->doctor?->id) {
-                $hasAccess = true;
-            }
-        }
-        // Caso C: El usuario es el personal administrativo de la clínica donde ocurre la cita
-        elseif ($activeUser->role === 'clinic') {
-            if ((int)$appointment->clinic_id === (int)$activeUser->clinic?->id) {
-                $hasAccess = true;
-            }
-        }
-
-        if (!$hasAccess) {
-            abort(403, 'Acceso no autorizado a este recibo o comprobante transaccional de consulta médica.');
-        }
-
-        // 1. Verificamos rápidamente en la base de datos si la referencia está registrada como un fallo previo
-        $hasCreationFailure = DB::table('zoom_creation_failures')->where('appointment_id', $appointment->id)->exists();
-        
-        // 2. 🔒 CONTROL DE TELEMEDICINA SEGURO (Previene duplicación de salas en recargas de página)
-        if (
-            (($appointment->service && $appointment->service->type === 'virtual') || ($appointment->address && $appointment->address->type === 'virtual')) 
-            && !$appointment->zoom_meeting_id 
-            && !$hasCreationFailure
-        ) {            
-            try {
-                // Usamos una transacción con bloqueo pesimista para evitar que recargas simultáneas dupliquen salas
-                DB::transaction(function () use ($appointment) {
-                    // Bloqueamos la fila en la base de datos para esta petición
-                    $freshAppointment = $appointment->newQuery()->lockForUpdate()->find($appointment->id);
-
-                    // Doble verificación: Si otra petición o el Job ya creó la sala en este instante, abortamos
-                    if ($freshAppointment->zoom_meeting_id) {
-                        return;
-                    }
-
-                    $onlyDate = Carbon::parse($freshAppointment->date)->format('Y-m-d');
-                    $startDateTime = Carbon::parse("{$onlyDate} {$freshAppointment->start_time}")->toIso8601String();
-                    $topic = "Telemedicina_Ref: " . $freshAppointment->reference;
-
-                    // Invocación al servicio
-                    $zoomMeeting = $this->zoomService->createMeeting($topic, $startDateTime, (int) $freshAppointment->duration);                
-
-                    if ($zoomMeeting) {
-                        // El modelo encripta automáticamente gracias a los nuevos mutadores set...Attribute
-                        $freshAppointment->update([
-                            'zoom_meeting_id' => $zoomMeeting['meeting_id'], //ID numérico de la reunión en Zoom                  
-                            'meeting_link'    => $zoomMeeting['url_patient'], //Enlace genérico o exclusivo para el Paciente
-                            'zoom_start_url'  => $zoomMeeting['url_partner'], //Enlace exclusivo para que el Doctor inicie como Anfitrión
-                        ]);                                        
-
-                        // ÉXITO: Limpiamos la tabla de contingencia asíncrona
-                        DB::table('zoom_creation_failures')->where('appointment_id', $freshAppointment->id)->delete();
-                        
-                        // Sincronizamos el estado fresco (y desencriptado por el accessor) en el objeto original para la vista
-                        $appointment->fill($freshAppointment->toArray())->syncOriginal();
-                    } else {
-                        \Log::error('Fallo al crear la reunión de Zoom con referencia: ' . $freshAppointment->reference . ' - Registrando para contingencia asíncrona.');
-                        
-                        DB::table('zoom_creation_failures')->updateOrInsert(
-                            ['appointment_id' => $freshAppointment->id],
-                            [
-                                'status'     => 'pending',
-                                'created_at' => now(),
-                                'updated_at' => now()
-                            ]
-                        );
-                    }
-                });
-            } catch (\Exception $e) {
-                \Log::error('Fallo crítico en bloque de contingencia Zoom para la referencia: ' . $appointment->reference . ' - ' . $e->getMessage());
-            }
-        }
-
-        // 3. ENVÍO CONTROLADO DE CORREO ELECTRÓNICO (Evita caídas por límites de SMTP corporativos)
-        if (!$appointment->email_sent) {
-            try {
-                $patientEmail = $appointment->patient?->user?->email;
-                $doctorEmail = $appointment->doctor?->user?->email;
-
-                if ($patientEmail) {
-                    Mail::to($patientEmail)->send(new AppointmentConfirmed($appointment, 'patient'));
-                }
-                
-                if ($doctorEmail && $appointment->service->type === 'physical') {
-                    Mail::to($doctorEmail)->send(new AppointmentConfirmed($appointment, 'partner'));
-                }
-
-                //send message whatsapp
-                /*
-                $this->whatsapp->sendConfirmed(
-                    phone:       $appointment->patient->phone,
-                    patientName: $appointment->patient->full_name,
-                    sede:        $appointment->sede->name,
-                    time:        $appointment->time->format('H:i'),
-                    doctor:      $appointment->doctor->full_name,
-                );
-                
-                $this->whatsapp->sendCancelled(
-                    phone:       $appointment->patient->phone,
-                    patientName: $appointment->patient->full_name,
-                    date:        $appointment->date->format('d/m/Y'),
-                    time:        $appointment->time->format('H:i'),
-                    doctor:      $appointment->doctor->full_name,
-                );
-                
-                $this->whatsapp->sendRescheduled(
-                    phone:       $appointment->patient->phone,
-                    patientName: $appointment->patient->full_name,
-                    newDate:     $appointment->date->format('d/m/Y'),
-                    newTime:     $appointment->time->format('H:i'),
-                    sede:        $appointment->sede->name,
-                    doctor:      $appointment->doctor->full_name,
-                );*/
-
-                $appointment->update(['email_sent' => true]);
-            } catch (Throwable $e) {
-                \Log::error("Límite de correo excedido o SMTP caído en el recibo de éxito: " . $e->getMessage());
-                
-                // Notificación silenciosa opcional para el administrador de la plataforma
-                try {
-                    $admins = User::where('role', 'admin')->get();
-                    \Notification::send($admins, new MailLimitExceededNotification($e->getMessage(), $activeUser->email));
-                } catch (\Exception $ne) {
-                    // Evitar bucle infinito de excepciones si el Driver de correo está roto
-                }
-            }
-        }            
-        
-        // Sincronizamos la instancia fresca final para la renderización del Blade
-        $appointment = $appointment->fresh(['doctor.user', 'clinic', 'service', 'address.city', 'patient.user']);
-
-        return view('appointments.success', compact('appointment'));
-    }
-
+   
     public function success(Appointment $appointment)
-    {
+    {        
         // 1. Cargar todas las relaciones necesarias desde el inicio para evitar consultas N+1
         $appointment->load(['doctor.user', 'clinic', 'service', 'address.city', 'patient.user']);
 
+        // 🏷️ INTEGRACIÓN DE CUPONES: Validar si existe un descuento del 100% pendiente en la sesión
+        if (session()->has('pending_promo_code') && (float)session('pending_discount_amount') >= (float)$appointment->price) {
+            
+            // 🚀 LÓGICA DE INCREMENTO DEL CÓDIGO PROMOCIONAL
+            // Buscamos el cupón usando el string guardado en la sesión
+            $promoCode = PromoCode::where('code', session('pending_promo_code'))->first();
+            
+            if ($promoCode) {
+                // Incrementa atómicamente la columna 'uses' en +1 y guarda el cambio inmediatamente
+                $promoCode->increment('uses');
+            }
+            
+            // Registrar de forma definitiva el beneficio en la base de datos
+            $appointment->update([
+                'promo_code'      => session('pending_promo_code'),
+                'discount_amount' => $appointment->price, // El descuento es la totalidad del valor base
+                'status'          => AppointmentStatus::CONFIRMED->value,
+                'payment_status'  => PaymentStatus::PAID->value, // Forzamos el estado de pago para aprobar el blindaje virtual
+                'paid_at'         => now(),
+            ]);
+
+            $appointment->refresh();
+
+            // Limpiar las variables de la sesión una vez aplicadas con éxito
+            session()->forget(['pending_promo_code', 'pending_discount_amount']);
+        }
+        
         // 🔒 BLINDAJE DE PAGO: Si es virtual y no está pagada, no puede ver el éxito
         if (
             $appointment->service->type === 'virtual' &&
-            $appointment->payment_status !== 'paid'
+            $appointment->payment_status->value !== PaymentStatus::PAID->value
         ) {
             return redirect()->route('home')
                 ->with('error', 'Debes completar el pago para confirmar tu cita virtual.');
@@ -888,44 +756,43 @@ class AppointmentController extends Controller
         // Redirección contextual unificada al home global inmune a errores de rutas inexistentes
         return redirect()->route('search')->with('info', 'Proceso de reserva cancelado con éxito. El horario de atención ha sido liberado.');
     }
-
-    /**
-     * Renderiza la sala de telemedicina incrustada dentro de OpenDoctor
-     */
+    
     public function joinRoom(Appointment $appointment, ZoomService $zoomService)
     {
-        // 1. Validar que la cita tenga un ID de reunión generado
         if (!$appointment->zoom_meeting_id) {
             return redirect()->route('admin.dashboard')->with('error', 'Esta cita no tiene una videollamada activa.');
         }
 
         try {
-            // 2. Extraemos el ID y desencriptamos la contraseña de la base de datos
+            $user = auth()->user();
             $meetingId = $appointment->zoom_meeting_id;
+            
+            // Determinar el rol según el usuario
+            $isDoctor = $user->id === $appointment->doctor_id || auth()->user()->hasRole('doctor');
+            $role = $isDoctor ? 1 : 0; // 1 = host/doctor, 0 = participante/paciente
 
-            // CONTROL DE CONTINGENCIA: Intentamos desencriptar de forma segura
+            // Desencriptar contraseña
             try {
                 $password = Crypt::decryptString($appointment->meeting_link_password);
             } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
-                // Si el payload es inválido (texto plano viejo), usamos el valor de la BD directo
                 $password = $appointment->meeting_link_password; 
             }
             
-            // 3. Generamos la firma segura para el SDK (Rol: 0 para paciente/asistente)
-            $signature = $zoomService->generateSdkSignature($meetingId, 0);
+            // Generar firma con el rol correcto
+            $signature = $zoomService->generateSdkSignature($meetingId, $role);
 
-            // 4. Inyectamos las variables exactas que la vista "room" necesita recibir
             return view('appointments.room', [
                 'appointment' => $appointment,
                 'meetingId'   => $meetingId,
                 'password'    => $password,
                 'signature'   => $signature,
                 'sdkKey'      => config('services.zoom.client_id'),
+                'userRole'    => $role, // Pasar el rol a la vista
             ]);
 
         } catch (\Exception $e) {
-            Log::error("Error en joinRoom de Zoom SDK (Cita ID {$appointment->id}): " . $e->getMessage());
-            return redirect()->route('admin.dashboard')->with('error', 'No se pudieron recuperar las llaves de acceso del consultorio virtual.');
+            Log::error("Error en joinRoom (Cita ID {$appointment->id}): " . $e->getMessage());
+            return redirect()->route('admin.dashboard')->with('error', 'No se pudieron recuperar las llaves de acceso.');
         }
     }
 
@@ -964,8 +831,15 @@ class AppointmentController extends Controller
     public function getStatus(Appointment $appointment): JsonResponse
     {
         return response()->json([
-            'status' => $appointment->status, // pending, completed, etc.
+            'status' => $appointment->status,
+            'completed_at' => $appointment->updated_at
         ]);
+    }
+
+    public function saveNotes(Request $appointment)
+    {
+        $appointment->update(['notes' => request('notes')]);
+        return response()->json(['success' => true]);
     }
 
     /**
@@ -1026,9 +900,9 @@ class AppointmentController extends Controller
   
         if ($status === 'approved') {
             $appointment->update([
-                'payment_status' => 'paid',
+                'payment_status' => PaymentStatus::PAID->value,
                 'paid_at'        => now(),
-                'status'         => 'confirmed',
+                'status'         => AppointmentStatus::CONFIRMED->value,
             ]);
 
             $payable = $appointment->clinic_id
@@ -1045,7 +919,7 @@ class AppointmentController extends Controller
                 'wompi_fee'           => round(($appointment->price + $appointment->commission_amount) * ($wompiFee / 100), 2),
                 'platform_commission' => $appointment->commission_amount,
                 'amount_to_pay'       => $appointment->doctor_amount,
-                'status'              => 'pending',
+                'status'              => PaymentStatus::PENDING->value,
                 'due_date'            => now()->addDays(3),
             ]);
 
@@ -1161,11 +1035,13 @@ class AppointmentController extends Controller
                     Mail::to($patientEmail)->send(new AppointmentConfirmed($appointment, 'patient'));
                 }
 
-                if ($doctorEmail && $appointment->service?->type === 'physical') {
+                if ($doctorEmail) {
                     Mail::to($doctorEmail)->send(new AppointmentConfirmed($appointment, 'partner'));
                 }
 
+
                 // ── WhatsApp
+                /* 
                 $this->whatsapp->sendConfirmed(
                     phone:       $appointment->patient->phone,
                     patientName: $appointment->patient?->user?->name ?? 'Paciente',
@@ -1175,7 +1051,7 @@ class AppointmentController extends Controller
                 );
 
                 \Log::error('Envia whatsapp template: ' . $appointment->patient->phone);
-
+                */
                 $appointment->update(['email_sent' => true]);
 
             } catch (Throwable $e) {
@@ -1190,7 +1066,88 @@ class AppointmentController extends Controller
             }
         }
 
-        // ── 3. Retornar instancia fresca para la vista ────────────────────────
+        // ── 3. Retornar instancia fresca para la vista
         return $appointment->fresh(['doctor.user', 'clinic', 'service', 'address.city', 'patient.user']);
+    }
+
+    public function validatePromoCode(Request $request)
+    {
+        $validated = $request->validate([
+            'code' => 'required|string|max:255',
+            'appointment_id' => 'required|integer',
+        ]);
+
+        $code = strtoupper($validated['code']);
+        
+        // 1. Buscar el código promocional
+        $promoCode = PromoCode::where('code', $code)->first();
+
+        // 2. Validar vigencia con tu helper del modelo
+        if (!$promoCode || !$promoCode->isValid(auth()->id())) {
+            return response()->json([
+                'message' => 'El código promocional no es válido, está desactivado, expiró o superó el límite de usos.'
+            ], 422);
+        }
+
+        // 3. Obtener la cita médica original
+        $appointment = Appointment::findOrFail($validated['appointment_id']);
+        
+        $basePrice = (float) $appointment->price; // Precio neto del médico original (87480)
+        $originalCommission = (float) ($appointment->commission_amount ?? 0);
+        $originalTotal = $basePrice + $originalCommission; // El subtotal original visual (100602)
+
+        // 4. Calcular el descuento basándonos únicamente en el valor del médico
+        if ($promoCode->type === 'percent') {
+            $discountAmount = ($basePrice * $promoCode->reward) / 100;
+        } else {
+            $discountAmount = min($promoCode->reward, $basePrice);
+        }
+
+        $discountAmount = floor($discountAmount); 
+        $newDoctorPrice = $basePrice - $discountAmount; // El precio rebajado del médico
+
+        $wompiData = null;
+        $virtualPaymentRequired = $appointment->service->type === 'virtual';
+
+        // 5. Inicializamos el precio final con el cálculo base por si no es virtual
+        $finalPrice = $newDoctorPrice + $originalCommission; 
+
+        if ($virtualPaymentRequired && $finalPrice > 0) {
+            $clonedAppointment = $appointment->replicate();
+            
+            // Seteamos el precio rebajado del médico. Tu SDK calculará la comisión real sobre este valor.
+            $clonedAppointment->price = $newDoctorPrice;
+            
+            // Dejamos que tu SDK calcule el checkout de forma natural
+            $wompiData = $this->wompi->buildAppointmentCheckoutUrl($clonedAppointment);
+            
+            // 🚀 EL AJUSTE CLAVE: 
+            // Extraemos el valor TOTAL EXACTO que tu SDK calculó para Wompi.
+            // Así obligamos a que el backend le mande a Alpine el número real de la pasarela.
+            if (isset($wompiData['total'])) {
+                $finalPrice = (float) $wompiData['total']; // Esto capturará los 90.542 reales de Wompi
+            }
+        }
+
+        // 6. El verdadero descuento visual que el cliente experimenta en el total global
+        $realVisualDiscount = $originalTotal - $finalPrice;
+
+        // 7. Guardamos en la sesión el descuento del especialista para el método success
+        session([
+            'pending_promo_code' => $promoCode->code,
+            'pending_discount_amount' => $discountAmount
+        ]);
+
+        // 8. Retornar la respuesta JSON sincronizada centavo a centavo
+        return response()->json([
+            'success' => true,
+            'code' => $promoCode->code,
+            'type' => $promoCode->type,
+            'reward' => $promoCode->reward,
+            'discount_amount' => $realVisualDiscount, // Muestra la resta exacta en tu tabla de Tailwind
+            'base_price' => $originalTotal, // $100.602
+            'final_price' => $finalPrice, // Dará EXACTAMENTE los mismos 90.542 de Wompi
+            'wompiData' => $wompiData,
+        ], 200);
     }
 }

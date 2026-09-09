@@ -7,7 +7,7 @@
 @endphp
 
 <x-guest-layout>    
-    <div class="max-w-4xl mx-auto py-12 px-4 text-center">
+    <div class="max-w-5xl mx-auto py-12 px-4 text-center">
         
         <!-- 1. ICONO, TITULO Y SUBTITULO CONDICIONALES POR ESTADO -->
         <div class="mt-6 mb-8">
@@ -53,12 +53,12 @@
                     <!-- Información del Médico, Servicio y Centro Médico -->
                     <div class="space-y-4 flex-1">
                         <div class="font-mono text-base font-black text-slate-800 tracking-medium uppercase selection:bg-indigo-100">
-                            <span class="text-[11px] font-black text-indigo-600 uppercase tracking-widest block mb-1">Referencia de Cita</span>
+                            <span class="text-sm font-black text-indigo-600 uppercase tracking-widest block mb-1">Referencia de Cita</span>
                             {{ $appointment->reference ?? 'REF-PENDIENTE' }}
                         </div>
                         
                         <div>
-                            <span class="text-[11px] font-black text-indigo-600 uppercase tracking-widest block mb-1">Prestador de Salud</span>
+                            <span class="text-sm font-black text-indigo-600 uppercase tracking-widest block mb-1">Prestador de Salud</span>
                             
                             {{-- 🔒 CONTROL MULTI-TENANT: Validamos la existencia relacional para prevenir fallos en cascada --}}
                             <p class="text-xl font-black text-slate-800 tracking-tight">
@@ -76,7 +76,7 @@
                             <!-- Co-propiedad: Sede institucional vinculada si aplica -->
                             @if($appointment->clinic_id && $appointment->clinic && $appointment->doctor_id)
                                 <div class="mt-2 block">
-                                    <span class="inline-flex items-center gap-1 text-[11px] font-black text-indigo-700 uppercase bg-indigo-50 px-2.5 py-0.5 rounded-md border border-indigo-100/40 shadow-2xs">
+                                    <span class="inline-flex items-center gap-1 text-sm font-black text-indigo-700 uppercase bg-indigo-50 px-2.5 py-0.5 rounded-md border border-indigo-100/40 shadow-2xs">
                                         🏢 Sede Sincronizada: {{ $appointment->clinic->name }}
                                     </span>
                                 </div>
@@ -84,7 +84,7 @@
                         </div>
 
                         <div>
-                            <span class="text-[11px] font-black text-indigo-600 uppercase tracking-widest block mb-1">Fecha y Hora</span>
+                            <span class="text-sm font-black text-indigo-600 uppercase tracking-widest block mb-1">Fecha y Hora</span>
                             <p class="text-sm font-bold text-slate-700 capitalize">                                                                
                                 {{ ucfirst(\Carbon\Carbon::parse($appointmentDate)->translatedFormat('l, d \d\e F \d\e Y')) }}
                             </p>
@@ -108,25 +108,25 @@
                     <!-- Modalidad, Sala de Telemedicina o Consultorio Físico (Multi-tenant) -->
                     <div class="space-y-4 w-full md:w-auto md:text-right flex flex-col md:items-end">
                         <div>
-                            <span class="text-[11px] font-black text-indigo-600 uppercase tracking-widest block mb-1">Modalidad de Consulta</span>
+                            <span class="text-sm font-black text-indigo-600 uppercase tracking-widest block mb-1">Modalidad de Consulta</span>
                             <span class="inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold {{ $appointment->service->type === 'virtual' ? 'bg-purple-100 text-purple-700 border border-purple-200/50' : 'bg-blue-100 text-blue-700 border border-blue-200/50' }}">
                                 {{ $appointment->service->type === 'physical' ? '🏥 Presencial' : '💻 Telemedicina' }}
                             </span>
                         </div>
                         
                         <div>
-                            <span class="text-[11px] font-black text-indigo-600 uppercase tracking-widest block mb-1">Ubicación de Asistencia</span>
+                            <span class="text-sm font-black text-indigo-600 uppercase tracking-widest block mb-1">Ubicación de Asistencia</span>
                             @if($appointment->service->type === 'virtual')
                                 @if($isPending)
                                     <p class="text-sm text-slate-700 font-bold">Enlace digital en espera</p>
-                                    <p class="text-[11px] text-slate-400 font-medium italic mt-0.5">Se activará automáticamente al ser aprobada por el centro médico.</p>
+                                    <p class="text-sm text-slate-400 font-medium italic mt-0.5">Se activará automáticamente al ser aprobada por el centro médico.</p>
                                 @else
                                     <p class="text-sm text-slate-700 font-bold">Sala virtual de consulta lista</p>
-                                    <p class="text-[11px] text-purple-600 font-semibold mt-0.5">Acceso directo habilitado abajo.</p>
+                                    <p class="text-sm text-purple-600 font-semibold mt-0.5">Acceso directo habilitado abajo.</p>
                                 @endif
                             @else
                                 <p class="text-sm text-slate-800 font-black leading-tight">{{ $appointment->address->name }}</p>
-                                <p class="text-[11px] text-slate-500 font-medium mt-0.5 leading-normal max-w-xs md:text-right">
+                                <p class="text-sm text-slate-500 font-medium mt-0.5 leading-normal max-w-xs md:text-right">
                                     {{ $appointment->address->address }}@if($appointment->address->city), {{ $appointment->address->city->name }}@endif
                                 </p>
                             @endif
@@ -139,7 +139,7 @@
                     <div class="mt-6 p-5 bg-purple-50 rounded-2xl border border-purple-100/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in">
                         <div class="space-y-0.5">
                             <h4 class="font-extrabold text-purple-950 text-sm">Tu link de telemedicina está listo:</h4>
-                            <p class="text-xs text-purple-800 leading-normal">Ingresa 5 minutos antes de la hora programada para verificar audio y cámara.</p>
+                            <p class="text-sm text-purple-800 leading-normal">Ingresa 5 minutos antes de la hora programada para verificar audio y cámara.</p>
                         </div>
                         <a href="{{ route('appointments.room', ['appointment' => $appointment->id]) }}" target="_blank" class="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white font-black px-5 py-3 rounded-xl text-xs uppercase tracking-wider transition-all text-center shadow-md shadow-purple-100 focus:outline-none">
                             Acceder a la Sala

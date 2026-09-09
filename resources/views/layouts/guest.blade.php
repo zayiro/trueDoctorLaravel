@@ -1,6 +1,6 @@
 @php
-    $title = $meta_title ?? 'Plataforma de agendamiento médico en línea';
-    $description = $meta_description;
+    $title = isset($meta_title) ? $meta_title : 'Plataforma de agendamiento médico en línea';
+    $description = isset($meta_description) ? $meta_description : 'Plataforma de agendamiento médico en línea. Consulta especialistas, realiza análisis con IA y agenda citas médicas en tiempo real. Telemedicina solicita y recibe tu cita';
     $schemaJson = json_encode([
         '@context' => 'https://schema.org',
         '@type' => 'MedicalBusiness',
@@ -77,14 +77,16 @@
             {{ $seo }}            
         @else        
             <title>{{ $title ?? 'OpenDoctorOnline | Orientacion Medica' }}</title>            
-            <meta name="description" content="{{ $description ?? 'Análisis médico online con IA. Consulta especialistas en Colombia, diagnostico instantaneo, cita médica virtual y presencial disponible.' }}">
-            <meta name="robots" content="{{ $meta_robots ?? 'index, follow' }}">
+            <meta name="description" content="{{ $description ?? 'Análisis médico online con IA. Consulta especialistas en Colombia, diagnostico instantaneo, cita médica virtual y presencial disponible.' }}">            
         @endif
 
+        <meta name="robots" content="{{ 'index, follow, max-snippet:-1, max-image-preview:large' }}">
+        <meta name="googlebot" content="index,follow">
         <meta name="keywords" content="{{ $keywords }}">
     
         <link rel="canonical" href="{{ $meta_canonical ?? url()->current() }}">
         
+        <meta name="author" content="OpenDoctorOnline">
         <meta property="og:type" content="website">
         <meta property="og:site_name" content="OpenDoctorOnline">
         <meta property="og:title" content="{{ $title ?? 'OpenDoctorOnline - Encuentra tu especialista y agenda tu cita' }}">

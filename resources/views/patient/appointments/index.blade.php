@@ -88,11 +88,12 @@ $hasStatusFilter = filled(request('status'));
 
                         $dateOnly = \Carbon\Carbon::parse($appointment->date)->toDateString(); 
                         $start = \Carbon\Carbon::parse($dateOnly . ' ' . $appointment->start_time, 'America/Bogota');
+                        $end = \Carbon\Carbon::parse($dateOnly . ' ' . $appointment->end_time, 'America/Bogota');
                         
-                        $end = $start->copy()->addMinutes($appointment->duration);
-                        $activationTime = $start->copy()->subMinutes(15);
-
-                        $showMeetingButton = now('America/Bogota')->between($activationTime, $end) && ($appointment->status_label === 'confirmed');
+                        // ✅ MEJORA: Determinar si la cita está EN CURSO
+                        $now = now('America/Bogota');
+                        $isAppointmentActive = $now->between($start, $end) && $appointment->status === 'confirmed';
+                        $isAppointmentPending = $now->isBefore($start) && $appointment->status === 'confirmed';
 
                         $settings = $appointment->doctor->settings;
                         $allowPatientCancellation = $settings->allow_patient_cancellation ?? true;
@@ -165,14 +166,12 @@ $hasStatusFilter = filled(request('status'));
                                                 target="_blank" 
                                                 rel="noopener noreferrer" 
                                                 class="inline-flex items-center gap-2 px-4 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
-                                                <!-- Icono estilo Heroicons (SVG Nativo) -->
                                                 <svg xmlns="http://w3.org" 
                                                     fill="currentColor" 
                                                     viewBox="0 0 24 24" 
                                                     class="w-5 h-5">
                                                     <path d="M12.004 2c-5.51 0-9.993 4.483-9.993 9.993 0 1.763.461 3.42 1.262 4.873L2 22l5.304-1.392a9.922 9.922 0 0 0 4.699 1.183c5.51 0 9.994-4.483 9.994-9.993C21.997 6.483 17.514 2 12.004 2zm5.221 14.195c-.227.64-.1.115-.902.937-.738.756-1.688.855-2.853.336-2.585-1.15-4.417-3.618-5.385-4.935-.37-.503-1.026-1.511-.968-2.316.05-.688.423-1.011.664-1.242.215-.207.48-.3.69-.3.21 0 .42.01.6.1.25.13.56.66.68.91.13.27.14.57.02.82-.12.25-.26.4-.41.58-.15.17-.32.36-.14.68.39.69.96 1.34 1.63 1.9 1.11.93 2.02 1.36 2.65 1.55.45.13.84.03 1.13-.24.33-.3.99-.95 1.22-1.32.22-.36.5-.28.82-.16.32.12 2.05 1.01 2.14 1.06.1.05.23.11.28.2.09.16.03.74-.2 1.37z"/>
                                                 </svg>
-
                                                 <span>Hablar con el doctor</span>
                                             </a>
                                         @endif
@@ -190,7 +189,6 @@ $hasStatusFilter = filled(request('status'));
                                             this.loadingSlots = true;
                                             this.slots = [];
                                             
-                                            // Consumimos tu ruta unificada e indexada enviando los parámetros exactos
                                             fetch(`/slots?date=${this.selectedDate}&doctor_id={{ $appointment->doctor_id }}&address_id={{ $appointment->address_id }}`)
                                                 .then(res => res.json())
                                                 .then(data => {
@@ -210,28 +208,24 @@ $hasStatusFilter = filled(request('status'));
                                         {{ $statusText }}
                                     </span>
 
-                                    <div class="flex flex-row sm:flex-col gap-2 w-full">                                        
-                                        <!-- 🟣 BOTÓN DE TELEMEDICINA EN VIVO -->
-                                        @if($showMeetingButton && $appointment->meeting_link)
-                                            <a href="{{ $appointment->meeting_link }}" 
-                                            target="_blank" 
-                                            class="inline-flex justify-center items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black uppercase tracking-wider text-center w-full shadow-md transition-all transform hover:-translate-y-0.5">
-                                                Entrar a Consulta
-                                            </a>
-                                        @elseif($appointment->service->type === 'virtual' && $appointment->status === 'confirmed' && !$showMeetingButton)
-                                            <span class="text-[10px] font-black text-purple-600 bg-purple-50 p-1.5 rounded-lg border border-purple-100 text-center block w-full uppercase tracking-wider">
-                                                Link activo 15 min antes
-                                            </span>
-                                        @endif
+                                    <div class="flex flex-col sm:flex-col gap-2 w-full">
+                                        
+                                        <!-- ✅ MEJORA: BOTÓN DE TELEMEDICINA - Solo EN CURSO -->
+                                        <a href="{{ route('appointments.room', ['appointment' => $appointment->id]) }}" 
+                                        target="_blank" 
+                                        class="inline-flex justify-center items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black uppercase tracking-wider text-center w-full shadow-md transition-all transform hover:-translate-y-0.5 animate-pulse">
+                                            🟢 Entrar a Consulta Ahora
+                                        </a>
+                                        <div class="flex items-center text-xs font-medium text-gray-500">Empieza a las {{ $appointment->start_time }}</div>
 
                                         <!-- 🔄 BOTÓN AGREGADO: REAGENDAR CITA -->
                                         @if ($appointment->reschedule_count >= $maxReschedules)
-                                            <span class="flex items-center text-sm font-medium text-gray-500">Número máximo de reagendamientos permitidos.</span>                                            
+                                            <span class="flex items-center text-[11px] font-bold text-gray-500 bg-gray-50 p-1.5 rounded-lg text-center w-full">Límite de reagendamientos alcanzado</span>                                            
                                         @else
                                             @if(in_array($appointment->status_label, ['pending', 'confirmed']) && ($remainingHours >= $cancellationNoticeHours))
                                                 <button @click="openReschedule = true" 
                                                         type="button" 
-                                                        class="inline-flex justify-center items-center gap-1.5 px-4 py-2 mt-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-xs font-black uppercase tracking-wider text-center w-full border border-indigo-100 transition-colors">
+                                                        class="inline-flex justify-center items-center gap-1.5 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-xs font-black uppercase tracking-wider text-center w-full border border-indigo-100 transition-colors">
                                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"></path>
                                                     </svg>
@@ -322,7 +316,6 @@ $hasStatusFilter = filled(request('status'));
                                                             class="w-full text-xs font-bold text-slate-700 border-slate-200 rounded-xl shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 bg-white">
                                                         <option value="">Selecciona un turno libre...</option>
                                                         <template x-for="slot in slots" :key="slot.time">
-                                                            <!-- El x-text muestra "6:20 AM", el :value inyecta "06:20:00" exactos para tu BD -->
                                                             <option :value="(() => {
                                                                         let [time, modifier] = slot.time.split(' ');
                                                                         let [hours, minutes] = time.split(':');

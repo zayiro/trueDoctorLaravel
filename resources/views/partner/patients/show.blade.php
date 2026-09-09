@@ -632,9 +632,9 @@ switch ($patient->gender) {
 
         <!-- Últimas consultas -->
         <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 mt-8">
-            <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Últimas consultas</h3>
+            <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Últimas 3 consultas</h3>
             <div class="space-y-2">
-                @forelse($patient->appointments as $history)
+                @forelse($patient->appointments->take(3) as $history)
                 @php
                 $status = match($history->status_label ?? $history->status) {
                     'confirmed' => 'Confirmada',

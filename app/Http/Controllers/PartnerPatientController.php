@@ -18,43 +18,50 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use App\Notifications\ConsultationAudioUploadFailedNotification;
 use Illuminate\Validation\Rule;
+use Illuminate\Pagination\Paginator;
 
 class PartnerPatientController extends Controller
 {
     public function index(Request $request)
     {        
-        $doctor = auth()->user();
-        $plan = auth()->user()->doctor->settings->plan;
-        
+        $user = auth()->user();
+        $doctor = $user->doctor; // ← Obtener el doctor vinculado al usuario
+        $doctorId = $doctor->id; // ← Este es el ID de la tabla doctors
+        $plan = $doctor->settings->plan;
         $querySearch = $request->input('query');
 
-        // 1. Base de la consulta: Pacientes que han tenido citas con este doctor
-        $query = Patient::whereHas('appointments', function ($q) use ($doctor) {
-            $q->where('doctor_id', $doctor->id);
-        });
+        // Base: Pacientes que han tenido citas con este doctor
+        $baseQuery = Patient::whereHas('appointments', function ($q) use ($doctorId) {
+            $q->where('doctor_id', $doctorId); // ← Ahora sí usa doctors.id
+        })->with(['user', 'appointments']);
 
-        // 2. Aplicar Restricción según Plan
         if ($plan?->can_search_patients && $querySearch) {
-            $query->where(function ($q) use ($querySearch) {
-                // Buscamos el nombre en la tabla USERS vinculada
-                $q->whereHas('user', function ($qu) use ($querySearch) {
-                    $qu->where('name', 'LIKE', "%{$querySearch}%");
-                })
-                // Buscamos el documento en la tabla PATIENTS (asegúrate de que el campo sea 'identification' o 'documento')
-                ->orWhere('identification', 'LIKE', "%{$querySearch}%");
+            $allPatients = $baseQuery->get();
+            
+            $filtered = $allPatients->filter(function ($patient) use ($querySearch) {
+                $searchLower = strtolower($querySearch);
+                return str_contains(strtolower($patient->user->name), $searchLower) ||
+                    str_contains(strtolower($patient->identification), $searchLower);
             });
-        } else {
-            // Plan FREE: Forzamos que solo vea pacientes que tengan cita HOY
-            $query->whereHas('appointments', function ($q) use ($doctor) {
-                $q->where('doctor_id', $doctor->id)
-                  ->whereDate('date', now());
-            });
-        }
 
-        // 3. Ejecutar con paginación y límite del plan
-        $patients = $query->with(['user', 'appointments']) // Eager loading para evitar el problema N+1
-            ->limit($plan?->max_patients_list)
-            ->paginate(15);
+            $page = $request->get('page', 1);
+            $perPage = 15;
+            $patients = new Paginator(
+                $filtered->forPage($page, $perPage),
+                $perPage,
+                $page,
+                ['path' => route('partner.patients.index'), 'query' => $request->query()]
+            );
+
+        } else {
+            $patients = $baseQuery
+                ->whereHas('appointments', function ($q) use ($doctorId) {
+                    $q->where('doctor_id', $doctorId)
+                    ->whereDate('date', now());
+                })
+                ->limit($plan?->max_patients_list)
+                ->paginate(15);
+        }
         
         return view('partner.patients.index', compact('patients', 'plan'));
     }
