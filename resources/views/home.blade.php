@@ -1,4 +1,8 @@
+@php
+    $price = \App\Models\Setting::where('key', 'medical_analysis_price')->value('value') ?? 19000;
+@endphp
 <x-guest-layout>
+
     @auth
         @php
             // Buscamos si el paciente tiene alguna cita virtual abandonada hoy
@@ -75,48 +79,7 @@
                 </svg>
             </div>
         </div>
-    </div>
-
-    <section class="py-16 px-4 bg-gray-50">
-        <div class="max-w-5xl mx-auto">            
-            <div class="text-center mb-6">
-                <h1 class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
-                    Agende su cita médica <span class="text-blue-600">en línea</span>
-                </h1>
-            </div>
-            <div class="space-y-6">                               
-            <!-- Beneficios finales -->
-            <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="text-center">
-                    <div class="flex justify-center mb-4">
-                        <svg class="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                    </div>
-                    <p class="font-black text-gray-900 text-lg max-w-2xl mx-auto">Menos de 5 minutos</p>
-                    <p class="text-sm text-gray-600">Proceso rápido y fácil</p>
-                </div>
-                <div class="text-center">
-                    <div class="flex justify-center mb-4">
-                        <svg class="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                        </svg>
-                    </div>
-                    <p class="font-black text-gray-900 text-lg max-w-2xl mx-auto">100% Seguro</p>
-                    <p class="text-sm text-gray-600">Encriptado de principio a fin</p>
-                </div>
-                <div class="text-center">
-                    <div class="flex justify-center mb-4">
-                        <svg class="w-12 h-12 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                    </div>
-                    <p class="font-black text-gray-900 text-lg max-w-2xl mx-auto">Confirmación Inmediata</p>
-                    <p class="text-sm text-gray-600">Recibe enlace y recordatorios</p>
-                </div>
-            </div>
-        </div>
-    </section>    
+    </div>    
 
     <section class="py-12 px-4">
         <div class="max-w-6xl mx-auto">            
@@ -128,6 +91,36 @@
                     <img src="{{ asset('images/telemedicina.png') }}" 
                         alt="Telemedicina" 
                         class="w-full h-auto rounded-2xl shadow-xl">
+                    
+                    <div class="mt-4 p-3">
+                        <h5 class="mb-3 text-2xl font-semibold text-gray-600 tracking-tight text-heading leading-8">¿Qué es la teleconsulta?</h5>
+                        <ul class="space-y-3 mb-8">
+                            <li class="flex items-center gap-3">
+                                <svg class="w-5 h-5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                </svg>
+                                <span class="text-gray-700">Es una consulta médica por videollamada.</span>
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <svg class="w-5 h-5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                </svg>
+                                <span class="text-gray-700">Hablas con un doctor desde tu casa u oficina.</span>
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <svg class="w-5 h-5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                </svg>
+                                <span class="text-gray-700">Evitas filas y salas de espera.</span>
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <svg class="w-5 h-5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                </svg>
+                                <span class="text-gray-700">Fácil acceso, usas el computador o tu celular.</span>
+                            </li>
+                        </ul>                    
+                    </div>
                 </div>
                 
                 <!-- COLUMNA DERECHA: Texto -->
@@ -166,13 +159,122 @@
         </div>
     </section>
 
-    <section class="py-16 pt-10 px-4 bg-white">
-        <div class="max-w-6xl mx-auto">
-            <h2 class="text-3xl lg:text-6xl font-black text-slate-900 text-center tracking-tight mb-6">
-                ¿Por qué elegir <span class="text-blue-600"><span class="font-black text-slate-900 tracking-tight">
-                        Open<span class="text-indigo-600">Doctor</span><span class="text-emerald-500">Online</span></span>?</span>
-            </h2>            
-            
+    <!-- Sección de Promoción: Análisis Clínico con IA -->
+    <div class="relative bg-white pb-20 pt-16 overflow-hidden">
+        <section class="max-w-7xl mx-auto px-6">
+            <!-- Cambiado a un fondo oscuro profundo con bordes blancos semi-transparentes para contraste perfecto sobre Slate -->
+            <div class="relative bg-slate-950 rounded-3xl overflow-hidden shadow-2xl border border-white/10">
+                
+                <!-- Elementos visuales de fondo (Brillo tecnológico sutil) -->
+                <div class="absolute -top-24 -right-24 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="grid md:grid-cols-12 gap-8 p-8 md:p-12 items-center relative z-10">
+                    
+                    <!-- Columna Texto (Izquierda) -->
+                    <div class="md:col-span-7 space-y-5 text-left">    
+                        <!-- Textos Persuasivos -->
+                        <h1 class="text-5xl lg:text-7xl font-black text-white tracking-tight mb-6">
+                            Interpreta tus exámenes médicos <span class="text-blue-600">con Inteligencia Artificial</span>
+                        </h1>
+                        <p class="text-slate-300 text-base md:text-lg leading-relaxed">                            
+                            Analiza exámenes de sangre, orina y heces para darte una comprensión básica antes de hablar con un especialista.
+                        </p>
+                        <p class="text-slate-300 text-base md:text-lg leading-relaxed">                            
+                            Nuestro lector de exámenes médicos online usa IA para leer resultados de laboratorio y recibir explicaciones en un lenguaje sencillo, en segundos.
+                        </p>
+
+                        <!-- Pequeños checks de confianza rápida -->
+                        <div class="flex flex-wrap gap-x-6 gap-y-2 pt-2 text-xs text-slate-400 font-medium">
+                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Análisis de Biomarcadores</span>
+                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Análisis Multidocumento</span>
+                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Privacidad 100% Protegida</span>
+                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Reporte Inmediato</span>                            
+                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Copia Segura en tu Email</span>
+                        </div>
+                    </div>
+
+                    <!-- Columna Interactiva / CTA (Derecha) -->
+                    <div class="md:col-span-5 flex flex-col items-center justify-center" x-data="{ loading: false }">
+                        <p class="text-3xl text-white leading-relaxed max-w-xl">
+                            <strong>${{ number_format($price, 0, ',', '.') }} COP</strong>
+                        </p>
+                        <!-- Caja de acción con fondo sutilmente más claro que el fondo negro para dar relieve -->
+                        <div class="w-full bg-slate-900 border border-white/5 p-6 md:p-8 rounded-2xl shadow-xl text-center space-y-6">
+
+                            <!-- Enlace directo al Index explicativo -->
+                            <a href="{{ route('medical-analysis.upload') }}" 
+                            @click="
+                                loading = true;
+                                if (typeof gtag === 'function') {
+                                    gtag('event', 'start_medical_analysis', {
+                                        'action': 'discover_analysis',
+                                        'source': 'landing_promotion',
+                                        'feature_type': 'lab_analysis'
+                                    });
+                                }
+                            "
+                            :class="loading ? 'opacity-70 cursor-not-allowed' : ''"
+                            class="group w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:-translate-y-0.5 shadow-lg shadow-blue-500/20 flex items-center justify-center gap-3 text-base">
+                                <span x-show="!loading">Análizar mis exámenes con IA</span>
+                                <span x-show="loading">Cargando...</span>
+                                <i class="fa-solid fa-arrow-right text-sm transition-transform group-hover:translate-x-1" x-show="!loading"></i>
+                            </a>
+
+                            <p class="text-[11px] text-slate-500 leading-normal">
+                                Cumple con normativas internacionales de protección de datos de salud de forma estricta.
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <section class="py-10 px-4 bg-gray-50">
+        <div class="max-w-5xl mx-auto pb-5">            
+            <div class="text-center mb-6">
+                <h1 class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
+                    Agende su cita médica <span class="text-blue-600">en línea</span>
+                </h1>
+            </div>
+            <div class="space-y-6">                               
+            <!-- Beneficios finales -->
+            <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="text-center">
+                    <div class="flex justify-center mb-4">
+                        <svg class="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <p class="font-black text-gray-900 text-lg max-w-2xl mx-auto">Menos de 5 minutos</p>
+                    <p class="text-sm text-gray-600">Proceso rápido y fácil</p>
+                </div>
+                <div class="text-center">
+                    <div class="flex justify-center mb-4">
+                        <svg class="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                        </svg>
+                    </div>
+                    <p class="font-black text-gray-900 text-lg max-w-2xl mx-auto">100% Seguro</p>
+                    <p class="text-sm text-gray-600">Encriptado de principio a fin</p>
+                </div>
+                <div class="text-center">
+                    <div class="flex justify-center mb-4">
+                        <svg class="w-12 h-12 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <p class="font-black text-gray-900 text-lg max-w-2xl mx-auto">Confirmación Inmediata</p>
+                    <p class="text-sm text-gray-600">Recibe enlace y recordatorios</p>
+                </div>
+            </div>
+        </div>
+    </section>  
+
+    <section class="py-16 pt-16 px-4 bg-white">
+        <div class="max-w-6xl mx-auto">            
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <!-- Card 1 -->
                 <div class="p-8 bg-blue-50 rounded-2xl border border-blue-100">
@@ -208,87 +310,13 @@
                 </div>
             </div>
         </div>
-    </section>
-
-    <!-- Sección de Promoción: Análisis Clínico con IA -->
-    <div class="relative bg-white pb-20 pt-10 overflow-hidden">
-        <section class="max-w-7xl mx-auto px-6">
-            <!-- Cambiado a un fondo oscuro profundo con bordes blancos semi-transparentes para contraste perfecto sobre Slate -->
-            <div class="relative bg-slate-950 rounded-3xl overflow-hidden shadow-2xl border border-white/10">
-                
-                <!-- Elementos visuales de fondo (Brillo tecnológico sutil) -->
-                <div class="absolute -top-24 -right-24 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
-                <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-                <div class="grid md:grid-cols-12 gap-8 p-8 md:p-12 items-center relative z-10">
-                    
-                    <!-- Columna Texto (Izquierda) -->
-                    <div class="md:col-span-7 space-y-5 text-left">    
-                        <!-- Textos Persuasivos -->
-                        <h1 class="text-5xl lg:text-7xl font-black text-white tracking-tight mb-6">
-                            ¿Tienes exámenes médicos que <span class="text-blue-600">no logras entender?</span>
-                        </h1>
-                        <p class="text-slate-300 text-base md:text-lg leading-relaxed">                            
-                            Leer exámenes médicos en línea.<br>
-                            Interpreta tus exámenes médicos con <span class="font-medium">Inteligencia Artificial.</span>
-                        </p>
-                        <p class="text-slate-300 text-base md:text-lg leading-relaxed">                            
-                            No esperes días para descifrar tus resultados clínicos. Nuestro <span class="font-bold">Asistente Médico Digital</span> analiza tus informes en PDF, elimina tus datos personales por seguridad y te explica todo en un lenguaje claro, cercano y 100% comprensible.
-                        </p>
-
-                        <!-- Pequeños checks de confianza rápida -->
-                        <div class="flex flex-wrap gap-x-6 gap-y-2 pt-2 text-xs text-slate-400 font-medium">
-                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Análisis de Biomarcadores</span>
-                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Análisis Multidocumento</span>
-                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Privacidad 100% Protegida</span>
-                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Reporte Inmediato</span>                            
-                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Copia Segura en tu Email</span>
-                        </div>
-                    </div>
-
-                    <!-- Columna Interactiva / CTA (Derecha) -->
-                    <div class="md:col-span-5 flex flex-col items-center justify-center" x-data="{ loading: false }">
-                        <!-- Caja de acción con fondo sutilmente más claro que el fondo negro para dar relieve -->
-                        <div class="w-full bg-slate-900 border border-white/5 p-6 md:p-8 rounded-2xl shadow-xl text-center space-y-6">
-
-                            <!-- Enlace directo al Index explicativo -->
-                            <a href="{{ route('medical-analysis.index') }}" 
-                            @click="
-                                loading = true;
-                                if (typeof gtag === 'function') {
-                                    gtag('event', 'start_medical_analysis', {
-                                        'action': 'discover_analysis',
-                                        'source': 'landing_promotion',
-                                        'feature_type': 'lab_analysis'
-                                    });
-                                }
-                            "
-                            :class="loading ? 'opacity-70 cursor-not-allowed' : ''"
-                            class="group w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:-translate-y-0.5 shadow-lg shadow-blue-500/20 flex items-center justify-center gap-3 text-base">
-                                <span x-show="!loading">Análizar mis exámenes con IA</span>
-                                <span x-show="loading">Cargando...</span>
-                                <i class="fa-solid fa-arrow-right text-sm transition-transform group-hover:translate-x-1" x-show="!loading"></i>
-                            </a>
-
-                            <p class="text-[11px] text-slate-500 leading-normal">
-                                Cumple con normativas internacionales de protección de datos de salud de forma estricta.
-                            </p>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </section>
-    </div>
+    </section>    
     
     <section class="py-16 px-4 bg-gray-50">
-        <div class="max-w-6xl mx-auto">
-            <h2 class="text-4xl font-black text-center mb-12">El flujo de <span class="font-black text-slate-900 tracking-tight">
-                        Open<span class="text-indigo-600">Doctor</span><span class="text-emerald-500">Online</span></span></h2>
-            
+        <div class="max-w-6xl mx-auto">            
             <!-- Timeline Desktop -->
             <div class="hidden md:block">
-                <div class="flex items-center justify-between relative mb-16">
+                <div class="flex items-center justify-between relative">
                     <!-- Línea conectora -->
                     <div class="absolute top-12 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-purple-600 to-red-600"></div>
                     
@@ -448,8 +476,8 @@
         </section>
     </div>
 
-    <section class="py-16 px-4 bg-gray-50">
-        <div class="max-w-6xl mx-auto">
+    <section class="py-10 px-4 bg-gray-50">
+        <div class="max-w-6xl mx-auto pb-5">
             <h2 class="text-4xl text-indigo-900 font-bold text-center mb-12">Lo que dicen nuestros pacientes</h2>
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">

@@ -48,7 +48,8 @@ class UserManagementController extends Controller
      */
     public function contactMessages(Request $request)
     {
-        $contactMessages = ContactMessage::orderBy('id', 'asc')->paginate(15);
+        //$contactMessages = ContactMessage::orderBy('id', 'asc')->paginate(15);
+        $contactMessages = ContactMessage::orderBy('created_at', 'desc')->paginate(15);
 
         return view('administrator.conctact.index', compact('contactMessages'));
     }

@@ -1,18 +1,18 @@
 <x-guest-layout>
     <!-- Contenedor Principal del Formulario -->
-    <div class="max-w-6xl w-full mx-auto px-6 py-12 flex-grow mt-6">
+    <div class="max-w-7xl w-full mx-auto px-6 py-12 flex-grow mt-6">
         <div class="bg-slate-950 rounded-2xl border border-white/10 p-8 shadow-2xl space-y-6">
             
             <div class="space-y-2">
                 <h1 class="text-2xl font-black text-white">Análisis Clínico Avanzado por IA</h1>
-                <p class="text-sm text-slate-400">Arrastra o selecciona uno o múltiples informes médicos en formato PDF y obtén una interpretación médica guiada por Inteligencia Artificial.</p>
+                <p class="text-md text-slate-400">Arrastra o selecciona uno o múltiples informes médicos en formato PDF, JPG o PNG y obtén una interpretación médica guiada por Inteligencia Artificial.</p>
             </div>
 
             <!-- Zona Dropzone Interactiva -->
             <form id="uploadForm" enctype="multipart/form-data" class="space-y-6">
                 <div id="dropzone" class="border-2 border-dashed border-white/20 hover:border-blue-500/50 bg-slate-900/50 rounded-xl p-8 text-center cursor-pointer transition-all relative">
-                    <input type="file" name="pdf_files[]" id="pdf_files" class="hidden" multiple accept=".pdf">
-                    
+                    <input type="file" name="medical_files[]" id="medical_files" class="hidden" multiple accept=".pdf,.jpg,.jpeg,.png">
+
                     <div class="space-y-3 pointer-events-none" id="dropzonePrompt">
                         <div class="w-12 h-12 rounded-full bg-slate-600 text-blue-400 flex items-center justify-center mx-auto">
                             <!-- Heroicons: Cloud-Arrow-Up (SVG) -->
@@ -20,8 +20,8 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
                             </svg>
                         </div>
-                        <p class="text-sm font-semibold text-slate-200">Haz clic para buscar o suelta tus archivos aquí</p>
-                        <p class="text-xs text-slate-500">Solo archivos PDF (Máximo 5 informes, hasta 10MB por archivo)</p>
+                        <p class="font-semibold text-slate-200">Haz clic para buscar o suelta tus archivos aquí</p>
+                        <p class="text-slate-500">Archivos PDF e imágenes (JPG, PNG) - Máximo 5 archivos, hasta 10MB cada uno</p>
                     </div>
 
                     <div id="fileList" class="hidden text-left bg-slate-950/80 border border-white/5 p-4 rounded-xl space-y-2 text-xs"></div>
@@ -50,8 +50,8 @@
                     <div class="space-y-1.5">
                         <label class="text-sm font-bold tracking-wider text-white">¿En que idioma quieres ver el resultado?</label>
                         <select name="selected_language" required class="w-full p-3 bg-slate-900 border border-white/10 rounded-xl font-medium text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm">
-                            <option value="es" class="bg-slate-950" selected>Español</option>
-                            <option value="en" class="bg-slate-950">Ingles</option>
+                            <option value="es" class="bg-slate-950" selected>Español(Spanish)</option>
+                            <option value="en" class="bg-slate-950">Ingles(English)</option>
                         </select>
                     </div>
 
@@ -65,9 +65,9 @@
                     <div class="space-y-1.5">
                         <label class="text-sm font-bold tracking-wider text-white">¿Cuál es el motivo de estos exámenes?</label>
                         <select name="reason_type" required class="w-full p-3 bg-slate-900 border border-white/10 rounded-xl font-medium text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm">
-                            <option value="rutina" class="bg-slate-950">Control de rutina anual</option>
+                            <option value="rutina" class="bg-slate-950">Control de rutina</option>
                             <option value="control" class="bg-slate-950">Seguimiento de una enfermedad existente</option>
-                            <option value="sintomas" class="bg-slate-950">Por síntomas recientes que me preocupan</option>
+                            <option value="sintomas" class="bg-slate-950">Por síntomas recientes</option>
                             <option value="otros" class="bg-slate-950">Otro motivo</option>
                         </select>
                     </div>
@@ -88,17 +88,18 @@
                     </div>
                     
                     <!-- Contenedor del Botón (Alineado abajo) -->
-                    <div class="flex flex-col pt-6">
+                    <div class="flex flex-col pt-6 space-y-1.5">
                         <!-- Botón de Envío con padding vertical ajustado -->
                         <button type="submit" id="submitBtn" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3.5 px-3 rounded-xl transition-all shadow-lg shadow-blue-500/10 flex items-center justify-center">
-                            <span id="btnText">Iniciar análisis con IA</span>
+                            <span id="btnText">Analizar Información médica</span>
                             <!-- Spinner animado con clases nativas de Tailwind -->
                             <svg id="btnSpinner" class="animate-spin h-5 w-5 text-white hidden" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
                         </button>
-                    </div>
+                        <small class="text-sm text-slate-400 font-medium">Al hacer clic, acepta automáticamente nuestros <a href="{{ route('terms.show') }}" class="underline hover:text-indigo-600 transition-colors">Términos de Servicio</a> y <a href="{{ route('privacy.show') }}" class="underline hover:text-indigo-600 transition-colors">Política de Privacidad</a>.</small>
+                    </div>                    
                 </div>
             </form>
 
@@ -121,7 +122,7 @@
 
     <script>
         const dropzone = document.getElementById('dropzone');
-        const fileInput = document.getElementById('pdf_files');
+        const fileInput = document.getElementById('medical_files');
         const fileList = document.getElementById('fileList');
         const dropzonePrompt = document.getElementById('dropzonePrompt');
         const uploadForm = document.getElementById('uploadForm');
@@ -160,9 +161,9 @@
 
         function updateFileList() {
             const files = fileInput.files;
-            
+ 
             if (files.length > 5) {
-                alert('Por seguridad y rendimiento, solo puedes analizar un máximo de 5 archivos PDF simultáneamente.');
+                alert('Por seguridad y rendimiento, solo puedes procesar máximo 5 archivos simultáneamente.');
                 fileInput.value = "";
                 fileList.classList.add('hidden');
                 dropzonePrompt.classList.remove('hidden');

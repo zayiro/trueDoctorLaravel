@@ -49,21 +49,18 @@ return [
     |--------------------------------------------------------------------------
     */
     
-    'ai_vision' => [
-        // Proveedor por defecto cuando no se especifica explícitamente.
-        // Cambialo aquí (o vía .env) para "switchear" sin tocar código.
-        // Switch global instantáneo: si OpenAI tiene una caída, cambias AI_VISION_PROVIDER=claude en el .env del EC2 y reinicias el queue worker (php artisan queue:restart) — cero cambios de código.
-        'default' => env('AI_VISION_PROVIDER', 'openai'), // 'openai' | 'claude'
-    ],
-    
     'openai' => [
         'key' => env('OPENAI_API_KEY'),
-        'vision_model' => env('OPENAI_VISION_MODEL', 'gpt-5.4'),
+        'vision_model' => env('OPENAI_VISION_MODEL', 'gpt-4o'),
     ],
-    
+
     'anthropic' => [
         'key' => env('ANTHROPIC_API_KEY'),
-        'vision_model' => env('ANTHROPIC_VISION_MODEL', 'claude-sonnet-4-6'),
+        'vision_model' => env('ANTHROPIC_VISION_MODEL', 'claude-opus-4-5'),
+    ],
+
+    'ai_vision' => [
+        'default' => env('AI_VISION_PROVIDER', 'anthropic'),
     ],
 
     'deepseek' => [

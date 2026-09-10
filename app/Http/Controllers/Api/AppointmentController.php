@@ -30,8 +30,8 @@ class AppointmentController extends Controller
         $this->appointmentService = $appointmentService;
 
         // Aplicar middlewares de seguridad al API Gateway
-        $this->middleware('api.rate.limit');
-        $this->middleware('api.validate.key')->except(['getStatus']);
+        //$this->middleware('api.rate.limit');
+        //$this->middleware('api.validate.key')->except(['getStatus']);
     }
 
     /**
@@ -309,10 +309,32 @@ class AppointmentController extends Controller
     /**
      * Devuelve el estado actual de la cita (Invocado cada 5 segundos por el Polling de Alpine)
      */
-    public function getStatus(Appointment $appointment): JsonResponse
-    {
+    /**
+ * Devuelve el estado actual de la cita (Invocado cada 5 segundos por el Polling de Alpine)
+ */
+public function getStatus($id): JsonResponse
+{
+    try {
+        $appointment = Appointment::findOrFail($id);
+        
         return response()->json([
-            'status' => $appointment->status, // pending, completed, etc.
+            'status' => $appointment->status,
+        ], 200);
+    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        return response()->json([
+            'error' => 'Appointment not found'
+        ], 404);
+    } catch (\Exception $e) {
+        Log::error('getStatus error', [
+            'appointment_id' => $id,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
         ]);
+
+        return response()->json([
+            'error' => 'Error al obtener estado',
+            'message' => $e->getMessage()
+        ], 500);
     }
+}
 }

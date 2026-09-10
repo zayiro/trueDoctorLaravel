@@ -10,14 +10,23 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
+
+Route::middleware('api.rate.limit')->group(function () {
+    Route::middleware('api.validate.key')->group(function () {
+        Route::post('/appointments', [AppointmentController::class, 'store'])->name('api.appointments.store');
+        Route::get('/get-slots', [AppointmentController::class, 'getSlots'])->name('api.slots.index');
+        Route::put('/appointments/{id}/cancel', [AppointmentController::class, 'cancel'])->name('api.appointments.cancel');
+    });
+});
+
 // Endpoint público o privado para ver los horarios disponibles
-Route::get('/get-slots', [AppointmentController::class, 'getSlots'])->name('api.slots.index');
+//Route::get('/get-slots', [AppointmentController::class, 'getSlots'])->name('api.slots.index');
 
 // Endpoint para guardar la cita (Se recomienda envolverlo en auth:sanctum si requiere token)
-Route::post('/appointments', [AppointmentController::class, 'store'])->name('api.appointments.store');
+//Route::post('/appointments', [AppointmentController::class, 'store'])->name('api.appointments.store');
 
 // Ruta pública o protegida por token para la cancelación de citas externas
-Route::put('/appointments/{id}/cancel', [AppointmentController::class, 'cancel'])->name('api.appointments.cancel');
+//Route::put('/appointments/{id}/cancel', [AppointmentController::class, 'cancel'])->name('api.appointments.cancel');
 
 // Ruta oficial para recibir las notificaciones de la API de Zoom
 //Route::post('/webhooks/zoom', [ZoomWebhookController::class, 'handle'])->name('zoom.webhook');

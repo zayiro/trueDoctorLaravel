@@ -47,24 +47,100 @@ class MedicalAnalysisController extends Controller
     }
 
     /**
+     * Analiza los PDFs/imágenes del análisis médico usando el proveedor de IA configurado.
+     *
+     * @param  string|null  $provider          Override manual: 'openai' | 'claude' | null (usa default de config)
+     * @param  bool  $withFallback            Si true, intenta con el otro proveedor si el primario falla
+     * @param  string  $selectedLanguage      Idioma del análisis: 'es' (español) | 'en' (inglés)
+     */
+    public function analyzeWithAI(MedicalAnalysis $analysis, ?string $provider = null, bool $withFallback = true, string $selectedLanguage = self::DEFAULT_LANGUAGE)
+    {
+        $selectedLanguage = trim(strtolower($selectedLanguage));
+        if (!in_array($selectedLanguage, self::SUPPORTED_LANGUAGES)) {
+            Log::warning("Análisis #{$analysis->id}: idioma no soportado, usando default.");
+            $selectedLanguage = self::DEFAULT_LANGUAGE;
+        }
+
+        $reasons = [
+            'rutina' => 'Control de rutina anual o chequeo preventivo.',
+            'control' => 'Seguimiento continuo de una patología médica existente.',
+            'sintomas' => 'Evaluación motivada por sintomatología reciente del paciente.',
+            'otros' => 'Motivos complementarios.'
+        ];
+
+        $motivoClinico = $reasons[$analysis->reason_type] ?? $analysis->reason_type;
+        $detallesAdicionales = $analysis->reason_custom ?? 'No se proporcionaron detalles adicionales.';
+
+        [$systemPrompt, $userText] = $this->generatePrompts($selectedLanguage, $motivoClinico, $detallesAdicionales);
+
+        $filePaths = json_decode($analysis->file_paths, true) ?? [];
+
+        if (empty($filePaths)) {
+            Log::error("Análisis #{$analysis->id}: no tiene archivos asociados.");
+            $analysis->update(['status' => 'failed']);
+            return;
+        }
+
+        // ✅ USAR EL NUEVO MÉTODO UNIFICADO
+        $images = $this->processFilesIntoImages($filePaths, $analysis->id);
+
+        if (empty($images)) {
+            Log::error("Análisis #{$analysis->id}: no se generaron imágenes.");
+            $analysis->update(['status' => 'failed']);
+            return;
+        }
+
+        if (count($images) > 20) {
+            Log::warning("Análisis #{$analysis->id}: {" . count($images) . "} imágenes, truncadas a 20.");
+            $images = array_slice($images, 0, 20);
+        }
+
+        Log::info("Análisis #{$analysis->id}: enviando " . count($images) . " imagen(es).");
+
+        try {
+            $order = $provider
+                ? array_unique([$provider, $provider === 'claude' ? 'openai' : 'claude'])
+                : ['openai', 'claude'];
+
+            $outcome = AIVisionManager::analyzeWithFallback($systemPrompt, $userText, $images, $order);
+            $aiResult = $outcome['result'];
+            $providerUsed = $outcome['provider_used'];
+
+            $analysis->update([
+                'ai_response' => $aiResult,
+                'ai_provider' => $providerUsed,
+                'analysis_language' => $selectedLanguage,
+                'status' => 'completed',
+            ]);
+
+            Log::info("Análisis #{$analysis->id} completado con proveedor '{$providerUsed}'.");
+
+            $this->deleteSourceFiles($analysis, $filePaths);
+        } catch (\Throwable $e) {
+            Log::error("Análisis #{$analysis->id}: fallo IA: " . $e->getMessage());
+            $analysis->update(['status' => 'failed']);
+        }
+    }
+
+    /**
      * Processes multiple medical PDFs and anonymizes them.
      * EL MÉTODO PÚBLICO (Recibe el AJAX del upload)
      */
     public function processDocuments(Request $request)
     {
-        // 1. Validaciones estrictas del formulario
+        // 1. Validaciones estrictas - AHORA ACEPTA PDFs E IMÁGENES
         $request->validate([
-            'pdf_files' => 'required|array|min:1|max:5',
-            'pdf_files.*' => 'required|mimes:pdf|max:10000',
+            'medical_files' => 'required|array|min:1|max:5',
+            'medical_files.*' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10000',
             'customer_email' => 'required|email',
             'reason_type' => 'required|string',
             'reason_custom' => 'nullable|string',
             'selected_language' => 'required|in:es,en'
         ]);
 
-        // Guardar físicamente los archivos en el almacenamiento privado (OBLIGATORIO para el método de visión)
+        // Guardar físicamente los archivos en el almacenamiento privado
         $storedPaths = [];
-        foreach ($request->file('pdf_files') as $file) {
+        foreach ($request->file('medical_files') as $file) {
             $storedPaths[] = $file->store('medical-exams', 'private');
         }
 
@@ -72,7 +148,7 @@ class MedicalAnalysisController extends Controller
 
         $selectedLanguage = trim(strtolower($request->input('selected_language')));
         
-        // CREAR EL REGISTRO (Aquí queda tu respaldo seguro en la DB con estado 'pending')
+        // CREAR EL REGISTRO
         $analysis = MedicalAnalysis::create([
             'file_paths'     => json_encode($storedPaths),
             'customer_email' => trim(strtolower($request->input('customer_email'))),
@@ -83,425 +159,19 @@ class MedicalAnalysisController extends Controller
             'payment_status' => 'pending'
         ]);
 
-        // Enviar correo inmediato con el enlace de rescate por si se le cierra la pestaña
+        // Enviar correo de rescate
         $recoveryUrl = route('medical-analysis.show', $analysis->access_token);
-
-        //Envio del correo con el token, para ingresar de nuevo si pasa algun error de conexion o no se completo el resultado
         Mail::to($analysis->customer_email)->send(new ExamPaymentPendingAlert($recoveryUrl, $analysis));
 
-        // Intentar la consulta inmediata a la IA pasándole el modelo completo
-        $this->analyzeWithAI($analysis, $selectedLanguage);
+        // Procesar con IA
+        $this->analyzeWithAI($analysis, null, true, $selectedLanguage);
 
-        // Responder al JavaScript para la redirección fluida en el navegador
         return response()->json([
             'status' => 'success',
             'redirect_url' => $recoveryUrl,
             'language' => $selectedLanguage
         ]);
-    }
-    
-    /**
-     * Analiza los PDFs/imágenes del análisis médico usando el proveedor de IA configurado.
-     *
-     * @param  string|null  $provider  Override manual: 'openai' | 'claude' | null (usa default de config)
-     * @param  bool  $withFallback     Si true, intenta con el otro proveedor si el primario falla
-     */
-    public function analyzeWithAI_(MedicalAnalysis $analysis, ?string $provider = null, bool $withFallback = true, string $selectedLanguage = self::DEFAULT_LANGUAGE)
-    {
-        // Validar y sanitizar el idioma
-        $selectedLanguage = trim(strtolower($selectedLanguage));
-        if (!in_array($selectedLanguage, self::SUPPORTED_LANGUAGES)) {
-            Log::warning("Análisis #{$analysis->id}: idioma '{$selectedLanguage}' no soportado. Usando default: " . self::DEFAULT_LANGUAGE);
-            $selectedLanguage = self::DEFAULT_LANGUAGE;
-        }
-
-        $reasons = [
-            'rutina'   => 'Control de rutina anual o chequeo preventivo.',
-            'control'  => 'Seguimiento continuo de una patología médica existente.',
-            'sintomas' => 'Evaluación motivada por sintomatología reciente del paciente.',
-            'otros'    => 'Motivos complementarios.'
-        ];
-
-        $motivoClinico = $reasons[$analysis->reason_type] ?? $analysis->reason_type;
-        $detallesAdicionales = $analysis->reason_custom ?? 'No se proporcionaron detalles adicionales.';
-        $contextoPaciente = "CONTEXTO DEL PACIENTE:\n- Motivo: {$motivoClinico}\n- Detalles: {$detallesAdicionales}";
-
-        $userText = "{$contextoPaciente}\n\nAnaliza visualmente las imágenes médicas y dime como un médico especialista experto lo que significan los valores, en un lenguaje natural de paciente. Extrae los biomarcadores transversales, conclusiones claras y próximos pasos comunes. REGLA CRÍTICA: En el campo 'especialidad_slug' debes colocar OBLIGATORIAMENTE uno de estos términos en minúsculas y sin acentos según corresponda: 'medicina-general', 'neurologia', 'cardiologia', 'ginecologia', 'endocrinologia', 'pediatria', 'urologia', 'dermatologia'. Si tienes dudas o el caso es mixto, usa 'medicina-general'.";
-
-        $systemPrompt = "Actúa como un médico especialista clínico con excelente comunicación humana y empatía.
-        Responde SIEMPRE en español, independientemente del idioma en que estén escritos los resultados.
-
-        Tu tarea principal es: extraer la información consolidada de los exámenes provistos
-        (pueden ser múltiples documentos o imágenes), correlacionar los biomarcadores entre sí,
-        clasificar obligatoriamente el caso en una especialidad médica, y explicarle los resultados
-        al paciente en lenguaje natural, accesible y sin tecnicismos innecesarios,
-        manteniendo siempre la precisión médica.
-
-        IMPORTANTE ANTES DE ANALIZAR:
-        - Si alguna imagen no es legible, está incompleta o no contiene resultados de laboratorio,
-        indícaselo amablemente al paciente sin inventar datos.
-        - Nunca asumas ni inventes valores que no estén claramente visibles en los documentos provistos.
-        - Si se proveen múltiples documentos, consolida toda la información antes de responder;
-        no analices cada examen de forma aislada.
-
-        Por favor, estructura tu respuesta siguiendo estrictamente estas secciones:
-
-        1. INTRODUCCIÓN Y CLASIFICACIÓN ESPECIALIDAD:
-        Comienza indicando a qué especialidad médica corresponde el caso
-        (ej. Nefrología, Endocrinología, Cardiología, Medicina General, etc.) y por qué.
-        Luego ofrece una conclusión general muy clara: qué está bien y qué necesita
-        atención urgente o seguimiento.
-
-        2. SECCIONES CLÍNICAS (Usa encabezados de Markdown):
-        Divide los resultados por sistemas o bloques lógicos (ej. Función Renal, Perfil de Lípidos,
-        Hemograma, Metabolismo de Glucosa, etc.) para que el paciente entienda el contexto
-        de cada prueba. Si hay correlaciones relevantes entre biomarcadores de distintos bloques,
-        menciónalo explícitamente (ej. 'La glucosa alta junto con los triglicéridos elevados
-        sugiere un patrón metabólico que vale la pena revisar').
-
-        3. EXPLICACIÓN DE VALORES:
-        Para cada parámetro importante analizado:
-        - Menciona el nombre de la prueba y el valor exacto del paciente.
-        - Explica de forma muy sencilla qué mide ese parámetro (usa analogías si es útil,
-            como 'el filtro del riñón' o 'el camión de basura del colesterol').
-        - Indica explícitamente si el valor es Normal, Alto o Bajo, usando rangos de referencia
-            internacionales estándar (OMS o laboratorios de referencia).
-            Si el rango varía por sexo o edad, menciónalo.
-
-        4. PLAN DE ACCIÓN Y RECOMENDACIONES:
-        Agrupa los pasos prácticos que debe tomar el paciente: alimentación, ejercicio
-        y consulta médica presencial (especificando la especialidad recomendada si aplica).
-        Incluye siempre una nota pidiendo al paciente verificar su reporte impreso
-        para confirmar los datos.
-
-        5. PREGUNTAS DE SEGUIMIENTO:
-        Termina con 2 o 3 preguntas clave sobre su historial clínico (antecedentes familiares,
-        enfermedades crónicas, medicamentos actuales) para contextualizar mejor el caso.
-
-        6. DESCARGO DE RESPONSABILIDAD MÉDICA:
-        Al final, incluye un aviso legal corto en cursiva aclarando que la información
-        es educativa y no reemplaza una consulta médica presencial.
-
-        TONO Y ESTILO:
-        - Oraciones cortas (menos de 15 palabras cuando sea posible).
-        - Habla como un médico de cabecera amable, no como un libro de texto.
-        - Usa viñetas para desglosar información y negritas en palabras clave.
-        ";
-
-        $filePaths = json_decode($analysis->file_paths, true);
-
-        if (! is_array($filePaths)) {
-            $filePaths = ! empty($analysis->file_path) ? [$analysis->file_path] : [];
-        }
-
-        if (empty($filePaths)) {
-            Log::error("Análisis #{$analysis->id} no tiene archivos asociados (file_paths vacío).");
-            $analysis->update(['status' => 'failed']);
-            return;
-        }
-
-        // --- Construcción de imágenes (independiente del proveedor) ---
-        $images = [];
-        $tempFilesToCleanup = [];
-
-        foreach ($filePaths as $index => $path) {
-            if (! Storage::disk('private')->exists($path)) {
-                Log::warning("Análisis #{$analysis->id}: el archivo '{$path}' no existe en el disco 'private'.");
-                continue;
-            }
-
-            $filePath = Storage::disk('private')->path($path);
-            $mimeType = mime_content_type($filePath);
-
-            if ($mimeType === false) {
-                Log::warning("Análisis #{$analysis->id}: no se pudo determinar el mime type de '{$path}'.");
-                continue;
-            }
-
-            try {
-                if ($mimeType === 'application/pdf') {                    
-                    $pdf = new Pdf($filePath);
-                    $totalPages = $pdf->pageCount(); // Total de páginas del PDF
-
-                    Log::info("Análisis #{$analysis->id}: PDF '{$path}' tiene {$totalPages} página(s).");
-
-                    for ($page = 1; $page <= $totalPages; $page++) {
-
-                        $tempImagePath = storage_path(
-                            'app/temp/med_batch_' . uniqid() . '_doc' . $index . '_page' . $page . '.jpg'
-                        );
-
-                        if (! is_dir(dirname($tempImagePath))) {
-                            mkdir(dirname($tempImagePath), 0755, true);
-                        }
-
-                        try {
-                            $savedPaths = $pdf->selectPage($page)
-                                ->format(OutputFormat::Jpg)
-                                ->quality(90)
-                                ->save($tempImagePath);
-
-                            $savedPath = $savedPaths[0] ?? null;
-
-                            if ($savedPath && file_exists($savedPath) && filesize($savedPath) > 0) {
-                                $images[] = [
-                                    'base64' => base64_encode(file_get_contents($savedPath)),
-                                    'mime'   => 'image/jpeg',
-                                ];
-                                $tempFilesToCleanup[] = $savedPath;
-
-                                Log::info("Análisis #{$analysis->id}: página {$page}/{$totalPages} convertida OK.");
-                            } else {
-                                Log::error("Análisis #{$analysis->id}: página {$page} de '{$path}' no generó imagen.");
-                            }
-
-                        } catch (\Throwable $e) {
-                            Log::error("Análisis #{$analysis->id}: fallo página {$page} de '{$path}': " . $e->getMessage());
-                        }
-                    }
-                } elseif (in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], true)) {
-                    $images[] = [
-                        'base64' => base64_encode(file_get_contents($filePath)),
-                        'mime' => $mimeType,
-                    ];
-                } else {
-                    Log::warning("Análisis #{$analysis->id}: tipo de archivo no soportado '{$mimeType}' para '{$path}'.");
-                }
-            } catch (\Throwable $e) {
-                Log::error("Fallo la conversión visual para el archivo {$path} en el Análisis #{$analysis->id}: " . $e->getMessage());
-                continue;
-            }
-        }
-
-        foreach ($tempFilesToCleanup as $tempFile) {
-            if (file_exists($tempFile)) {
-                @unlink($tempFile);
-            }
-        }
-
-        if (empty($images)) {
-            Log::error("Cancelada la llamada a la IA para el Análisis #{$analysis->id} porque no se generaron imágenes multimedia.");
-            $analysis->update(['status' => 'failed']);
-            return;
-        }
-
-        if (count($images) > 20) {
-            Log::warning("Análisis #{$analysis->id}: " . count($images) . " imágenes generadas, se truncan a 20 (límite API).");
-            $images = array_slice($images, 0, 20);
-        }
-
-        Log::info("Análisis #{$analysis->id}: enviando " . count($images) . " imagen(es). Proveedor solicitado: " . ($provider ?? 'default de config'));
-
-        // --- Llamada al proveedor (switch transparente) ---
-        try {
-            if ($withFallback) {
-                // Intenta con $provider primero (o el orden default) y si falla, prueba el otro.
-                $order = $provider
-                    ? array_unique([$provider, $provider === 'claude' ? 'openai' : 'claude'])
-                    : ['openai', 'claude'];
-
-                $outcome = AIVisionManager::analyzeWithFallback($systemPrompt, $userText, $images, $order);
-                $aiResult = $outcome['result'];
-                $providerUsed = $outcome['provider_used'];
-            } else {
-                $driver = AIVisionManager::driver($provider);
-                $aiResult = $driver->analyzeImages($systemPrompt, $userText, $images);
-                $providerUsed = $driver->name();
-            }
-
-            $analysis->update([
-                'ai_response' => $aiResult,
-                'ai_provider' => $providerUsed, // opcional: agrega esta columna si quieres trazabilidad
-                'status' => 'completed',
-            ]);
-
-            Log::info("Análisis #{$analysis->id} completado correctamente con proveedor '{$providerUsed}'.");
-
-            // Minimización de datos: una vez que el reporte se generó y se guardó
-            // exitosamente, los PDFs originales ya no son necesarios. Los borramos
-            // para reducir el tiempo de retención de información médica sensible.
-            $this->deleteSourceFiles($analysis, $filePaths);
-        } catch (\Throwable $e) {
-            Log::error("Fallo el procesamiento automático de la IA para el Análisis #{$analysis->id}: " . $e->getMessage());
-
-            $analysis->update(['status' => 'failed']);
-            // IMPORTANTE: NO borramos los PDFs aquí. Si el análisis falló, los
-            // archivos originales deben conservarse para permitir un reintento.
-        }
-    }
-
-    /**
-     * Analiza los PDFs/imágenes del análisis médico usando el proveedor de IA configurado.
-     *
-     * @param  string|null  $provider          Override manual: 'openai' | 'claude' | null (usa default de config)
-     * @param  bool  $withFallback            Si true, intenta con el otro proveedor si el primario falla
-     * @param  string  $selectedLanguage      Idioma del análisis: 'es' (español) | 'en' (inglés)
-     */
-    public function analyzeWithAI(MedicalAnalysis $analysis, ?string $provider = null, bool $withFallback = true, string $selectedLanguage = self::DEFAULT_LANGUAGE)
-    {
-        // Validar y sanitizar el idioma
-        $selectedLanguage = trim(strtolower($selectedLanguage));
-        if (!in_array($selectedLanguage, self::SUPPORTED_LANGUAGES)) {
-            Log::warning("Análisis #{$analysis->id}: idioma '{$selectedLanguage}' no soportado. Usando default: " . self::DEFAULT_LANGUAGE);
-            $selectedLanguage = self::DEFAULT_LANGUAGE;
-        }
-
-        // Mapeo de razones (mantiene el español, pero se traducirá en los prompts)
-        $reasons = [
-            'rutina'   => 'Control de rutina anual o chequeo preventivo.',
-            'control'  => 'Seguimiento continuo de una patología médica existente.',
-            'sintomas' => 'Evaluación motivada por sintomatología reciente del paciente.',
-            'otros'    => 'Motivos complementarios.'
-        ];
-
-        $motivoClinico = $reasons[$analysis->reason_type] ?? $analysis->reason_type;
-        $detallesAdicionales = $analysis->reason_custom ?? 'No se proporcionaron detalles adicionales.';
-
-        // Generar prompts según el idioma
-        [$systemPrompt, $userText] = $this->generatePrompts(
-            $selectedLanguage,
-            $motivoClinico,
-            $detallesAdicionales
-        );
-
-        Log::info("Análisis #{$analysis->id}: iniciando con idioma '{$selectedLanguage}'");
-
-        $filePaths = json_decode($analysis->file_paths, true);
-
-        if (! is_array($filePaths)) {
-            $filePaths = ! empty($analysis->file_path) ? [$analysis->file_path] : [];
-        }
-
-        if (empty($filePaths)) {
-            Log::error("Análisis #{$analysis->id} no tiene archivos asociados (file_paths vacío).");
-            $analysis->update(['status' => 'failed']);
-            return;
-        }
-
-        // --- Construcción de imágenes (independiente del proveedor) ---
-        $images = [];
-        $tempFilesToCleanup = [];
-
-        foreach ($filePaths as $index => $path) {
-            if (! Storage::disk('private')->exists($path)) {
-                Log::warning("Análisis #{$analysis->id}: el archivo '{$path}' no existe en el disco 'private'.");
-                continue;
-            }
-
-            $filePath = Storage::disk('private')->path($path);
-            $mimeType = mime_content_type($filePath);
-
-            if ($mimeType === false) {
-                Log::warning("Análisis #{$analysis->id}: no se pudo determinar el mime type de '{$path}'.");
-                continue;
-            }
-
-            try {
-                if ($mimeType === 'application/pdf') {                    
-                    $pdf = new Pdf($filePath);
-                    $totalPages = $pdf->pageCount();
-
-                    Log::info("Análisis #{$analysis->id}: PDF '{$path}' tiene {$totalPages} página(s).");
-
-                    for ($page = 1; $page <= $totalPages; $page++) {
-
-                        $tempImagePath = storage_path(
-                            'app/temp/med_batch_' . uniqid() . '_doc' . $index . '_page' . $page . '.jpg'
-                        );
-
-                        if (! is_dir(dirname($tempImagePath))) {
-                            mkdir(dirname($tempImagePath), 0755, true);
-                        }
-
-                        try {
-                            $savedPaths = $pdf->selectPage($page)
-                                ->format(OutputFormat::Jpg)
-                                ->quality(90)
-                                ->save($tempImagePath);
-
-                            $savedPath = $savedPaths[0] ?? null;
-
-                            if ($savedPath && file_exists($savedPath) && filesize($savedPath) > 0) {
-                                $images[] = [
-                                    'base64' => base64_encode(file_get_contents($savedPath)),
-                                    'mime'   => 'image/jpeg',
-                                ];
-                                $tempFilesToCleanup[] = $savedPath;
-
-                                Log::info("Análisis #{$analysis->id}: página {$page}/{$totalPages} convertida OK.");
-                            } else {
-                                Log::error("Análisis #{$analysis->id}: página {$page} de '{$path}' no generó imagen.");
-                            }
-
-                        } catch (\Throwable $e) {
-                            Log::error("Análisis #{$analysis->id}: fallo página {$page} de '{$path}': " . $e->getMessage());
-                        }
-                    }
-                } elseif (in_array($mimeType, ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'], true)) {
-                    $images[] = [
-                        'base64' => base64_encode(file_get_contents($filePath)),
-                        'mime' => $mimeType,
-                    ];
-                } else {
-                    Log::warning("Análisis #{$analysis->id}: tipo de archivo no soportado '{$mimeType}' para '{$path}'.");
-                }
-            } catch (\Throwable $e) {
-                Log::error("Fallo la conversión visual para el archivo {$path} en el Análisis #{$analysis->id}: " . $e->getMessage());
-                continue;
-            }
-        }
-
-        // Limpiar archivos temporales
-        foreach ($tempFilesToCleanup as $tempFile) {
-            if (file_exists($tempFile)) {
-                @unlink($tempFile);
-            }
-        }
-
-        if (empty($images)) {
-            Log::error("Cancelada la llamada a la IA para el Análisis #{$analysis->id} porque no se generaron imágenes multimedia.");
-            $analysis->update(['status' => 'failed']);
-            return;
-        }
-
-        if (count($images) > 20) {
-            Log::warning("Análisis #{$analysis->id}: " . count($images) . " imágenes generadas, se truncan a 20 (límite API).");
-            $images = array_slice($images, 0, 20);
-        }
-
-        Log::info("Análisis #{$analysis->id}: enviando " . count($images) . " imagen(es). Idioma: '{$selectedLanguage}'. Proveedor solicitado: " . ($provider ?? 'default de config'));
-
-        // --- Llamada al proveedor (switch transparente) ---
-        try {
-            if ($withFallback) {
-                $order = $provider
-                    ? array_unique([$provider, $provider === 'claude' ? 'openai' : 'claude'])
-                    : ['openai', 'claude'];
-
-                $outcome = AIVisionManager::analyzeWithFallback($systemPrompt, $userText, $images, $order);
-                $aiResult = $outcome['result'];
-                $providerUsed = $outcome['provider_used'];
-            } else {
-                $driver = AIVisionManager::driver($provider);
-                $aiResult = $driver->analyzeImages($systemPrompt, $userText, $images);
-                $providerUsed = $driver->name();
-            }
-
-            $analysis->update([
-                'ai_response' => $aiResult,
-                'ai_provider' => $providerUsed,
-                'analysis_language' => $selectedLanguage, // Guardar el idioma usado
-                'status' => 'completed',
-            ]);
-
-            Log::info("Análisis #{$analysis->id} completado correctamente con proveedor '{$providerUsed}' en idioma '{$selectedLanguage}'.");
-
-            $this->deleteSourceFiles($analysis, $filePaths);
-        } catch (\Throwable $e) {
-            Log::error("Fallo el procesamiento automático de la IA para el Análisis #{$analysis->id}: " . $e->getMessage());
-            $analysis->update(['status' => 'failed']);
-        }
-    }
+    }    
 
     /**
      * Genera los prompts del sistema y usuario según el idioma seleccionado.
@@ -806,5 +476,106 @@ class MedicalAnalysisController extends Controller
 
         // 5. Retornar la nueva vista independiente con los estados
         return view('medical-analysis.payment-result', compact('analysis', 'paymentStatus'));
+    }
+
+    /**
+     * Método privado para procesar archivos (PDFs e imágenes)
+     */
+    private function processFilesIntoImages(array $filePaths, int $analysisId): array
+    {
+        $images = [];
+        $tempFilesToCleanup = [];
+
+        foreach ($filePaths as $index => $path) {
+            if (!Storage::disk('private')->exists($path)) {
+                Log::warning("Análisis #{$analysisId}: archivo '{$path}' no existe.");
+                continue;
+            }
+
+            $filePath = Storage::disk('private')->path($path);
+            $mimeType = mime_content_type($filePath);
+
+            if (!$mimeType) {
+                Log::warning("Análisis #{$analysisId}: no se pudo determinar mime type de '{$path}'.");
+                continue;
+            }
+
+            try {
+                // ✅ Si es PDF, convertir a imágenes
+                if ($mimeType === 'application/pdf') {
+                    $images = array_merge($images, $this->convertPdfToImages($filePath, $index, $analysisId, $tempFilesToCleanup));
+                } 
+                // ✅ Si es imagen, usar directamente
+                elseif (in_array($mimeType, ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'], true)) {
+                    $images[] = [
+                        'base64' => base64_encode(file_get_contents($filePath)),
+                        'mime' => $mimeType,
+                    ];
+                    Log::info("Análisis #{$analysisId}: imagen '{$path}' procesada OK.");
+                } 
+                else {
+                    Log::warning("Análisis #{$analysisId}: tipo de archivo no soportado '{$mimeType}'.");
+                }
+            } catch (\Throwable $e) {
+                Log::error("Análisis #{$analysisId}: error procesando '{$path}': " . $e->getMessage());
+                continue;
+            }
+        }
+
+        // Limpiar temporales
+        foreach ($tempFilesToCleanup as $tempFile) {
+            if (file_exists($tempFile)) {
+                @unlink($tempFile);
+            }
+        }
+
+        return $images;
+    }
+
+    /**
+     * Convierte un PDF a imágenes JPEG
+     */
+    private function convertPdfToImages(string $filePath, int $index, int $analysisId, &$tempFilesToCleanup): array
+    {
+        $images = [];
+        
+        try {
+            $pdf = new Pdf($filePath);
+            $totalPages = $pdf->pageCount();
+
+            Log::info("Análisis #{$analysisId}: PDF tiene {$totalPages} página(s).");
+
+            for ($page = 1; $page <= $totalPages; $page++) {
+                $tempImagePath = storage_path('app/temp/med_' . uniqid() . '_doc' . $index . '_p' . $page . '.jpg');
+
+                if (!is_dir(dirname($tempImagePath))) {
+                    mkdir(dirname($tempImagePath), 0755, true);
+                }
+
+                try {
+                    $savedPaths = $pdf->selectPage($page)
+                        ->format(OutputFormat::Jpg)
+                        ->quality(90)
+                        ->save($tempImagePath);
+
+                    $savedPath = $savedPaths[0] ?? null;
+
+                    if ($savedPath && file_exists($savedPath) && filesize($savedPath) > 0) {
+                        $images[] = [
+                            'base64' => base64_encode(file_get_contents($savedPath)),
+                            'mime' => 'image/jpeg',
+                        ];
+                        $tempFilesToCleanup[] = $savedPath;
+                        Log::info("Análisis #{$analysisId}: página {$page}/{$totalPages} convertida OK.");
+                    }
+                } catch (\Throwable $e) {
+                    Log::error("Análisis #{$analysisId}: fallo página {$page}: " . $e->getMessage());
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error("Análisis #{$analysisId}: error al procesar PDF: " . $e->getMessage());
+        }
+
+        return $images;
     }
 }
