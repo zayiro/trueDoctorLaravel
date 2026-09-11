@@ -42,13 +42,16 @@ use App\Services\Twilio\WhatsAppTemplateService;
 use App\Services\Wompi\WompiService;
 use App\Jobs\ExpireUnpaidAppointment;
 use App\Mail\PaymentFailedMail;
-use App\Jobs\SendAppointmentReminder;
 
 use App\Enums\PaymentStatus;
 use \App\Enums\AppointmentStatus;
+use App\Services\SmsService;
+use App\Jobs\SendSmsReminder;
 
 class AppointmentController extends Controller
 {
+    use \App\Traits\SendsReminderSms;
+
     // Definición de propiedades protegidas para los servicios del SaaS
     protected AppointmentService $appointmentService;
     protected ZoomService $zoomService;
@@ -702,8 +705,7 @@ class AppointmentController extends Controller
         }
 
         $appointment = $this->processPostConfirmation($appointment, $activeUser);
-        $this->dispatchReminder($appointment);
-
+        
         return view('appointments.success', compact('appointment'));
     }
 
@@ -941,44 +943,6 @@ class AppointmentController extends Controller
         return view('appointments.payment-result', compact('appointment', 'transaction', 'status'));
     }
 
-    private function dispatchReminder(Appointment $appointment): void
-    {
-        $tz = 'America/Bogota';
-        
-        $appointmentDateTime = Carbon::parse(
-            Carbon::parse($appointment->date)->format('Y-m-d') . ' ' . $appointment->start_time, $tz
-        );
-
-        $now = Carbon::now($tz);
-        $hoursUntilAppointment = $now->diffInHours($appointmentDateTime, false);
-
-        if ($hoursUntilAppointment <= 0) {
-            // Cita ya pasó, no hacer nada
-            return;
-        }
-
-        if ($hoursUntilAppointment >= 24) {
-            // Enviar recordatorio 24 horas antes
-            $dispatchAt = $appointmentDateTime->copy()->subHours(24);
-        } else {
-            // Menos de 24 horas → enviar 1 hora antes si hay tiempo
-            $dispatchAt = $appointmentDateTime->copy()->subHour();
-
-            if ($dispatchAt->lessThanOrEqualTo($now)) {
-                // Menos de 1 hora → enviar inmediatamente
-                $dispatchAt = $now->addSeconds(10);
-            }
-        }
-
-        dispatch(new SendAppointmentReminder($appointment))
-            ->delay($dispatchAt);
-
-        \Log::info('Recordatorio programado', [
-            'appointment_id' => $appointment->id,
-            'dispatch_at'    => $dispatchAt->toDateTimeString(),
-        ]);
-    }
-
     protected function processPostConfirmation(Appointment $appointment, ?User $activeUser): Appointment
     {
         // ── 1. ZOOM: solo si es virtual y no tiene sala aún
@@ -1052,6 +1016,7 @@ class AppointmentController extends Controller
 
                 \Log::error('Envia whatsapp template: ' . $appointment->patient->phone);
                 */
+                
                 $appointment->update(['email_sent' => true]);
 
             } catch (Throwable $e) {
@@ -1063,6 +1028,68 @@ class AppointmentController extends Controller
                 } catch (\Exception $ne) {
                     // silencioso
                 }
+            }            
+
+            // Log 3: Intentar convertir datetime
+            try {                
+                $dateStr = $appointment->date->format('Y-m-d') ?? 'NULL';
+                $timeStr = (string)$appointment->start_time;
+                $combinedStr = $dateStr . ' ' . $timeStr;
+                $appointmentDateTime = Carbon::parse($combinedStr);                              
+            } catch (\Exception $e) {
+                Log::error('ERROR al crear appointmentDateTime', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                throw $e;
+            }
+
+            // Log 4: Crear mensaje
+            try {
+                $name = $appointment->patient?->user?->name ?? 'Paciente';
+                $date = $appointment->date->format('d/m/Y');
+                $time = $appointmentDateTime->format('H:i:s');                
+                $confirmationMessage = "Hola {$name}, tu cita fue confirmada para el {$date} a las {$time}";                
+            } catch (\Exception $e) {
+                Log::error('ERROR al crear confirmationMessage', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                throw $e;
+            }
+
+            // Log 5: Despachar Job
+            try {
+                SendSmsReminder::dispatch(
+                    $appointment->patient?->phone,
+                    $confirmationMessage,
+                    "appointment_{$appointment->reference}_confirmation"
+                );                
+            } catch (\Exception $e) {
+                Log::error('ERROR al despachar SendSmsReminder', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                throw $e;
+            }
+
+            // Log 6: Programar recordatorio
+            try {
+                $reminderMessage = "Recordatorio: Tu cita médica es en 20 minutos";
+                
+                $this->scheduleReminderBeforeEvent(
+                    $appointment->patient?->phone,
+                    $reminderMessage,
+                    $appointmentDateTime,
+                    20,
+                    "appointment_{$appointment->reference}_reminder"
+                );                
+            } catch (\Exception $e) {
+                Log::error('ERROR al programar recordatorio', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                throw $e;
             }
         }
 

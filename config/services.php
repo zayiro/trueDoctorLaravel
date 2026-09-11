@@ -87,9 +87,10 @@ return [
     ],
 
     'twilio' => [
-        'sid'            => env('TWILIO_SID'),
-        'token'          => env('TWILIO_AUTH_TOKEN'),
-        'whatsapp_from'  => env('TWILIO_WHATSAPP_FROM'),
+        'account_sid'   => env('TWILIO_ACCOUNT_SID'),
+        'auth_token'    => env('TWILIO_AUTH_TOKEN'),
+        'whatsapp_from' => env('TWILIO_WHATSAPP_FROM'),
+        'phone_number'  => env('TWILIO_PHONE_NUMBER'),
         'templates' => [
             'confirmed'   => env('TWILIO_TEMPLATE_CONFIRMED'),
             'cancelled'   => env('TWILIO_TEMPLATE_CANCELLED'),
