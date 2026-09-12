@@ -437,7 +437,8 @@ Route::post('/appointments/step-two', [AppointmentController::class, 'storeStepT
 Route::get('/appointments/patient', [AppointmentController::class, 'patient'])->name('appointments.patient');
 Route::post('/appointments/process-patient', [AppointmentController::class, 'processPatient'])->name('appointments.process-patient');
 Route::get('/appointments/preview/{id}', [AppointmentController::class, 'preview'])->name('appointments.preview');
-Route::get('/appointments/success/{appointment}', [AppointmentController::class, 'success'])->name('appointments.success');
+//Route::get('/appointments/success/{appointment}', [AppointmentController::class, 'success'])->name('appointments.success');
+Route::post('/appointments/success/{appointment}', [AppointmentController::class, 'success'])->name('appointments.success');
 Route::post('/appointments/cancel-flow', [AppointmentController::class, 'cancelFlow'])->name('appointments.cancel-flow');
 // Agregar esta ruta en tu archivo de rutas
 Route::post('/appointments/promo/validate', [AppointmentController::class, 'validatePromoCode'])->name('appointments.promo.validate');

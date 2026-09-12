@@ -8,34 +8,22 @@
 <!-- BARRA DE BÚSQUEDA CON TABS RESPONSIVOS -->
 <div x-data="{ activeTab: 'specialty' }">
     
-    <!-- Desktop: Pestañas de Navegación -->
-    <div class="hidden md:flex gap-0 border-b border-slate-200 mb-6">
+    <!-- Pestañas de Navegación (Mobile y Desktop) -->
+    <div class="flex gap-0 border-b border-slate-200 mb-6 overflow-x-auto">
         <button 
             @click="activeTab = 'specialty'"
             :class="activeTab === 'specialty' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-600 hover:text-slate-900'"
-            class="px-4 py-3 font-bold text-sm transition uppercase tracking-wide"
+            class="px-3 md:px-4 py-3 font-bold text-xs md:text-sm transition uppercase tracking-wide whitespace-nowrap flex-shrink-0"
         >
             Buscar por Especialidad
         </button>
         <button 
             @click="activeTab = 'symptom'"
             :class="activeTab === 'symptom' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-600 hover:text-slate-900'"
-            class="px-4 py-3 font-bold text-sm transition uppercase tracking-wide"
+            class="px-3 md:px-4 py-3 font-bold text-xs md:text-sm transition uppercase tracking-wide whitespace-nowrap flex-shrink-0"
         >
-            Buscar por Síntoma
+             por Síntoma
         </button>
-    </div>
-
-    <!-- Mobile: Menú desplegable alternativo -->
-    <div class="md:hidden mb-6">
-        <select 
-            @change="activeTab = $event.target.value"
-            x-model="activeTab"
-            class="w-full px-4 py-3 border border-slate-300 rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-500"
-        >
-            <option value="specialty">Buscar por Especialidad</option>
-            <option value="symptom">Buscar por Síntoma</option>
-        </select>
     </div>
 
     <!-- TAB 1: BÚSQUEDA DE ESPECIALIDADES -->
@@ -244,11 +232,11 @@
             <div class="pt-5 w-full md:w-auto">
                 <button type="submit" 
                         :disabled="loading"
-                        :class="loading ? 'opacity-75 cursor-not-allowed bg-blue-500' : 'bg-blue-600 hover:bg-blue-700'"
-                        class="w-full text-white font-bold px-10 py-4 rounded-2xl transition shadow-lg shadow-blue-200 flex items-center justify-center gap-2 min-w-[160px] uppercase tracking-wider">
+                        :class="loading ? 'opacity-75 cursor-not-allowed bg-indigo-500 shadow-none' : 'bg-blue-600 hover:bg-blue-700'"
+                        class="w-full text-white px-10 py-4 rounded-2xl font-bold text-sm transition shadow-md uppercase tracking-wider flex items-center justify-center gap-2 min-w-[140px]">
                     
-                    <svg x-show="!loading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    <svg x-show="!loading" class="w-5 h-5 text-white flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.604 10.604z" />
                     </svg>
 
                     <svg x-show="loading" class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" style="display: none;">

@@ -121,7 +121,7 @@
                     <tr>
                         <td style="padding: 0 20px; color: #94a3b8; font-size: 12px; line-height: 1.6;">
                             <p style="margin: 0 0 8px 0;">Mensaje automático generado por la suite de <strong>opendoctorOnline</strong>. Por favor, no respondas directamente a este correo.</p>
-                            <p style="margin: 0 0 16px 0;">Soporte técnico: <a href="mailto:opendoctoronline@gmail.com" style="color: #6366f1; text-decoration: underline;">soporte@opendoctor.online</a>.</p>
+                            <p style="margin: 0 0 16px 0;">Soporte técnico: <a href="mailto:support@opendoctor.online" style="color: #6366f1; text-decoration: underline;">support@opendoctor.online</a>.</p>
                             <p style="margin: 0; font-size: 11px; color: #cbd5e1;">© 2026 opendoctor.online. <br><a href="https://opendoctor.online/privacy" style="color: #94a3b8; text-decoration: none;">Privacidad</a> | <a href="https://opendoctor.online/terms" style="color: #94a3b8; text-decoration: none;">Términos</a></p>
                         </td>
                     </tr>

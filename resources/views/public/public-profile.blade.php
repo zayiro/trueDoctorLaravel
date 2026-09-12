@@ -510,113 +510,185 @@
                                 </div>
                             </div>
                         </div>
-
                     </div>
                 </div>
 
                 <!-- COLUMNA DERECHA: FLUJO TRANSACCIONAL DE TRES PASOS -->
-                <div class="lg:col-span-2 space-y-6">
+                <div class="lg:col-span-2 space-y-6">                    
                     <!-- ======================================================== -->
-                    <!-- 🏢 1. SELECTOR DE SEDES DE ATENCIÓN (FÍSICA O VIRTUAL)    -->
-                    <!-- ======================================================== -->
-                    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-4 dark:bg-gray-800 dark:border-gray-700">
-                        <div class="border-b border-slate-100 dark:border-gray-700 pb-3">
-                            <h2 class="text-lg font-black text-slate-800 dark:text-white tracking-tight">1. Elige la Sede de Atención</h2>
-                            <p class="text-sm text-slate-400 dark:text-gray-400">Selecciona el consultorio presencial o la opción de telemedicina.</p>
+<!-- 🏢 1. SELECTOR DE SEDES DE ATENCIÓN (FÍSICA O VIRTUAL)    -->
+<!-- ======================================================== -->
+<div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-4 dark:bg-gray-800 dark:border-gray-700">
+    <div class="border-b border-slate-100 dark:border-gray-700 pb-3">
+        <h2 class="text-lg font-black text-slate-800 dark:text-white tracking-tight">1. Elige la Sede de Atención</h2>
+        <p class="text-sm text-slate-400 dark:text-gray-400">Selecciona el consultorio presencial o la opción de telemedicina.</p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        @forelse($partner->addresses as $addr)
+            <label class="group cursor-pointer block select-none h-full">
+                <!-- Contenedor de la Tarjeta (Borde dinámico controlado por Alpine) -->
+                <div class="p-5 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all h-full flex flex-col justify-between shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600"
+                     :class="selectedAddress === {{ $addr->id }} ? 'bg-indigo-50/40 border-indigo-600 dark:bg-indigo-950/30' : ''">
+                    
+                    <!-- Bloque Superior: Información de la Sede -->
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="font-extrabold text-sm text-slate-800 dark:text-white truncate">
+                                {{ $addr->name }}
+                            </span>
+                            
+                            <!-- Badge de Modalidad -->
+                            @if($addr->type === 'virtual')
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-purple-50 text-purple-700 border border-purple-100 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-900 flex-shrink-0">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25z"></path></svg>
+                                    Virtual
+                                </span>
+                            @else
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900 flex-shrink-0">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 115 0z"></path></svg>
+                                    Presencial
+                                </span>
+                            @endif
+                        </div>
+                        
+                        <!-- Detalle de Dirección / Estado Virtual -->
+                        <p class="text-xs text-slate-500 line-clamp-2 leading-relaxed dark:text-gray-400">
+                            @if($addr->type === 'virtual')
+                                <span class="font-medium text-purple-600 dark:text-purple-400">Atención 100% en línea desde cualquier ubicación</span>
+                            @else
+                                {{ $addr->address }} • <span class="font-semibold">{{ $addr->city->name ?? 'Ubicación' }}</span>
+                            @endif
+                        </p>
+
+                        <!-- Micro-alerta Institucional si aplica -->
+                        @if($addr->clinic_id)
+                            <div class="pt-1 flex items-center gap-1 text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"></path></svg>
+                                Sede Corporativa
+                            </div>
+                        @endif
+                    </div>
+
+                    <!-- 🔽 Bloque Inferior: Input Radio Visible + Badges de Estado Reales -->
+                    <div class="mt-4 pt-3 border-t border-slate-100 dark:border-gray-600 flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <!-- 🔒 VINCULACIÓN AL ALPINE + INPUT RADIO COMPLETAMENTE VISIBLE -->
+                            <input type="radio" 
+                                   id="addr_{{ $addr->id }}" 
+                                   name="address_id" 
+                                   value="{{ $addr->id }}" 
+                                   :checked="selectedAddress === {{ $addr->id }}"
+                                   x-on:change="selectAddress({{ $addr->id }}, '{{ $addr->type }}')" 
+                                   {{ (isset($preSelectedAddress) && $preSelectedAddress->id == $addr->id) ? 'checked' : '' }}
+                                   class="w-4 h-4 text-indigo-600 bg-slate-100 border-slate-300 focus:ring-indigo-500 focus:ring-2 accent-indigo-600 cursor-pointer">
+                            
+                            <span class="text-xs font-bold text-slate-600 dark:text-gray-300 group-hover:text-indigo-600 transition-colors">
+                                Seleccionar sede
+                            </span>
                         </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            @forelse($partner->addresses as $addr)
-                                <label class="cursor-pointer block select-none">
-                                    {{-- 🔒 VINCULACIÓN AL ALPINE: Selecciona la dirección y dispara fetchServicesLocal --}}
-                                    <input type="radio" name="address_id" value="{{ $addr->id }}" 
-                                           x-on:change="selectAddress({{ $addr->id }}, '{{ $addr->type }}')" 
-                                           {{-- Pre-selección segura de la URL --}}
-                                           {{ (isset($preSelectedAddress) && $preSelectedAddress->id == $addr->id) ? 'checked' : '' }}
-                                           class="sr-only peer">
-                                    
-                                    <div class="p-5 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 peer-checked:bg-indigo-50/50 peer-checked:border-indigo-600 transition-all h-full flex flex-col justify-between shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:peer-checked:bg-indigo-950/30">
-                                        <div class="space-y-2">
-                                            <div class="flex items-center justify-between gap-2">
-                                                <span class="font-extrabold text-sm text-slate-800 dark:text-white truncate">
-                                                    {{ $addr->name }}
-                                                </span>
-                                                
-                                                {{-- Badge de Modalidad Estético con SVG Nativo --}}
-                                                @if($addr->type === 'virtual')
-                                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-purple-50 text-purple-700 border border-purple-100 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-900">
-                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://w3.org"><path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25z"></path></svg>
-                                                        Virtual
-                                                    </span>
-                                                @else
-                                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900">
-                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://w3.org"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 115 0z"></path></svg>
-                                                        Presencial
-                                                    </span>
-                                                @endif
-                                            </div>
-                                            
-                                            {{-- 🔒 CONTROL DE MODALIDAD: Oculta la ciudad y dirección si la sede es virtual --}}
-                                            <p class="text-xs text-slate-500 line-clamp-2 leading-relaxed dark:text-gray-400">
-                                                @if($addr->type === 'virtual')
-                                                    <span class="font-medium text-purple-600 dark:text-purple-400">Atención 100% en línea desde cualquier ubicación</span>
-                                                @else
-                                                    {{ $addr->address }} • <span class="font-semibold">{{ $addr->city->name ?? 'Ubicación' }}</span>
-                                                @endif
-                                            </p>
-
-                                        </div>
-
-                                        {{-- Micro-alerta si pertenece a una clínica --}}
-                                        @if($addr->clinic_id)
-                                            <div class="mt-3 pt-2 border-t border-slate-100 dark:border-gray-600 flex items-center gap-1 text-[10px] font-bold text-purple-600 dark:text-purple-400">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://w3.org"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"></path></svg>
-                                                Sede Corporativa de la Institución
-                                            </div>
-                                        @endif
-                                    </div>
-                                </label>
-                            @empty
-                                <div class="col-span-1 sm:col-span-2 p-6 bg-slate-50 border border-dashed rounded-2xl text-center text-xs font-bold text-slate-400 dark:bg-gray-700/50 dark:border-gray-600">
-                                    No hay consultorios médicos habilitados o disponibles en este momento.
-                                </div>
-                            @endforelse
+                        <!-- Badges de Estado Dinámicos (Controlados por Alpine al 100%) -->
+                        <div class="flex-shrink-0">
+                            <!-- Estado: NO Seleccionado -->
+                            <span x-show="selectedAddress !== {{ $addr->id }}"
+                                  class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200 dark:bg-gray-600 dark:text-gray-300 dark:border-gray-500">
+                                Disponible
+                            </span>
+                            <!-- Estado: SELECCIONADO -->
+                            <span x-show="selectedAddress === {{ $addr->id }}"
+                                  x-cloak
+                                  class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-900 animate-pulse">
+                                Elegida
+                            </span>
                         </div>
                     </div>
+
+                </div>
+            </label>
+        @empty
+            <div class="col-span-1 sm:col-span-2 p-6 bg-slate-50 border border-dashed rounded-2xl text-center text-xs font-bold text-slate-400 dark:bg-gray-700/50 dark:border-gray-600">
+                No hay consultorios médicos habilitados o disponibles en este momento.
+            </div>
+        @endforelse
+    </div>
+</div>
+
+
 
                     <!-- ========================================================================= -->
                     <!-- 🩺 2. SELECTOR DE SERVICIOS (Filtrado por Sede vía Alpine.js Unificado) -->
                     <!-- ========================================================================= -->
                     <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-4 dark:bg-gray-800 dark:border-gray-700" 
-                         x-show="selectedAddress !== null" 
-                         x-init="@if(isset($preSelectedAddress) && $preSelectedAddress) $nextTick(() => { selectAddress({{ $preSelectedAddress->id }}, '{{ $preSelectedAddress->type }}') }); @endif" 
-                         x-transition>
+                        x-show="selectedAddress !== null" 
+                        x-init="@if(isset($preSelectedAddress) && $preSelectedAddress) $nextTick(() => { selectAddress({{ $preSelectedAddress->id }}, '{{ $preSelectedAddress->type }}') }); @endif" 
+                        x-transition>
                         
                         <div class="border-b border-slate-100 dark:border-gray-700 pb-3">
                             <h2 class="text-lg font-black text-slate-800 dark:text-white tracking-tight">2. Elige el Servicio Médico</h2>
                             <p class="text-sm text-slate-400 dark:text-gray-400">Los valores y tiempos varían según la sede seleccionada.</p>
                         </div>
 
-                        <div class="space-y-2" x-show="availableServices.length > 0">
+                        <!-- Lista de Servicios Disponibles -->
+                        <div class="space-y-3" x-show="availableServices.length > 0">
                             <template x-for="service in availableServices" :key="service.id">
-                                <label class="cursor-pointer block select-none">
-                                    <input type="radio" name="service_id" :value="service.id" 
-                                           {{-- 🛡️ CAPA INTERACTIVA: Extrae la duración dinámica ya sea del objeto plano o del pivote institucional --}}
-                                           x-on:change="selectService(service.id, (service.pivot ? service.pivot.duration : service.duration))" 
-                                           class="sr-only peer">
-                                    
-                                    <div class="p-4 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 peer-checked:bg-indigo-50/50 peer-checked:border-indigo-600 transition-all flex items-center justify-between gap-4 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600 dark:peer-checked:bg-indigo-950/30">
-                                        <div class="flex flex-col">
-                                            <span class="font-bold text-slate-800 text-sm dark:text-white" x-text="service.name"></span>
-                                            {{-- ⏱️ Mapeo Dinámico de la Duración Corporativa vs Particular --}}
-                                            <span class="text-xs text-slate-400 mt-0.5 dark:text-gray-400" 
-                                                  x-text="'⏱ Duración: ' + (service.pivot ? service.pivot.duration : service.duration) + ' min'">
+                                <label class="group cursor-pointer block select-none">
+                                    <!-- Contenedor Principal de la Tarjeta -->
+                                    <div class="p-5 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all flex flex-col justify-between shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600"
+                                        :class="selectedService === service.id ? 'bg-indigo-50/40 border-indigo-600 dark:bg-indigo-950/30' : ''">
+                                        
+                                        <!-- Bloque Superior: Información del Servicio y Precio -->
+                                        <div class="flex items-start justify-between gap-4">
+                                            <div class="flex flex-col min-w-0">
+                                                <!-- Nombre del Servicio -->
+                                                <span class="font-extrabold text-slate-800 text-sm dark:text-white truncate" x-text="service.name"></span>
+                                                
+                                                <!-- ⏱️ Duración -->
+                                                <span class="inline-flex items-center gap-1 text-xs text-slate-400 mt-1 dark:text-gray-400">
+                                                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                                    <span x-text="'Duración: ' + (service.pivot ? service.pivot.duration : service.duration) + ' min'"></span>
+                                                </span>
+                                            </div>
+
+                                            <!-- 💵 Precio -->
+                                            <span class="text-base font-black text-green-600 dark:text-green-400 flex-shrink-0" 
+                                                x-text="'$' + new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(service.pivot ? service.pivot.price : service.price)">
                                             </span>
                                         </div>
-                                        {{-- 💵 Mapeo Dinámico del Precio Corporativo de la Clínica vs Particular del Médico --}}
-                                        <span class="text-base font-black text-green-600 dark:text-green-400" 
-                                              x-text="'$' + new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(service.pivot ? service.pivot.price : service.price)">
-                                        </span>
+
+                                        <!-- 🔽 Bloque Inferior: Input Radio + Mensaje Tipo Badge (Debajo del último texto) -->
+                                        <div class="mt-4 pt-3 border-t border-slate-100 dark:border-gray-600 flex items-center justify-between">
+                                            <div class="flex items-center gap-2.5">
+                                                <!-- 🔒 VINCULACIÓN AL ALPINE + INPUT RADIO VISIBLE -->
+                                                <input type="radio" 
+                                                    :id="'service_' + service.id"
+                                                    name="service_id" 
+                                                    :value="service.id" 
+                                                    :checked="selectedService === service.id"
+                                                    x-on:change="selectService(service.id, (service.pivot ? service.pivot.duration : service.duration))" 
+                                                    class="w-4 h-4 text-indigo-600 bg-slate-100 border-slate-300 focus:ring-indigo-500 focus:ring-2 accent-indigo-600 cursor-pointer">
+                                                
+                                                <span class="text-xs font-bold text-slate-600 dark:text-gray-300 group-hover:text-indigo-600 transition-colors">
+                                                    Seleccionar servicio
+                                                </span>
+                                            </div>
+
+                                            <!-- Badges de Estado Dinámicos vía Alpine.js -->
+                                            <div class="flex-shrink-0">
+                                                <!-- Estado: NO Seleccionado -->
+                                                <span x-show="selectedService !== service.id" 
+                                                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200 dark:bg-gray-600 dark:text-gray-300 dark:border-gray-500">
+                                                    Disponible
+                                                </span>
+                                                <!-- Estado: SELECCIONADO -->
+                                                <span x-show="selectedService === service.id" 
+                                                    x-cloak
+                                                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-900 animate-pulse">
+                                                    Elegida
+                                                </span>
+                                            </div>
+                                        </div>
+
                                     </div>
                                 </label>
                             </template>
@@ -624,10 +696,10 @@
 
                         <!-- Estado Vacío Condicional del Catálogo de Servicios -->
                         <div class="p-6 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl text-center flex flex-col items-center justify-center py-8 dark:bg-gray-700/50 dark:border-gray-600" 
-                             x-show="availableServices.length === 0" 
-                             x-transition>
+                            x-show="availableServices.length === 0" 
+                            x-transition>
                             <div class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-3 border border-slate-200/50 shadow-inner dark:bg-gray-700 dark:border-gray-600">
-                                <svg class="w-6 h-6 text-slate-400 dark:text-gray-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://w3.org" aria-hidden="true">
+                                <svg class="w-6 h-6 text-slate-400 dark:text-gray-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 18v3m0 0h.008v.008H12V21zm0-6h.008v.008H12V15zm0-6h.008v.008H12V9zm0-6h.008v.008H12V3zM3.22 8.22a.75.75 0 011.06 0L12 15.69l7.72-7.47a.75.75 0 111.06 1.06l-8.25 8a.75.75 0 01-1.06 0l-8.25-8a.75.75 0 010-1.06z"></path>
                                 </svg>
                             </div>

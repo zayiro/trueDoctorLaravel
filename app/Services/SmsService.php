@@ -24,21 +24,22 @@ class SmsService
      *
      * @param string $to Número de teléfono del destinatario
      * @param string $message Mensaje a enviar
-     * @return bool
+     * @return \Twilio\Rest\Api\V2010\Account\MessageInstance|null Retorna el objeto de mensaje si se envió correctamente, o null si falló
      */
-    public function send(string $to, string $message): bool
+    
+
+    public function send(string $to, string $message)
     {
-        try {
-            $this->twilio->messages->create($to, [
+        try {            
+            $message = $this->twilio->messages->create($to, [
                 'from' => $this->phoneNumber,
                 'body' => $message
             ]);
 
-            Log::info("SMS enviado a {$to}");
-            return true;
+            return $message;
         } catch (\Exception $e) {
             Log::error("Error enviando SMS a {$to}: " . $e->getMessage());
-            return false;
+            return null;
         }
     }
 
@@ -48,19 +49,21 @@ class SmsService
      * @param string $to Número de teléfono
      * @param string $message Mensaje
      * @param int $maxRetries Máximo número de intentos
-     * @return bool
+     * @return \Twilio\Rest\Api\V2010\Account\MessageInstance|null Retorna el objeto de mensaje si se envió correctamente, o null si falló
      */
-    public function sendWithRetry(string $to, string $message, int $maxRetries = 3): bool
+    
+    public function sendWithRetry(string $to, string $message, int $maxRetries = 3)
     {
         for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
-            if ($this->send($to, $message)) {
-                return true;
+            $result = $this->send($to, $message);
+            if ($result) {
+                return $result;  // ← Retorna el objeto
             }
             if ($attempt < $maxRetries) {
-                sleep(2 ** $attempt); // Exponential backoff: 2s, 4s, 8s
+                sleep(2 ** $attempt);
             }
         }
-        return false;
+        return null;  // ← Retorna null después de todos los intentos
     }
 
     /**

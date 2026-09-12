@@ -196,8 +196,8 @@
 
                     <!-- Columna Interactiva / CTA (Derecha) -->
                     <div class="md:col-span-5 flex flex-col items-center justify-center" x-data="{ loading: false }">
-                        <p class="text-3xl text-white leading-relaxed max-w-xl">
-                            <strong>${{ number_format($price, 0, ',', '.') }} COP</strong>
+                        <p class="text-3xl text-white leading-relaxed max-w-xl mb-4">
+                            <span class="bg-blue-100 text-blue-600 px-6 py-2 rounded-full font-bold"><strong>${{ number_format($price, 0, ',', '.') }} COP</strong></span>
                         </p>
                         <!-- Caja de acción con fondo sutilmente más claro que el fondo negro para dar relieve -->
                         <div class="w-full bg-slate-900 border border-white/5 p-6 md:p-8 rounded-2xl shadow-xl text-center space-y-6">

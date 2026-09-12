@@ -54,7 +54,7 @@
                                 <span class="text-teal-600 me-2">1.</span> Responsable del Tratamiento
                             </h2>
                             <p class="text-slate-600">
-                                La entidad legal responsable del tratamiento de sus datos personales recolectados a través de este ecosistema de agendamiento médico es **[Nombre Legal de tu SaaS o Empresa]**, con domicilio principal y correo electrónico de contacto de privacidad gestionado en: `privacidad@tudominio.com`.
+                                La entidad legal responsable del tratamiento de sus datos personales recolectados a través de este ecosistema de agendamiento médico es **OpenDoctorOnline**, con domicilio principal y correo electrónico de contacto de privacidad gestionado en: `support@opendoctor.online`.
                             </p>
                         </section>
 

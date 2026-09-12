@@ -627,7 +627,7 @@ class AppointmentController extends Controller
     }
    
     public function success(Appointment $appointment)
-    {        
+    {      
         // 1. Cargar todas las relaciones necesarias desde el inicio para evitar consultas N+1
         $appointment->load(['doctor.user', 'clinic', 'service', 'address.city', 'patient.user']);
 
@@ -1002,23 +1002,7 @@ class AppointmentController extends Controller
                 if ($doctorEmail) {
                     Mail::to($doctorEmail)->send(new AppointmentConfirmed($appointment, 'partner'));
                 }
-
-
-                // ── WhatsApp
-                /* 
-                $this->whatsapp->sendConfirmed(
-                    phone:       $appointment->patient->phone,
-                    patientName: $appointment->patient?->user?->name ?? 'Paciente',
-                    sede:        $appointment->address?->name ?? 'Consulta virtual',
-                    time:        Carbon::parse($appointment->start_time)->format('H:i'),
-                    doctor:      $appointment->doctor?->user?->name ?? 'el médico',
-                );
-
-                \Log::error('Envia whatsapp template: ' . $appointment->patient->phone);
-                */
-                
-                $appointment->update(['email_sent' => true]);
-
+                //aqui logica de whatsapp
             } catch (Throwable $e) {
                 Log::error('Error en notificaciones post-confirmación: ' . $e->getMessage());
 
@@ -1028,20 +1012,19 @@ class AppointmentController extends Controller
                 } catch (\Exception $ne) {
                     // silencioso
                 }
-            }            
-
+            }         
+            
             // Log 3: Intentar convertir datetime
             try {                
                 $dateStr = $appointment->date->format('Y-m-d') ?? 'NULL';
                 $timeStr = (string)$appointment->start_time;
                 $combinedStr = $dateStr . ' ' . $timeStr;
-                $appointmentDateTime = Carbon::parse($combinedStr);                              
+                $appointmentDateTime = Carbon::parse($combinedStr);
             } catch (\Exception $e) {
                 Log::error('ERROR al crear appointmentDateTime', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                throw $e;
             }
 
             // Log 4: Crear mensaje
@@ -1049,13 +1032,12 @@ class AppointmentController extends Controller
                 $name = $appointment->patient?->user?->name ?? 'Paciente';
                 $date = $appointment->date->format('d/m/Y');
                 $time = $appointmentDateTime->format('H:i:s');                
-                $confirmationMessage = "Hola {$name}, tu cita fue confirmada para el {$date} a las {$time}";                
+                $confirmationMessage = "Hola {$name}, tu cita fue confirmada para el {$date} a las {$time}";
             } catch (\Exception $e) {
                 Log::error('ERROR al crear confirmationMessage', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                throw $e;
             }
 
             // Log 5: Despachar Job
@@ -1064,13 +1046,12 @@ class AppointmentController extends Controller
                     $appointment->patient?->phone,
                     $confirmationMessage,
                     "appointment_{$appointment->reference}_confirmation"
-                );                
+                );
             } catch (\Exception $e) {
                 Log::error('ERROR al despachar SendSmsReminder', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                throw $e;
             }
 
             // Log 6: Programar recordatorio
@@ -1091,6 +1072,9 @@ class AppointmentController extends Controller
                 ]);
                 throw $e;
             }
+
+            // 🔥 MARCAR COMO ENVIADO AL FINAL
+            $appointment->update(['email_sent' => true]);
         }
 
         // ── 3. Retornar instancia fresca para la vista

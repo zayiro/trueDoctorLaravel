@@ -150,7 +150,7 @@
                     errorMessage: '',
                     successMessage: '',
                     loading: false,
-                    
+                    isSubmitting: false,
                     subtotal: {{ $virtualPaymentRequired && $wompiData ? $wompiData['total'] : $appointment->price }},
                     isWompi: {{ ($virtualPaymentRequired && $wompiData) ? 'true' : 'false' }},
                     wompiBase: {{ $appointment->price }},
@@ -223,13 +223,6 @@
                             this.errorMessage = 'Error al procesar el cupón. Intenta de nuevo.';
                         } finally {
                             this.loading = false;
-                        }
-                    },
-
-                    handleAction(event) {
-                        if (this.isFree) {
-                            event.preventDefault();
-                            window.location.href = '{{ route('appointments.success', $appointment) }}';
                         }
                     }
                 }">
@@ -313,11 +306,19 @@
                     <!-- FLUJOS DE ACCIÓN FINALES -->
                     <div class="mt-8 border-t border-slate-50 pt-6">
                         
-                        <!-- Condición 1: Cita gratis (100% de descuento) -->
+                        <!-- Condición 1: Cita gratis (100% de descuento) -->                        
                         <div x-show="isFree" x-cloak>
-                            <form action="{{ route('appointments.success', $appointment) }}" method="GET">                                
-                                <button type="submit" @click="handleAction($event)" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-emerald-100 transition-all text-sm uppercase tracking-wider flex items-center justify-center gap-2">
-                                    <span>Confirmar Cita Gratis</span>
+                            <form action="{{ route('appointments.success', $appointment) }}" method="POST" @submit="isSubmitting = true">
+                                @csrf                                
+                                <button type="submit" 
+                                        :disabled="isSubmitting"
+                                        class="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 disabled:cursor-not-allowed text-white py-4 rounded-2xl font-black shadow-lg shadow-emerald-100 transition-all text-sm uppercase tracking-wider flex items-center justify-center gap-2">
+                                    <svg x-show="isSubmitting" x-cloak class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span x-show="!isSubmitting">Confirmar Cita Gratis</span>
+                                    <span x-show="isSubmitting" x-cloak>Procesando...</span>
                                 </button>
                             </form>
                         </div>

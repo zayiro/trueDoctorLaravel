@@ -35,16 +35,8 @@ class SendSmsReminder implements ShouldQueue
     /**
      * Ejecutar el job
      */
-    public function handle(SmsService $smsService)
+    public function handle__(SmsService $smsService)
     {
-        Log::info("Enviando recordatorio SMS {$this->context}");
-
-        Log::info('SendSmsReminder Job iniciado', [
-            'phone'     => $this->phoneNumber,
-            'message'   => $this->message,
-            'reference' => $this->context,
-        ]);
-
         // Normalizar número de teléfono
         $normalizedPhone = $smsService->normalizePhoneNumber($this->phoneNumber);
 
@@ -54,16 +46,44 @@ class SendSmsReminder implements ShouldQueue
             return;
         }
 
-        // Enviar con reintentos
-        $success = $smsService->sendWithRetry($normalizedPhone, $this->message, 3);
+        // Enviar con reintentos y capturar respuesta
+        try {
+            $response = $smsService->sendWithRetry($normalizedPhone, $this->message, 3);
 
-        if (!$success) {
-            Log::error("Fallo enviando recordatorio SMS {$this->context}");
-            $this->fail(new \Exception("Failed to send SMS after 3 attempts"));
+            if (!$response) {
+                throw new \Exception("Failed to send SMS after 3 attempts");
+            }
+        } catch (\Exception $e) {
+            Log::error("Fallo enviando recordatorio SMS {$this->context}", [
+                'reference' => $this->context,
+                'phone'     => $normalizedPhone,
+                'error'     => $e->getMessage(),
+                'trace'     => $e->getTraceAsString(),
+            ]);
+            $this->fail($e);
+        }
+    }
+
+    public function handle(SmsService $smsService)
+    {        
+        $normalizedPhone = $smsService->normalizePhoneNumber($this->phoneNumber);
+
+        if (!$normalizedPhone) {
+            Log::warning("Número inválido: {$this->phoneNumber}");
+            $this->fail(new \Exception("Invalid phone number"));
             return;
         }
-
-        Log::info("Recordatorio SMS enviado exitosamente {$this->context}");
+        
+        try {
+            $response = $smsService->sendWithRetry($normalizedPhone, $this->message, 3);
+            
+            if (!$response) {
+                throw new \Exception("Failed to send SMS");
+            }
+        } catch (\Exception $e) {
+            Log::error("Error: " . $e->getMessage());
+            $this->fail($e);
+        }
     }
 
     /**
