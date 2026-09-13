@@ -69,6 +69,13 @@ return [
         'url' => env('DEEPSEEK_URL'),
     ],
 
+    'medgemma' => [
+        'project_id' => env('GOOGLE_CLOUD_PROJECT_ID'),
+        'endpoint' => env('MEDGEMMA_ENDPOINT'),
+        'location' => env('MEDGEMMA_LOCATION', 'us-central1'),
+        'model' => env('MEDGEMMA_MODEL', 'medgemma-1-5-4b'),
+    ],
+
     'wompi' => [
         'public_key'       => env('WOMPI_PUBLIC_KEY'),
         'private_key'      => env('WOMPI_PRIVATE_KEY'),

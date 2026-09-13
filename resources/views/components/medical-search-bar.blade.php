@@ -27,7 +27,7 @@
     </div>
 
     <!-- TAB 1: BÚSQUEDA DE ESPECIALIDADES -->
-    <div x-show="activeTab === 'specialty'" x-transition>
+    <div x-show="activeTab === 'specialty'" x-cloak x-transition>
         <form x-data="{ loading: false }" 
               x-on:submit="
                 loading = handleSearchSubmit($event)
@@ -203,7 +203,7 @@
     </div>
 
     <!-- TAB 2: BÚSQUEDA DE SÍNTOMAS -->
-    <div x-show="activeTab === 'symptom'" x-transition>
+    <div x-show="activeTab === 'symptom'" x-cloak x-transition>
         <form x-data="symptomForm()" 
             x-on:submit="loading = true"
             action="{{ route('search.symptom.view') }}" 

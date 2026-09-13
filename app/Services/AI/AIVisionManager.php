@@ -30,6 +30,12 @@ class AIVisionManager
                 apiKey: config('services.anthropic.key'),
                 model: $model ?? config('services.anthropic.vision_model', 'claude-sonnet-4-6'),
             ),
+            'medgemma' => new MedGemmaDriver(
+                projectId: config('services.medgemma.project_id'),
+                endpoint: config('services.medgemma.endpoint'),
+                location: config('services.medgemma.location', 'us-central1'),
+                model: $model ?? config('services.medgemma.model', 'medgemma-1-5-4b'),
+            ),
             default => throw new \InvalidArgumentException("Proveedor de IA desconocido: {$provider}"),
         };
     }

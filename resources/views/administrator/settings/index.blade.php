@@ -6,196 +6,322 @@ $breadcrumbs = [
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-    <div class="container mx-auto px-4">        
-        <div class="space-y-2 mb-3">
-            <h1 class="text-3xl font-black text-white tracking-tight">Panel de Configuración del SaaS</h1>
-            <p class="text-base text-slate-400">Modifica las variables operativas y comerciales globales del sistema.</p>
+    <div class="space-y-8">
+        
+        <!-- ENCABEZADO -->
+        <div class="space-y-2">
+            <h1 class="text-3xl font-black">⚙️ Configuración del Sistema</h1>
+            <p class="text-slate-400">Modifica las variables operativas y comerciales globales del sistema</p>
         </div>
 
-        @if(session('success'))
-            <div class="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-sm text-emerald-400 mb-4">
-                {{ session('success') }}
+        @if ($errors->any())
+            <div class="bg-red-500/10 border border-red-500/30 rounded-lg p-4 space-y-2">
+                <p class="text-red-400 font-semibold">❌ Errores en la validación:</p>
+                <ul class="text-red-300 text-sm space-y-1">
+                    @foreach ($errors->all() as $error)
+                        <li>• {{ $error }}</li>
+                    @endforeach
+                </ul>
             </div>
         @endif
 
-        @if(session('error'))
-            <div class="p-4 mb-3 text-sm text-red-800 rounded-xl bg-red-50 border border-red-200 shadow-sm">
-                {{ session('error') }}
+        @if (session('success'))
+            <div class="bg-green-100 border border-green-500/30 rounded-lg p-4">
+                <p class="text-green-400 font-semibold">{{ session('success') }}</p>
             </div>
         @endif
 
         <form action="{{ route('administrator.settings.update') }}" method="POST" class="space-y-6">
             @csrf
             @method('PUT')
+            <!-- 1️⃣ PRECIOS DE EXÁMENES -->
+            <div class="bg-slate-950 border border-white/10 rounded-2xl p-6 space-y-4">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    <svg class="w-6 h-6 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M8.16 2.75a.75.75 0 00-1.32 0l-3.5 6A.75.75 0 003.75 10h12.5a.75.75 0 00.66-1.25l-3.5-6z"/>
+                    </svg>
+                    Precios de Exámenes por Tipo
+                </h2>
+                <p class="text-slate-400 text-sm">Configurar precio fijo para cada tipo de examen médico</p>
 
-            {{-- ── SECCIÓN SAAS ─────────────────────────────────────────────── --}}
-            <div class="bg-slate-950 border border-white/10 rounded-2xl p-6 md:p-8 space-y-6 shadow-2xl">
-                <div class="flex items-center gap-3 pb-4 border-b border-white/5">
-                    <div class="w-8 h-8 bg-blue-500/10 rounded-xl flex items-center justify-center">
-                        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 class="text-sm font-black text-white uppercase tracking-wider">General SaaS</h2>
-                        <p class="text-xs text-slate-500">Configuración operativa del sistema</p>
-                    </div>
+                <div class="grid md:grid-cols-2 gap-4">
+                    @foreach([
+                        'lab' => '🧪 Laboratorio',
+                        'xray' => '📸 Radiografía',
+                        'ultrasound' => '🔊 Ecografía',
+                        'ct' => '📊 Tomografía',
+                        'mri' => '🧠 Resonancia Magnética',
+                        'dicom' => '💾 DICOM',
+                        'mammography' => '🎀 Mamografía'
+                    ] as $key => $label)
+                        <div class="space-y-2">
+                            <label class="text-sm font-bold text-white">{{ $label }}</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">$</span>
+                                <input 
+                                    type="number" 
+                                    name="exam_type_{{ $key }}_price"
+                                    value="{{ $settings['exam_type_' . $key . '_price'] ?? 0 }}"
+                                    class="w-full pl-10 pr-4 py-2 bg-slate-900 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                                    step="1000"
+                                    min="5000"
+                                    required
+                                >
+                            </div>
+                            <p class="text-xs text-slate-400">
+                                Actual: ${{ number_format($settings['exam_type_' . $key . '_price'] ?? 0, 0, ',', '.') }} COP
+                            </p>
+                        </div>
+                    @endforeach
                 </div>
 
-                {{-- Precio del Análisis --}}
-                <div class="space-y-2">
-                    <label class="text-sm font-bold tracking-wider text-white block">Precio del Análisis Médico (COP)</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-500 font-bold">$</span>
-                        <input type="number" step="0.01" name="medical_analysis_price" required
-                            value="{{ old('medical_analysis_price', $settings['medical_analysis_price'] ?? '0.00') }}"
-                            class="w-full pl-8 p-3 bg-slate-900 border border-white/10 rounded-xl font-medium text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-                    <p class="text-xs text-slate-400">Costo cobrado en la pasarela de pago antes del análisis por IA.</p>
-                </div>
-
-                {{-- Correo de Soporte --}}
-                <div class="space-y-2">
-                    <label class="text-sm font-bold tracking-wider text-white block">Correo Electrónico de Soporte</label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-500">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0l-7.5-4.615"/>
-                            </svg>
-                        </span>
-                        <input type="email" name="support_email" required
-                            value="{{ old('support_email', $settings['support_email'] ?? '') }}"
-                            class="w-full pl-10 p-3 bg-slate-900 border border-white/10 rounded-xl font-medium text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-                    <p class="text-xs text-slate-400">Remitente oficial para los correos de soporte técnico.</p>
+                <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                    <p class="text-slate-300 text-xs">
+                        <strong>ℹ️</strong> Estos precios son FIJOS y no varían según cantidad de imágenes.
+                    </p>
                 </div>
             </div>
 
-            {{-- ── SECCIÓN COMISIONES ───────────────────────────────────────── --}}
-            <div class="bg-slate-950 border border-white/10 rounded-2xl p-6 md:p-8 space-y-6 shadow-2xl">
-                <div class="flex items-center gap-3 pb-4 border-b border-white/5">
-                    <div class="w-8 h-8 bg-emerald-500/10 rounded-xl flex items-center justify-center">
-                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z"/>
-                        </svg>
+            <!-- 6️⃣ MODELOS DE IA POR TIPO -->
+            <div class="bg-slate-950 border border-white/10 rounded-2xl p-6 space-y-4">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    <svg class="w-6 h-6 text-pink-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M3.196 12.87c-.263.13-.698.523-.873.931-.284.681-.281 1.431.008 2.064.288.634.785 1.221 1.443 1.62.324.2.744.202 1.06.002.32-.202.533-.652.533-1.102 0-.45-.212-.9-.533-1.102l-.502-.31.502-.31c.32-.202.533-.652.533-1.102 0-.45-.213-.9-.534-1.102a.745.745 0 00-1.036.21zM9 5a2 2 0 100 4 2 2 0 000-4zM7.371 8.644a5 5 0 1110.258 0M15.75 12c0 .449.213.9.533 1.102.32.202.738.196 1.036-.21.263-.13.698-.523.873-.931.284-.681.281-1.431-.008-2.064-.288-.634-.785-1.221-1.443-1.62-.324-.2-.744-.202-1.06-.002-.32.202-.533.652-.533 1.102 0 .45.212.9.533 1.102l.502.31-.502.31c-.32.202-.533.652-.533 1.102z"/>
+                    </svg>
+                    Modelos de IA por Tipo de Examen
+                </h2>
+                <p class="text-slate-400 text-sm">Selecciona qué modelo de IA usar primero para cada tipo</p>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- LABORATORIO -->
+                    <div class="bg-slate-900 rounded-lg p-4 space-y-3 border-l-4 border-blue-500">
+                        <p class="text-sm font-bold text-white">🧪 LABORATORIO</p>
+                        
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-white">Modelo Primario</label>
+                            <select name="lab_ai_primary_model" class="w-full px-3 py-2 bg-slate-800 border border-white/10 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="gpt-4o" @selected($settings['lab_ai_primary_model'] == 'gpt-4o')>GPT-4o (OpenAI)</option>
+                                <option value="claude-sonnet-4-5" @selected($settings['lab_ai_primary_model'] == 'claude-sonnet-4-5')>Claude Sonnet 4.5</option>
+                            </select>
+                            <p class="text-xs text-slate-400">Se intenta primero</p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-white">Modelo Fallback</label>
+                            <select name="lab_ai_fallback_model" class="w-full px-3 py-2 bg-slate-800 border border-white/10 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="gpt-4o" @selected($settings['lab_ai_fallback_model'] == 'gpt-4o')>GPT-4o (OpenAI)</option>
+                                <option value="claude-sonnet-4-5" @selected($settings['lab_ai_fallback_model'] == 'claude-sonnet-4-5')>Claude Sonnet 4.5</option>
+                            </select>
+                            <p class="text-xs text-slate-400">Si el primero falla</p>
+                        </div>
                     </div>
-                    <div>
-                        <h2 class="text-sm font-black text-white uppercase tracking-wider">Comisiones de la Plataforma</h2>
-                        <p class="text-xs text-slate-500">Porcentajes cobrados sobre el valor de cada cita</p>
+
+                    <!-- IMAGENOLOGÍA -->
+                    <div class="bg-slate-900 rounded-lg p-4 space-y-3 border-l-4 border-purple-500">
+                        <p class="text-sm font-bold text-white">🔬 IMAGENOLOGÍA</p>
+                        
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-white">Modelo Primario</label>
+                            <select name="imaging_ai_primary_model" class="w-full px-3 py-2 bg-slate-800 border border-white/10 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <option value="claude-sonnet-4-5" @selected($settings['imaging_ai_primary_model'] == 'claude-sonnet-4-5')>Claude Sonnet 4.5</option>
+                                <option value="gpt-4o" @selected($settings['imaging_ai_primary_model'] == 'gpt-4o')>GPT-4o (OpenAI)</option>
+                            </select>
+                            <p class="text-xs text-slate-400">Se intenta primero</p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-white">Modelo Fallback</label>
+                            <select name="imaging_ai_primary_model" class="w-full px-3 py-2 bg-slate-800 border border-white/10 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                <option value="claude-sonnet-4-5" @selected($settings['imaging_ai_fallback_model'] == 'claude-sonnet-4-5')>Claude Sonnet 4.5</option>
+                                <option value="gpt-4o" @selected($settings['imaging_ai_fallback_model'] == 'gpt-4o')>GPT-4o (OpenAI)</option>
+                            </select>
+                            <p class="text-xs text-slate-400">Si el primero falla</p>
+                        </div>
                     </div>
                 </div>
 
-                {{-- Fee Wompi --}}
+                <div class="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3">
+                    <p class="text-slate-300 text-xs">
+                        <strong>ℹ️</strong> Los cambios se aplican inmediatamente a nuevos análisis.
+                    </p>
+                </div>
+            </div>
+
+            <!-- 2️⃣ FACTORES DE DECIMACIÓN -->
+            <div class="bg-slate-950 border border-white/10 rounded-2xl p-6 space-y-4">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    <svg class="w-6 h-6 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                    Factores de Decimación Automática
+                </h2>
+                <p class="text-slate-400 text-sm">Procesa cada N-ésima imagen (1 = todas, 10 = cada 10ª)</p>
+
+                <div class="grid md:grid-cols-2 gap-4">
+                    @foreach([
+                        'ct' => '📊 Tomografía',
+                        'mri' => '🧠 Resonancia Magnética',
+                        'xray' => '📸 Radiografía',
+                        'ultrasound' => '🔊 Ecografía',
+                        'dicom' => '🩻 DICOM',
+                        'mammography' => '🎀 Mamografía'
+                    ] as $key => $label)
+                        <div class="space-y-2">
+                            <label class="text-sm font-bold text-white">{{ $label }}</label>
+                            <input 
+                                type="number" 
+                                name="{{ $key }}_auto_decimation"
+                                value="{{ $settings[$key . '_auto_decimation'] ?? 1 }}"
+                                class="w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                min="1"
+                                max="100"
+                                required
+                            >
+                            @php
+                                $decimation = $settings[$key . '_auto_decimation'] ?? 1;
+                                if ($decimation == 1) {
+                                    $info = "Procesa todas las imágenes";
+                                } else {
+                                    $info = "Procesa cada {$decimation}ª imagen";
+                                }
+                            @endphp
+                            <p class="text-xs text-slate-400">{{ $info }}</p>
+                        </div>
+                    @endforeach
+                </div>
+
+                <div class="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 space-y-2">
+                    <p class="text-slate-300 text-xs font-semibold">ℹ️ Ejemplo:</p>
+                    <ul class="text-slate-300 text-xs space-y-1">
+                        <li>• Factor 1: 300 de 300 imágenes (más tiempo, más costo IA)</li>
+                        <li>• Factor 10: 30 de 300 imágenes (rápido, bajo costo IA)</li>
+                        <li>• El usuario paga lo MISMO, menos imágenes procesadas</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 3️⃣ GENERAL SAAS -->
+            <div class="bg-slate-950 border border-white/10 rounded-2xl p-6 space-y-4">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    <svg class="w-6 h-6 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
+                    </svg>
+                    General SaaS
+                </h2>
+                <p class="text-slate-400 text-sm">Configuración operativa del sistema</p>
+
                 <div class="space-y-2">
-                    <label class="text-sm font-bold tracking-wider text-white block">Fee Wompi (%)</label>
-                    <div class="relative">
-                        <input type="number" step="0.01" name="wompi_fee" required min="0" max="100"
-                            value="{{ old('wompi_fee', $settings['wompi_fee'] ?? '2.9') }}"
-                            class="w-full p-3 pr-10 bg-slate-900 border border-white/10 rounded-xl font-medium text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <span class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-slate-500 font-bold">%</span>
-                    </div>
-                    <p class="text-xs text-slate-400">Porcentaje que cobra Wompi por cada transacción. Se descuenta de tu ganancia neta.</p>
+                    <label class="text-sm font-bold text-white">Correo Electrónico de Soporte</label>
+                    <input 
+                        type="email" 
+                        name="support_email"
+                        value="{{ $settings['support_email'] ?? '' }}"
+                        placeholder="support@opendoctor.online"
+                        class="w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-500"
+                        required
+                    >
                 </div>
+            </div>
 
-                {{-- Citas Virtuales --}}
-                <div class="space-y-3">
-                    <p class="text-xs font-black text-slate-400 uppercase tracking-wider">Citas Virtuales</p>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="space-y-2">
-                            <label class="text-sm font-bold text-white block">Comisión Médico Particular (%)</label>
-                            <div class="relative">
-                                <input type="number" step="0.01" name="virtual_commission_doctor" required min="0" max="100"
-                                    value="{{ old('virtual_commission_doctor', $settings['virtual_commission_doctor'] ?? '15') }}"
-                                    class="w-full p-3 pr-10 bg-slate-900 border border-white/10 rounded-xl font-medium text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <span class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-slate-500 font-bold">%</span>
-                            </div>
-                        </div>
-                        <div class="space-y-2">
-                            <label class="text-sm font-bold text-white block">Comisión Clínica (%)</label>
-                            <div class="relative">
-                                <input type="number" step="0.01" name="virtual_commission_clinic" required min="0" max="100"
-                                    value="{{ old('virtual_commission_clinic', $settings['virtual_commission_clinic'] ?? '10') }}"
-                                    class="w-full p-3 pr-10 bg-slate-900 border border-white/10 rounded-xl font-medium text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <span class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-slate-500 font-bold">%</span>
-                            </div>
-                        </div>
+            <!-- 4️⃣ COMISIONES -->
+            <div class="bg-slate-950 border border-white/10 rounded-2xl p-6 space-y-4">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    <svg class="w-6 h-6 text-orange-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M8.16 2.75a.75.75 0 00-1.32 0l-3.5 6A.75.75 0 003.75 10h12.5a.75.75 0 00.66-1.25l-3.5-6z"/>
+                    </svg>
+                    Comisiones de la Plataforma
+                </h2>
+                <p class="text-slate-400 text-sm">Porcentajes cobrados sobre el valor de cada cita</p>
+
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-sm font-bold text-white">Comisión Cita Virtual - Doctor (%)</label>
+                        <input 
+                            type="number" 
+                            name="virtual_commission_doctor"
+                            value="{{ $settings['virtual_commission_doctor'] ?? 0 }}"
+                            class="w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            required
+                        >
                     </div>
-                </div>
 
-                {{-- Citas Presenciales --}}
-                <div class="space-y-3">
-                    <p class="text-xs font-black text-slate-400 uppercase tracking-wider">Citas Presenciales</p>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="space-y-2">
-                            <label class="text-sm font-bold text-white block">Comisión Médico Particular (%)</label>
-                            <div class="relative">
-                                <input type="number" step="0.01" name="presential_commission_doctor" required min="0" max="100"
-                                    value="{{ old('presential_commission_doctor', $settings['presential_commission_doctor'] ?? '0') }}"
-                                    class="w-full p-3 pr-10 bg-slate-900 border border-white/10 rounded-xl font-medium text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <span class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-slate-500 font-bold">%</span>
-                            </div>
-                        </div>
-                        <div class="space-y-2">
-                            <label class="text-sm font-bold text-white block">Comisión Clínica (%)</label>
-                            <div class="relative">
-                                <input type="number" step="0.01" name="presential_commission_clinic" required min="0" max="100"
-                                    value="{{ old('presential_commission_clinic', $settings['presential_commission_clinic'] ?? '0') }}"
-                                    class="w-full p-3 pr-10 bg-slate-900 border border-white/10 rounded-xl font-medium text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <span class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-slate-500 font-bold">%</span>
-                            </div>
-                        </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-bold text-white">Comisión Cita Virtual - Clínica (%)</label>
+                        <input 
+                            type="number" 
+                            name="virtual_commission_clinic"
+                            value="{{ $settings['virtual_commission_clinic'] ?? 0 }}"
+                            class="w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            required
+                        >
                     </div>
-                </div>
 
-                {{-- Resumen visual --}}
-                <div class="bg-slate-900 border border-white/5 rounded-2xl p-4 space-y-2"
-                    x-data="{
-                        doctorRate: {{ $settings['virtual_commission_doctor'] ?? 15 }},
-                        clinicRate: {{ $settings['virtual_commission_clinic'] ?? 10 }},
-                        wompi: {{ $settings['wompi_fee'] ?? 2.9 }},
-                        price: 100000,
-                        get doctorTotal() { return this.price + (this.price * this.doctorRate / 100); },
-                        get doctorNet() { return (this.price * this.doctorRate / 100) - (this.doctorTotal * this.wompi / 100); },
-                        get clinicTotal() { return this.price + (this.price * this.clinicRate / 100); },
-                        get clinicNet() { return (this.price * this.clinicRate / 100) - (this.clinicTotal * this.wompi / 100); },
-                        fmt(n) { return '$' + Math.round(n).toLocaleString('es-CO'); },
-                        init() {
-                            document.querySelector('[name=virtual_commission_doctor]').addEventListener('input', e => { this.doctorRate = +e.target.value; });
-                            document.querySelector('[name=virtual_commission_clinic]').addEventListener('input', e => { this.clinicRate = +e.target.value; });
-                            document.querySelector('[name=wompi_fee]').addEventListener('input', e => { this.wompi = +e.target.value; });
-                        }
-                    }"
-                    x-init="init()">
-                    <p class="text-xs font-black text-slate-400 uppercase tracking-wider mb-3">Simulador — Cita de $100.000</p>
-                    <div class="grid grid-cols-2 gap-3 text-xs">
-                        <div class="bg-slate-800 rounded-xl p-3">
-                            <p class="text-slate-400 mb-1">Paciente paga (doctor)</p>
-                            <p class="font-black text-white" x-text="fmt(doctorTotal)"></p>
-                        </div>
-                        <div class="bg-slate-800 rounded-xl p-3">
-                            <p class="text-slate-400 mb-1">Tu ganancia neta (doctor)</p>
-                            <p class="font-black text-emerald-400" x-text="fmt(doctorNet)"></p>
-                        </div>
-                        <div class="bg-slate-800 rounded-xl p-3">
-                            <p class="text-slate-400 mb-1">Paciente paga (clínica)</p>
-                            <p class="font-black text-white" x-text="fmt(clinicTotal)"></p>
-                        </div>
-                        <div class="bg-slate-800 rounded-xl p-3">
-                            <p class="text-slate-400 mb-1">Tu ganancia neta (clínica)</p>
-                            <p class="font-black text-emerald-400" x-text="fmt(clinicNet)"></p>
-                        </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-bold text-white">Comisión Cita Presencial - Doctor (%)</label>
+                        <input 
+                            type="number" 
+                            name="presential_commission_doctor"
+                            value="{{ $settings['presential_commission_doctor'] ?? 0 }}"
+                            class="w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            required
+                        >
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-sm font-bold text-white">Comisión Cita Presencial - Clínica (%)</label>
+                        <input 
+                            type="number" 
+                            name="presential_commission_clinic"
+                            value="{{ $settings['presential_commission_clinic'] ?? 0 }}"
+                            class="w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            required
+                        >
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-sm font-bold text-white">Fee Wompi (%)</label>
+                        <input 
+                            type="number" 
+                            name="wompi_fee"
+                            value="{{ $settings['wompi_fee'] ?? 2.9 }}"
+                            class="w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            required
+                        >
+                        <p class="text-xs text-slate-400">Comisión por pago con Wompi</p>
                     </div>
                 </div>
             </div>
 
-            {{-- Botón guardar --}}
-            <div class="flex justify-end">
-                <button type="submit"
-                    class="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3 px-8 rounded-xl text-sm transition shadow-lg shadow-blue-500/10">
-                    Guardar Configuración
+            <!-- BOTÓN GUARDAR -->
+            <div class="flex gap-3 sticky bottom-4">
+                <button 
+                    type="submit" 
+                    class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3.5 px-3 rounded-xl transition-all shadow-lg shadow-blue-500/10 flex items-center justify-center gap-2"
+                >
+                    <span class="flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.3A4.5 4.5 0 1113.5 13H11V9.413l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13H5.5z"/>
+                        </svg>
+                        Guardar Cambios
+                    </span>
                 </button>
             </div>
+
         </form>
     </div>
 </x-admin-layout>

@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\MedicalAnalysis;
 use App\Models\Setting;
+use App\Services\AnalysisPricingService;
 use Illuminate\Http\Request;
-
 use Illuminate\Support\Facades\Http;
 use App\Services\AI\AIVisionManager;
 use Illuminate\Support\Facades\Storage;
@@ -20,9 +20,6 @@ use Spatie\PdfToImage\Enums\OutputFormat;
 
 class MedicalAnalysisController extends Controller
 {
-    /**
-     * Constantes de idiomas soportados
-     */
     const SUPPORTED_LANGUAGES = ['es', 'en'];
     const DEFAULT_LANGUAGE = 'es';
 
@@ -30,28 +27,186 @@ class MedicalAnalysisController extends Controller
 
     public function index()
     {
-        $priceSetting = Setting::get('medical_analysis_price', 19000); 
+        $priceSetting = Setting::get('exam_type_lab_price', 12000); 
         $price = number_format($priceSetting, 0, ',', '.');
-        $meta_title_medicalAnalysis = 'OpenDoctorOnline | Lectura de examenes de laboratorio online';
-        $meta_description_medicalAnalysis = 'Analisis medico online con IA. Consulta especialistas en Colombia, diagnostico instantaneo, cita medica virtual y presencial disponible.';            
+        $meta_title_medicalAnalysis = 'OpenDoctorOnline | Interpreta tus exámenes médicos con Inteligencia Artificial';
+        $meta_description_medicalAnalysis = 'Análisis médico online con IA. Laboratorio e imagenología (radiografías, tomografías, resonancias). Diagnóstico instantáneo, cita médica virtual y presencial disponible.';
         
         return view('medical-analysis.index', compact('price', 'meta_title_medicalAnalysis', 'meta_description_medicalAnalysis'));
     }
 
     /**
-     * Renders the upload view.
+     * 🆕 MOSTRAR FORMULARIO CON PRECIOS DINÁMICOS
      */
     public function showUploadForm()
     {
-        return view('medical-analysis.upload');
+        // Obtener precios desde settings
+        $prices = [
+            'lab' => (int)Setting::get('exam_type_lab_price', 12000),
+            'xray' => (int)Setting::get('exam_type_xray_price', 18000),
+            'ultrasound' => (int)Setting::get('exam_type_ultrasound_price', 16000),
+            'ct' => (int)Setting::get('exam_type_ct_price', 30000),
+            'mri' => (int)Setting::get('exam_type_mri_price', 35000),
+            'dicom' => (int)Setting::get('exam_type_dicom_price', 30000),
+            'mammography' => (int)Setting::get('exam_type_mammography_price', 22000),
+        ];
+
+        $meta_title_medicalAnalysis = 'OpenDoctorOnline | Interpreta tus exámenes médicos con Inteligencia Artificial';
+        $meta_description_medicalAnalysis = 'Análisis médico online con IA. Laboratorio e imagenología (radiografías, tomografías, resonancias). Diagnóstico instantáneo, cita médica virtual y presencial disponible.';
+
+        return view('medical-analysis.upload', compact('prices', 'meta_title_medicalAnalysis', 'meta_description_medicalAnalysis'));
     }
 
     /**
-     * Analiza los PDFs/imágenes del análisis médico usando el proveedor de IA configurado.
-     *
-     * @param  string|null  $provider          Override manual: 'openai' | 'claude' | null (usa default de config)
-     * @param  bool  $withFallback            Si true, intenta con el otro proveedor si el primario falla
-     * @param  string  $selectedLanguage      Idioma del análisis: 'es' (español) | 'en' (inglés)
+     * 🆕 PROCESAR DOCUMENTOS CON DETECCIÓN DE TIPO
+     */
+    public function processDocuments(Request $request)
+    {
+        // Validaciones
+        $request->validate([
+            'medical_files' => 'required|array|min:1|max:5',
+            'medical_files.*' => 'required|file|mimes:pdf,jpg,jpeg,png,dcm|max:10000',
+            'customer_email' => 'required|email',
+            'reason_type' => 'required|string',
+            'reason_custom' => 'nullable|string',
+            'selected_language' => 'required|in:es,en',
+            'detected_exam_type' => 'required|string' // ✅ NUEVO: tipo detectado en frontend
+        ]);
+
+        // 1️⃣ VALIDAR TIPO DETECTADO
+        $detectedType = strtolower(trim($request->input('detected_exam_type')));
+        
+        if (!AnalysisPricingService::validateExamType($detectedType)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "Tipo de examen no válido: {$detectedType}"
+            ], 422);
+        }
+
+        // 2️⃣ OBTENER PRECIO FIJO DESDE SETTINGS (validación en backend)
+        try {
+            $price = AnalysisPricingService::getExamPrice($detectedType);
+        } catch (\Exception $e) {
+            Log::error("Error obteniendo precio para {$detectedType}: " . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Error calculando el precio. Intenta de nuevo.'
+            ], 500);
+        }
+
+        // 3️⃣ GUARDAR ARCHIVOS
+        $storedPaths = [];
+        foreach ($request->file('medical_files') as $file) {
+            $storedPaths[] = $file->store('medical-exams', 'private');
+        }
+
+        // 4️⃣ CREAR ANÁLISIS CON TIPO Y PRECIO CORRECTO
+        $analysis = MedicalAnalysis::create([
+            'file_paths' => json_encode($storedPaths),
+            'exam_type' => $detectedType,  // ✅ GUARDAR TIPO
+            'customer_email' => trim(strtolower($request->input('customer_email'))),
+            'reason_type' => $request->input('reason_type'),
+            'reason_custom' => trim($request->input('reason_custom')),
+            'price' => $price,  // ✅ PRECIO VALIDADO EN BACKEND
+            'status' => 'pending',
+            'payment_status' => 'pending'
+        ]);
+
+        Log::info("Análisis #{$analysis->id} creado - Tipo: {$detectedType}, Precio: {$price}");
+
+        // 5️⃣ ENVIAR CORREO DE RESCATE
+        $recoveryUrl = route('medical-analysis.show', $analysis->access_token);
+        Mail::to($analysis->customer_email)->send(new ExamPaymentPendingAlert($recoveryUrl, $analysis));
+
+        // 6️⃣ PROCESAR CON IA
+        $selectedLanguage = trim(strtolower($request->input('selected_language')));
+        $this->analyzeWithAI($analysis, null, true, $selectedLanguage);
+
+        return response()->json([
+            'status' => 'success',
+            'redirect_url' => $recoveryUrl,
+            'exam_type' => $detectedType,
+            'price' => $price,
+            'price_formatted' => '$' . number_format($price, 0, ',', '.')
+        ]);
+    }
+
+    /**
+     * 🆕 PROCESAR IMÁGENES CON DECIMACIÓN AUTOMÁTICA
+     */
+    private function processFilesIntoImages(array $filePaths, int $analysisId, string $examType = 'lab'): array
+    {
+        // Obtener factor de decimación automática
+        $decimationFactor = AnalysisPricingService::getAutoDecimationFactor($examType);
+        
+        $images = [];
+        $tempFilesToCleanup = [];
+        $processedCount = 0;
+
+        foreach ($filePaths as $index => $path) {
+            // ✅ Procesar cada N-ésima imagen según decimación
+            if ($index % $decimationFactor !== 0) {
+                continue;
+            }
+
+            if (!Storage::disk('private')->exists($path)) {
+                Log::warning("Análisis #{$analysisId}: archivo '{$path}' no existe.");
+                continue;
+            }
+
+            $filePath = Storage::disk('private')->path($path);
+            $mimeType = mime_content_type($filePath);
+
+            if (!$mimeType) {
+                Log::warning("Análisis #{$analysisId}: no se pudo determinar mime type de '{$path}'.");
+                continue;
+            }
+
+            try {
+                if ($mimeType === 'application/pdf') {
+                    $images = array_merge($images, $this->convertPdfToImages($filePath, $index, $analysisId, $tempFilesToCleanup, $decimationFactor));
+                } 
+                elseif (in_array($mimeType, ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'], true)) {
+                    $images[] = [
+                        'base64' => base64_encode(file_get_contents($filePath)),
+                        'mime' => $mimeType,
+                    ];
+                    $processedCount++;
+                    Log::info("Análisis #{$analysisId}: imagen '{$path}' procesada OK.");
+                } 
+                else {
+                    Log::warning("Análisis #{$analysisId}: tipo de archivo no soportado '{$mimeType}'.");
+                }
+            } catch (\Throwable $e) {
+                Log::error("Análisis #{$analysisId}: error procesando '{$path}': " . $e->getMessage());
+                continue;
+            }
+        }
+
+        // Limpiar temporales
+        foreach ($tempFilesToCleanup as $tempFile) {
+            if (file_exists($tempFile)) {
+                @unlink($tempFile);
+            }
+        }
+
+        // ✅ GUARDAR METADATA DE DECIMACIÓN
+        $analysis = MedicalAnalysis::find($analysisId);
+        if ($analysis) {
+            $analysis->update([
+                'total_images_uploaded' => count($filePaths),
+                'processed_images_count' => count($images),
+                'decimation_factor' => $decimationFactor
+            ]);
+
+            Log::info("Análisis #{$analysisId}: procesadas " . count($images) . " de " . count($filePaths) . " imágenes (factor: {$decimationFactor})");
+        }
+
+        return $images;
+    }
+
+    /**
+     * PROCESAR CON IA (ACTUALIZADO)
      */
     public function analyzeWithAI(MedicalAnalysis $analysis, ?string $provider = null, bool $withFallback = true, string $selectedLanguage = self::DEFAULT_LANGUAGE)
     {
@@ -71,7 +226,7 @@ class MedicalAnalysisController extends Controller
         $motivoClinico = $reasons[$analysis->reason_type] ?? $analysis->reason_type;
         $detallesAdicionales = $analysis->reason_custom ?? 'No se proporcionaron detalles adicionales.';
 
-        [$systemPrompt, $userText] = $this->generatePrompts($selectedLanguage, $motivoClinico, $detallesAdicionales);
+        [$systemPrompt, $userText] = $this->generatePrompts($selectedLanguage, $motivoClinico, $detallesAdicionales, $analysis->exam_type);
 
         $filePaths = json_decode($analysis->file_paths, true) ?? [];
 
@@ -81,8 +236,8 @@ class MedicalAnalysisController extends Controller
             return;
         }
 
-        // ✅ USAR EL NUEVO MÉTODO UNIFICADO
-        $images = $this->processFilesIntoImages($filePaths, $analysis->id);
+        // ✅ PROCESAR CON DECIMACIÓN SEGÚN TIPO DE EXAMEN
+        $images = $this->processFilesIntoImages($filePaths, $analysis->id, $analysis->exam_type);
 
         if (empty($images)) {
             Log::error("Análisis #{$analysis->id}: no se generaron imágenes.");
@@ -90,19 +245,22 @@ class MedicalAnalysisController extends Controller
             return;
         }
 
-        if (count($images) > 20) {
-            Log::warning("Análisis #{$analysis->id}: {" . count($images) . "} imágenes, truncadas a 20.");
-            $images = array_slice($images, 0, 20);
+        // Límite máximo de imágenes a enviar a Claude
+        if (count($images) > 40) {
+            Log::warning("Análisis #{$analysis->id}: " . count($images) . " imágenes, truncadas a 40.");
+            $images = array_slice($images, 0, 40);
         }
 
-        Log::info("Análisis #{$analysis->id}: enviando " . count($images) . " imagen(es).");
+        Log::info("Análisis #{$analysis->id}: enviando " . count($images) . " imagen(es) a IA.");
 
         try {
+            // Obtener orden de proveedores según tipo de examen
             $order = $provider
                 ? array_unique([$provider, $provider === 'claude' ? 'openai' : 'claude'])
-                : ['openai', 'claude'];
+                : AnalysisModelStrategy::getProviderOrder($analysis->exam_type);
 
             $outcome = AIVisionManager::analyzeWithFallback($systemPrompt, $userText, $images, $order);
+
             $aiResult = $outcome['result'];
             $providerUsed = $outcome['provider_used'];
 
@@ -113,7 +271,7 @@ class MedicalAnalysisController extends Controller
                 'status' => 'completed',
             ]);
 
-            Log::info("Análisis #{$analysis->id} completado con proveedor '{$providerUsed}'.");
+            Log::info("Análisis #{$analysis->id} completado con '{$providerUsed}'.");
 
             $this->deleteSourceFiles($analysis, $filePaths);
         } catch (\Throwable $e) {
@@ -123,220 +281,111 @@ class MedicalAnalysisController extends Controller
     }
 
     /**
-     * Processes multiple medical PDFs and anonymizes them.
-     * EL MÉTODO PÚBLICO (Recibe el AJAX del upload)
+     * GENERAR PROMPTS (ACTUALIZADO CON TIPO DE EXAMEN)
      */
-    public function processDocuments(Request $request)
-    {
-        // 1. Validaciones estrictas - AHORA ACEPTA PDFs E IMÁGENES
-        $request->validate([
-            'medical_files' => 'required|array|min:1|max:5',
-            'medical_files.*' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10000',
-            'customer_email' => 'required|email',
-            'reason_type' => 'required|string',
-            'reason_custom' => 'nullable|string',
-            'selected_language' => 'required|in:es,en'
-        ]);
-
-        // Guardar físicamente los archivos en el almacenamiento privado
-        $storedPaths = [];
-        foreach ($request->file('medical_files') as $file) {
-            $storedPaths[] = $file->store('medical-exams', 'private');
-        }
-
-        $price = Setting::get('medical_analysis_price', 19000); 
-
-        $selectedLanguage = trim(strtolower($request->input('selected_language')));
-        
-        // CREAR EL REGISTRO
-        $analysis = MedicalAnalysis::create([
-            'file_paths'     => json_encode($storedPaths),
-            'customer_email' => trim(strtolower($request->input('customer_email'))),
-            'reason_type'    => $request->input('reason_type'),
-            'reason_custom'  => trim($request->input('reason_custom')),
-            'price'          => $price, 
-            'status'         => 'pending',
-            'payment_status' => 'pending'
-        ]);
-
-        // Enviar correo de rescate
-        $recoveryUrl = route('medical-analysis.show', $analysis->access_token);
-        Mail::to($analysis->customer_email)->send(new ExamPaymentPendingAlert($recoveryUrl, $analysis));
-
-        // Procesar con IA
-        $this->analyzeWithAI($analysis, null, true, $selectedLanguage);
-
-        return response()->json([
-            'status' => 'success',
-            'redirect_url' => $recoveryUrl,
-            'language' => $selectedLanguage
-        ]);
-    }    
-
-    /**
-     * Genera los prompts del sistema y usuario según el idioma seleccionado.
-     *
-     * @return array [systemPrompt, userText, contextoPaciente]
-     */
-    private function generatePrompts(string $language, string $motivoClinico, string $detallesAdicionales): array
+    private function generatePrompts(string $language, string $motivoClinico, string $detallesAdicionales, ?string $examType = null): array
     {
         if ($language === 'en') {
-            return $this->getEnglishPrompts($motivoClinico, $detallesAdicionales);
+            return $this->getEnglishPrompts($motivoClinico, $detallesAdicionales, $examType);
         }
 
-        return $this->getSpanishPrompts($motivoClinico, $detallesAdicionales);
+        return $this->getSpanishPrompts($motivoClinico, $detallesAdicionales, $examType);
     }
 
     /**
-     * Prompts en español
+     * PROMPTS EN ESPAÑOL (DIFERENCIADOS POR TIPO)
      */
-    private function getSpanishPrompts(string $motivoClinico, string $detallesAdicionales): array
+    private function getSpanishPrompts(string $motivoClinico, string $detallesAdicionales, ?string $examType = null): array
     {
         $contextoPaciente = "CONTEXTO DEL PACIENTE:\n- Motivo: {$motivoClinico}\n- Detalles: {$detallesAdicionales}";
 
-        $userText = "{$contextoPaciente}\n\nAnaliza visualmente las imágenes médicas y dime como un médico especialista experto lo que significan los valores, en un lenguaje natural de paciente. Extrae los biomarcadores transversales, conclusiones claras y próximos pasos comunes. REGLA CRÍTICA: En el campo 'especialidad_slug' debes colocar OBLIGATORIAMENTE uno de estos términos en minúsculas y sin acentos según corresponda: 'medicina-general', 'neurologia', 'cardiologia', 'ginecologia', 'endocrinologia', 'pediatria', 'urologia', 'dermatologia'. Si tienes dudas o el caso es mixto, usa 'medicina-general'.";
+        // ✅ PROMPT DIFERENCIADO SEGÚN TIPO
+        if (in_array($examType, ['xray', 'ct', 'mri', 'ultrasound', 'mammography', 'dicom'])) {
+            // PROMPT PARA IMAGENOLOGÍA
+            $userText = "{$contextoPaciente}\n\nAnaliza esta imagen de estudio de imagenología como un radiólogo experto. Proporciona:\n\n1. HALLAZGOS PRINCIPALES: Lo más importante que observas\n2. ÁREAS DE INTERÉS CLÍNICO: Qué requiere seguimiento\n3. IMPRESIÓN RADIOLÓGICA: Posibles diagnósticos\n4. RECOMENDACIONES: Estudios complementarios y seguimiento\n\nSé preciso pero accesible al paciente. Indica claramente si hay algo que requiera atención urgente.";
 
-        $systemPrompt = "Actúa como un médico especialista clínico con excelente comunicación humana y empatía.
-        Responde SIEMPRE en español, independientemente del idioma en que estén escritos los resultados.
+            $systemPrompt = "Actúa como un radiólogo clínico experto con excelente comunicación humana.
+            Responde SIEMPRE en español.
 
-        Tu tarea principal es: extraer la información consolidada de los exámenes provistos
-        (pueden ser múltiples documentos o imágenes), correlacionar los biomarcadores entre sí,
-        clasificar obligatoriamente el caso en una especialidad médica, y explicarle los resultados
-        al paciente en lenguaje natural, accesible y sin tecnicismos innecesarios,
-        manteniendo siempre la precisión médica.
+            Tu tarea: analizar imagen de imagenología, identificar hallazgos relevantes,
+            explicar al paciente en lenguaje natural qué significan, y dar recomendaciones claras.
 
-        IMPORTANTE ANTES DE ANALIZAR:
-        - Si alguna imagen no es legible, está incompleta o no contiene resultados de laboratorio,
-        indícaselo amablemente al paciente sin inventar datos.
-        - Nunca asumas ni inventes valores que no estén claramente visibles en los documentos provistos.
-        - Si se proveen múltiples documentos, consolida toda la información antes de responder;
-        no analices cada examen de forma aislada.
+            IMPORTANTE:
+            - Si la imagen no es legible o clara, indícalo sin inventar hallazgos
+            - Sé específico: localización, tamaño, características de los hallazgos
+            - Explica de forma sencilla qué es cada hallazgo
+            - Siempre incluye descargo de responsabilidad: 'Este análisis requiere validación por radiólogo certificado'
 
-        Por favor, estructura tu respuesta siguiendo estrictamente estas secciones:
+            TONO: Amable, profesional, sin tecnicismos innecesarios.";
 
-        1. INTRODUCCIÓN Y CLASIFICACIÓN ESPECIALIDAD:
-        Comienza indicando a qué especialidad médica corresponde el caso
-        (ej. Nefrología, Endocrinología, Cardiología, Medicina General, etc.) y por qué.
-        Luego ofrece una conclusión general muy clara: qué está bien y qué necesita
-        atención urgente o seguimiento.
+        } else {
+            // PROMPT PARA LABORATORIO (por defecto)
+            $userText = "{$contextoPaciente}\n\nAnaliza visualmente estos resultados de laboratorio como un médico especialista. Proporciona:\n\n1. PARÁMETROS ANORMALES: Cuáles están fuera de rango\n2. INTERPRETACIÓN: Qué significan estos resultados\n3. CORRELACIONES: Patrones entre valores\n4. RECOMENDACIONES: Próximos pasos y seguimiento\n\nExplica en lenguaje natural de paciente. Indica si hay algo que requiera atención urgente.";
 
-        2. SECCIONES CLÍNICAS (Usa encabezados de Markdown):
-        Divide los resultados por sistemas o bloques lógicos (ej. Función Renal, Perfil de Lípidos,
-        Hemograma, Metabolismo de Glucosa, etc.) para que el paciente entienda el contexto
-        de cada prueba. Si hay correlaciones relevantes entre biomarcadores de distintos bloques,
-        menciónalo explícitamente (ej. 'La glucosa alta junto con los triglicéridos elevados
-        sugiere un patrón metabólico que vale la pena revisar').
+            $systemPrompt = "Actúa como un médico patólogo clínico experto con excelente comunicación humana.
+            Responde SIEMPRE en español.
 
-        3. EXPLICACIÓN DE VALORES:
-        Para cada parámetro importante analizado:
-        - Menciona el nombre de la prueba y el valor exacto del paciente.
-        - Explica de forma muy sencilla qué mide ese parámetro (usa analogías si es útil,
-            como 'el filtro del riñón' o 'el camión de basura del colesterol').
-        - Indica explícitamente si el valor es Normal, Alto o Bajo, usando rangos de referencia
-            internacionales estándar (OMS o laboratorios de referencia).
-            Si el rango varía por sexo o edad, menciónalo.
+            Tu tarea: analizar resultados de laboratorio, identificar anormalidades,
+            explicar al paciente qué significan, y dar recomendaciones claras.
 
-        4. PLAN DE ACCIÓN Y RECOMENDACIONES:
-        Agrupa los pasos prácticos que debe tomar el paciente: alimentación, ejercicio
-        y consulta médica presencial (especificando la especialidad recomendada si aplica).
-        Incluye siempre una nota pidiendo al paciente verificar su reporte impreso
-        para confirmar los datos.
+            IMPORTANTE:
+            - Si algún valor no es legible, indícalo sin inventar datos
+            - Sé específico con valores y rangos de referencia
+            - Explica cada parámetro en lenguaje simple
+            - Siempre incluye descargo: 'Este análisis requiere validación por médico certificado'
 
-        5. PREGUNTAS DE SEGUIMIENTO:
-        Termina con 2 o 3 preguntas clave sobre su historial clínico (antecedentes familiares,
-        enfermedades crónicas, medicamentos actuales) para contextualizar mejor el caso.
-
-        6. DESCARGO DE RESPONSABILIDAD MÉDICA:
-        Al final, incluye un aviso legal corto en cursiva aclarando que la información
-        es educativa y no reemplaza una consulta médica presencial.
-
-        TONO Y ESTILO:
-        - Oraciones cortas (menos de 15 palabras cuando sea posible).
-        - Habla como un médico de cabecera amable, no como un libro de texto.
-        - Usa viñetas para desglosar información y negritas en palabras clave.
-        ";
+            TONO: Amable, profesional, sin tecnicismos innecesarios.";
+        }
 
         return [$systemPrompt, $userText];
     }
 
     /**
-     * Prompts en inglés
+     * PROMPTS EN INGLÉS (DIFERENCIADOS POR TIPO)
      */
-    private function getEnglishPrompts(string $motivoClinico, string $detallesAdicionales): array
+    private function getEnglishPrompts(string $motivoClinico, string $detallesAdicionales, ?string $examType = null): array
     {
         $contextoPaciente = "PATIENT CONTEXT:\n- Reason: {$motivoClinico}\n- Details: {$detallesAdicionales}";
 
-        $userText = "{$contextoPaciente}\n\nAnalyze the medical images visually and tell me as an expert specialist doctor what the values mean in natural patient language. Extract cross-sectional biomarkers, clear conclusions and common next steps. CRITICAL RULE: In the 'specialty_slug' field you must OBLIGATORILY place one of these terms in lowercase and without accents as appropriate: 'medicine-general', 'neurology', 'cardiology', 'gynecology', 'endocrinology', 'pediatrics', 'urology', 'dermatology'. If you have doubts or the case is mixed, use 'medicine-general'.";
+        if (in_array($examType, ['xray', 'ct', 'mri', 'ultrasound', 'mammography', 'dicom'])) {
+            $userText = "{$contextoPaciente}\n\nAnalyze this imaging study as an expert radiologist. Provide:\n\n1. KEY FINDINGS: Most important observations\n2. AREAS OF CLINICAL INTEREST: What requires follow-up\n3. RADIOLOGICAL IMPRESSION: Possible diagnoses\n4. RECOMMENDATIONS: Follow-up studies and surveillance\n\nBe precise but accessible to the patient. Clearly indicate if anything requires urgent attention.";
 
-        $systemPrompt = "Act as a clinical specialist doctor with excellent human communication and empathy.
-        Respond ALWAYS in English, regardless of the language in which the results are written.
+            $systemPrompt = "Act as an expert clinical radiologist with excellent communication skills.
+            Respond ALWAYS in English.
 
-        Your main task is: extract the consolidated information from the provided exams
-        (which can be multiple documents or images), correlate the biomarkers with each other,
-        obligatorily classify the case in a medical specialty, and explain the results
-        to the patient in natural, accessible language without unnecessary technical jargon,
-        while always maintaining medical accuracy.
+            Your task: analyze imaging, identify relevant findings,
+            explain to the patient what they mean, give clear recommendations.
 
-        IMPORTANT BEFORE ANALYZING:
-        - If any image is illegible, incomplete, or does not contain laboratory results,
-        let the patient know kindly without making up data.
-        - Never assume or invent values that are not clearly visible in the provided documents.
-        - If multiple documents are provided, consolidate all information before responding;
-        do not analyze each exam in isolation.
+            IMPORTANT:
+            - If image is not clear, state it without inventing findings
+            - Be specific: location, size, characteristics
+            - Explain each finding simply
+            - Always include: 'This analysis requires validation by a certified radiologist'
 
-        Please structure your response strictly following these sections:
+            TONE: Friendly, professional, no unnecessary jargon.";
+        } else {
+            $userText = "{$contextoPaciente}\n\nAnalyze these lab results as an expert clinical physician. Provide:\n\n1. ABNORMAL PARAMETERS: Values outside normal range\n2. INTERPRETATION: What these results mean\n3. CORRELATIONS: Patterns between values\n4. RECOMMENDATIONS: Next steps and follow-up\n\nExplain in natural patient language. Indicate if anything requires urgent attention.";
 
-        1. INTRODUCTION AND SPECIALTY CLASSIFICATION:
-        Start by indicating which medical specialty the case corresponds to
-        (e.g., Nephrology, Endocrinology, Cardiology, General Medicine, etc.) and why.
-        Then provide a very clear general conclusion: what is well and what needs
-        urgent attention or follow-up.
+            $systemPrompt = "Act as an expert clinical pathologist with excellent communication skills.
+            Respond ALWAYS in English.
 
-        2. CLINICAL SECTIONS (Use Markdown headings):
-        Divide the results by systems or logical blocks (e.g., Renal Function, Lipid Profile,
-        Complete Blood Count, Glucose Metabolism, etc.) so the patient understands the context
-        of each test. If there are relevant correlations between biomarkers from different blocks,
-        mention it explicitly (e.g., 'High glucose together with elevated triglycerides
-        suggests a metabolic pattern worth reviewing').
+            Your task: analyze lab results, identify abnormalities,
+            explain to the patient what they mean, give clear recommendations.
 
-        3. VALUE EXPLANATION:
-        For each important parameter analyzed:
-        - Mention the test name and the patient's exact value.
-        - Explain very simply what that parameter measures (use analogies if useful,
-            like 'the kidney filter' or 'the cholesterol garbage truck').
-        - Explicitly indicate if the value is Normal, High or Low, using standard
-            international reference ranges (WHO or reference laboratories).
-            If the range varies by sex or age, mention it.
+            IMPORTANT:
+            - If any value is unclear, state it without inventing data
+            - Be specific with values and reference ranges
+            - Explain each parameter simply
+            - Always include: 'This analysis requires validation by a certified physician'
 
-        4. ACTION PLAN AND RECOMMENDATIONS:
-        Group the practical steps the patient should take: diet, exercise
-        and in-person medical consultation (specifying the recommended specialty if applicable).
-        Always include a note asking the patient to verify their printed report
-        to confirm the data.
-
-        5. FOLLOW-UP QUESTIONS:
-        End with 2 or 3 key questions about their medical history (family background,
-        chronic diseases, current medications) to better contextualize the case.
-
-        6. MEDICAL DISCLAIMER:
-        At the end, include a short legal notice in italics clarifying that the information
-        is educational and does not replace an in-person medical consultation.
-
-        TONE AND STYLE:
-        - Short sentences (less than 15 words when possible).
-        - Speak like a friendly family doctor, not like a textbook.
-        - Use bullet points to break down information and bold for key words.
-        ";
+            TONE: Friendly, professional, no unnecessary jargon.";
+        }
 
         return [$systemPrompt, $userText];
     }
 
-    /**
-     * Borra del disco los PDFs/imágenes originales usados en el análisis,
-     * una vez que el reporte de IA ya fue generado y guardado exitosamente.
-     *
-     * Solo se debe llamar tras un status='completed' confirmado.
-     */
+    // ... resto de métodos igual (show, preparePayment, processPaymentResult, deleteSourceFiles, convertPdfToImages)
+
     protected function deleteSourceFiles(MedicalAnalysis $analysis, array $filePaths): void
     {
         $eliminados = 0;
@@ -349,48 +398,35 @@ class MedicalAnalysisController extends Controller
                     $eliminados++;
                 }
             } catch (\Throwable $e) {
-                // Si un archivo no se pudo borrar (permisos, disco montado raro en EC2, etc.),
-                // lo registramos pero NO marcamos el análisis como failed por esto:
-                // el reporte ya se generó correctamente, esto es solo limpieza.
                 $fallidos[] = $path;
-                Log::warning("Análisis #{$analysis->id}: no se pudo borrar el archivo origen '{$path}': " . $e->getMessage());
+                Log::warning("Análisis #{$analysis->id}: no se pudo borrar '{$path}': " . $e->getMessage());
             }
         }
 
-        // Limpiamos también la referencia en la tabla, para dejar evidencia
-        // de que los archivos ya no existen (evita futuros intentos de leerlos).
         $analysis->update([
             'file_paths' => null,
-            'file_path' => null, // si todavía usas esta columna legacy
+            'file_path' => null,
         ]);
 
-        Log::info("Análisis #{$analysis->id}: limpieza de archivos origen completada. Eliminados: {$eliminados}/" . count($filePaths) . (empty($fallidos) ? '' : '. Fallidos: ' . implode(', ', $fallidos)));
+        Log::info("Análisis #{$analysis->id}: limpieza completada. Eliminados: {$eliminados}/" . count($filePaths));
     }
 
-    /**
-     * Muestra el análisis médico identificado por su access_token público.
-     * Laravel ya resolvió $analysis automáticamente buscando por access_token;
-     * si no existe, lanza 404 antes de que este método se ejecute.
-     */
     public function show(MedicalAnalysis $medicalAnalysis)
     {
         $analysis = $medicalAnalysis;
     
-        // Si el registro quedó inconsistente (status=completed pero sin ai_response
-        // por alguna falla silenciosa), lo tratamos igual que failed para no romper la vista.
         if ($analysis->status === 'completed' && empty($analysis->ai_response)) {
-            Log::warning("Análisis #{$analysis->id}: status=completed pero ai_response está vacío. Se trata como inconsistente.");
-            $analysis->status = 'failed'; // solo en memoria, no se persiste
+            Log::warning("Análisis #{$analysis->id}: status=completed pero sin ai_response.");
+            $analysis->status = 'failed';
         }
         
-        $price = Setting::get('medical_analysis_price', 19000); 
+        $price = Setting::get('exam_type_lab_price', 12000); 
     
         return view('medical-analysis.show', compact('analysis', 'price'));
     }
 
     public function preparePayment(Request $request)
     {
-        // 1. Validar que el ID de la orden exista en la base de datos
         $request->validate([
             'order_id' => 'required|exists:medical_analyses,id'
         ]);
@@ -398,37 +434,32 @@ class MedicalAnalysisController extends Controller
         $id = strip_tags($request->order_id);
         $analysis = MedicalAnalysis::findOrFail($id);        
 
-        // 2. Generar la referencia única basada en el ID y guardarla en la tabla
         $prefix = Carbon::now()->format('ymdH');                
         $random = strtoupper(Str::random(5));                                
         $paymentReference = $analysis->id . "-" . $prefix . "-" . $random;
 
         $analysis->update(['payment_id' => $paymentReference]);
 
-        // 3. Convertir el total a centavos enteros (regla obligatoria de Wompi)
         $amountInCents = (int) ($analysis->price * 100); 
         $currency = 'COP';
 
-        // 4. Calcular la firma de integridad concatenando los valores requeridos por Wompi
         $stringPayload = $paymentReference . $amountInCents . $currency . config('services.wompi.integrity_secret');
         $signatureIntegrity = hash('sha256', $stringPayload);
 
-        // 5. Devolver los datos firmados en formato JSON hacia el frontend
         return response()->json([
-            'status'              => 'success',
-            'public_key'          => config('services.wompi.public_key'),
-            'currency'            => $currency,
-            'amount_in_cents'     => $amountInCents,
-            'reference'           => $paymentReference,
+            'status' => 'success',
+            'public_key' => config('services.wompi.public_key'),
+            'currency' => $currency,
+            'amount_in_cents' => $amountInCents,
+            'reference' => $paymentReference,
             'signature_integrity' => $signatureIntegrity,
-            'token'               => $analysis->access_token,
-            'redirect_url'        => route('medical-analysis.payment.result', $analysis->access_token), // Tu ruta local de retorno
+            'token' => $analysis->access_token,
+            'redirect_url' => route('medical-analysis.payment.result', $analysis->access_token),
         ]);
     }
 
     public function processPaymentResult(Request $request, $token)
     {
-        // 1. Buscar el análisis médico por su token de acceso único
         $analysis = MedicalAnalysis::where('access_token', $token)->firstOrFail();
         $transactionId = $request->query('id');
 
@@ -436,12 +467,10 @@ class MedicalAnalysisController extends Controller
             return redirect()->route('home')->with('error', 'Falta el identificador del pago.');
         }
 
-        // 2. Detectar entorno de Wompi automáticamente        
         $baseUrl = config('services.wompi.endpoint');
         $paymentStatus = 'ERROR';
 
         try {
-            // 3. Consultar la API de Wompi en segundo plano
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . config('services.wompi.public_key')
             ])->get("{$baseUrl}/transactions/{$transactionId}");
@@ -449,15 +478,10 @@ class MedicalAnalysisController extends Controller
             if ($response->successful()) {
                 $paymentStatus = $response->json('data.status') ?? 'ERROR';
 
-                // 4. Evaluar el estado de la transacción
                 if ($paymentStatus === 'APPROVED') {
-                    // Evitar duplicar el correo si el usuario refresca la pantalla
                     if ($analysis->payment_status !== 'completed') {
-                        $analysis->update([
-                            'payment_status' => 'completed'
-                        ]);
+                        $analysis->update(['payment_status' => 'completed']);
 
-                        // Enviar correo electrónico al paciente de forma segura                        
                         if ($analysis->customer_email) {
                             Mail::to($analysis->customer_email)->send(new ExamAnalysisReady($analysis));
                         }
@@ -474,68 +498,10 @@ class MedicalAnalysisController extends Controller
             $analysis->update(['payment_status' => 'error']);
         }
 
-        // 5. Retornar la nueva vista independiente con los estados
         return view('medical-analysis.payment-result', compact('analysis', 'paymentStatus'));
     }
 
-    /**
-     * Método privado para procesar archivos (PDFs e imágenes)
-     */
-    private function processFilesIntoImages(array $filePaths, int $analysisId): array
-    {
-        $images = [];
-        $tempFilesToCleanup = [];
-
-        foreach ($filePaths as $index => $path) {
-            if (!Storage::disk('private')->exists($path)) {
-                Log::warning("Análisis #{$analysisId}: archivo '{$path}' no existe.");
-                continue;
-            }
-
-            $filePath = Storage::disk('private')->path($path);
-            $mimeType = mime_content_type($filePath);
-
-            if (!$mimeType) {
-                Log::warning("Análisis #{$analysisId}: no se pudo determinar mime type de '{$path}'.");
-                continue;
-            }
-
-            try {
-                // ✅ Si es PDF, convertir a imágenes
-                if ($mimeType === 'application/pdf') {
-                    $images = array_merge($images, $this->convertPdfToImages($filePath, $index, $analysisId, $tempFilesToCleanup));
-                } 
-                // ✅ Si es imagen, usar directamente
-                elseif (in_array($mimeType, ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'], true)) {
-                    $images[] = [
-                        'base64' => base64_encode(file_get_contents($filePath)),
-                        'mime' => $mimeType,
-                    ];
-                    Log::info("Análisis #{$analysisId}: imagen '{$path}' procesada OK.");
-                } 
-                else {
-                    Log::warning("Análisis #{$analysisId}: tipo de archivo no soportado '{$mimeType}'.");
-                }
-            } catch (\Throwable $e) {
-                Log::error("Análisis #{$analysisId}: error procesando '{$path}': " . $e->getMessage());
-                continue;
-            }
-        }
-
-        // Limpiar temporales
-        foreach ($tempFilesToCleanup as $tempFile) {
-            if (file_exists($tempFile)) {
-                @unlink($tempFile);
-            }
-        }
-
-        return $images;
-    }
-
-    /**
-     * Convierte un PDF a imágenes JPEG
-     */
-    private function convertPdfToImages(string $filePath, int $index, int $analysisId, &$tempFilesToCleanup): array
+    private function convertPdfToImages(string $filePath, int $index, int $analysisId, &$tempFilesToCleanup, int $decimationFactor = 1): array
     {
         $images = [];
         
@@ -543,9 +509,14 @@ class MedicalAnalysisController extends Controller
             $pdf = new Pdf($filePath);
             $totalPages = $pdf->pageCount();
 
-            Log::info("Análisis #{$analysisId}: PDF tiene {$totalPages} página(s).");
+            Log::info("Análisis #{$analysisId}: PDF tiene {$totalPages} página(s), decimación: {$decimationFactor}");
 
             for ($page = 1; $page <= $totalPages; $page++) {
+                // ✅ Aplicar decimación
+                if (($page - 1) % $decimationFactor !== 0) {
+                    continue;
+                }
+
                 $tempImagePath = storage_path('app/temp/med_' . uniqid() . '_doc' . $index . '_p' . $page . '.jpg');
 
                 if (!is_dir(dirname($tempImagePath))) {
@@ -566,14 +537,13 @@ class MedicalAnalysisController extends Controller
                             'mime' => 'image/jpeg',
                         ];
                         $tempFilesToCleanup[] = $savedPath;
-                        Log::info("Análisis #{$analysisId}: página {$page}/{$totalPages} convertida OK.");
                     }
                 } catch (\Throwable $e) {
                     Log::error("Análisis #{$analysisId}: fallo página {$page}: " . $e->getMessage());
                 }
             }
         } catch (\Throwable $e) {
-            Log::error("Análisis #{$analysisId}: error al procesar PDF: " . $e->getMessage());
+            Log::error("Análisis #{$analysisId}: error procesando PDF: " . $e->getMessage());
         }
 
         return $images;

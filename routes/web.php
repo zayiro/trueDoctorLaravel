@@ -122,7 +122,6 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::get('/admin/settings', [SettingController::class, 'index'])->name('administrator.settings.index');
     Route::put('/admin/settings', [SettingController::class, 'update'])->name('administrator.settings.update');
-
     Route::get('/admin/contact', [UserManagementController::class, 'contactMessages'])->name('administrator.contact.index');
 
     Route::get('/administrator/payouts', [AdminController::class, 'payouts'])->name('administrator.payouts.index');
@@ -505,6 +504,8 @@ Route::get('/medical-analysis/upload', [MedicalAnalysisController::class, 'showU
 // Ruta dinámina en inglés con el ID del análisis médico
 Route::get('/medical-analysis/result/{medicalAnalysis}', [MedicalAnalysisController::class, 'show'])
     ->name('medical-analysis.show');
+
+Route::post('/medical-analysis/decimation', [SettingsController::class, 'updateDecimation'])->name('settings.update-decimation');
 
 // Ruta encargada de recibir la solicitud AJAX para preparar la orden
 Route::post('/medical-analysis/payment/prepare', [MedicalAnalysisController::class, 'preparePayment'])->name('medical-analysis.payment.prepare');

@@ -13,11 +13,15 @@ return new class extends Migration
     {
         Schema::create('medical_analyses', function (Blueprint $table) {
             $table->id();
-            $table->string('access_token', 64)
-                ->nullable()
-                ->unique()
-                ->comment('Token público impredecible usado en la URL en vez del ID autoincremental');
+            $table->string('access_token', 64)->nullable()->unique()->comment('Token público impredecible usado en la URL en vez del ID autoincremental');
+            $table->string('exam_type')->nullable()->after('access_token');            
             $table->text('file_paths')->nullable();
+
+            // lab, xray, ultrasound, ct, mri, dicom, mammography
+            $table->integer('total_images_uploaded')->nullable()->after('status');
+            $table->integer('processed_images_count')->nullable()->after('total_images_uploaded');
+            $table->integer('decimation_factor')->default(1)->after('processed_images_count');
+            
             $table->longText('ai_response')->nullable();  // Respuesta global de la IA
             $table->enum('ai_provider', ['openai', 'claude', 'gemini'])->nullable();
             $table->enum('analysis_language', ['es', 'en'])->default('es');

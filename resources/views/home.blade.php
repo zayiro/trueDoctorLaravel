@@ -1,6 +1,3 @@
-@php
-    $price = \App\Models\Setting::where('key', 'medical_analysis_price')->value('value') ?? 19000;
-@endphp
 <x-guest-layout>
 
     @auth
@@ -169,7 +166,7 @@
                 <div class="absolute -top-24 -right-24 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
                 <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-                <div class="grid md:grid-cols-12 gap-8 p-8 md:p-12 items-center relative z-10">
+                <div class="grid md:grid-cols-12 gap-4 p-4 md:p-8 items-center relative z-10">
                     
                     <!-- Columna Texto (Izquierda) -->
                     <div class="md:col-span-7 space-y-5 text-left">    
@@ -177,15 +174,15 @@
                         <h1 class="text-5xl lg:text-7xl font-black text-white tracking-tight mb-6">
                             Interpreta tus exámenes médicos <span class="text-blue-600">con Inteligencia Artificial</span>
                         </h1>
-                        <p class="text-slate-300 text-base md:text-lg leading-relaxed">                            
-                            Analiza exámenes de sangre, orina y heces para darte una comprensión básica antes de hablar con un especialista.
+                        <p class="text-slate-300 leading-relaxed">                            
+                            Obtén un <span class="text-blue-200 font-semibold">análisis técnico asistido por IA</span> para complementar la opinión de tu médico. Facilita la comprensión de tus exámenes y colabora en la búsqueda de una solución más eficiente.
                         </p>
-                        <p class="text-slate-300 text-base md:text-lg leading-relaxed">                            
-                            Nuestro lector de exámenes médicos online usa IA para leer resultados de laboratorio y recibir explicaciones en un lenguaje sencillo, en segundos.
-                        </p>
+                        <p class="text-slate-300 leading-relaxed">                            
+                            Nuestro asistente de análisis médico con IA procesa tus resultados en segundos, ofreciendo un soporte técnico avanzado para complementar la opinión de tu médico y agilizar el diagnóstico.
+                        </p>                        
 
                         <!-- Pequeños checks de confianza rápida -->
-                        <div class="flex flex-wrap gap-x-6 gap-y-2 pt-2 text-xs text-slate-400 font-medium">
+                        <div class="flex flex-wrap gap-x-6 gap-y-2 pt-2 text-md text-slate-400 font-medium">
                             <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Análisis de Biomarcadores</span>
                             <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Análisis Multidocumento</span>
                             <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Privacidad 100% Protegida</span>
@@ -196,9 +193,8 @@
 
                     <!-- Columna Interactiva / CTA (Derecha) -->
                     <div class="md:col-span-5 flex flex-col items-center justify-center" x-data="{ loading: false }">
-                        <p class="text-3xl text-white leading-relaxed max-w-xl mb-4">
-                            <span class="bg-blue-100 text-blue-600 px-6 py-2 rounded-full font-bold"><strong>${{ number_format($price, 0, ',', '.') }} COP</strong></span>
-                        </p>
+                        
+
                         <!-- Caja de acción con fondo sutilmente más claro que el fondo negro para dar relieve -->
                         <div class="w-full bg-slate-900 border border-white/5 p-6 md:p-8 rounded-2xl shadow-xl text-center space-y-6">
 
@@ -225,9 +221,97 @@
                                 Cumple con normativas internacionales de protección de datos de salud de forma estricta.
                             </p>
                         </div>
+                        <div>
+                            <ul class="list-none flex flex-wrap gap-x-6 gap-y-2 pt-8 text-md text-slate-400 font-medium">
+                                <li>
+                                    <div class="flex items-center space-x-3">
+                                        <!-- Icono de Radiografía con fondo suave -->
+                                        <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                                            <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="text-slate-300 text-base md:text-lg leading-relaxed">Exámenes de Laboratorio</p>
+                                            <p class="text-xs text-gray-500">Sangre, orina y perfiles bioquímicos</p>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="flex items-center space-x-3">
+                                        <!-- Icono de Radiografía con fondo suave -->
+                                        <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                                            <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <rect x="3" y="3" width="18" height="18" rx="2" />
+                                                <path stroke-linecap="round" d="M12 6v12M8 10h8M7 14h10" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="text-slate-300 text-base md:text-lg leading-relaxed">Radiografía</p>
+                                            <p class="text-xs text-gray-500">Placas e imágenes de Rayos X convencionales</p>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="flex items-center space-x-3">
+                                        <!-- Icono de Radiografía con fondo suave -->
+                                        <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                                            <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="text-slate-300 text-base md:text-lg leading-relaxed">Ecografía</p>
+                                            <p class="text-xs text-gray-500">Ultrasonido diagnóstico y Doppler</p>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="flex items-center space-x-3">
+                                        <!-- Icono de Radiografía con fondo suave -->
+                                        <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                                            <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="text-slate-300 text-base md:text-lg leading-relaxed">Tomografía</p>
+                                            <p class="text-xs text-gray-500">Estudios tomográficos seriados (TAC)</p>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="flex items-center space-x-3">
+                                        <!-- Icono de Radiografía con fondo suave -->
+                                        <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                                            <span class="text-lg leading-none select-none">🧠</span>
+                                        </div>
+                                        <div>
+                                            <p class="text-slate-300 text-base md:text-lg leading-relaxed">Resonancia</p>
+                                            <p class="text-xs text-gray-500">Resonancia Magnética Nuclear de alta definición</p>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="flex items-center space-x-3">
+                                        <!-- Icono de Radiografía con fondo suave -->
+                                        <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                                            <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="text-slate-300 text-base md:text-lg leading-relaxed">DICOM</p>
+                                            <p class="text-xs text-gray-500">Carga directa de archivos de imagen médica (.dcm)</p>
+                                        </div>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
 
                 </div>
+                
             </div>
         </section>
     </div>
