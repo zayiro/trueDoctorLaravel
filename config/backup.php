@@ -68,7 +68,6 @@ return [
                 ],
             ],
 
-
             /*
              * The names of the connections to the databases that should be backed up
              * MySQL, PostgreSQL, SQLite and Mongo databases are supported.

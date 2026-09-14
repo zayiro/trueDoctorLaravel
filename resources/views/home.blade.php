@@ -178,7 +178,7 @@
                             Obtén un <span class="text-blue-200 font-semibold">análisis técnico asistido por IA</span> para complementar la opinión de tu médico. Facilita la comprensión de tus exámenes y colabora en la búsqueda de una solución más eficiente.
                         </p>
                         <p class="text-slate-300 leading-relaxed">                            
-                            Nuestro asistente de análisis médico con IA procesa tus resultados en segundos, ofreciendo un soporte técnico avanzado para complementar la opinión de tu médico y agilizar el diagnóstico.
+                            Nuestro asistente de análisis médico con IA procesa tus resultados en segundos, ofreciendo un soporte técnico avanzado para respaldar el criterio de tu especialista y agilizar el diagnóstico.
                         </p>                        
 
                         <!-- Pequeños checks de confianza rápida -->

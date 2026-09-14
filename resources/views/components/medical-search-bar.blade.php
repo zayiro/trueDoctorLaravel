@@ -25,11 +25,12 @@
              por Síntoma
         </button>
     </div>
-
+    
     <!-- TAB 1: BÚSQUEDA DE ESPECIALIDADES -->
-    <div x-show="activeTab === 'specialty'" x-cloak x-transition>
+    <div x-show="activeTab === 'specialty'" 
+        x-cloak>
         <form x-data="{ loading: false }" 
-              x-on:submit="
+            x-on:submit="
                 loading = handleSearchSubmit($event)
                 
                 if (typeof gtag === 'function') {
@@ -44,19 +45,19 @@
                         });
                     }
                 }
-              "
-              action="{{ route('search') }}" 
-              method="GET" 
-              class="bg-white p-4 rounded-[1.5rem] shadow-md flex flex-col md:flex-row items-stretch md:items-center gap-4 border border-slate-100 w-full"
-              @restore-booking-buttons.window="loading = false">            
+            "
+            action="{{ route('search') }}" 
+            method="GET" 
+            class="bg-white p-4 rounded-[1.5rem] shadow-md flex flex-col md:flex-row items-stretch md:items-center gap-4 border border-slate-100 w-full"
+            @restore-booking-buttons.window="loading = false">            
             <div class="flex-1 min-w-[200px] relative" 
-                 x-data="specialtyAutocomplete([
-                     @foreach($specialties as $s)
-                         { id: '{{ $s->slug }}', name: '{{ addslashes($s->name) }}' },
-                     @endforeach
-                 ])"
-                 x-on:click.away="closeDropdown()"
-                 x-on:keydown.escape="closeDropdown()"
+                x-data="specialtyAutocomplete([
+                    @foreach($specialties as $s)
+                        { id: '{{ $s->slug }}', name: '{{ addslashes($s->name) }}' },
+                    @endforeach
+                ])"
+                x-on:click.away="closeDropdown()"
+                x-on:keydown.escape="closeDropdown()"
             >
                 <input type="hidden" name="specialty" :value="selectedSlug">
                 <label for="specialty" class="block text-xs font-black text-slate-400 uppercase ml-1 mb-1 tracking-wider">Especialidad Médica</label>
@@ -103,9 +104,9 @@
             <!-- 📍 AUTOCOMPLETADO: CIUDADES (FUSIONADO CON COMPONENTE API / GPS) -->
             @if($showCity)
             <div class="flex-1 min-w-[200px] relative" 
-                 x-data="cityAutocomplete()"
-                 x-on:click.away="closeDropdown()"
-                 x-on:keydown.escape="closeDropdown()"
+                x-data="cityAutocomplete()"
+                x-on:click.away="closeDropdown()"
+                x-on:keydown.escape="closeDropdown()"
             >
                 <!-- Campos ocultos para enviar al backend (Mapean con los estados reactivos) -->
                 
@@ -203,7 +204,8 @@
     </div>
 
     <!-- TAB 2: BÚSQUEDA DE SÍNTOMAS -->
-    <div x-show="activeTab === 'symptom'" x-cloak x-transition>
+    <div x-show="activeTab === 'symptom'" 
+        x-cloak>
         <form x-data="symptomForm()" 
             x-on:submit="loading = true"
             action="{{ route('search.symptom.view') }}" 
