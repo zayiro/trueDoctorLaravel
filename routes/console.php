@@ -21,7 +21,7 @@ Schedule::job(new ProcessPendingZoomMeetings)
     ->onOneServer(); // si en algún momento tienes más de un servidor/EC2 corriendo el scheduler
 
     //se crea un archivo para usar 2gb de disco por si se acaba la RAM
-    //La Swap de 2GB (Ya configurada): Si el backup consume mucha memoria, la Swap absorberá el impacto impidiendo que MySQL se apague.
+    //La Swap RAM de 2GB (Ya configurada): Si el backup consume mucha memoria, la Swap absorberá el impacto impidiendo que MySQL se apague.
     //sudo dd if=/dev/zero of=/swapfile bs=1M count=2048
 
 
@@ -41,10 +41,14 @@ Schedule::command('backup:run --only-db')
 // Limpia el caché de ciudades a las 3 AM diariamente
 Schedule::call(function () {
     Cache::tags(['geonames_cities'])->flush();
-    \Log::info('✅ Caché de ciudades limpiado exitosamente');
+    \Log::info('✅ Caché de ciudades limpiado exitosamente, info desde console.php');
 })
 ->timezone('America/Bogota')
 ->daily()
 ->at('03:00')
 ->name('clear-cities-cache')
 ->withoutOverlapping();
+
+Schedule::command('logs:rotate')
+    ->daily()
+    ->at('00:30');
