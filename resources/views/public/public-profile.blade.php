@@ -199,7 +199,7 @@
                                 @if($profileType === 'clinic') {{ $partner->name }} @else {{ ucfirst($partner->user->name) }} @endif
                             </h1>
                             <p class="text-slate-500 font-semibold text-sm mt-0.5 dark:text-gray-400">
-                                {{ $partner->specialties->first()->name ?? 'Atención Médica' }}
+                                {{ $currentSpecialty->name ?? 'Atención Médica' }}
                             </p>
                             
                             <div class="flex justify-center mt-2.5">
@@ -213,7 +213,7 @@
                                 @if($profileType === 'clinic')
                                     Agende una cita presencial o virtual en minutos con nuestro personal de salud calificado en la sede que prefiera.
                                 @else
-                                    Agende una cita presencial o virtual en minutos con {{ $partner->gender === 'female' ? 'la doctora ' . $partner->user->name : 'el doctor ' . $partner->user->name }} en la sede que mejor se adapte a sus necesidades.
+                                    Agende una cita presencial o virtual en minutos con <strong>{{ $partner->gender === 'female' ? 'la doctora ' . $partner->user->name : 'el doctor ' . $partner->user->name }}</strong> en la sede que mejor se adapte a sus necesidades.
                                 @endif
                             </div>
 
@@ -415,7 +415,7 @@
 
                                 <!-- Especialidades Habilitadas -->
                                 <div class="space-y-1 border-t border-slate-200/50 pt-3 dark:border-gray-700">
-                                    <h3 class="text-lg font-black text-slate-800">Especialidades Habilitadas</h3> 
+                                    <h3 class="text-lg font-black text-slate-800">Especialista en</h3> 
                                     <div class="text-sm text-slate-400 dark:text-gray-500">    
                                         @php
                                             $partnerSpecialties = $partner->specialties->isNotEmpty() ? $partner->specialties->pluck('name')->toArray() : [];
@@ -427,12 +427,12 @@
                                         <div class="flex flex-wrap gap-2">
                                             @if(!empty($partnerSpecialties) && count($partnerSpecialties) > 0)
                                                 @foreach($partnerSpecialties as $item)
-                                                    <span class="text-sm text-slate-400 dark:text-gray-500 px-2.5 py-1 rounded-lg border border-slate-200/70 font-medium shadow-2xs transition-colors hover:border-slate-300 dark:bg-gray-800 dark:border-gray-600 whitespace-nowrap">
+                                                    <span class="text-sm text-gray-800 px-2.5 py-1 rounded-lg border border-slate-200/70 font-medium shadow-2xs transition-colors hover:border-slate-300 bg-blue-200 dark:border-blue-600 whitespace-nowrap">
                                                         {{ trim($item) }}
                                                     </span>
                                                 @endforeach
                                             @else
-                                                <span class="text-sm text-slate-400 dark:text-gray-500 px-2.5 py-1 rounded-lg border border-slate-200/70 font-medium shadow-2xs transition-colors hover:border-slate-300 dark:bg-gray-800 dark:border-gray-600 whitespace-nowrap">
+                                                <span class="text-sm text-slate-800 px-2.5 py-1 rounded-lg border border-slate-200/70 font-medium shadow-2xs transition-colors hover:border-slate-300 bg-blue-200 dark:border-blue-600 whitespace-nowrap">
                                                     Medicina General
                                                 </span>
                                             @endif
@@ -476,12 +476,12 @@
                                             <div class="flex flex-wrap gap-2">
                                                 @if(!empty($partnerLanguages) && count($partnerLanguages) > 0)
                                                     @foreach($partnerLanguages as $language)
-                                                        <span class="text-sm text-slate-400 dark:text-gray-500 px-2.5 py-1 rounded-lg border border-slate-200/70 font-medium shadow-2xs transition-colors hover:border-slate-300 dark:bg-gray-800 dark:border-gray-600 whitespace-nowrap">
+                                                        <span class="text-sm text-gray-800 px-2.5 py-1 rounded-lg border border-slate-200/70 font-medium shadow-2xs transition-colors hover:border-slate-300 bg-blue-200 dark:border-blue-600 whitespace-nowrap">
                                                             {{ $language }}
                                                         </span>
                                                     @endforeach
                                                 @else
-                                                    <span class="text-sm text-slate-400 dark:text-gray-500 px-2.5 py-1 rounded-lg border border-slate-200/70 font-medium shadow-2xs transition-colors hover:border-slate-300 dark:bg-gray-800 dark:border-gray-600 whitespace-nowrap">
+                                                    <span class="text-sm text-gray-800 px-2.5 py-1 rounded-lg border border-slate-200/70 font-medium shadow-2xs transition-colors hover:border-slate-300 bg-blue-200 dark:border-blue-600 whitespace-nowrap">
                                                         Español
                                                     </span>
                                                 @endif
@@ -519,7 +519,7 @@
 <!-- 🏢 1. SELECTOR DE SEDES DE ATENCIÓN (FÍSICA O VIRTUAL)    -->
 <!-- ======================================================== -->
 <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-4 dark:bg-gray-800 dark:border-gray-700">
-    <div class="border-b border-slate-100 dark:border-gray-700 pb-3">
+    <div class="border-b border-slate-100 dark:border-gray-700 pb-3 p-4 bg-blue-100">
         <h2 class="text-lg font-black text-slate-800 dark:text-white tracking-tight">1. Elige la Sede de Atención</h2>
         <p class="text-sm text-slate-400 dark:text-gray-400">Selecciona el consultorio presencial o la opción de telemedicina.</p>
     </div>
@@ -624,7 +624,7 @@
                         x-init="@if(isset($preSelectedAddress) && $preSelectedAddress) $nextTick(() => { selectAddress({{ $preSelectedAddress->id }}, '{{ $preSelectedAddress->type }}') }); @endif" 
                         x-transition>
                         
-                        <div class="border-b border-slate-100 dark:border-gray-700 pb-3">
+                        <div class="border-b border-slate-100 dark:border-gray-700 pb-3 p-4 bg-blue-100">
                             <h2 class="text-lg font-black text-slate-800 dark:text-white tracking-tight">2. Elige el Servicio Médico</h2>
                             <p class="text-sm text-slate-400 dark:text-gray-400">Los valores y tiempos varían según la sede seleccionada.</p>
                         </div>
@@ -722,7 +722,7 @@
                         x-show="selectedService !== null" 
                         x-transition>
                         
-                        <div class="border-b border-slate-100 dark:border-gray-700 pb-3">
+                        <div class="border-b border-slate-100 dark:border-gray-700 pb-3 p-4 bg-blue-100">
                             <h2 class="text-lg font-black text-slate-800 dark:text-white tracking-tight">3. Selecciona la Fecha y Hora</h2>
                             <p class="text-xs text-slate-400 dark:text-gray-400">Los días destacados en verde cuentan con agenda habilitada para el especialista.</p>
                         </div>

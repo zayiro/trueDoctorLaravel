@@ -300,7 +300,7 @@
 
                 try {
                     // 1. Petición AJAX forzando formato JSON
-                    const response = await fetch('{{ route("medical-analysis.payment.prepare") }}', {
+                    const response = await fetch('{{ route('medical-analysis.payment-gateway', $analysis->access_token) }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',

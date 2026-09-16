@@ -489,7 +489,7 @@ Route::post('/examenes/{id}/pagar', [MedicalExamController::class, 'processPayme
 Route::get('/examenes/{id}/resultado', [MedicalExamController::class, 'showResult'])->name('exams.result');
 Route::get('/examenes/{id}/pago', [MedicalExamController::class, 'checkout'])->name('exams.checkout');
 
-// Ruta POST en inglés para procesar los múltiples archivos PDF
+// Ruta POST para procesar los múltiples archivos PDF
 Route::post('/medical-analysis/process-documents', [MedicalAnalysisController::class, 'processDocuments'])
     ->name('medical-analysis.process-documents');
 
@@ -499,18 +499,26 @@ Route::get('/medical-analysis', [MedicalAnalysisController::class, 'index'])
 
 // El formulario de carga ahora es el siguiente paso
 Route::get('/medical-analysis/upload', [MedicalAnalysisController::class, 'showUploadForm'])
-    ->name('medical-analysis.upload');    
+    ->name('medical-analysis.upload');  
 
-// Ruta dinámina en inglés con el ID del análisis médico
-Route::get('/medical-analysis/result/{medicalAnalysis}', [MedicalAnalysisController::class, 'show'])
-    ->name('medical-analysis.show');
+Route::post('/medical-analysis/before-preview', [MedicalAnalysisController::class, 'beforePreview'])
+    ->name('medical-analysis.before-preview');    
 
-Route::post('/medical-analysis/decimation', [SettingsController::class, 'updateDecimation'])->name('settings.update-decimation');
+Route::get('/medical-analysis/preview', [MedicalAnalysisController::class, 'preview'])
+    ->name('medical-analysis.preview');
 
-// Ruta encargada de recibir la solicitud AJAX para preparar la orden
-Route::post('/medical-analysis/payment/prepare', [MedicalAnalysisController::class, 'preparePayment'])->name('medical-analysis.payment.prepare');
-Route::get('/medical-analysis/payment-result/{token}', [MedicalAnalysisController::class, 'processPaymentResult'])
-    ->name('medical-analysis.payment.result');
+// VER INFORME COMPLETO
+Route::get('/medical-analysis/report/{token}', [MedicalAnalysisController::class, 'showResult'])
+    ->name('medical-analysis.show');    
+
+Route::post('/medical-analysis/promo-codes/validate', [MedicalAnalysisController::class, 'validatePromoCode'])
+    ->name('medical-analysis.promo-codes.validate');    
+
+Route::get('/medical-analysis/payment/{token}', [MedicalAnalysisController::class, 'paymentGateway'])
+    ->name('medical-analysis.payment-gateway');
+
+Route::get('/medical-analysis/payment/result/{token}', [MedicalAnalysisController::class, 'processPaymentResult'])
+    ->name('medical-analysis.payment-result');    
 
 // Pública para verificación
 Route::get('/verify/{signatureHash}', [PrescriptionController::class, 'verify'])

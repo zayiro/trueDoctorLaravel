@@ -44,7 +44,7 @@
                 <table border="0" cellpadding="0" cellspacing="0" width="100%">
                     <tr>
                         <td align="center" style="padding: 10px 0 20px 0;">
-                            <a href="{{ route('medical-analysis.show', $analysis->access_token) }}" target="_blank" style="background-color: #4f46e5; color: #ffffff; padding: 14px 28px; font-size: 14px; font-weight: 700; text-decoration: none; border-radius: 10px; display: inline-block; box-shadow: 0 4px 10px rgba(79,70,229,0.2);">
+                            <a href="{{ route('medical-analysis.show-result', $analysis->access_token) }}" target="_blank" style="background-color: #4f46e5; color: #ffffff; padding: 14px 28px; font-size: 14px; font-weight: 700; text-decoration: none; border-radius: 10px; display: inline-block; box-shadow: 0 4px 10px rgba(79,70,229,0.2);">
                                 Ver Reporte Completo e Imprimir
                             </a>
                         </td>
@@ -53,7 +53,7 @@
 
                 <p style="margin: 20px 0 0 0; font-size: 12px; line-height: 18px; color: #94a3b8; text-align: center;">
                     Si el botón no funciona, puedes copiar y pegar este enlace en tu navegador:<br>
-                    <a href="{{ route('medical-analysis.show', $analysis->access_token) }}" style="color: #4f46e5; text-decoration: underline; word-break: break-all;">{{ route('medical-analysis.show', $analysis->access_token) }}</a>
+                    <a href="{{ route('medical-analysis.show-result', $analysis->access_token) }}" style="color: #4f46e5; text-decoration: underline; word-break: break-all;">{{ route('medical-analysis.show-result', $analysis->access_token) }}</a>
                 </p>
 
                 <p style="margin: 16px 0 0 0; font-size: 11px; line-height: 16px; color: #94a3b8; text-align: center;">
