@@ -9,17 +9,24 @@ use Illuminate\Support\Str;
 class MedicalAnalysis extends Model
 {
     protected $fillable = [
-        'access_token',
-        'file_paths', 
-        'ai_response',
-        'ai_provider',
+        'file_paths',
+        'exam_type', 
         'customer_email',
         'reason_type',
         'reason_custom',
-        'status',
-        'payment_id',
-        'payment_status',
+        'promo_code',
         'price',
+        'status',
+        'total_images_uploaded', 
+        'processed_images_count', 
+        'decimation_factor', 
+        'payment_status',
+        'access_token',
+        'payment_id',
+        'wompi_transaction_id',
+        'ai_response',
+        'ai_provider',
+        'analysis_language'
     ];
 
     protected $table = 'medical_analyses';

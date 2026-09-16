@@ -5,7 +5,12 @@
             
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
                 <p class="text-gray-700 mb-4">
-                    <strong>Tipo de examen:</strong> {{ ucfirst($analysis->exam_type) }}
+                    <strong>Tipo de examen:</strong>
+                    @if($analysis->exam_type)
+                        {{ ucfirst(str_replace('_', ' ', $analysis->exam_type)) }}
+                    @else
+                        No especificado
+                    @endif
                 </p>
                 <p class="text-gray-700 mb-4">
                     <strong>Email:</strong> {{ $analysis->customer_email }}

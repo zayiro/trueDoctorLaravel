@@ -32,6 +32,7 @@ return new class extends Migration
             // Datos de pago
             $table->string('payment_id')->nullable();
             $table->enum('payment_status', ['pending', 'paid', 'failed', 'error'])->default('pending');
+            $table->string('promo_code')->nullable();
             $table->decimal('price', 8, 2)->nullable(); // Define el costo del servicio
             $table->timestamps();
         });
