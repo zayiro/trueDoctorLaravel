@@ -28,15 +28,12 @@ class PartnerAppointmentController extends Controller
         // 1. RESOLVER LA NÓMINA DISPONIBLE PARA FILTRADO SEGÚN EL ÁMBITO
         if ($user->role === 'clinic') {
             $clinic = $user->clinic;
-            // La clínica carga todo su staff médico aprobado para la barra de filtros institucional
             $availableDoctors = $clinic->doctors()->with('user')->get();
         } else {
-            // El médico (Particular o Staff) opera su agenda de forma individualizada
             $availableDoctors = collect([]); 
         }
 
         // 2. MÁQUINA DE CONSULTA CENTRALIZADA MULTI-TENANT CONTEXTUAL
-        // Usamos el scope del modelo que separa automáticamente: Clínica Pura vs Médico Particular vs Médico Staff
         $appointmentsQuery = Appointment::forCurrentContext();
 
         // Si es una clínica administrando, le permitimos filtrar adicionalmente por un médico de su nómina
@@ -44,16 +41,17 @@ class PartnerAppointmentController extends Controller
             $appointmentsQuery->where('doctor_id', $request->doctor_id);
         }
 
-        // 3. FILTRADO CRONOLÓGICO COMÚN (Producción intacta)
+        // 3. FILTRADO CRONOLÓGICO COMÚN
         if (!$showAll) {
             $appointmentsQuery->where('date', $date);
         } else {
             $appointmentsQuery->where('date', '>=', now()->toDateString());
         }
 
-        // 4. AGRUPAMOS LAS CITAS POR SEDE (Garantiza compatibilidad absoluta con tu Blade original)
+        // 4. AGRUPAMOS LAS CITAS POR SEDE (Ordenadas por fecha más próxima primero)
         $appointments = $appointmentsQuery->with(['patient.user', 'address', 'service'])
-            ->orderBy('start_time', 'asc')
+            ->orderBy('date', 'asc')           // ← PRIMERO: fechas más próximas
+            ->orderBy('start_time', 'asc')     // ← LUEGO: horas más tempranas dentro de la misma fecha
             ->get()
             ->groupBy('address_id');
 

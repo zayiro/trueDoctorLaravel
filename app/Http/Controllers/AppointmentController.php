@@ -152,8 +152,6 @@ class AppointmentController extends Controller
     public function store(StoreAppointmentRequest $request)
     {
         // Validación ya realizada por el Form Request
-
-        // 2. RESOLUCIÓN DE LA ENTIDAD PACIENTE (Fin del bug de llaves users.id)
         $patient = DB::table('patients')->where('user_id', Auth::id())->first();
         if (!$patient) {
             return redirect()->back()->withErrors(['error' => 'No se encontró un perfil de paciente válido vinculado a tu cuenta.']);
@@ -406,10 +404,16 @@ class AppointmentController extends Controller
      * Procesa la captura de datos del paciente, gestiona el login/registro automático y crea la transacción.     
      */
     public function processPatient(ProcessPatientAppointmentRequest $request)
-    {
+    {        
         // 1. Proteger el acceso al paso: si no existe intento de reserva activo, abortar
         $bookingData = session('booking_data');
+        \Log::warning('BookingData check', [
+            'bookingData' => $bookingData,
+            'session_all' => session()->all(),
+        ]);
+
         if (!$bookingData || !isset($bookingData['doctor_id'])) {
+            \Log::warning('no hay bookingData');
             return redirect()->to('/')->with('error', 'Sesión inválida o datos de reserva incompletos.');
         }
 
@@ -621,7 +625,7 @@ class AppointmentController extends Controller
         if ($virtualPaymentRequired) {
             $wompiData = $this->wompi->buildAppointmentCheckoutUrl($appointment);
         }
-        
+                
         // 3. Despachamos la vista compactando el objeto totalmente aislado
         return view('appointments.preview', compact('appointment', 'virtualPaymentRequired', 'wompiData'));
     }
@@ -790,12 +794,19 @@ class AppointmentController extends Controller
                 'signature'   => $signature,
                 'sdkKey'      => config('services.zoom.client_id'),
                 'userRole'    => $role, // Pasar el rol a la vista
+                'zoomStarted' => $appointment->zoom_started,
             ]);
 
         } catch (\Exception $e) {
             Log::error("Error en joinRoom (Cita ID {$appointment->id}): " . $e->getMessage());
             return redirect()->route('admin.dashboard')->with('error', 'No se pudieron recuperar las llaves de acceso.');
         }
+    }
+
+    public function startZoom(Appointment $appointment)
+    {
+        $appointment->update(['zoom_started' => true]);
+        return response()->json(['success' => true]);
     }
 
     /**

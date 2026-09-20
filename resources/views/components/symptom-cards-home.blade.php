@@ -82,7 +82,7 @@
 
                     <!-- Enlace comercial directo del buscador -->
                     <div class="pt-3 border-t border-slate-50 dark:border-gray-700">
-                        <a href="{{ url('/search') }}?specialty={{ $symptom->specialty_slug }}&city=" class="w-full inline-flex justify-center items-center p-4 text-base font-black text-center text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition shadow-sm focus:ring-4 focus:ring-blue-100">
+                        <a href="{{ url('/search') }}?specialty={{ $symptom->specialty_slug }}" class="w-full inline-flex justify-center items-center p-4 text-base font-black text-center text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition shadow-sm focus:ring-4 focus:ring-blue-100">
                             Agendar Especialista de {{ $symptom->specialty_name }}
                             <!-- SVG Nativo: Calendar de Heroicons -->
                             <svg class="w-3.5 h-3.5 ml-1.5" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

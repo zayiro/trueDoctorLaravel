@@ -1,4 +1,7 @@
-<x-guest-layout>
+<x-guest-layout
+    meta-title-medical-analysis="Consulta Virtual en Vivo {{ $appointment->reference }} | OpenDoctorOnline" 
+    meta-description-medical-analysis="Accede a tu consulta médica virtual en tiempo real. Conecta con tu especialista de forma segura a través de nuestro consultorio digital."
+>
     <!-- Inicializamos Alpine.js con los datos de la cita -->
     <div class="max-w-7xl mx-auto py-12 px-4 mt-6" 
         x-data="telemedicineRoom({
@@ -39,7 +42,7 @@
             @else
                 <a href="{{ route('admin.dashboard') }}" 
                     class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 text-sm font-medium rounded-lg transition">
-                    Salir de la Sala
+                    Salir de la sala
                 </a>
             @endif
         </div>
@@ -48,7 +51,41 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- VIDEO DE ZOOM (Más grande: 2/3 del ancho) -->
             <div class="lg:col-span-2 bg-black rounded-xl overflow-hidden shadow-lg relative min-h-[600px] flex items-center justify-center">
-                <div id="meetingSDKElement" class="w-full h-full absolute inset-0" x-ref="zoomContainer"></div>
+                @if(auth()->user()->role === 'doctor' || auth()->user()->role === 'clinic')
+                    @if(!$zoomStarted)
+                        <!-- Botón para iniciar -->
+                        <div class="text-center">
+                            <p class="text-white mb-4 text-lg font-semibold">Consulta lista para iniciar</p>
+                            <button @click="startConsultation()" 
+                                class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition shadow-lg">
+                                Permitir acceso al paciente / Iniciar videollamada
+                            </button>
+                        </div>
+                    @elseif(now()->isBefore(\Carbon\Carbon::parse($appointment->date)->setTimeFromTimeString($appointment->start_time)))
+                        <!-- Está activada pero aún no es la hora -->
+                        <div class="text-center text-white">
+                            <p class="text-lg font-semibold">Videollamada permitida, esperando que comience el horario...</p>
+                            <p class="text-sm text-gray-300 mt-2" x-text="timerText"></p>
+                        </div>
+                    @else
+                        <!-- Ya está la hora, mostrar video -->
+                        <div id="meetingSDKElement" class="w-full h-full absolute inset-0" x-ref="zoomContainer"></div>
+                    @endif
+                @else
+                    <!-- PACIENTE -->
+                    @if(!$zoomStarted)
+                        <div class="text-center text-white">
+                            <p class="text-lg font-semibold">Esperando a que el doctor inicie...</p>
+                        </div>
+                    @elseif(now()->isBefore(\Carbon\Carbon::parse($appointment->date)->setTimeFromTimeString($appointment->start_time)))
+                        <div class="text-center text-white">
+                            <p class="text-lg font-semibold">El doctor ha permitido el acceso, esperando que comience el horario...</p>
+                            <p class="text-sm text-gray-300 mt-2" x-text="timerText"></p>
+                        </div>
+                    @else
+                        <div id="meetingSDKElement" class="w-full h-full absolute inset-0" x-ref="zoomContainer"></div>
+                    @endif
+                @endif
             </div>
 
             <!-- PANEL LATERAL: Grabación SOAP + Formulario (1/3 del ancho) -->
@@ -98,7 +135,7 @@
                         <button type="button" @click="startRecording()"
                             class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-md py-2 px-3 rounded-lg transition inline-flex items-center justify-center gap-2 shadow-lg">
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>
-                            Iniciar Grabación
+                            Iniciar grabación
                         </button>
                     </template>
 
@@ -153,7 +190,7 @@
                 <!-- FORMULARIO SOAP (Solo para doctores) -->
                 @if(auth()->user()->role === 'doctor' || auth()->user()->role === 'clinic')
                 <div class="p-5">
-                    <h3 class="font-bold text-gray-700 text-sm uppercase tracking-wider mb-3">Nota de Evolución</h3>
+                    <h3 class="font-bold text-gray-700 text-sm uppercase tracking-wider mb-3">Nota de Evolución (SOAP)</h3>
                     
                     <form id="evolution-note-form" action="{{ route('partner.patients.store-history', $appointment->patient->id) }}" method="POST" class="space-y-3">
                         @csrf
@@ -397,6 +434,23 @@
                             })
                             .catch(err => console.error('Error al verificar estado:', err));
                     }, 5000);
+                },
+
+                startConsultation() {
+                    fetch(`{{ route('appointments.start-zoom', $appointment->id) }}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        }
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        }
+                    })
+                    .catch(err => console.error('Error:', err));
                 }
             }));
         });

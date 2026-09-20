@@ -48,7 +48,3 @@ Schedule::call(function () {
 ->at('03:00')
 ->name('clear-cities-cache')
 ->withoutOverlapping();
-
-Schedule::command('logs:rotate')
-    ->daily()
-    ->at('00:30');

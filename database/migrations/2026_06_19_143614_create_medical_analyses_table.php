@@ -29,7 +29,8 @@ return new class extends Migration
             $table->string('reason_type'); // 'routine', 'control', 'symptoms', etc.
             $table->text('reason_custom')->nullable(); // Detalle del motivo escrito por el usuario
             $table->enum('status', ['pending', 'processing', 'completed', 'failed', 'error'])->default('pending');
-            // Datos de pago
+            // Datos de pago 
+            $table->string('wompi_transaction_id')->nullable();
             $table->string('payment_id')->nullable();
             $table->enum('payment_status', ['pending', 'paid', 'failed', 'error'])->default('pending');
             $table->string('promo_code')->nullable();

@@ -19,12 +19,101 @@
             <h1 class="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 leading-tight">
                 Interpreta tus exámenes médicos con Inteligencia Artificial en <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">segundos</span>
             </h1>
-            <p class="text-lg text-slate-600 leading-relaxed max-w-xl">
-                ¿Tienes análisis clínicos, tomografías o informes confusos? Nuestro <span class="font-bold">Asistente Médico Digital</span> avanzado traduce el lenguaje médico complejo a explicaciones claras, precisas y accionables para ti.
-            </p>
-            <p class="text-lg text-slate-600 leading-relaxed max-w-xl">
-                Valor del informe <strong>{{ $price }} COP</strong>
-            </p>
+            <div class="text-lg text-slate-600 leading-relaxed max-w-xl">                            
+                Obtén un <span class="text-blue-600 font-semibold">análisis técnico asistido por IA</span> para complementar la opinión de tu médico.
+            </div>
+            <div class="text-lg text-slate-600 max-w-xl">
+                Nuestro asistente de análisis médico con IA procesa tus resultados en segundos, ofreciendo un soporte técnico avanzado para respaldar el criterio de tu especialista y agilizar el diagnóstico.
+            </div>
+
+            <div>
+                <ul class="list-none flex flex-wrap gap-x-6 gap-y-2 text-md text-slate-400 font-medium">
+                    <li>
+                        <div class="flex items-center space-x-3">
+                            <!-- Icono de Radiografía con fondo suave -->
+                            <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                                <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-slate-800 text-base font-bold md:text-lg leading-relaxed">Exámenes de Laboratorio</p>
+                                <p class="text-xs text-gray-500">Sangre, orina y perfiles bioquímicos</p>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="flex items-center space-x-3">
+                            <!-- Icono de Radiografía con fondo suave -->
+                            <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                                <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                                    <path stroke-linecap="round" d="M12 6v12M8 10h8M7 14h10" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-slate-800 text-base font-bold md:text-lg leading-relaxed">Radiografía</p>
+                                <p class="text-xs text-gray-500">Placas e imágenes de Rayos X convencionales</p>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="flex items-center space-x-3">
+                            <!-- Icono de Radiografía con fondo suave -->
+                            <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                                <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-slate-800 text-base font-bold md:text-lg leading-relaxed">Ecografía</p>
+                                <p class="text-xs text-gray-500">Ultrasonido diagnóstico y Doppler</p>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="flex items-center space-x-3">
+                            <!-- Icono de Radiografía con fondo suave -->
+                            <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                                <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-slate-800 text-base font-bold md:text-lg leading-relaxed">Tomografía</p>
+                                <p class="text-xs text-gray-500">Estudios tomográficos seriados (TAC)</p>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="flex items-center space-x-3">
+                            <!-- Icono de Radiografía con fondo suave -->
+                            <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                                <span class="text-lg leading-none select-none">🧠</span>
+                            </div>
+                            <div>
+                                <p class="text-slate-800 text-base font-bold md:text-lg leading-relaxed">Resonancia</p>
+                                <p class="text-xs text-gray-500">Resonancia Magnética Nuclear de alta definición</p>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="flex items-center space-x-3">
+                            <!-- Icono de Radiografía con fondo suave -->
+                            <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                                <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-slate-800 text-base font-bold md:text-lg leading-relaxed">DICOM</p>
+                                <p class="text-xs text-gray-500">Carga directa de archivos de imagen médica (.dcm)</p>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
             <div class="flex flex-col sm:flex-row gap-4 pt-2">                
                 <a href="{{ route('medical-analysis.upload') }}" 
                     x-data="{ loading: false }"
@@ -72,11 +161,11 @@
                 <div class="flex-1">
                     <img src="{{ asset('images/examenes-medicos-con-ia.jpg') }}" 
                         alt="Análisis médico" 
-                        class="w-full h-auto rounded-lg">
+                        class="w-full h-auto rounded-lg">                    
                 </div>
                 
                 <!-- Pasos derecha -->
-                <div class="flex-1 space-y-6">
+                <div class="flex-1 space-y-5">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold">1</div>
                         <div>
@@ -97,7 +186,7 @@
                             <h4 class="font-bold text-slate-900 text-sm">Segunda Opinión por IA</h4>
                             <p class="text-xs text-slate-500">Explicación humana y correlación de síntomas.</p>
                         </div>
-                    </div>
+                    </div>                    
                 </div>
             </div>
         </div>
@@ -159,7 +248,7 @@
         <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-3xl p-12 shadow-xl shadow-blue-100 space-y-6">
             <h2 class="text-3xl md:text-4xl font-bold tracking-tight">Toma el control de tu salud hoy mismo</h2>
             <p class="text-blue-100 max-w-xl mx-auto text-base">
-                No esperes semanas por una cita para entender un papel. Obtén una guía inteligente previa de manera segura, rápida y gratuita.
+                No esperes semanas por una cita para entender un papel. Obtén una guía inteligente previa de manera segura, rápida.
             </p>
             <div class="pt-4">                
                 <a href="{{ route('medical-analysis.upload') }}"

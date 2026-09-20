@@ -316,6 +316,106 @@
         </section>
     </div>
 
+    <!-- Sección registro de profesionales de la salud en el directorio de OpenDoctorOnline -->
+    <section class="relative overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50/50 py-16 sm:py-24">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-center">
+            
+            <!-- Columna Izquierda: Contenido y Propuesta de Valor -->
+            <div class="flex flex-col justify-center text-center lg:text-left">
+                <!-- Etiqueta superior -->
+                <span class="inline-flex self-center lg:self-start items-center rounded-full bg-blue-100 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-blue-800 mb-6">
+                Para Profesionales de la Salud
+                </span>
+                
+                <!-- Título Principal -->
+                <h2 class="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">
+                Digitaliza tu consulta y expande tu <span class="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">reputación médica</span>
+                </h2>
+                
+                <p class="mt-4 text-base sm:text-lg text-slate-600 max-w-2xl mx-auto lg:mx-0">
+                Únete al directorio de especialistas de <strong class="text-slate-900 font-semibold">OpenDoctorOnline</strong>. Permite que cientos de pacientes encuentren tu perfil, agenden citas en línea y conozcan tu trayectoria profesional.
+                </p>
+
+                <!-- Lista de Beneficios con Heroicons -->
+                <div class="mt-8 space-y-4 max-w-xl mx-auto lg:mx-0 text-left">
+                <!-- Beneficio 1 -->
+                <div class="flex items-start gap-4">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-200">
+                    <!-- Heroicon: eye -->
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    </svg>
+                    </div>
+                    <div>
+                    <h3 class="font-semibold text-slate-900">Mayor visibilidad local</h3>
+                    <p class="text-sm text-slate-600">Posiciona tu consultorio frente a pacientes que buscan activamente tu especialidad en tu ciudad.</p>
+                    </div>
+                </div>
+
+                <!-- Beneficio 2 -->
+                <div class="flex items-start gap-4">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-200">
+                    <!-- Heroicon: calendar-days -->
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                    </svg>
+                    </div>
+                    <div>
+                    <h3 class="font-semibold text-slate-900">Gestión de citas inteligente</h3>
+                    <p class="text-sm text-slate-600">Herramientas automatizadas de agenda para reducir el ausentismo y organizar tus horarios sin esfuerzo.</p>
+                    </div>
+                </div>
+
+                <!-- Beneficio 3 -->
+                <div class="flex items-start gap-4">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-200">
+                    <!-- Heroicon: ShieldCheck -->
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+                    </svg>
+                    </div>
+                    <div>
+                    <h3 class="font-semibold text-slate-900">Perfil médico verificado</h3>
+                    <p class="text-sm text-slate-600">Construye confianza digital mostrando tus certificaciones, opiniones reales de pacientes y logros.</p>
+                    </div>
+                </div>
+                </div>
+
+                <!-- Botones de Acción -->
+                <div class="mt-10 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+                <a href="{{ route('partner.register') }}" class="w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition duration-200">
+                    Registrarme como Especialista
+                </a>
+                <a href="{{ route('plans.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-6 py-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition duration-200">
+                    Saber más sobre los planes
+                </a>
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Composición de Imagen Estilizada -->
+            <div class="relative mx-auto w-full max-w-md lg:max-w-none lg:mx-0 flex justify-center">
+                <!-- Elementos decorativos de fondo -->
+                <div class="absolute -top-4 -left-4 w-72 h-72 bg-blue-400 rounded-full filter blur-3xl opacity-20 animate-pulse"></div>
+                <div class="absolute -bottom-4 -right-4 w-72 h-72 bg-indigo-400 rounded-full filter blur-3xl opacity-20"></div>
+                
+                <!-- Contenedor de Imagen -->
+                <div class="relative overflow-hidden transform lg:rotate-1 hover:rotate-0 transition duration-300">
+                <img 
+                    src="{{ asset('images/professional-directory-register-medical.png') }}" 
+                    alt="Médico especialista usando plataforma OpenDoctor" 
+                    class="h-[350px] w-full object-cover sm:h-[450px] md:w-[500px]"
+                    style="mask-image: linear-gradient(to bottom, black 75%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 75%, transparent 100%);"
+                    loading="lazy"
+                />
+                </div>
+            </div>
+
+            </div>
+        </div>
+    </section>
+
     <section class="py-10 px-4 bg-gray-50">
         <div class="max-w-5xl mx-auto pb-5">            
             <div class="text-center mb-6">

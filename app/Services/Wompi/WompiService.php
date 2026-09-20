@@ -30,7 +30,7 @@ class WompiService
     public function buildCheckoutUrl(int $doctorId, Plan $plan): array
     {
         $reference     = 'OD-' . $doctorId . '-' . Str::upper(Str::random(8)) . '-' . time();
-        $amountInCents = (int) ($plan->price * 100); // asegura que sea entero
+        $amountInCents = (int) ($plan->price * 100);
         $currency      = 'COP';
         $integrity     = config('services.wompi.integrity_secret');
 
@@ -113,7 +113,7 @@ class WompiService
     /**
      * Genera la URL de checkout para pago de cita virtual.
      */
-    public function buildAppointmentCheckoutUrl(Appointment $appointment): array
+    public function buildAppointmentCheckoutUrl(Appointment $appointment, ?string $redirectUrl = null): array
     {
         // Determinar si es clínica o médico particular
         $isClinic  = !is_null($appointment->clinic_id);
@@ -136,7 +136,7 @@ class WompiService
         $doctorAmount     = $price;
         $platformAmount   = round($commissionAmount - $wompiFee, 2);
 
-        $amountInCents = (int) round($totalToPay * 100);
+        $amountInCents = (int) ($totalToPay * 100);
         $reference     = 'APT-' . $appointment->id . '-' . time();
         $currency      = 'COP';
         $signature     = $this->generateSignature($reference, $amountInCents, $currency);
@@ -150,19 +150,15 @@ class WompiService
             'platform_amount'   => $platformAmount,
         ]);
 
-        \Log::info('Wompi reference update', [
-            'appointment_id'  => $appointment->id,
-            'wompi_reference' => $reference,
-            'updated'         => $updated,
-        ]);
+        $redirectUrl = $redirectUrl ?? route('appointments.payment.result');
 
         $params = http_build_query([
             'public-key'          => $this->publicKey,
             'currency'            => $currency,
             'amount-in-cents'     => $amountInCents,
             'reference'           => $reference,
-            'redirect-url'        => route('appointments.payment.result'),
-            'signature:integrity' => $signature,
+            'redirect-url'        => $redirectUrl,
+            'signature-integrity' => $signature,
         ]);
 
         return [

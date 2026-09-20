@@ -102,7 +102,7 @@
             <form id="uploadForm" enctype="multipart/form-data" class="space-y-6">            
                 @csrf
                 <!-- ZONA DROPZONE -->
-                <div id="dropzone" class="border-2 border-dashed border-white/20 hover:border-blue-500/50 bg-slate-900/50 rounded-xl p-8 text-center cursor-pointer transition-all relative">
+                <div id="dropzone" class="border-2 border-dashed border-white/20 hover:border-blue-500/50 bg-slate-800 rounded-xl p-8 text-center cursor-pointer transition-all relative">
                     <input type="file" name="medical_files[]" id="medical_files" class="hidden" multiple accept=".pdf,.jpg,.jpeg,.png,.dcm,.dicom">
                     <input type="hidden" name="detected_exam_type" id="detected_exam_type">
 
@@ -157,8 +157,11 @@
                     <div class="space-y-1.5">
                         <label for="selected_language" class="text-sm font-bold tracking-wider text-white">¿En qué idioma quieres ver el resultado?</label>
                         <select name="selected_language" id="selected_language" required class="w-full p-3 bg-slate-900 border border-white/10 rounded-xl font-medium text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm">
-                            <option value="es" class="bg-slate-950" selected>Español</option>
-                            <option value="en" class="bg-slate-950">English (Inglés)</option>
+                            <option value="es" class="bg-slate-950" selected>Español (Spanish)</option>
+                            <option value="en" class="bg-slate-950">Inglés (English)</option>
+                            <option value="fr" class="bg-slate-950">Frances (French)</option>
+                            <option value="pt" class="bg-slate-950">Portugues (Portuguese)</option>
+                            <option value="de" class="bg-slate-950">Alemán (Deutsch)</option>
                         </select>
                     </div>
 
@@ -170,10 +173,10 @@
                     <div class="space-y-1.5">
                         <label for="reason_type" class="text-sm font-bold tracking-wider text-white">¿Cuál es el motivo de estos exámenes?</label>
                         <select name="reason_type" id="reason_type" required class="w-full p-3 bg-slate-900 border border-white/10 rounded-xl font-medium text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm">
-                            <option value="rutina" class="bg-slate-950">Control de rutina</option>
-                            <option value="control" class="bg-slate-950">Seguimiento de una enfermedad existente</option>
-                            <option value="sintomas" class="bg-slate-950">Por síntomas recientes</option>
-                            <option value="otros" class="bg-slate-950">Otro motivo</option>
+                            <option value="routine" class="bg-slate-950">Control de rutina anual o chequeo preventivo.</option>
+                            <option value="monitoring" class="bg-slate-950">Seguimiento continuo de una patología médica existente.</option>
+                            <option value="symptoms" class="bg-slate-950">Evaluación motivada por sintomatología reciente del paciente.</option>
+                            <option value="other" class="bg-slate-950">Motivos complementarios</option>
                         </select>
                     </div>
 
@@ -185,16 +188,16 @@
                 </div>
 
                 <!-- CÓDIGO PROMO Y BOTÓN -->
-                <div class="grid md:grid-cols-2 gap-6 text-left">                                        
-                    <div class="flex flex-col pt-6 space-y-1.5">
-                        <button type="submit" id="submitBtn" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3.5 px-3 rounded-xl transition-all shadow-lg shadow-blue-500/10 flex items-center justify-center gap-2">
-                            <span id="btnText">Analizar Información Médica</span>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">                                        
+                    <div class="flex flex-col pt-6 space-y-1.5 min-w-0">
+                        <button type="submit" id="submitBtn" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3.5 px-2 md:px-3 rounded-xl transition-all shadow-lg shadow-blue-500/10 flex items-center justify-center gap-2">
+                            <span id="btnText">Enviar Información</span>
                             <svg id="btnSpinner" class="animate-spin h-5 w-5 text-white hidden" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
                         </button>
-                        <small class="text-sm text-slate-400 font-medium">Al hacer clic, aceptas nuestros <a href="{{ route('terms.show') }}" class="underline hover:text-indigo-600 transition-colors">Términos de Servicio</a> y <a href="{{ route('privacy.show') }}" class="underline hover:text-indigo-600 transition-colors">Política de Privacidad</a>.</small>
+                        <small class="text-sm text-slate-400 font-medium px-1">Al hacer clic, aceptas nuestros <a href="{{ route('terms.show') }}" class="underline hover:text-indigo-600 transition-colors">Términos de Servicio</a> y <a href="{{ route('privacy.show') }}" class="underline hover:text-indigo-600 transition-colors">Política de Privacidad</a>.</small>
                     </div>                    
                 </div>
             </form>
@@ -434,9 +437,12 @@
                 headers: { "X-CSRF-TOKEN": csrfToken },
                 body: formData
             });
-
+           
             if (!response.ok) throw new Error('Error en el servidor médico.');
+                       
             const data = await response.json();
+
+             console.log(data);
             
             if (data.status === 'success') {
                 // 2. Transición inmediata al éxito
@@ -487,6 +493,4 @@
         }
     });
 </script>
-
-    
 </x-guest-layout>

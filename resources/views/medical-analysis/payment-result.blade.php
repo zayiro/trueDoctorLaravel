@@ -15,7 +15,7 @@
                         Hemos procesado tu pago correctamente. Se ha enviado un comprobante a tu correo electrónico.
                     </p>
                     
-                    <a href="{{ route('medical-analysis.show-result', $analysis->access_token) }}" 
+                    <a href="{{ route('medical-analysis.show', $analysis->access_token) }}" 
                     class="w-full inline-flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition duration-150">
                         Ver tu informe completo
                     </a>

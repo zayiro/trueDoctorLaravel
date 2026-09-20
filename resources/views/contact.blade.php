@@ -1,5 +1,8 @@
-<x-guest-layout>
-    <div class="max-w-4xl mx-auto py-16 px-4">
+<x-guest-layout
+    meta-title-medical-analysis="Contáctanos | Soporte y Atención OpenDoctorOnline" 
+    meta-description-medical-analysis="¿Tienes dudas sobre nuestra plataforma médica? Ponte en contacto con el equipo de OpenDoctor.online. Estamos aquí para ayudarte a resolver tus consultas rápidamente."
+>
+    <div class="max-w-5xl mx-auto py-16 px-4">
         <!-- Contenedor Principal Premium -->
         <div class="bg-white dark:bg-gray-800 p-8 md:p-10 shadow-xl shadow-gray-100/50 dark:shadow-none rounded-3xl border border-gray-100 dark:border-gray-700">
             

@@ -19,6 +19,7 @@ use Illuminate\Support\Str;
 use App\Notifications\ConsultationAudioUploadFailedNotification;
 use Illuminate\Validation\Rule;
 use Illuminate\Pagination\Paginator;
+use Carbon\Carbon;
 
 class PartnerPatientController extends Controller
 {
@@ -130,13 +131,19 @@ class PartnerPatientController extends Controller
         $plan = auth()->user()->doctor->settings->plan;
 
         // 1. Cargamos al paciente con sus relaciones
-        // Incluimos citas ordenadas para ver el historial clínico correctamente
-        $patient = Patient::with(['user', 'familyHistories', 'city', 'department', 'appointments' => function($query) use ($doctor) {
-            $query->where('doctor_id', $doctor->id)
-                ->orderBy('date', 'desc');
-        }, 'appointments.service'])
-        ->where('id', $id)
-        ->firstOrFail();
+        $patient = Patient::with([
+            'user', 
+            'familyHistories', 
+            'city', 
+            'department', 
+            'appointments' => function($query) use ($doctor) {
+                $query->where('doctor_id', $doctor->id)
+                    ->where('date', '>=', Carbon::today())
+                    ->orderBy('date', 'asc')       // 1º Ordena por día (del más viejo al más futuro)
+                    ->orderBy('start_time', 'asc'); // 2º Ordena por hora dentro del mismo día
+            }, 
+            'appointments.service'
+        ])->findOrFail($id);
 
         // 2. SEGURIDAD: Verificar que el paciente tiene relación con este doctor
         // Evita que un doctor vea datos de pacientes ajenos cambiando el ID en la URL        
@@ -152,7 +159,7 @@ class PartnerPatientController extends Controller
             $appointmentId = $appointment->id;
                         
             // Verificar si puede editar notas
-            $canEditNotes = $this->verificarSiPuedeEditarNotas($appointment);
+            $canEditNotes = $this->canEditNotes($appointment);
             if ($canEditNotes) {
                $allowed = true; 
             }
@@ -161,7 +168,7 @@ class PartnerPatientController extends Controller
         return view('partner.patients.show', compact('patient', 'doctor', 'plan', 'appointmentId', 'reference', 'allowed'));
     }    
 
-    private function verificarSiPuedeEditarNotas(Appointment $appointment)
+    private function canEditNotes(Appointment $appointment)
     {
         // Si la cita es futura, NO puede editar
         if ($appointment->date->isFuture()) {

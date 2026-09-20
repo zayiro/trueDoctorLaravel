@@ -41,6 +41,7 @@ class Appointment extends Model
         'meeting_link',     // Enlace para el paciente (o fallback interno)
         'zoom_meeting_id',  // ID identificador de Zoom
         'zoom_start_url',   // Enlace de inicio para el Doctor
+        'zoom_started',
         'notes',
         'email_sent',
         'reschedule_count', // Nuevo campo para contar reprogramaciones

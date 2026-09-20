@@ -33,7 +33,7 @@
         
         <!-- Línea inferior de copyright formal -->
         <div class="mt-6 pt-6 border-t border-slate-100 text-center text-xs text-slate-400">
-            Todos los derechos reservados. Desarrollado para <a href="https://opendoctor.online" class="font-semibold hover:text-indigo-600 transition-colors">opendoctor.online</a>
+            Todos los derechos reservados. Desarrollado por <a href="https://opendoctor.online" class="font-semibold hover:text-indigo-600 transition-colors">opendoctor.online</a>
         </div>
     </div>
 </footer>

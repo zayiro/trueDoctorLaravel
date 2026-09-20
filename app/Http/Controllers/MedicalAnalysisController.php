@@ -21,7 +21,7 @@ use Carbon\Carbon;
 
 class MedicalAnalysisController extends Controller
 {
-    const SUPPORTED_LANGUAGES = ['es', 'en'];
+    const SUPPORTED_LANGUAGES = ['es', 'en', 'fr', 'pt', 'de'];
     const DEFAULT_LANGUAGE = 'es';
 
     public function __construct() {}
@@ -72,9 +72,9 @@ class MedicalAnalysisController extends Controller
             'medical_files' => 'required|array|max:5',
             'medical_files.*' => 'file|mimes:pdf,jpg,jpeg,png,dcm|max:10240',
             'customer_email' => 'required|email',
-            'selected_language' => 'required|in:es,en',
+            'selected_language' => 'required|in:es,en,fr,pt,de',
             'detected_exam_type' => 'required|in:lab,xray,ultrasound,ct,mri,mammography,dicom',
-            'reason_type' => 'nullable|in:rutina,control,sintomas,otros',
+            'reason_type' => 'nullable|in:routine,monitoring,symptoms,other',
             'reason_custom' => 'nullable|string|max:500',
         ]);
 
@@ -93,8 +93,9 @@ class MedicalAnalysisController extends Controller
 
         // Obtener precio según tipo de examen
         $examType = $validated['detected_exam_type'];
-        $prices = config('services.medical_analysis.prices', []);
-        $price = $prices[$examType] ?? 30000;
+        
+        $prices = $this->getPrices();
+        $price = $prices[$examType] ?? 12000;
 
         // Guardar TODO en sesión
         session([
@@ -106,6 +107,7 @@ class MedicalAnalysisController extends Controller
 
         return response()->json([
             'status' => 'success',
+            'price'  => $price,
             'redirect_url' => route('medical-analysis.preview')
         ]);
     }
@@ -121,7 +123,7 @@ class MedicalAnalysisController extends Controller
         $files = session('medical_analysis_files', []);
         $totalSize = session('medical_analysis_total_size', 0);
         $validated = session('medical_analysis_data', []);
-        $price = session('medical_analysis_price', 30000);
+        $price = session('medical_analysis_price', 12000);
 
         if (empty($validated)) {
             return redirect()->route('medical-analysis.upload')
@@ -175,7 +177,7 @@ class MedicalAnalysisController extends Controller
         }
 
         // Obtener precio
-        $prices = config('services.medical_analysis.prices', []);
+        $prices = $this->getPrices();
         $price = $prices[$detectedType] ?? 30000;
 
         // Guardar archivos en almacenamiento privado
@@ -212,10 +214,8 @@ class MedicalAnalysisController extends Controller
             'status' => 'pending',
             'payment_status' => 'pending',
             'access_token' => Str::random(32),
-            'language' => $language
+            'analysis_language' => $language
         ]);
-
-        Log::info("Análisis #{$analysis->id} creado - Estado: pending_payment - Email: {$email}");
 
         // Limpiar sesión
         session()->forget(['medical_analysis_files', 'medical_analysis_total_size', 'medical_analysis_data', 'medical_analysis_price']);
@@ -463,17 +463,18 @@ class MedicalAnalysisController extends Controller
             $selectedLanguage = self::DEFAULT_LANGUAGE;
         }
 
+        //modificar mas adelante esto en ingles
         $reasons = [
-            'rutina' => 'Control de rutina anual o chequeo preventivo.',
-            'control' => 'Seguimiento continuo de una patología médica existente.',
-            'sintomas' => 'Evaluación motivada por sintomatología reciente del paciente.',
-            'otros' => 'Motivos complementarios.'
+            'routine'    => 'Control de rutina anual o chequeo preventivo.',
+            'monitoring' => 'Seguimiento continuo de una patología médica existente.',
+            'symptoms'   => 'Evaluación motivada por sintomatología reciente del paciente.',
+            'other'      => 'Motivos complementarios.'
         ];
 
-        $motivoClinico = $reasons[$analysis->reason_type] ?? $analysis->reason_type;
-        $detallesAdicionales = $analysis->reason_custom ?? 'No se proporcionaron detalles adicionales.';
+        $clinicalReason = $reasons[$analysis->reason_type] ?? $analysis->reason_type;
+        $additionalDetails = $analysis->reason_custom ?? 'No se proporcionaron detalles adicionales.';
 
-        [$systemPrompt, $userText] = $this->generatePrompts($selectedLanguage, $motivoClinico, $detallesAdicionales, $analysis->exam_type);
+        [$systemPrompt, $userText] = $this->generatePrompts($selectedLanguage, $clinicalReason, $additionalDetails, $analysis->exam_type);
 
         $filePaths = json_decode($analysis->file_paths, true) ?? [];
 
@@ -498,8 +499,6 @@ class MedicalAnalysisController extends Controller
             $images = array_slice($images, 0, 40);
         }
 
-        Log::info("Análisis #{$analysis->id}: enviando " . count($images) . " imagen(es) a IA.");
-
         try {
             $order = $provider
                 ? array_unique([$provider, $provider === 'claude' ? 'openai' : 'claude'])
@@ -517,8 +516,6 @@ class MedicalAnalysisController extends Controller
                 'status' => 'completed',
             ]);
 
-            Log::info("Análisis #{$analysis->id} completado con '{$providerUsed}'.");
-
             $this->deleteSourceFiles($analysis, $filePaths);
         } catch (\Throwable $e) {
             Log::error("Análisis #{$analysis->id}: fallo IA: " . $e->getMessage());
@@ -527,29 +524,42 @@ class MedicalAnalysisController extends Controller
     }
 
     /**
-     * Generar prompts para IA (en español o inglés)
+     * Generar prompts para IA (SIMPLIFICADO)
+     * 
+     * Prompt en español y agrega instrucción de idioma
+     * Claude entrega el resultado en el idioma solicitado
      */
-    private function generatePrompts(string $language, string $motivoClinico, string $detallesAdicionales, ?string $examType = null): array
+    private function generatePrompts(string $language, string $clinicalReason, string $additionalDetails, ?string $examType = null): array
     {
-        if ($language === 'en') {
-            return $this->getEnglishPrompts($motivoClinico, $detallesAdicionales, $examType);
-        }
+        // ✅ Cargar prompts en español (única fuente de verdad)
+        [$systemPrompt, $userTemplate] = $this->getPromptAI($clinicalReason, $additionalDetails, $examType);
 
-        return $this->getSpanishPrompts($motivoClinico, $detallesAdicionales, $examType);
+        // ✅ Agregar instrucción de idioma al final
+        $languageInstructions = match($language) {
+            'en' => 'Responde SOLO en Ingles.',
+            'fr' => 'Responde SOLO en Frances.',
+            'pt' => 'Responde SOLO en Portugues.',
+            'de' => 'Responde SOLO en Alemán.',
+            default => 'Responde SOLO en Español.'
+        };
+
+        $patientContext = "CONTEXTO DEL PACIENTE";
+        $userText = "{$patientContext}:\n- Motivo: {$clinicalReason}\n- Detalles: {$additionalDetails}\n\n" . $userTemplate . "\n\n{$languageInstructions}";
+
+        return [$systemPrompt, $userText];
     }
 
     /**
      * Prompts en español (diferenciados por tipo de examen)
      */
-    private function getSpanishPrompts(string $motivoClinico, string $detallesAdicionales, ?string $examType = null): array
+    private function getPromptAI(string $clinicalReason, string $additionalDetails, ?string $examType = null): array
     {
-        $contextoPaciente = "CONTEXTO DEL PACIENTE:\n- Motivo: {$motivoClinico}\n- Detalles: {$detallesAdicionales}";
+        $patientContext = "CONTEXTO DEL PACIENTE:\n- Motivo: {$clinicalReason}\n- Detalles: {$additionalDetails}";
 
         if (in_array($examType, ['xray', 'ct', 'mri', 'ultrasound', 'mammography', 'dicom'])) {
-            $userText = "{$contextoPaciente}\n\nAnaliza este estudio de imagenología como un experto radiólogo. Proporciona:\n\n1. HALLAZGOS CLAVE: Las observaciones más importantes\n2. ÁREAS DE INTERÉS CLÍNICO: Qué requiere seguimiento\n3. IMPRESIÓN RADIOLÓGICA: Posibles diagnósticos\n4. RECOMENDACIONES: Estudios de seguimiento y vigilancia\n\nSé preciso pero accesible para el paciente. Indica claramente si algo requiere atención urgente.";
+            $userText = "{$patientContext}\n\nAnaliza este estudio de imagenología como un experto radiólogo. Proporciona:\n\n1. HALLAZGOS CLAVE: Las observaciones más importantes\n2. ÁREAS DE INTERÉS CLÍNICO: Qué requiere seguimiento\n3. IMPRESIÓN RADIOLÓGICA: Posibles diagnósticos\n4. RECOMENDACIONES: Estudios de seguimiento y vigilancia\n\nSé preciso pero accesible para el paciente. Indica claramente si algo requiere atención urgente.";
 
             $systemPrompt = "Actúa como un radiólogo clínico experto con excelentes habilidades de comunicación.
-            Responde SIEMPRE en español.
 
             Tu tarea: analizar imagenología, identificar hallazgos relevantes,
             explicar al paciente qué significan, dar recomendaciones claras.
@@ -562,10 +572,9 @@ class MedicalAnalysisController extends Controller
 
             TONO: Amable, profesional, sin tecnicismos innecesarios.";
         } else {
-            $userText = "{$contextoPaciente}\n\nAnaliza visualmente estos resultados de laboratorio como un médico especialista. Proporciona:\n\n1. PARÁMETROS ANORMALES: Cuáles están fuera de rango\n2. INTERPRETACIÓN: Qué significan estos resultados\n3. CORRELACIONES: Patrones entre valores\n4. RECOMENDACIONES: Próximos pasos y seguimiento\n\nExplica en lenguaje natural de paciente. Indica si hay algo que requiera atención urgente.";
+            $userText = "{$patientContext}\n\nAnaliza visualmente estos resultados de laboratorio como un médico especialista. Proporciona:\n\n1. PARÁMETROS ANORMALES: Cuáles están fuera de rango\n2. INTERPRETACIÓN: Qué significan estos resultados\n3. CORRELACIONES: Patrones entre valores\n4. RECOMENDACIONES: Próximos pasos y seguimiento\n\nExplica en lenguaje natural de paciente. Indica si hay algo que requiera atención urgente.";
 
             $systemPrompt = "Actúa como un médico patólogo clínico experto con excelente comunicación humana.
-            Responde SIEMPRE en español.
 
             Tu tarea: analizar resultados de laboratorio, identificar anormalidades,
             explicar al paciente qué significan, dar recomendaciones claras.
@@ -577,50 +586,6 @@ class MedicalAnalysisController extends Controller
             - Siempre incluye descargo: 'Este análisis requiere validación por médico certificado'
 
             TONO: Amable, profesional, sin tecnicismos innecesarios.";
-        }
-
-        return [$systemPrompt, $userText];
-    }
-
-    /**
-     * Prompts en inglés (diferenciados por tipo de examen)
-     */
-    private function getEnglishPrompts(string $motivoClinico, string $detallesAdicionales, ?string $examType = null): array
-    {
-        $contextoPaciente = "PATIENT CONTEXT:\n- Reason: {$motivoClinico}\n- Details: {$detallesAdicionales}";
-
-        if (in_array($examType, ['xray', 'ct', 'mri', 'ultrasound', 'mammography', 'dicom'])) {
-            $userText = "{$contextoPaciente}\n\nAnalyze this imaging study as an expert radiologist. Provide:\n\n1. KEY FINDINGS: Most important observations\n2. AREAS OF CLINICAL INTEREST: What requires follow-up\n3. RADIOLOGICAL IMPRESSION: Possible diagnoses\n4. RECOMMENDATIONS: Follow-up studies and surveillance\n\nBe precise but accessible to the patient. Clearly indicate if anything requires urgent attention.";
-
-            $systemPrompt = "Act as an expert clinical radiologist with excellent communication skills.
-            Respond ALWAYS in English.
-
-            Your task: analyze imaging, identify relevant findings,
-            explain to the patient what they mean, give clear recommendations.
-
-            IMPORTANT:
-            - If image is not clear, state it without inventing findings
-            - Be specific: location, size, characteristics
-            - Explain each finding simply
-            - Always include: 'This analysis requires validation by a certified radiologist'
-
-            TONE: Friendly, professional, no unnecessary jargon.";
-        } else {
-            $userText = "{$contextoPaciente}\n\nAnalyze these lab results as an expert clinical physician. Provide:\n\n1. ABNORMAL PARAMETERS: Values outside normal range\n2. INTERPRETATION: What these results mean\n3. CORRELATIONS: Patterns between values\n4. RECOMMENDATIONS: Next steps and follow-up\n\nExplain in natural patient language. Indicate if anything requires urgent attention.";
-
-            $systemPrompt = "Act as an expert clinical pathologist with excellent communication skills.
-            Respond ALWAYS in English.
-
-            Your task: analyze lab results, identify abnormalities,
-            explain to the patient what they mean, give clear recommendations.
-
-            IMPORTANT:
-            - If any value is unclear, state it without inventing data
-            - Be specific with values and reference ranges
-            - Explain each parameter simply
-            - Always include: 'This analysis requires validation by a certified physician'
-
-            TONE: Friendly, professional, no unnecessary jargon.";
         }
 
         return [$systemPrompt, $userText];
@@ -648,7 +613,7 @@ class MedicalAnalysisController extends Controller
 
         $analysis->update([
             'file_paths' => null,
-            'file_path' => null,
+            'file_path'  => null,
         ]);
 
         Log::info("Análisis #{$analysis->id}: limpieza completada. Eliminados: {$eliminados}/" . count($filePaths));
@@ -762,5 +727,20 @@ class MedicalAnalysisController extends Controller
             'dcm', 'dicom' => 'application/dicom',
             default => 'application/octet-stream'
         };
+    }
+
+    /**
+     * Obtener precios dinámicos desde settings
+     */
+    private function getPrices(): array
+    {
+        return Setting::where('group', 'pricing')
+            ->pluck('value', 'key')
+            ->mapWithKeys(function($value, $key) {
+                // Convierte: exam_type_lab_price → lab
+                $examType = str_replace(['exam_type_', '_price'], '', $key);
+                return [$examType => (int)$value];
+            })
+            ->toArray();
     }
 }

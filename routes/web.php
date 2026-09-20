@@ -346,6 +346,8 @@ Route::middleware(['auth'])->group(function () {
     //ruta para el sdk de zoom
     Route::get('/appointments/{appointment}/room', [AppointmentController::class, 'joinRoom'])->name('appointments.room');
 
+    Route::post('/appointments/{appointment}/start-zoom', [AppointmentController::class, 'startZoom'])->name('appointments.start-zoom');
+
     // Ruta para forzar el cierre desde el reloj de la interfaz
     Route::post('/api/appointments/{appointment}/end-zoom', [AppointmentController::class, 'forceEndMeeting']);
 

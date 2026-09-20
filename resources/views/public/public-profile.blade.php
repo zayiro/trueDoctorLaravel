@@ -995,7 +995,9 @@
                                     clinic_id: this.fromClinicId ? this.fromClinicId : null
                                 })
                             });
+
                             const res = await response.json();
+
                             if (res.status) {
                                 window.location.href = "{{ route('appointments.patient') }}";
                             } else {

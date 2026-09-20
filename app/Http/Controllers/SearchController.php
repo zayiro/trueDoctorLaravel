@@ -854,4 +854,55 @@ class SearchController extends Controller
             ],
         ];
     }
+
+    public function saveDeviceLocationToSession(Request $request)
+    {
+        $latitude = $request->input('latitude');
+        $longitude = $request->input('longitude');
+        
+        if (!$latitude || !$longitude) {
+            return response()->json(['error' => 'Ubicación inválida'], 400);
+        }
+        
+        session([
+            'device_location' => [
+                'latitude' => $latitude,
+                'longitude' => $longitude,
+                'saved_at' => now(),
+            ]
+        ]);
+        
+        \Log::info('Ubicación del dispositivo guardada', [
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'user_id' => auth()->id(),
+        ]);
+        
+        return response()->json(['success' => true, 'message' => 'Ubicación guardada']);
+
+        /*
+        //colocar en la vista donde requiera la geolocalizacion que guarda este metodo
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((position) => {
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+                
+                fetch('{{ route("api.session.location") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        latitude: latitude,
+                        longitude: longitude
+                    })
+                })
+                .then(res => res.json())
+                .then(data => console.log('Ubicación guardada:', data))
+                .catch(err => console.error('Error:', err));
+            });
+        }
+        */
+    }
 }

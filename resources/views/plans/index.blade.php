@@ -120,9 +120,9 @@
                                         </button>
                                     </form>
                                     @else
-                                    <button type="submit" class="w-full py-4 rounded-2xl text-gray bg-gray-200">
-                                        Plan predeterminado al crear tu cuenta
-                                    </button>
+                                    <a href="{{ route('partner.register') }}" class="w-full py-4 rounded-2xl text-white bg-indigo-600 hover:bg-indigo-800 text-center">
+                                        Crear cuenta
+                                    </a>
                                     @endif
                                 </div>
                             @endforeach

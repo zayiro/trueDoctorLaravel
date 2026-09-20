@@ -1,243 +1,278 @@
 <x-guest-layout>
-    <div class="max-w-7xl w-full mx-auto px-6 py-12 flex-grow mt-6">
-        <div class="bg-slate-950 rounded-2xl border border-white/10 p-8 shadow-2xl space-y-8">
-            
-            <!-- ENCABEZADO -->
-            <div class="space-y-2 text-center">
-                <h1 class="text-3xl font-black text-white">Revisar tu Orden</h1>
-                <p class="text-md text-slate-400">Verifica los detalles antes de procesar tu análisis médico</p>
+    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-5xl mx-auto">
+            <!-- Header -->
+            <div class="text-center mb-12">
+                <h1 class="text-4xl md:text-5xl font-black text-slate-900 mb-4">
+                    Revisar tu Orden
+                </h1>
+                <p class="text-lg text-slate-600">
+                    Verifica todos los detalles antes de proceder al pago
+                </p>
             </div>
 
-            <!-- RESUMEN DE ARCHIVOS -->
-            <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-6 space-y-4">
-                <h2 class="text-white font-bold text-lg flex items-center gap-2">
-                    <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
-                    </svg>
-                    Archivos Cargados
-                </h2>
-                
-                <div class="space-y-2 max-h-[300px] overflow-y-auto">
+            <!-- Archivos Cargados -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-6 space-y-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-5 text-blue-600">
+                            <path d="M9 6.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM9 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM9 17.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM10.5 6a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM21.75 18.75a.75.75 0 0 0-1.5 0v2.25h-2.25a.75.75 0 0 0 0 1.5h2.25v2.25a.75.75 0 0 0 1.5 0v-2.25h2.25a.75.75 0 0 0 0-1.5h-2.25v-2.25Z" />
+                        </svg>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-900">Archivos Cargados</h2>
+                </div>
+
+                <div class="space-y-2 max-h-96 overflow-y-auto">
                     @foreach($files as $file)
-                        <div class="flex items-center justify-between p-3 bg-slate-900/50 rounded border border-white/5 hover:border-blue-500/30 transition">
-                            <div class="flex items-center gap-3 flex-1">
+                        <div class="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200 hover:border-blue-300 transition">
+                            <div class="flex items-center gap-3 flex-1 min-w-0">
                                 <span class="text-2xl">
                                     @php
                                         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
                                         $icon = match($ext) {
-                                            'pdf' => '📕',
+                                            'pdf' => '📄',
                                             'jpg', 'jpeg', 'png', 'gif', 'webp' => '🖼️',
                                             'dcm', 'dicom' => '🩻',
-                                            default => '📄'
+                                            default => '📋'
                                         };
                                     @endphp
                                     {{ $icon }}
                                 </span>
                                 <div class="flex-1 min-w-0">
-                                    <p class="text-slate-200 font-medium truncate">{{ $file['name'] }}</p>
-                                    <p class="text-slate-400 text-sm">{{ number_format($file['size'] / 1024 / 1024, 2) }} MB</p>
+                                    <p class="font-semibold text-slate-900 truncate">{{ $file['name'] }}</p>
+                                    <p class="text-sm text-slate-500">{{ number_format($file['size'] / 1024 / 1024, 2) }} MB</p>
                                 </div>
                             </div>
-                            <span class="text-green-400 text-sm font-bold">✓</span>
+                            <span class="text-green-600 font-bold ml-2">✓</span>
                         </div>
                     @endforeach
                 </div>
 
-                <div class="pt-3 border-t border-blue-500/20">
-                    <p class="text-slate-300 text-sm">
-                        <strong>Total:</strong> {{ count($files) }} archivo(s) · {{ number_format($totalSize / 1024 / 1024, 2) }} MB
+                <div class="pt-4 border-t border-slate-200">
+                    <p class="text-sm text-slate-600">
+                        <strong class="text-slate-900">{{ count($files) }} archivo(s)</strong> · 
+                        {{ number_format($totalSize / 1024 / 1024, 2) }} MB
                     </p>
                 </div>
             </div>
 
-            <!-- RESUMEN DE ORDEN (Consolidado) -->
-            <div class="bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border border-purple-500/30 rounded-lg p-6 space-y-4">
-                <h3 class="text-white font-bold text-lg flex items-center gap-2">
-                    <svg class="w-5 h-5 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M8.16 2.75a.75.75 0 00-1.08.02l-2.5 2.75H2.75A1.75 1.75 0 001 7.25v10A1.75 1.75 0 002.75 19h14.5A1.75 1.75 0 0019 17.25v-10a1.75 1.75 0 00-1.75-1.75h-1.83l-2.5-2.75a.75.75 0 00-1.08-.02L10 4.5l-1.84-1.75zm1.84.98l1.84 2.02h2.66A.25.25 0 0115 6.5v10a.25.25 0 01-.25.25H2.75A.25.25 0 012.5 16.5v-10a.25.25 0 01.25-.25h2.66l1.84-2.02z"/>
-                    </svg>
-                    Resumen de tu Orden
-                </h3>
-
-                <!-- Tipo de Examen -->
-                <div class="flex justify-between items-center p-3 bg-slate-900/50 rounded border border-white/5">
-                    <span class="text-slate-300">Tipo de Examen:</span>
-                    <span class="text-white font-bold text-lg">
-                        @php
-                            $typeLabels = [
-                                'lab' => '🧪 Laboratorio',
-                                'xray' => '📸 Radiografía',
-                                'ultrasound' => '🔊 Ecografía',
-                                'ct' => '📊 Tomografía',
-                                'mri' => '🧠 Resonancia',
-                                'mammography' => '🎀 Mamografía',
-                                'dicom' => '🩻 DICOM'
-                            ];
-                            echo $typeLabels[$examType] ?? '📋 Examen';
-                        @endphp
-                    </span>
-                </div>
-
-                <!-- Precio Base -->
-                <div class="flex justify-between items-center p-3 bg-slate-900/50 rounded border border-white/5">
-                    <span class="text-slate-300">Precio base:</span>
-                    <span class="text-white font-medium" id="summaryBasePrice">${{ number_format($price, 0, ',', '.') }}</span>
-                </div>
-
-                <!-- Descuento (si aplica) -->
-                <div id="discountRow" class="hidden flex justify-between items-center p-3 bg-emerald-500/10 rounded border border-emerald-500/30">
-                    <span class="text-emerald-300 font-medium">Descuento:</span>
-                    <div class="text-right">
-                        <span class="text-emerald-400 font-bold" id="discountAmount">-$0</span>
-                        <span class="text-emerald-300 text-sm ml-2" id="discountPercent"></span>
+            <!-- Resumen de Orden -->
+            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-200 p-8 mb-6 space-y-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-5 text-blue-600">
+                            <path d="M2.25 2.25a.75.75 0 000 1.5h1.386c.17 0 .318.114.362.278l2.558 9.592a3.75 3.75 0 00-2.806 3.63c0 .414.336.75.75.75h15.75a.75.75 0 000-1.5H5.378A2.25 2.25 0 007.5 15h11.218a.75.75 0 00.674-.415l3.638-5.45a.75.75 0 00-.67-1.135H17.25v-1.5a.75.75 0 00-.75-.75H5.546L5.057 2.559a.75.75 0 00-.72-.559H2.25z" />
+                        </svg>
                     </div>
+                    <h2 class="text-xl font-bold text-slate-900">Resumen de tu Orden</h2>
                 </div>
 
-                <!-- Total (separado visualmente) -->
-                <div class="flex justify-between items-center p-4 bg-purple-500/20 rounded-lg border border-purple-500/50 mt-2">
-                    <span class="text-white font-bold text-lg">Total a Pagar:</span>
-                    <span class="text-4xl font-black text-purple-400" id="totalPrice">${{ number_format($price, 0, ',', '.') }}</span>
+                <div class="space-y-3">
+                    <!-- Tipo de Examen -->
+                    <div class="flex justify-between items-center p-4 bg-white rounded-lg border border-slate-200">
+                        <span class="text-slate-600 font-medium">Tipo de Examen:</span>
+                        <span class="text-slate-900 font-bold">
+                            @php
+                                $typeLabels = [
+                                    'lab' => '🧪 Laboratorio',
+                                    'xray' => '📸 Radiografía',
+                                    'ultrasound' => '🔊 Ecografía',
+                                    'ct' => '📊 Tomografía',
+                                    'mri' => '🧠 Resonancia',
+                                    'mammography' => '🎀 Mamografía',
+                                    'dicom' => '🩻 DICOM'
+                                ];
+                                echo $typeLabels[$examType] ?? '📋 Examen';
+                            @endphp
+                        </span>
+                    </div>
+
+                    <!-- Idioma -->
+                    <div class="flex justify-between items-center p-4 bg-white rounded-lg border border-slate-200">
+                        <span class="text-slate-600 font-medium">Idioma del Resultado:</span>
+                        <span class="text-slate-900 font-bold">
+                            @php
+                                $langLabels = [
+                                    'es' => '🇪🇸 Español',
+                                    'en' => '🇺🇸 English',
+                                    'fr' => '🇫🇷 Français',
+                                    'pt' => '🇧🇷 Português',
+                                    'de' => '🇩🇪 Deutsch'
+                                ];
+                                echo $langLabels[$language] ?? '🌍 ' . strtoupper($language);
+                            @endphp
+                        </span>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="flex justify-between items-center p-4 bg-white rounded-lg border border-slate-200">
+                        <span class="text-slate-600 font-medium">Email:</span>
+                        <span class="text-slate-900 font-bold text-right truncate ml-2">{{ $email }}</span>
+                    </div>
+
+                    <!-- Precio Base -->
+                    <div class="flex justify-between items-center p-4 bg-white rounded-lg border border-slate-200">
+                        <span class="text-slate-600 font-medium">Precio Base:</span>
+                        <span class="text-slate-900 font-bold text-lg" id="summaryBasePrice">${{ number_format($price, 0, ',', '.') }}</span>
+                    </div>
+
+                    <!-- Descuento (si aplica) -->
+                    <div id="discountRow" class="hidden flex justify-between items-center p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                        <span class="text-emerald-700 font-bold">Descuento:</span>
+                        <div class="text-right">
+                            <span class="text-emerald-700 font-bold text-lg" id="discountAmount">-$0</span>
+                            <span class="text-emerald-600 text-sm ml-2" id="discountPercent"></span>
+                        </div>
+                    </div>
+
+                    <!-- Total -->
+                    <div class="flex justify-between items-center p-6 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg text-white">
+                        <span class="font-bold text-lg">Total a Pagar:</span>
+                        <span class="text-4xl font-black" id="totalPrice">${{ number_format($price, 0, ',', '.') }}</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- CÓDIGO PROMOCIONAL -->
-            <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-6 space-y-4">
-                <h3 class="text-white font-bold text-lg flex items-center gap-2">
-                    <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M4.5 2a1 1 0 00-.96.732L2.332 6H2a1 1 0 000 2h.26l.882 4.41a1 1 0 001.962 0l.882-4.41H18a1 1 0 000-2h-.332L15.46 2.732A1 1 0 0014.5 2H4.5zM8 16a2 2 0 110-4 2 2 0 010 4zm8 0a2 2 0 110-4 2 2 0 010 4z"/>
-                    </svg>
-                    ¿Tienes un Código Promocional?
-                </h3>
+            <!-- Código Promocional -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-6 space-y-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-5 text-amber-600">
+                            <path d="M5.223 2.25c-.497 0-.974.198-1.325.554a2.25 2.25 0 0 0 2.236 3.75c.967-.3 1.745-1.086 2.045-2.053a2.25 2.25 0 0 0-2.956-2.251ZM9.5 7.5A3 3 0 1 1 12 3.5a3 3 0 0 1-2.5 4Zm7.48 13.75c.497 0 .974-.198 1.325-.554a2.25 2.25 0 0 1-2.236-3.75c.967.3 1.745 1.086 2.045 2.053a2.25 2.25 0 0 1 .866 2.251Zm-7.48-13.75a3 3 0 1 1 2.5 4 3 3 0 0 1-2.5-4ZM19 19.5a3 3 0 1 0-3 3 3 3 0 0 0 3-3Z" />
+                        </svg>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-900">¿Tienes un Código de Descuento?</h2>
+                </div>
 
-                <div class="flex gap-2">
-                    <input type="text" id="promoInput" placeholder="Ej: DESCUENTO2024" 
-                        class="flex-1 p-3 bg-slate-900 border border-white/10 rounded-xl font-medium text-sm text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 placeholder:text-slate-500">
-                    <button type="button" onclick="applyPromoCode()" 
-                        class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-xl text-sm font-bold transition flex items-center gap-2">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <input 
+                        type="text" 
+                        id="promoInput" 
+                        placeholder="Ej: VERANO2024"
+                        class="flex-1 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition"
+                    >
+                    <button 
+                        type="button" 
+                        onclick="applyPromoCode()" 
+                        class="bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-lg font-bold transition flex items-center justify-center gap-2 whitespace-nowrap"
+                    >
                         <span id="applyBtnText">Aplicar</span>
-                        <svg id="applySpinner" class="animate-spin h-4 w-4 text-white hidden" fill="none" viewBox="0 0 24 24">
+                        <svg id="applySpinner" class="animate-spin h-4 w-4 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
                     </button>
                 </div>
 
-                <div id="promoResult" class="hidden p-3 rounded-lg"></div>
+                <div id="promoResult" class="hidden p-4 rounded-lg"></div>
+                <input type="hidden" id="promoCodeField" name="promotional_code" value="">
             </div>
 
-            <!-- DATOS DEL PACIENTE -->
-            <div class="bg-slate-900/50 border border-white/5 rounded-lg p-6 space-y-4">
-                <h3 class="text-white font-bold text-lg">Información del Paciente</h3>
+            <!-- Motivo de la Consulta -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-6 space-y-6">
+                <h2 class="text-xl font-bold text-slate-900">Motivo de tu Consulta</h2>
                 
-                <div class="grid md:grid-cols-2 gap-4">
-                    <div>
-                        <p class="text-slate-400 text-sm">Correo Electrónico</p>
-                        <p class="text-white font-medium">{{ $email }}</p>
-                    </div>
+                @php
+                    $reasons = [
+                        'routine' => 'Control de rutina anual',
+                        'monitoring' => 'Monitoreo de condición médica',
+                        'symptoms' => 'Evaluación por síntomas',
+                        'other' => 'Otros'
+                    ];
+                @endphp
 
-                    <div>
-                        <p class="text-slate-400 text-sm">Idioma del Resultado</p>
-                        <p class="text-white font-medium">
-                            @if($language === 'es') 🇪🇸 Español @else 🇺🇸 English @endif
-                        </p>
-                    </div>
-
-                    @if($reasonType)
-                        <div>
-                            <p class="text-slate-400 text-sm">Motivo del Examen</p>
-                            <p class="text-white font-medium">
-                                @php
-                                    $reasons = [
-                                        'rutina' => 'Control de rutina',
-                                        'control' => 'Seguimiento de enfermedad',
-                                        'sintomas' => 'Por síntomas recientes',
-                                        'otros' => 'Otro motivo'
-                                    ];
-                                    echo $reasons[$reasonType] ?? $reasonType;
-                                @endphp
-                            </p>
-                        </div>
-                    @endif
+                <!-- Mostrar la opción seleccionada -->
+                <div class="p-6 bg-blue-50 rounded-lg border-2 border-blue-300">
+                    <p class="text-sm text-slate-600 mb-2"><strong>Opción seleccionada:</strong></p>
+                    <p class="text-2xl font-bold text-blue-600">
+                        {{ $reasons[$reasonType] ?? 'No especificado' }}
+                    </p>
                 </div>
 
+                <!-- Detalles adicionales si existen -->
                 @if($reasonCustom)
-                    <div class="pt-4 border-t border-white/5">
-                        <p class="text-slate-400 text-sm mb-2">Observaciones</p>
-                        <p class="text-slate-200 italic">{{ $reasonCustom }}</p>
+                    <div class="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                        <p class="text-sm text-slate-600 mb-2"><strong>Detalles adicionales:</strong></p>
+                        <p class="text-slate-900">{{ $reasonCustom }}</p>
                     </div>
                 @endif
             </div>
 
-            <!-- ACCIONES -->
-            <div class="grid md:grid-cols-2 gap-4">
-                <form action="{{ route('medical-analysis.upload') }}" method="GET" class="flex">
-                    <button type="submit" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3.5 px-4 rounded-xl transition-all">
-                        ← Volver a editar
-                    </button>
-                </form>
+            <!-- Aviso Legal -->
+            <div class="bg-amber-50 rounded-xl border border-amber-200 p-6 mb-8">
+                <p class="text-sm text-amber-900">
+                    <strong>⚠️ Importante:</strong> Este análisis con IA es una segunda opinión educativa y <strong>no reemplaza</strong> la consulta médica profesional. Siempre consulta con tu médico certificado para diagnóstico definitivo.
+                </p>
+            </div>
 
-                <form id="processForm" method="POST">
-                    @csrf
-                    <input type="hidden" name="customer_email" value="{{ $email }}">
-                    <input type="hidden" name="selected_language" value="{{ $language }}">
-                    <input type="hidden" name="reason_type" value="{{ $reasonType }}">
-                    <input type="hidden" name="reason_custom" value="{{ $reasonCustom }}">
-                    <input type="hidden" name="detected_exam_type" value="{{ $examType }}">
-                    <input type="hidden" id="promoCodeField" name="promotional_code" value="">
-                    
-                    <button type="submit" id="processBtn" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3.5 px-3 rounded-xl transition-all shadow-lg shadow-blue-500/10 flex items-center justify-center gap-2">
-                        <span id="processBtnText">Procesar Análisis Médico</span>
-                        <svg id="processSpinner" class="animate-spin h-5 w-5 text-white hidden" fill="none" viewBox="0 0 24 24">
+            <!-- Botón Procesar -->
+            <form id="processForm" class="space-y-4">
+                @csrf
+                <input type="hidden" id="promoCodeField" name="promotional_code" value="">
+
+                <button 
+                    type="submit"
+                    id="processBtn"
+                    class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-4 rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 shodow-lg"
+                >
+                    <span id="processBtnText">Proceder al Pago</span>
+                    <svg id="processSpinner" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-5 animate-spin hidden">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 6v6l4 2" />
+                    </svg>
+                </button>
+
+                <p class="text-center text-sm text-slate-600">
+                    Después de confirmar, serás redirigido a la pasarela de pago segura
+                </p>
+            </form>
+
+            <!-- Loading Status -->
+            <div id="loadingStatus" class="hidden mt-8 bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+                <div class="flex items-center gap-4">
+                    <div class="flex-shrink-0">
+                        <svg class="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                    </button>
-                </form>
-            </div>
-
-            <div class="text-center">
-                <small class="text-sm text-slate-400 font-medium">Al hacer clic, aceptas nuestros <a href="{{ route('terms.show') }}" class="underline hover:text-indigo-600 transition-colors">Términos de Servicio</a> y <a href="{{ route('privacy.show') }}" class="underline hover:text-indigo-600 transition-colors">Política de Privacidad</a>.</small>
-            </div>
-
-            <!-- ESTADO DE PROCESAMIENTO -->
-            <div id="loadingStatus" class="hidden bg-slate-900 border border-blue-500/20 rounded-xl p-6 space-y-4">
-                <div class="flex items-center justify-between text-xs">
-                    <span class="text-white font-semibold" id="statusMessage">Analizando documentos...</span>
-                    <span class="text-white font-bold" id="progressPercentage">0%</span>
-                </div>
-                <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-white/5">
-                    <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-emerald-500 text-white h-full w-0 transition-all duration-300"></div>
+                    </div>
+                    <div class="flex-1">
+                        <p id="statusMessage" class="text-lg font-semibold text-slate-900">
+                            Preparando tu análisis...
+                        </p>
+                        <div class="w-full bg-slate-200 rounded-full h-2 mt-2">
+                            <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Variables globales
         const basePrice = {{ $price }};
+        const processForm = document.getElementById('processForm');
+        const processBtn = document.getElementById('processBtn');
+        const processSpinner = document.getElementById('processSpinner');
+        const processBtnText = document.getElementById('processBtnText');
+        const loadingStatus = document.getElementById('loadingStatus');
+        const statusMessage = document.getElementById('statusMessage');
+        const progressBar = document.getElementById('progressBar');
+
         let appliedDiscount = 0;
         let appliedPromoCode = '';
 
-        const processForm = document.getElementById('processForm');
-        const processBtn = document.getElementById('processBtn');
-        const processBtnText = document.getElementById('processBtnText');
-        const processSpinner = document.getElementById('processSpinner');
-        const loadingStatus = document.getElementById('loadingStatus');
-        const progressBar = document.getElementById('progressBar');
-        const progressPercentage = document.getElementById('progressPercentage');
-        const statusMessage = document.getElementById('statusMessage');
-
-        // Aplicar código promocional
         async function applyPromoCode() {
-            const code = document.getElementById('promoInput').value.trim();
-            const applyBtn = event.target.closest('button');
-            const applyBtnText = document.getElementById('applyBtnText');
-            const applySpinner = document.getElementById('applySpinner');
-
+            const code = document.getElementById('promoInput').value.trim().toUpperCase();
+            
             if (!code) {
-                showPromoError('Por favor, ingresa un código.');
+                alert('Por favor ingresa un código');
                 return;
             }
+
+            const applyBtn = document.querySelector('button[onclick="applyPromoCode()"]');
+            const applyBtnText = document.getElementById('applyBtnText');
+            const applySpinner = document.getElementById('applySpinner');
 
             applyBtn.disabled = true;
             applyBtnText.innerText = 'Validando...';
@@ -295,9 +330,9 @@
             const promoResult = document.getElementById('promoResult');
             const text = type === 'percentage' ? `${value}% descuento` : `$${value} descuento`;
             
-            promoResult.className = 'p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30';
+            promoResult.className = 'p-4 rounded-lg bg-emerald-50 border border-emerald-200';
             promoResult.innerHTML = `
-                <div class="flex items-center gap-2 text-emerald-400">
+                <div class="flex items-center gap-2 text-emerald-700">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                     </svg>
@@ -309,9 +344,9 @@
 
         function showPromoError(message) {
             const promoResult = document.getElementById('promoResult');
-            promoResult.className = 'p-3 rounded-lg bg-red-500/10 border border-red-500/30';
+            promoResult.className = 'p-4 rounded-lg bg-red-50 border border-red-200';
             promoResult.innerHTML = `
-                <div class="flex items-center gap-2 text-red-400">
+                <div class="flex items-center gap-2 text-red-700">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
                     </svg>
@@ -321,23 +356,24 @@
             promoResult.classList.remove('hidden');
         }
 
-        // Procesar análisis
         processForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
             processBtn.disabled = true;
             processBtn.classList.add('opacity-60', 'cursor-not-allowed', 'pointer-events-none');
             processSpinner.classList.remove('hidden');
-            processBtnText.innerText = 'Analizando...';
+            processBtnText.innerText = 'Procesando...';
             loadingStatus.classList.remove('hidden');
-            updateProgress(35, 'Preparando análisis médico...');
+            progressBar.style.width = '30%';
+            statusMessage.innerText = '📝 Preparando tu orden...';
 
             const formData = new FormData(processForm);
             const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
             try {
                 setTimeout(() => {
-                    updateProgress(65, 'Conectando con IA médica...');
+                    progressBar.style.width = '70%';
+                    statusMessage.innerText = '🔒 Validando información...';
                 }, 1000);
 
                 const response = await fetch("{{ route('medical-analysis.process-documents') }}", {
@@ -351,10 +387,10 @@
                 const data = await response.json();
                 
                 if (data.status === 'success') {
-                    updateProgress(100, 'Análisis completado.');
+                    progressBar.style.width = '100%';
+                    statusMessage.innerText = '✅ Redirigiendo a pago...';
                     setTimeout(() => {
                         window.location.href = data.redirect_url;
-                        console.log("redirecciona");
                     }, 1500);
                 } else {
                     alert(data.message || 'Error al procesar.');
@@ -362,23 +398,17 @@
 
             } catch (error) {
                 console.error(error);
-                alert('Ocurrió un error al procesar el análisis.');
+                alert('Ocurrió un error al procesar tu orden.');
             } finally {
                 processBtn.disabled = false;
                 processBtn.classList.remove('opacity-60', 'cursor-not-allowed', 'pointer-events-none');
                 processSpinner.classList.add('hidden');
-                processBtnText.innerText = 'Procesar Análisis Médico';
+                processBtnText.innerText = 'Proceder al Pago';
                 setTimeout(() => loadingStatus.classList.add('hidden'), 2000);
             }
         });
 
-        function updateProgress(value, message) {
-            progressBar.style.width = `${value}%`;
-            progressPercentage.innerText = `${value}%`;
-            if (message) statusMessage.innerText = message;
-        }
-
-        // Permitir Enter en el input de código
+        // Enter en código promocional
         document.getElementById('promoInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') applyPromoCode();
         });
