@@ -39,6 +39,7 @@ use App\Http\Controllers\ContextDoctorController;
 use App\Http\Controllers\PrescriptionController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\GalleryController;
+use App\Http\Controllers\SkinAnalysisController;
 
 use App\Http\Controllers\ClinicAddressController;
 use App\Http\Controllers\ClinicServiceController;
@@ -520,7 +521,32 @@ Route::get('/medical-analysis/payment/{token}', [MedicalAnalysisController::clas
     ->name('medical-analysis.payment-gateway');
 
 Route::get('/medical-analysis/payment/result/{token}', [MedicalAnalysisController::class, 'processPaymentResult'])
-    ->name('medical-analysis.payment-result');    
+    ->name('medical-analysis.payment-result');   
+    
+//skin-analysis
+Route::get('/skin-analysis', [SkinAnalysisController::class, 'index'])
+        ->name('skin-analysis.index');
+        
+Route::get('/skin-analysis/upload', [SkinAnalysisController::class, 'upload'])
+    ->name('skin-analysis.upload');
+
+Route::post('/skin-analysis/before-preview', [SkinAnalysisController::class, 'beforePreview'])
+    ->name('skin-analysis.before-preview');
+
+Route::get('/skin-analysis/preview/{session_id}', [SkinAnalysisController::class, 'preview'])
+    ->name('skin-analysis.preview');
+
+Route::post('/skin-analysis/process-documents', [SkinAnalysisController::class, 'processDocuments'])
+    ->name('skin-analysis.process-documents');
+
+Route::get('/skin-analysis/payment/{token}', [SkinAnalysisController::class, 'paymentGateway'])
+    ->name('payment');
+
+Route::get('/skin-analysis/payment/result/{token}', [SkinAnalysisController::class, 'processPaymentResult'])
+    ->name('.skin-analysispayment.result');
+
+Route::get('/skin-analysis/result/{token}', [SkinAnalysisController::class, 'showResult'])
+    ->name('skin-analysis.result');  
 
 // Pública para verificación
 Route::get('/verify/{signatureHash}', [PrescriptionController::class, 'verify'])
