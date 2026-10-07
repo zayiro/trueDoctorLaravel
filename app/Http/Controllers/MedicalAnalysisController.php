@@ -143,11 +143,13 @@ class MedicalAnalysisController extends Controller
     }
 
     /**
-     * ✅ PASO 3: Crear registro en BD con status "pending_payment"
-     * 
-     * Guarda archivos permanentemente, crea análisis SIN procesar IA aún
-     * Redirige a página de pago (Wompi)
-     * NO dispara IA hasta que el pago sea confirmado
+     * ✅ PASO 3: Crear registro en BD
+     *
+     * Guarda archivos permanentemente y recalcula el precio EN EL SERVIDOR
+     * (nunca se confía en el descuento que muestre el navegador).
+     * - Total > 0: crea el análisis pendiente de pago y redirige a la pasarela (Wompi).
+     * - Total = 0 (código del 100%): consume el cupo, crea el análisis ya pagado,
+     *   dispara la IA y redirige al resultado sin pasar por Wompi.
      */
     public function processDocuments(Request $request)
     {
@@ -156,7 +158,7 @@ class MedicalAnalysisController extends Controller
 
         if (empty($files) || empty($data)) {
             return response()->json([
-                'status' => 'error', 
+                'status' => 'error',
                 'message' => 'Sesión expirada. Por favor, intenta de nuevo.'
             ], 400);
         }
@@ -166,7 +168,6 @@ class MedicalAnalysisController extends Controller
         $language = strtolower($data['selected_language']);
         $reasonType = $data['reason_type'] ?? null;
         $reasonCustom = trim($data['reason_custom'] ?? '');
-        $promoCode = $request->input('promotional_code');
 
         // Validar tipo de examen
         if (!in_array($detectedType, ['lab', 'xray', 'ultrasound', 'ct', 'mri', 'mammography', 'dicom'])) {
@@ -176,16 +177,28 @@ class MedicalAnalysisController extends Controller
             ], 422);
         }
 
-        // Obtener precio
-        $prices = $this->getPrices();
-        $price = $prices[$detectedType] ?? 30000;
+        // Precio base y descuento, calculados en el servidor
+        $basePrice = (int) ($this->getPrices()[$detectedType] ?? 30000);
+        $promoInput = trim((string) $request->input('promotional_code', ''));
+
+        [$promo, $discount, $price] = $this->resolvePricing($promoInput, $basePrice);
+
+        // Si enviaron un código que ya no es válido, no se cobra un precio distinto al que vieron.
+        if ($promoInput !== '' && !$promo) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'El código promocional ya no es válido. Quítalo o prueba con otro.'
+            ], 422);
+        }
+
+        $isFree = $price === 0;
 
         // Guardar archivos en almacenamiento privado
         $storedPaths = [];
         foreach ($files as $fileData) {
             $tempPath = $fileData['path'];
             $finalPath = 'medical-exams/' . basename($tempPath);
-            
+
             if (Storage::disk('local')->exists($tempPath)) {
                 Storage::disk('private')->put(
                     $finalPath,
@@ -202,19 +215,30 @@ class MedicalAnalysisController extends Controller
             ], 500);
         }
 
-        // ✅ CREAR REGISTRO CON STATUS "pending_payment"
+        // Orden gratis: el cupo se consume de forma atómica antes de crear el análisis.
+        if ($isFree && $promo && !$this->consumePromo($promo)) {
+            foreach ($storedPaths as $path) {
+                Storage::disk('private')->delete($path);
+            }
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Este código ya no está disponible.'
+            ], 422);
+        }
+
+        // El access_token lo genera el modelo (hook creating).
         $analysis = MedicalAnalysis::create([
             'file_paths' => json_encode($storedPaths),
             'exam_type' => $detectedType,
             'customer_email' => $email,
             'reason_type' => $reasonType,
             'reason_custom' => $reasonCustom,
-            'promo_code' => $promoCode,
-            'price' => $price,
-            'status' => 'pending',
-            'payment_status' => 'pending',
-            'access_token' => Str::random(32),
-            'analysis_language' => $language
+            'promo_code' => $promo?->code,
+            'price' => $price, // lo que realmente se cobra, ya con descuento
+            'status' => $isFree ? 'processing' : 'pending',
+            'payment_status' => $isFree ? 'completed' : 'pending',
+            'analysis_language' => $language,
         ]);
 
         // Limpiar sesión
@@ -225,12 +249,81 @@ class MedicalAnalysisController extends Controller
             Storage::disk('local')->delete($fileData['path']);
         }
 
-        // ✅ REDIRIGE A PÁGINA DE PAGO
+        // Camino gratuito: dispara la IA y va directo al resultado
+        if ($isFree) {
+            ProcessMedicalAnalysisAI::dispatch($analysis);
+
+            if ($analysis->customer_email) {
+                try {
+                    Mail::to($analysis->customer_email)->send(new ExamAnalysisReady($analysis));
+                } catch (\Throwable $e) {
+                    \Log::warning('Orden gratuita: no se pudo enviar el correo', [
+                        'analysis_id' => $analysis->id,
+                        'message' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'access_token' => $analysis->access_token,
+                'redirect_url' => route('medical-analysis.show', $analysis->access_token)
+            ]);
+        }
+
+        // Camino de pago
         return response()->json([
             'status' => 'success',
             'access_token' => $analysis->access_token,
             'redirect_url' => route('medical-analysis.payment-gateway', $analysis->access_token)
         ]);
+    }
+
+    /**
+     * Pantalla de resultado de una orden gratuita (total = 0): no pasa por Wompi.
+     */
+    public function freeResult(string $token)
+    {
+        $analysis = MedicalAnalysis::where('access_token', $token)
+            ->where('payment_status', 'completed')
+            ->where('price', 0)
+            ->firstOrFail();
+
+        $paymentStatus = 'APPROVED';
+
+        return view('medical-analysis.payment-result', compact('analysis', 'paymentStatus'));
+    }
+
+    /**
+     * Recalcula el precio en el servidor.
+     * Devuelve [?PromoCode $promo, int $descuento, int $precioFinal].
+     */
+    private function resolvePricing(string $code, int $basePrice): array
+    {
+        $promo = null;
+        $discount = 0;
+
+        if ($code !== '') {
+            $candidate = PromoCode::where('code', strtoupper($code))->first();
+
+            if ($candidate && $candidate->isRedeemable()) {
+                $promo = $candidate;
+                $discount = $candidate->discountFor($basePrice);
+            }
+        }
+
+        return [$promo, $discount, $basePrice - $discount];
+    }
+
+    /**
+     * Consume un uso del código de forma atómica.
+     * Devuelve false si el cupo se agotó entre la validación y el consumo.
+     */
+    private function consumePromo(PromoCode $promo): bool
+    {
+        return PromoCode::whereKey($promo->id)
+            ->where(fn ($q) => $q->whereNull('max_uses')->orWhereColumn('uses', '<', 'max_uses'))
+            ->increment('uses') > 0;
     }
 
     /**
@@ -386,68 +479,54 @@ class MedicalAnalysisController extends Controller
      * 
      * Verifica código: estado, fechas, límite de uso
      * Calcula descuento según tipo (porcentaje o cantidad fija)
-     */
+     */    
     public function validatePromoCode(Request $request)
     {
         $validated = $request->validate([
-            'code' => 'required|string|max:50'
+            'code' => 'required|string|max:50',
         ]);
 
-        $code = PromoCode::where('code', strtoupper($validated['code']))->first();
+        $code = PromoCode::where('code', strtoupper(trim($validated['code'])))->first();
 
         if (!$code) {
-            return response()->json([
-                'valid' => false,
-                'message' => 'Código no encontrado.'
-            ]);
+            return response()->json(['valid' => false, 'message' => 'Código no encontrado.']);
         }
 
         if (!$code->is_active) {
-            return response()->json([
-                'valid' => false,
-                'message' => 'Código inactivo.'
-            ]);
+            return response()->json(['valid' => false, 'message' => 'Código inactivo.']);
         }
 
-        $now = now();
-        if ($code->valid_from && $code->valid_from > $now) {
-            return response()->json([
-                'valid' => false,
-                'message' => 'Código aún no está disponible.'
-            ]);
+        if ($code->starts_at && now()->lt(\Carbon\Carbon::parse($code->starts_at))) {
+            return response()->json(['valid' => false, 'message' => 'Código aún no está disponible.']);
         }
 
-        if ($code->valid_until && $code->valid_until < $now) {
-            return response()->json([
-                'valid' => false,
-                'message' => 'Código expirado.'
-            ]);
+        if ($code->expires_at && now()->gt(\Carbon\Carbon::parse($code->expires_at))) {
+            return response()->json(['valid' => false, 'message' => 'Código expirado.']);
         }
 
-        if ($code->max_uses && $code->uses_count >= $code->max_uses) {
-            return response()->json([
-                'valid' => false,
-                'message' => 'Código agotado.'
-            ]);
+        if ($code->max_uses !== null && $code->uses >= $code->max_uses) {
+            return response()->json(['valid' => false, 'message' => 'Código agotado.']);
         }
 
-        $price = session('medical_analysis_price', 30000);
-        $discountAmount = 0;
+        $price = (int) session('medical_analysis_price', 30000);
 
-        if ($code->discount_type === 'percentage') {
-            $discountAmount = ceil($price * ($code->discount_value / 100));
-        } else {
-            $discountAmount = $code->discount_value;
-        }
+        $discountAmount = $code->type === 'percent'
+            ? (int) round($price * (float) $code->reward / 100)
+            : (int) round((float) $code->reward);
+
+        $discountAmount = max(0, min($discountAmount, $price));
+        $finalPrice = $price - $discountAmount;
 
         return response()->json([
             'valid' => true,
-            'discount_type' => $code->discount_type,
-            'discount_value' => $code->discount_value,
+            'discount_type' => $code->type,
+            'discount_value' => (float) $code->reward,
             'discount_amount' => $discountAmount,
-            'message' => 'Código aplicado correctamente.'
+            'final_price' => $finalPrice,
+            'is_free' => $finalPrice === 0,
+            'message' => 'Código aplicado correctamente.',
         ]);
-    }
+    }    
 
     /**
      * Procesar análisis con IA (se ejecuta desde Job asincrónico)

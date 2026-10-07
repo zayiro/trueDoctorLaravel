@@ -524,29 +524,47 @@ Route::get('/medical-analysis/payment/result/{token}', [MedicalAnalysisControlle
     ->name('medical-analysis.payment-result');   
     
 //skin-analysis
+// Pantalla de inicio informativa
+// NUEVA: Endpoint asíncrono (Fetch) que usa Alpine para validar la calidad de la foto
+Route::post('/skin-analysis/validate-image', [SkinAnalysisController::class, 'validateImage'])
+    ->name('skin-analysis.validate-image');
+    
 Route::get('/skin-analysis', [SkinAnalysisController::class, 'index'])
         ->name('skin-analysis.index');
-        
+
+Route::post('/skin-analysis/reset-image', [SkinAnalysisController::class, 'resetImage'])
+    ->name('skin-analysis.reset-image');        
+
+// Formulario de carga (donde opera Alpine.js)
 Route::get('/skin-analysis/upload', [SkinAnalysisController::class, 'upload'])
     ->name('skin-analysis.upload');
 
+// Vista previa de los datos clínicos y desglose de precios ($9.000 COP + Comisión)
 Route::post('/skin-analysis/before-preview', [SkinAnalysisController::class, 'beforePreview'])
     ->name('skin-analysis.before-preview');
 
 Route::get('/skin-analysis/preview/{session_id}', [SkinAnalysisController::class, 'preview'])
     ->name('skin-analysis.preview');
 
+// Aplica cupones, crea el registro en BD (MedicalAnalysis) y mueve fotos en el disco 'private'
 Route::post('/skin-analysis/process-documents', [SkinAnalysisController::class, 'processDocuments'])
-    ->name('skin-analysis.process-documents');
+        ->name('skin-analysis.process-documents');;
 
+// Pantalla que renderiza el botón de pago y la firma de integridad de Wompi
 Route::get('/skin-analysis/payment/{token}', [SkinAnalysisController::class, 'paymentGateway'])
-    ->name('payment');
+    ->name('skin-analysis.payment');
 
+// URL de retorno (Verificación de la transacción APPROVED / REJECTED) y disparo del Job
 Route::get('/skin-analysis/payment/result/{token}', [SkinAnalysisController::class, 'processPaymentResult'])
-    ->name('.skin-analysispayment.result');
+        ->name('skin-analysis.payment-result');
 
+// Vista de resultados (Muestra la pantalla de carga con Polling o el JSON médico de Claude finalizado)
 Route::get('/skin-analysis/result/{token}', [SkinAnalysisController::class, 'showResult'])
     ->name('skin-analysis.result');  
+
+// Procesa el formulario aprobado por la IA y monta los datos en la Sesión
+Route::post('/skin-analysis/before-preview', [SkinAnalysisController::class, 'beforePreview'])
+    ->name('skin-analysis.before-preview');
 
 // Pública para verificación
 Route::get('/verify/{signatureHash}', [PrescriptionController::class, 'verify'])

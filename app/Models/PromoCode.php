@@ -66,4 +66,37 @@ class PromoCode extends Model
 
         return true;
     }
+
+    /**
+     * ¿El código se puede usar ahora? (activo, con cupo y dentro de su vigencia)
+     */
+    public function isRedeemable(): bool
+    {
+        if (!$this->is_active) {
+            return false;
+        }
+        if ($this->max_uses !== null && $this->uses >= $this->max_uses) {
+            return false;
+        }
+        if ($this->starts_at && now()->lt(\Carbon\Carbon::parse($this->starts_at))) {
+            return false;
+        }
+        if ($this->expires_at && now()->gt(\Carbon\Carbon::parse($this->expires_at))) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Descuento en pesos sobre un precio. 'percent' = porcentaje; cualquier otro tipo se trata como monto fijo.
+     */
+    public function discountFor(int $price): int
+    {
+        $discount = $this->type === 'percent'
+            ? (int) round($price * (float) $this->reward / 100)
+            : (int) round((float) $this->reward);
+
+        return max(0, min($discount, $price));
+    }
 }

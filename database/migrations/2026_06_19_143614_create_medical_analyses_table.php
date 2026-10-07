@@ -24,7 +24,7 @@ return new class extends Migration
             
             $table->longText('ai_response')->nullable();  // Respuesta global de la IA
             $table->enum('ai_provider', ['openai', 'claude', 'gemini'])->nullable();
-            $table->enum('analysis_language', ['es', 'en'])->default('es');
+            $table->enum('analysis_language', ['es', 'en', 'fr', 'pt', 'de'])->default('es')->comment('Idioma del informe');
             $table->string('customer_email');             
             $table->string('reason_type'); // 'routine', 'control', 'symptoms', etc.
             $table->text('reason_custom')->nullable(); // Detalle del motivo escrito por el usuario

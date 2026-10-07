@@ -91,6 +91,28 @@ class WompiService
     }
 
     /**
+     * Consulta una transacción en Wompi por su id y devuelve sus datos
+     * (status, reference, amount_in_cents, ...). Lanza excepción si Wompi no responde bien.
+     */
+    public function validateTransaction(string $transactionId): array
+    {
+        $baseUrl = config('services.wompi.endpoint');
+
+        $response = Http::timeout(15)
+            ->withToken($this->publicKey)
+            ->acceptJson()
+            ->get("{$baseUrl}/transactions/{$transactionId}");
+
+        if ($response->failed()) {
+            throw new \RuntimeException(
+                'Wompi respondió ' . $response->status() . ' al consultar la transacción ' . $transactionId
+            );
+        }
+
+        return $response->json('data') ?? [];
+    }
+
+    /**
      * Valida la firma del webhook de Wompi.
      */
     public function validateWebhookSignature(array $payload, string $signature): bool

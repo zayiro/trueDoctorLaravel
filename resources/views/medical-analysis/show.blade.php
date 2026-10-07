@@ -1,6 +1,6 @@
 <x-guest-layout>
     <!-- Contenedor Principal del Reporte -->
-    <div class="max-w-5xl mx-auto space-y-8 animate-fade-in p-6 md:p-12 mt-12">
+    <div class="max-w-7xl mx-auto space-y-8 animate-fade-in p-6 md:p-12 mt-12">
 
         @if(in_array($analysis->status, ['pending', 'processing']))
 
@@ -164,9 +164,9 @@
                         <div class="prose max-w-none relative z-10
                                     prose-headings:text-white prose-headings:font-bold
                                     prose-h2:text-lg prose-h3:text-base
-                                    prose-p:text-slate-300 prose-p:text-sm prose-p:leading-relaxed
+                                    prose-p:text-slate-300 prose-p:text-base prose-p:leading-relaxed
                                     prose-strong:text-white prose-strong:font-semibold
-                                    prose-li:text-slate-300 prose-li:text-sm
+                                    prose-li:text-slate-300 prose-li:text-base
                                     prose-ul:my-2 prose-ol:my-2
                                     prose-a:text-indigo-400 hover:prose-a:text-indigo-300">
                             @markdown($analysis->ai_response['conclusion_paciente'] ?? 'No se pudo generar la conclusión.')
@@ -192,7 +192,7 @@
                                         <th class="p-4 pr-6 text-right">Estado</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-white/5 text-sm">
+                                <tbody class="divide-y divide-white/5 text-base">
                                     @forelse(($analysis->ai_response['hallazgos_clave'] ?? []) as $item)
                                         <tr class="hover:bg-white/(0.02) transition-colors">
                                             <td class="p-4 pl-6 font-semibold text-slate-200">{{ $item['parametro'] ?? '—' }}</td>
@@ -237,9 +237,9 @@
                         <div class="prose max-w-none
                                     prose-headings:text-white prose-headings:font-bold
                                     prose-h2:text-lg prose-h3:text-base
-                                    prose-p:text-slate-300 prose-p:text-sm prose-p:leading-relaxed
+                                    prose-p:text-slate-300 prose-p:text-base prose-p:leading-relaxed
                                     prose-strong:text-white prose-strong:font-semibold
-                                    prose-li:text-slate-300 prose-li:text-sm
+                                    prose-li:text-slate-300 prose-li:text-base
                                     prose-ul:my-2 prose-ol:my-2
                                     prose-a:text-indigo-400 hover:prose-a:text-indigo-300">
                             @markdown($analysis->ai_response['recomendaciones'] ?? 'No se generaron recomendaciones.')
