@@ -55,6 +55,7 @@ use App\Http\Controllers\Admin\ExamAnalysisController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\IndexedSymptomController;
 use App\Http\Controllers\Admin\AnalyticsController;
+use App\Http\Controllers\Admin\PromoCodeController;
 
 use App\Http\Controllers\MedicalAnalysisController;
 use App\Http\Controllers\CityController;
@@ -130,6 +131,17 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/administrator/payouts', [AdminController::class, 'payouts'])->name('administrator.payouts.index');
     Route::post('/administrator/payouts/{payout}/mark-paid', [AdminController::class, 'markPayoutPaid'])->name('administrator.payouts.mark-paid');
     Route::delete('/administrator/users/{user}/delete', [UserManagementController::class, 'destroy'])->name('administrator.users.destroy');
+
+    Route::resource('administrator/promo-codes', PromoCodeController::class)
+    ->names([
+        'index'   => 'administrator.promo-codes.index',
+        'create'  => 'administrator.promo-codes.create',
+        'store'   => 'administrator.promo-codes.store',
+        'edit'    => 'administrator.promo-codes.edit',
+        'update'  => 'administrator.promo-codes.update',
+        'destroy' => 'administrator.promo-codes.destroy',
+    ])
+    ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
 });
 
 // Rutas Privadas (medical partner)

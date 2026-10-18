@@ -79,7 +79,12 @@
             'href' => route('administrator.analytics.index'),
             'active' => request()->routeIs('administrator.analytics.index'),
         ],
-
+        [
+            'name' => 'Códigos de Promoción',
+            'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://w3.org"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-3.75-3.75h.008v.008h-.008V14.25Zm0 3h.008v.008h-.008V17.25Zm0-6h.008v.008h-.008V11.25Zm0-3h.008v.008h-.008V8.25Zm-3 3h.008v.008h-.008V11.25Zm0 3h.008v.008h-.008V14.25Zm0 3h.008v.008h-.008V17.25Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm11.25-3.75H8.25v7.5h5.25v-7.5Z" /></svg>',
+            'href' => route('administrator.promo-codes.index'),
+            'active' => request()->routeIs('administrator.promo-codes.*'),
+        ],
     ];
 
     $userRole = match ($user->role) {

@@ -78,10 +78,10 @@ class PromoCode extends Model
         if ($this->max_uses !== null && $this->uses >= $this->max_uses) {
             return false;
         }
-        if ($this->starts_at && now()->lt(\Carbon\Carbon::parse($this->starts_at))) {
+        if ($this->starts_at && now()->lt(Carbon::parse($this->starts_at))) {
             return false;
         }
-        if ($this->expires_at && now()->gt(\Carbon\Carbon::parse($this->expires_at))) {
+        if ($this->expires_at && now()->gt(Carbon::parse($this->expires_at))) {
             return false;
         }
 
