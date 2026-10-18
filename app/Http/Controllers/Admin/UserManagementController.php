@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\RedirectResponse;
 
 class UserManagementController extends Controller
 {
@@ -163,7 +164,6 @@ class UserManagementController extends Controller
             return back()->with('error', 'Ocurrió un error al eliminar el usuario.');
         }
     }
-
     private function deletePatient(User $user): void
     {
         $patient = $user->patient;
@@ -211,5 +211,29 @@ class UserManagementController extends Controller
         // CASCADE automático al borrar clinic:
         // addresses, clinic_doctor, clinic_settings, clinic_specialty, schedules
         $clinic->delete();
+    }
+
+    /**
+     * Elimina un mensaje de contacto específico.
+     *
+     * @param int $id
+     * @return RedirectResponse
+     */
+    public function destroyContact(int $id): RedirectResponse
+    {
+        try {
+            // 1. Buscar el mensaje de contacto. Si no existe, lanza un error 404 de inmediato.
+            $contactRecord = ContactMessage::findOrFail($id);
+
+            // 2. Ejecutar la eliminación en la base de datos
+            $contactRecord->delete();
+
+            // 3. Redireccionar con un mensaje de éxito para las alertas Flash de Laravel
+            return redirect()->back()->with('success', 'El mensaje de contacto ha sido eliminado con éxito.');
+
+        } catch (\Exception $e) {
+            // En caso de un fallo inesperado, regresa con un mensaje de error
+            return redirect()->back()->with('error', 'No se pudo eliminar el mensaje. Inténtalo de nuevo.');
+        }
     }
 }

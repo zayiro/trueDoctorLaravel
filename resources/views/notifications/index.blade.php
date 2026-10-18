@@ -39,61 +39,81 @@ $breadcrumbs = [
             <div class="divide-y divide-gray-100">
                 @forelse($notifications as $notification)
                     <!-- Formulario contenedor para que toda la fila sea clicable hacia la cita médica -->
-                    <form action="{{ route('notifications.read', $notification->id) }}" method="POST">
-                        @csrf 
-                        @method('PATCH')
-                        
-                        <button type="submit" class="w-full text-left p-5 flex items-start justify-between gap-4 transition duration-150 {{ $notification->read_at ? 'bg-white hover:bg-gray-50/70' : 'bg-blue-50/40 hover:bg-blue-50/80' }}">
+                    <div class="relative group">
+                        <!-- Formulario Principal: Marcar como Leída -->
+                        <form action="{{ route('notifications.read', $notification->id) }}" method="POST">
+                            @csrf 
+                            @method('PATCH')
                             
-                            <div class="flex gap-4">
-                                <!-- Icono de Calendario Estilizado -->
-                                <div class="mt-0.5 p-2.5 rounded-xl shrink-0 {{ $notification->read_at ? 'bg-gray-100 text-gray-500' : 'bg-blue-100 text-blue-600' }}">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z"/>
-                                    </svg>
-                                </div>
+                            <!-- Nota: Se cambió a padding derecho 'pr-16' para que los textos nunca se monten sobre el botón de eliminar -->
+                            <button type="submit" class="w-full text-left p-5 pr-16 flex items-start justify-between gap-4 transition duration-150 {{ $notification->read_at ? 'bg-white hover:bg-gray-50/70' : 'bg-blue-50/40 hover:bg-blue-50/80' }}">
                                 
-                                <div>
-                                    <!-- Título dinámico interno -->
-                                    <span class="text-xs font-semibold uppercase tracking-wider {{ $notification->read_at ? 'text-gray-400' : 'text-blue-600' }}">
-                                        {{ $notification->data['title'] ?? 'Actualización de Cita' }}
-                                    </span>
+                                <div class="flex gap-4">
+                                    <!-- Icono de Calendario Estilizado -->
+                                    <div class="mt-0.5 p-2.5 rounded-xl shrink-0 {{ $notification->read_at ? 'bg-gray-100 text-gray-500' : 'bg-blue-100 text-blue-600' }}">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z"/>
+                                        </svg>
+                                    </div>
                                     
-                                    <!-- Mensaje descriptivo -->
-                                    <p class="text-sm mt-0.5 leading-relaxed {{ $notification->read_at ? 'text-gray-600' : 'text-gray-900 font-semibold' }}">
-                                        {{ $notification->data['message'] ?? $notification->data['body'] ?? '' }}
-                                    </p>
-                                    
-                                    <!-- Metadatos (Blindado contra errores de índices inexistentes) -->
-                                    <div class="flex items-center gap-2 text-xs text-gray-400 mt-1.5">
-                                        <span>{{ $notification->created_at->diffForHumans() }}</span>
-                                        @if(isset($notification->data['service']))
-                                            <span>•</span>
-                                            <span class="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-md">Servicio: {{ $notification->data['service'] }}</span>
-                                        @endif
+                                    <div>
+                                        <!-- Título dinámico interno -->
+                                        <span class="text-xs font-semibold uppercase tracking-wider {{ $notification->read_at ? 'text-gray-400' : 'text-blue-600' }}">
+                                            {{ $notification->data['title'] ?? 'Actualización de Cita' }}
+                                        </span>
+                                        
+                                        <!-- Mensaje descriptivo -->
+                                        <p class="text-sm mt-0.5 leading-relaxed {{ $notification->read_at ? 'text-gray-600' : 'text-gray-900 font-semibold' }}">
+                                            {{ $notification->data['message'] ?? $notification->data['body'] ?? '' }}
+                                        </p>
+                                        
+                                        <!-- Metadatos -->
+                                        <div class="flex items-center gap-2 text-xs text-gray-400 mt-1.5">
+                                            <span>{{ $notification->created_at->diffForHumans() }}</span>
+                                            @if(isset($notification->data['service']))
+                                                <span>•</span>
+                                                <span class="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-md">Servicio: {{ $notification->data['service'] }}</span>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <!-- Indicador visual / Botón derecho de Check -->
-                            <div class="shrink-0 self-center">
-                                @if(!$notification->read_at)
-                                    <div class="p-1 text-blue-500 bg-blue-50 rounded-full" title="No leída">
-                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                            <circle cx="10" cy="10" r="5"/>
-                                        </svg>
-                                    </div>
-                                @else
-                                    <div class="p-1 text-gray-300" title="Leída">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
-                                        </svg>
-                                    </div>
-                                @endif
-                            </div>
+                                <!-- Indicador visual / Botón derecho de Check -->
+                                <div class="shrink-0 self-center mr-8">
+                                    @if(!$notification->read_at)
+                                        <div class="p-1 text-blue-500 bg-blue-50 rounded-full" title="No leída">
+                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                <circle cx="10" cy="10" r="5"/>
+                                            </svg>
+                                        </div>
+                                    @else
+                                        <div class="p-1 text-gray-300" title="Leída">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
+                                            </svg>
+                                        </div>
+                                    @endif
+                                </div>
 
-                        </button>
-                    </form>
+                            </button>
+                        </form>
+
+                        <!-- Nuevo Formulario Independiente: Eliminar Notificación -->
+                        <div class="absolute right-4 top-1/2 -translate-y-1/2 z-10">
+                            <form action="{{ route('notifications.destroy', $notification->id) }}" method="POST"
+                                onsubmit="return confirm('¿Estás seguro de que deseas eliminar esta notificación?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" 
+                                        class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200"
+                                        title="Eliminar notificación">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                    </svg>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                 @empty
                     <!-- Estado de bandeja vacía estilizado -->
                     <div class="p-12 text-center bg-white">

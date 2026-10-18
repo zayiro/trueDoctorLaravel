@@ -4,104 +4,132 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 class SettingController extends Controller
 {
+    /** Tipos de examen (clave => etiqueta). Define precios y, salvo laboratorio, decimación. */
+    private const EXAM_TYPES = [
+        'lab' => '🧪 Laboratorio',
+        'xray' => '📸 Radiografía',
+        'ultrasound' => '🔊 Ecografía',
+        'ct' => '📊 Tomografía',
+        'mri' => '🧠 Resonancia Magnética',
+        'dicom' => '💾 DICOM',
+        'mammography' => '🎀 Mamografía',
+    ];
+
+    /** Modelos de IA que el panel permite elegir (valor guardado => nombre). */
+    private const AI_MODELS = [
+        'gpt-4o' => 'GPT-4o (OpenAI)',
+        'claude-sonnet-4-5' => 'Claude Sonnet 4.5',
+    ];
+
+    /** Un modelo primario y uno de respaldo por cada grupo de análisis. */
+    private const AI_FIELDS = [
+        'lab_ai_primary_model',
+        'lab_ai_fallback_model',
+        'imaging_ai_primary_model',
+        'imaging_ai_fallback_model',
+    ];
+
+    /** Comisiones (clave => [etiqueta, valor por defecto]). */
+    private const COMMISSIONS = [
+        'virtual_commission_doctor' => ['Comisión Cita Virtual - Doctor (%)', 0],
+        'virtual_commission_clinic' => ['Comisión Cita Virtual - Clínica (%)', 0],
+        'presential_commission_doctor' => ['Comisión Cita Presencial - Doctor (%)', 0],
+        'presential_commission_clinic' => ['Comisión Cita Presencial - Clínica (%)', 0],
+        'wompi_fee' => ['Fee Wompi (%)', 2.9],
+    ];
+
     /**
      * Muestra el panel de configuración del SaaS.
      */
-    public function index()
+    public function index(): View
     {
-        $settings = Setting::all()->pluck('value', 'key');
-        return view('administrator.settings.index', compact('settings'));
+        return view('administrator.settings.index', [
+            'settings' => Setting::all()->pluck('value', 'key'),
+            'examTypes' => self::EXAM_TYPES,
+            'decimationTypes' => $this->decimationTypes(),
+            'aiModels' => self::AI_MODELS,
+            'commissions' => self::COMMISSIONS,
+        ]);
     }
 
     /**
-     * Actualiza todas las configuraciones de forma consolidada
+     * Valida y guarda todas las configuraciones de una sola vez.
      */
-    public function update(Request $request)
+    public function update(Request $request): RedirectResponse
     {
-        $data = $request->validate([            
-            // PRECIOS DE EXÁMENES (NUEVO SISTEMA)
-            'exam_type_lab_price' => 'required|integer|min:5000',
-            'exam_type_xray_price' => 'required|integer|min:5000',
-            'exam_type_ultrasound_price' => 'required|integer|min:5000',
-            'exam_type_ct_price' => 'required|integer|min:5000',
-            'exam_type_mri_price' => 'required|integer|min:5000',
-            'exam_type_dicom_price' => 'required|integer|min:5000',
-            'exam_type_mammography_price' => 'required|integer|min:5000',
+        $schema = $this->schema();
 
-            // FACTORES DE DECIMACIÓN
-            'ct_auto_decimation' => 'required|integer|min:1|max:100',
-            'mri_auto_decimation' => 'required|integer|min:1|max:100',
-            'xray_auto_decimation' => 'required|integer|min:1|max:100',
-            'ultrasound_auto_decimation' => 'required|integer|min:1|max:100',
-            'dicom_auto_decimation' => 'required|integer|min:1|max:100',
-            'mammography_auto_decimation' => 'required|integer|min:1|max:100',
+        // Las reglas salen del mismo esquema que define el grupo de cada ajuste.
+        $data = $request->validate(Arr::map($schema, fn (array $definition) => $definition['rules']));
 
-            'lab_ai_primary_model' => 'required|in:gpt-4o,claude-sonnet-4-5',
-            'lab_ai_fallback_model' => 'required|in:gpt-4o,claude-sonnet-4-5',
-            'imaging_ai_primary_model' => 'required|in:gpt-4o,claude-sonnet-4-5',
-            'imaging_ai_fallback_model' => 'required|in:gpt-4o,claude-sonnet-4-5',
-
-            // SAAS GENERAL
-            'support_email' => 'required|email',
-
-            // COMISIONES
-            'virtual_commission_doctor' => 'required|numeric|min:0|max:100',
-            'virtual_commission_clinic' => 'required|numeric|min:0|max:100',
-            'presential_commission_doctor' => 'required|numeric|min:0|max:100',
-            'presential_commission_clinic' => 'required|numeric|min:0|max:100',
-            'wompi_fee' => 'required|numeric|min:0|max:100',
-        ]);
-
-        // Mapeo de grupos para cada configuración
-        $groups = [
-            // PRECIOS
-            'exam_type_lab_price' => 'pricing',
-            'exam_type_xray_price' => 'pricing',
-            'exam_type_ultrasound_price' => 'pricing',
-            'exam_type_ct_price' => 'pricing',
-            'exam_type_mri_price' => 'pricing',
-            'exam_type_dicom_price' => 'pricing',
-            'exam_type_mammography_price' => 'pricing',
-
-            // DECIMACIÓN
-            'ct_auto_decimation' => 'analysis',
-            'mri_auto_decimation' => 'analysis',
-            'xray_auto_decimation' => 'analysis',
-            'ultrasound_auto_decimation' => 'analysis',
-            'dicom_auto_decimation' => 'analysis',
-            'mammography_auto_decimation' => 'analysis',
-
-            'lab_ai_primary_model' => 'ai',
-            'lab_ai_fallback_model' => 'ai',
-            'imaging_ai_primary_model' => 'ai',
-            'imaging_ai_fallback_model' => 'ai',
-
-            // SAAS
-            'support_email' => 'saas',
-
-            // COMISIONES
-            'virtual_commission_doctor' => 'commissions',
-            'virtual_commission_clinic' => 'commissions',
-            'presential_commission_doctor' => 'commissions',
-            'presential_commission_clinic' => 'commissions',
-            'wompi_fee' => 'commissions',
-        ];
-
-        // Actualizar todas las configuraciones en una sola pasada
-        foreach ($data as $key => $value) {
-            Setting::updateOrCreate(
-                ['key' => $key],
-                [
-                    'value' => $value,
-                    'group' => $groups[$key] ?? 'general'
-                ]
-            );
-        }
+        DB::transaction(function () use ($data, $schema) {
+            foreach ($data as $key => $value) {
+                Setting::updateOrCreate(
+                    ['key' => $key],
+                    ['value' => $value, 'group' => $schema[$key]['group']]
+                );
+            }
+        });
 
         return redirect()->back()->with('success', '✅ Todas las configuraciones han sido actualizadas correctamente.');
+    }
+
+    /**
+     * Esquema único de ajustes: clave => [grupo, reglas de validación].
+     * Agregar un ajuste nuevo es agregarlo aquí (y mostrarlo en la vista).
+     */
+    private function schema(): array
+    {
+        $schema = [];
+
+        foreach (array_keys(self::EXAM_TYPES) as $type) {
+            $schema["exam_type_{$type}_price"] = [
+                'group' => 'pricing',
+                'rules' => ['required', 'integer', 'min:5000'],
+            ];
+        }
+
+        foreach (array_keys($this->decimationTypes()) as $type) {
+            $schema["{$type}_auto_decimation"] = [
+                'group' => 'analysis',
+                'rules' => ['required', 'integer', 'min:1', 'max:100'],
+            ];
+        }
+
+        foreach (self::AI_FIELDS as $field) {
+            $schema[$field] = [
+                'group' => 'ai',
+                'rules' => ['required', Rule::in(array_keys(self::AI_MODELS))],
+            ];
+        }
+
+        $schema['support_email'] = [
+            'group' => 'saas',
+            'rules' => ['required', 'email'],
+        ];
+
+        foreach (array_keys(self::COMMISSIONS) as $field) {
+            $schema[$field] = [
+                'group' => 'commissions',
+                'rules' => ['required', 'numeric', 'min:0', 'max:100'],
+            ];
+        }
+
+        return $schema;
+    }
+
+    /** El laboratorio no se decima: solo los estudios de imagen. */
+    private function decimationTypes(): array
+    {
+        return Arr::except(self::EXAM_TYPES, ['lab']);
     }
 }

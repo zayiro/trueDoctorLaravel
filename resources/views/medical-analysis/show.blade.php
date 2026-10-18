@@ -258,7 +258,7 @@
                             </div>
                             <div class="shrink-0 mt-3">
                                 <!-- URL Absoluta con Query String corregida -->
-                                <a href="{{ url('/search') }}?specialty={{ $analysis->ai_response['especialidad_slug'] }}&city=" 
+                                <a href="{{ url('/search') }}?specialty={{ $analysis->ai_response['especialidad_slug'] }}" 
                                     class="inline-flex items-center justify-center gap-1.5 px-5 py-3 bg-indigo-600 text-white hover:bg-indigo-700 text-indigo-900 font-bold text-lg rounded-xl shadow-md active:scale-95 transition-all duration-200"
                                     target="_blank" rel="noopener noreferrer"
                                 >

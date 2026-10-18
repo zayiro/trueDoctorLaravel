@@ -70,19 +70,19 @@ class IndexedSymptomController extends Controller
             ->with('success', 'Síntoma creado correctamente.');
     }
 
-    public function update(Request $request, IndexedSymptom $symptom)
+    public function update(Request $request, IndexedSymptom $seoSintoma)
     {
-        $data = $this->validateData($request, $symptom->id);
+        $data = $this->validateData($request, $seoSintoma->id);
 
-        $symptom->update($data);
+        $seoSintoma->update($data);
 
         return redirect()->route('administrator.symptoms.index')
             ->with('success', 'Síntoma actualizado correctamente.');
     }
 
-    public function destroy(IndexedSymptom $symptom)
+    public function destroy(IndexedSymptom $seoSintoma)
     {
-        $symptom->delete();
+        $seoSintoma->delete();
 
         return redirect()->route('administrator.symptoms.index')
             ->with('success', 'Síntoma eliminado correctamente.');

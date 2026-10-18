@@ -6,6 +6,16 @@ Allow: /sintomas/
 Allow: /search
 Allow: /search-symptom
 Allow: /doctor/
+Allow: /medical-analysis/
+Allow: /skin-analysis/
+Allow: /contact
+Allow: /about
+Allow: /terms
+Allow: /privacy
+Allow: /support
+Allow: /plans/show
+Allow: /search?specialty=medicina-general
+Allow: /medical-partner/institucional-opendoctoronline?specialty=medicina-general
 
 # 2. BLOQUEAR zonas privadas, paneles e infraestructura de Laravel
 Disallow: /api/
@@ -14,6 +24,10 @@ Disallow: /dashboard/
 Disallow: /livewire/
 Disallow: /password/
 Disallow: /oauth/
+Disallow: /medical-analysis/before-preview
+Disallow: /medical-analysis/process-documents
+Disallow: /appointments/step-two
+Disallow: /api/session/location
 
 # 3. BLOQUEAR parámetros de búsqueda interna (Evita bucles de contenido duplicado)
 Disallow: /*?*search=

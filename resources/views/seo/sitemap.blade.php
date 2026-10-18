@@ -8,12 +8,24 @@
         <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
-    </url>    
+    </url>  
+    <url>
+        <loc>{{ url('/register') }}</loc>
+        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
+            <changefreq>daily</changefreq>
+            <priority>0.6</priority>
+    </url>  
     <url>
         <loc>{{ url('/register-options') }}</loc>
         <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
         <changefreq>daily</changefreq>
-        <priority>0.8</priority>
+        <priority>0.5</priority>
+    </url>
+    <url>
+        <loc>{{ url('/register-partner') }}</loc>
+        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
+            <changefreq>daily</changefreq>
+            <priority>0.5</priority>
     </url>
     <url>
         <loc>{{ url('/login') }}</loc>
@@ -28,7 +40,19 @@
         <priority>0.9</priority>
     </url>
     <url>
+        <loc>{{ url('/skin-analysis') }}s</loc>
+        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.9</priority>
+    </url>
+    <url>
         <loc>{{ url('/medical-analysis/upload') }}</loc>
+        <lastmod>2026-05-21T00:00:00+00:00</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    <url>
+        <loc>{{ url('/skin-analysis/upload') }}</loc>
         <lastmod>2026-05-21T00:00:00+00:00</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.7</priority>

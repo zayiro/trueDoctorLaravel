@@ -78,11 +78,11 @@
                         <!-- Email e Idioma -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label for="email" class="block text-sm font-bold text-slate-800 mb-1.5">📧 Correo Electrónico</label>
+                                <label for="email" class="block text-sm font-bold text-slate-800 mb-1.5">¿A qué correo electrónico enviamos tu resultado?</label>
                                 <input type="email" name="email" id="email" placeholder="nombre@correo.com" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition text-sm text-slate-800" required>
                             </div>
                             <div>
-                                <label for="language" class="block text-sm font-bold text-slate-800 mb-1.5">🌐 Idioma del Reporte</label>
+                                <label for="language" class="block text-sm font-bold text-slate-800 mb-1.5">¿En qué idioma quieres ver el resultado?</label>
                                 <select name="language" id="language" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition text-sm text-slate-800">
                                     <option value="es" selected>Español (Spanish)</option>
                                     <option value="en">Inglés (English)</option>
@@ -95,7 +95,7 @@
 
                         <!-- Ubicación Opcional -->
                         <div>
-                            <label for="body_location" class="block text-sm font-bold text-slate-800 mb-1.5">📍 Ubicación en el Cuerpo <span class="text-xs font-normal text-slate-400">(Opcional)</span></label>
+                            <label for="body_location" class="block text-sm font-bold text-slate-800 mb-1.5">Ubicación en el cuerpo <span class="text-xs font-normal text-slate-400">(Opcional)</span></label>
                             <select name="body_location" id="body_location" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition text-sm text-slate-800">
                                 <option value="">Selecciona una zona…</option>
                                 @foreach ($bodyLocations as $group => $options)
@@ -115,14 +115,26 @@
                         </div>
 
                         <!-- Botones de Acción Final -->
-                        <div class="flex flex-col sm:flex-row gap-3 pt-2">
-                            <button type="button" @click="changePhoto()" class="px-4 py-3 bg-slate-100 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-200 transition-all duration-200">
+                        <div class="flex flex-col sm:flex-row gap-3 pt-2 w-full">
+                            <button type="button" @click="changePhoto()" class="px-4 py-3 bg-slate-100 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-200 transition-all duration-200 sm:w-auto w-full">
                                 Cambiar Fotografía
                             </button>
-                            <button type="submit" class="flex-1 inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white shadow-sm hover:bg-blue-700 transition-all duration-200">
-                                Continuar
-                            </button>
+                            
+                            <!-- Contenedor del botón de enviar expandido al máximo -->
+                            <div class="flex-1 w-full pt-6 sm:pt-0">
+                                <button type="submit" id="submitBtn" class="w-full inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white shadow-sm hover:bg-blue-700 transition-all duration-200">
+                                    <span id="btnText">Enviar Información</span>
+                                    <svg id="btnSpinner" class="animate-spin h-5 w-5 text-white hidden" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </button>
+                                <small class="block mt-2 text-sm text-slate-400 font-medium px-1">
+                                    Al hacer clic, aceptas nuestros <a href="{{ route('terms.show') }}" class="underline hover:text-indigo-600 transition-colors">Términos de Servicio</a> y <a href="{{ route('privacy.show') }}" class="underline hover:text-indigo-600 transition-colors">Política de Privacidad</a>.
+                                </small>
+                            </div>
                         </div>
+
                     </div>
                 </form>
 

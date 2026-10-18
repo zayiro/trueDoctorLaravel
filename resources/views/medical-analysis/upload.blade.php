@@ -54,50 +54,6 @@
                 <p class="text-md text-slate-400">Arrastra o selecciona informes médicos (PDF, JPG, PNG, DICOM) y obtén una interpretación guiada por Inteligencia Artificial.</p>
             </div>
 
-            <!-- 🆕 TABLA DE PRECIOS FIJOS (visible desde el inicio) -->
-            <!--
-            <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-6">
-                <h3 class="text-white font-bold mb-4 flex items-center gap-2">
-                    <svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
-                    </svg>
-                    Precios Fijos por Tipo de Examen
-                </h3>
-                
-                <div class="grid md:grid-cols-2 gap-3">
-                    <div class="flex justify-between items-center p-3 bg-slate-900/50 rounded border border-white/5 hover:border-blue-500/30 transition">
-                        <span class="text-slate-300">🧪 Exámenes de Laboratorio</span>
-                        <span class="font-bold text-blue-400">${{ number_format($prices['lab'], 0, ',', '.') }}</span>
-                    </div>
-                    
-                    <div class="flex justify-between items-center p-3 bg-slate-900/50 rounded border border-white/5 hover:border-blue-500/30 transition">
-                        <span class="text-slate-300">📸 Radiografía</span>
-                        <span class="font-bold text-blue-400">${{ number_format($prices['xray'], 0, ',', '.') }}</span>
-                    </div>
-                    
-                    <div class="flex justify-between items-center p-3 bg-slate-900/50 rounded border border-white/5 hover:border-blue-500/30 transition">
-                        <span class="text-slate-300">🔊 Ecografía</span>
-                        <span class="font-bold text-blue-400">${{ number_format($prices['ultrasound'], 0, ',', '.') }}</span>
-                    </div>
-                    
-                    <div class="flex justify-between items-center p-3 bg-slate-900/50 rounded border border-white/5 hover:border-blue-500/30 transition">
-                        <span class="text-slate-300">📊 Tomografía</span>
-                        <span class="font-bold text-blue-400">${{ number_format($prices['ct'], 0, ',', '.') }}</span>
-                    </div>
-                    
-                    <div class="flex justify-between items-center p-3 bg-slate-900/50 rounded border border-white/5 hover:border-blue-500/30 transition">
-                        <span class="text-slate-300">🧠 Resonancia</span>
-                        <span class="font-bold text-blue-400">${{ number_format($prices['mri'], 0, ',', '.') }}</span>
-                    </div>
-                    
-                    <div class="flex justify-between items-center p-3 bg-slate-900/50 rounded border border-white/5 hover:border-blue-500/30 transition">
-                        <span class="text-slate-300">💾 DICOM</span>
-                        <span class="font-bold text-blue-400">${{ number_format($prices['dicom'], 0, ',', '.') }}</span>
-                    </div>
-                </div>
-            </div>
-            -->
-
             <!-- FORMULARIO -->
             <form id="uploadForm" enctype="multipart/form-data" class="space-y-6">            
                 @csrf

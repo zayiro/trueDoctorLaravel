@@ -92,13 +92,21 @@ $breadcrumbs = [
                         <form action="{{ route('administrator.exams.toggle', $exam) }}" method="POST" onsubmit="return confirm('¿Deseas alterar el estado de pago del examen?');" class="w-full sm:w-auto">
                             @csrf
                             @method('PATCH')
-                            <button type="submit" class="w-full sm:w-auto py-2 px-4 text-xs font-semibold rounded-lg bg-indigo-100 text-slate-700 hover:bg-slate-200 transition text-center justify-center flex items-center">
+                            <button type="submit" class="w-full sm:w-auto py-3 px-4 text-sm font-semibold rounded-lg bg-indigo-100 text-slate-700 hover:bg-slate-200 transition text-center justify-center flex items-center">
                                 Activar pago
                             </button>
                         </form>
                         @endif
-                    </div>
 
+                        <!-- Nuevo Botón: Eliminar Examen -->
+                        <form action="{{ route('administrator.exams.destroy', $exam) }}" method="POST" onsubmit="return confirm('¿Estás completamente seguro de que deseas eliminar este examen? Esta acción no se puede deshacer.')" class="w-full sm:w-auto">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="w-full sm:w-auto text-sm bg-rose-50 text-rose-600 font-semibold px-4 py-3 border border-rose-100 rounded-lg shadow-sm hover:bg-rose-100 hover:text-rose-700 transition text-center justify-center flex items-center">
+                                Eliminar
+                            </button>
+                        </form>
+                    </div>
                 </div>
 
             @empty

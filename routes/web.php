@@ -120,10 +120,12 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/medical-exams', [ExamAnalysisController::class, 'index'])->name('administrator.exams.index');    
     Route::post('/admin/exams/{medicalAnalysis}/resend', [ExamAnalysisController::class, 'resend'])->name('administrator.exams.resend');
     Route::patch('/admin/exams/{examAnalysis}/toggle', [ExamAnalysisController::class, 'toggleStatus'])->name('administrator.exams.toggle');
+    Route::delete('/administrator/medical-analyses/{analysis}', [MedicalAnalysisController::class, 'destroy'])->name('administrator.exams.destroy');
 
     Route::get('/admin/settings', [SettingController::class, 'index'])->name('administrator.settings.index');
     Route::put('/admin/settings', [SettingController::class, 'update'])->name('administrator.settings.update');
     Route::get('/admin/contact', [UserManagementController::class, 'contactMessages'])->name('administrator.contact.index');
+    Route::delete('/admin/contact/{id}/delete', [UserManagementController::class, 'destroyContact'])->name('administrator.contact.destroy');
 
     Route::get('/administrator/payouts', [AdminController::class, 'payouts'])->name('administrator.payouts.index');
     Route::post('/administrator/payouts/{payout}/mark-paid', [AdminController::class, 'markPayoutPaid'])->name('administrator.payouts.mark-paid');
@@ -331,6 +333,7 @@ Route::middleware(['auth'])->group(function () {
     // Acción para marcar una o todas como leídas
     Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.readAll');
+    Route::delete('/notifications/{id}/delete', [NotificationController::class, 'destroyNotification'])->name('notifications.destroy');
 
     // Esta es la que pones en el FORMULARIO
     Route::get('/appointments/confirm/{id}', [AppointmentController::class, 'confirm'])->name('appointments.confirm');    
@@ -565,6 +568,9 @@ Route::get('/skin-analysis/result/{token}', [SkinAnalysisController::class, 'sho
 // Procesa el formulario aprobado por la IA y monta los datos en la Sesión
 Route::post('/skin-analysis/before-preview', [SkinAnalysisController::class, 'beforePreview'])
     ->name('skin-analysis.before-preview');
+
+Route::post('/skin-analysis/promo-codes/validate', [SkinAnalysisController::class, 'validatePromo'])
+    ->name('skin-analysis.promo-codes.validate');    
 
 // Pública para verificación
 Route::get('/verify/{signatureHash}', [PrescriptionController::class, 'verify'])

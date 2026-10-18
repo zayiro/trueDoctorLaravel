@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class NotificationController extends Controller
@@ -40,5 +41,28 @@ class NotificationController extends Controller
     {
         auth()->user()->unreadNotifications->markAsRead();
         return back()->with('success', 'Todas las notificaciones marcadas como leídas.');
+    }
+
+    /**
+     * Elimina una notificación específica del usuario autenticado.
+     *
+     * @param Request $request
+     * @param string $id
+     * @return RedirectResponse
+     */
+    public function destroyNotification(Request $request, string $id): RedirectResponse
+    {
+        try {
+            // Buscar la notificación directamente en las notificaciones del usuario logueado
+            $notification = $request->user()->notifications()->findOrFail($id);
+
+            // Eliminar físicamente el registro de la tabla 'notifications'
+            $notification->delete();
+
+            return redirect()->back()->with('success', 'La notificación ha sido eliminada.');
+            
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'No se pudo eliminar la notificación.');
+        }
     }
 }

@@ -7,7 +7,6 @@ use App\Jobs\SkinAnalysisJob;
 use App\Mail\SkinAnalysisReceived;
 use App\Models\PromoCode;
 use App\Models\SkinAnalysis;
-use App\Services\SkinAnalysisService;
 use App\Services\Wompi\WompiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -42,34 +41,30 @@ class SkinAnalysisController extends Controller
     ];
 
     private const IMAGE_VALIDATION_SYSTEM_PROMPT = <<<'PROMPT'
-    Eres un verificador de calidad de fotografías para una plataforma de dermatología. Tu única tarea es decidir si la imagen es técnicamente adecuada para que un profesional evalúe la piel. NO diagnostiques ni describas condiciones médicas.
+Eres un verificador de calidad de fotografías para una plataforma de dermatología. Tu única tarea es decidir si la imagen es técnicamente adecuada para que un profesional evalúe la piel. NO diagnostiques ni describas condiciones médicas.
 
-    Evalúa solo: que la imagen muestre piel humana, que esté enfocada, que tenga iluminación suficiente, que no esté demasiado lejos o cortada, y que no tenga filtros o sobreexposición fuertes.
+Evalúa solo: que la imagen muestre piel humana, que esté enfocada, que tenga iluminación suficiente, que no esté demasiado lejos o cortada, y que no tenga filtros o sobreexposición fuertes.
 
-    No rechaces una imagen por la zona del cuerpo que muestre. Rechaza únicamente por calidad técnica o porque no muestra piel.
+No rechaces una imagen por la zona del cuerpo que muestre. Rechaza únicamente por calidad técnica o porque no muestra piel.
 
-    Responde ÚNICAMENTE con un JSON válido, sin markdown ni texto adicional:
-    {"is_viable": true|false, "reason": "Si no es viable, explica en una frase amable en español qué mejorar. Si es viable, cadena vacía."}
-    PROMPT;
+Responde ÚNICAMENTE con un JSON válido, sin markdown ni texto adicional:
+{"is_viable": true|false, "reason": "Si no es viable, explica en una frase amable en español qué mejorar. Si es viable, cadena vacía."}
+PROMPT;
 
-    protected SkinAnalysisService $skinAnalysisService;
-    protected WompiService $wompiService;
-
-    public function __construct(SkinAnalysisService $skinAnalysisService, WompiService $wompiService)
+    public function __construct(protected WompiService $wompiService)
     {
-        $this->skinAnalysisService = $skinAnalysisService;
-        $this->wompiService = $wompiService;
     }
+
+    // =====================================================================
+    // 1. Carga y validación de la foto
+    // =====================================================================
 
     /**
      * GET /skin-analysis
      */
     public function index(): View
     {
-        return view('skin-analysis.index', [
-            'meta_title_medicalAnalysis' => 'Análisis Avanzado de Piel con IA',
-            'meta_description_medicalAnalysis' => 'Obtén un informe preliminar de tus lesiones cutáneas en minutos.',
-        ]);
+        return view('skin-analysis.index', $this->meta());
     }
 
     /**
@@ -90,8 +85,7 @@ class SkinAnalysisController extends Controller
         return view('skin-analysis.upload', [
             'resumeToken' => $resumeToken,
             'bodyLocations' => self::BODY_LOCATIONS,
-            'meta_title_medicalAnalysis' => 'Análisis Avanzado de Piel con IA',
-            'meta_description_medicalAnalysis' => 'Obtén un informe preliminar de tus lesiones cutáneas en minutos.',
+            ...$this->meta(),
         ]);
     }
 
@@ -119,10 +113,7 @@ class SkinAnalysisController extends Controller
 
         try {
             $file = $request->file('file');
-            $mimeType = $file->getMimeType();
-            $contents = file_get_contents($file->getRealPath());
-
-            $verdict = $this->checkImageQuality($contents, $mimeType);
+            $verdict = $this->checkImageQuality(file_get_contents($file->getRealPath()), $file->getMimeType());
 
             if ($verdict === null) {
                 return response()->json([
@@ -196,6 +187,10 @@ class SkinAnalysisController extends Controller
         return response()->json(['success' => true]);
     }
 
+    // =====================================================================
+    // 2. Datos del paciente y resumen
+    // =====================================================================
+
     /**
      * POST /skin-analysis/before-preview
      * Une los datos del formulario con la imagen ya validada.
@@ -241,24 +236,63 @@ class SkinAnalysisController extends Controller
                 ->with('error', 'Sesión expirada. Intenta de nuevo.');
         }
 
-        $price = self::BASE_PRICE;
-        $wompiCommission = $this->commissionFor($price);
-        $total = $price + $wompiCommission;
+        $breakdown = $this->priceBreakdown(0);
 
         return view('skin-analysis.preview', [
             'sessionId' => $sessionId,
             'sessionData' => $sessionData,
-            'price' => $price,
-            'wompiCommission' => $wompiCommission,
-            'total' => $total,
-            'meta_title_medicalAnalysis' => 'Análisis Avanzado de Piel con IA - Preview',
-            'meta_description_medicalAnalysis' => 'Obtén un informe preliminar de tus lesiones cutáneas en minutos.',
+            'price' => self::BASE_PRICE,
+            'wompiCommission' => $breakdown['fee'],
+            'total' => $breakdown['total'],
+            ...$this->meta(' - Preview'),
         ]);
     }
 
     /**
+     * POST /skin-analysis/promo-codes/validate
+     * Valida un código y devuelve el desglose de la orden con el descuento (solo para mostrarlo:
+     * el precio real se recalcula en processDocuments()).
+     */
+    public function validatePromo(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'code' => ['required', 'string', 'max:50'],
+        ]);
+
+        $code = PromoCode::where('code', strtoupper(trim($validated['code'])))->first();
+
+        if (!$code) {
+            return response()->json(['valid' => false, 'message' => 'Código no encontrado.']);
+        }
+
+        if (!$code->isRedeemable()) {
+            return response()->json(['valid' => false, 'message' => 'El código no está disponible (inactivo, vencido o agotado).']);
+        }
+
+        $discount = $code->discountFor(self::BASE_PRICE);
+        $price = $this->priceBreakdown($discount);
+
+        return response()->json([
+            'valid' => true,
+            'message' => 'Código aplicado correctamente.',
+            'discount_type' => $code->type,
+            'discount_value' => (float) $code->reward,
+            'discount_amount' => $discount,
+            'fee' => $price['fee'],
+            'total' => $price['total'],
+            'is_free' => $price['total'] === 0,
+        ]);
+    }
+
+    // =====================================================================
+    // 3. Creación de la orden y pago
+    // =====================================================================
+
+    /**
      * POST /skin-analysis/process-documents
-     * Aplica el código promocional, crea el registro y mueve la imagen al almacenamiento privado definitivo.
+     * Recalcula el precio en el servidor, crea la orden y mueve la foto al almacenamiento definitivo.
+     * - Total > 0: redirige a la pasarela de pago.
+     * - Total = 0 (código del 100%): consume el cupo y procesa directamente.
      */
     public function processDocuments(Request $request): RedirectResponse
     {
@@ -274,21 +308,33 @@ class SkinAnalysisController extends Controller
             return redirect()->route('skin-analysis.upload')->with('error', 'Sesión expirada.');
         }
 
-        $promoCode = !empty($validated['promo_code']) ? strtoupper(trim($validated['promo_code'])) : null;
-        $discount = 0;
-        $appliedPromo = null;
+        $backToPreview = fn (string $message) => redirect()
+            ->route('skin-analysis.preview', ['session_id' => $sessionId])
+            ->with('error', $message);
 
-        if ($promoCode) {
-            $promoData = $this->validatePromoCode($promoCode, self::BASE_PRICE);
-            if ($promoData['valid']) {
-                $discount = $promoData['discount'];
-                $appliedPromo = $promoCode;
+        // Código promocional: se valida y se recalcula SIEMPRE en el servidor.
+        $promo = null;
+        $discount = 0;
+        $promoInput = strtoupper(trim((string) ($validated['promo_code'] ?? '')));
+
+        if ($promoInput !== '') {
+            $candidate = PromoCode::where('code', $promoInput)->first();
+
+            if (!$candidate || !$candidate->isRedeemable()) {
+                return $backToPreview('El código promocional no es válido o ya no está disponible.');
             }
+
+            $promo = $candidate;
+            $discount = $candidate->discountFor(self::BASE_PRICE);
         }
 
-        $finalPrice = max(0, self::BASE_PRICE - $discount);
+        $price = $this->priceBreakdown($discount);
+        $isFree = $price['total'] === 0;
 
-        $wompiFee = $this->commissionFor($finalPrice);
+        // Orden gratis: el cupo se consume de forma atómica ANTES de crear nada.
+        if ($isFree && $promo && !$this->consumePromo($promo)) {
+            return $backToPreview('Este código ya no está disponible.');
+        }
 
         // access_token y el estado inicial (pending_payment) los fija el modelo/la tabla.
         $analysis = SkinAnalysis::create([
@@ -298,31 +344,45 @@ class SkinAnalysisController extends Controller
             'description' => $sessionData['description'],
             'price' => self::BASE_PRICE,
             'discount_amount' => $discount,
-            'wompi_fee' => $wompiFee,
-            'total_amount' => $finalPrice + $wompiFee,
-            'promo_code' => $appliedPromo,
+            'wompi_fee' => $price['fee'],
+            'total_amount' => $price['total'],
+            'promo_code' => $promo?->code,
             'ai_model' => self::AI_MODEL,
         ]);
 
-        // Mover imágenes: temporal privado -> definitivo privado
-        $disk = Storage::disk(self::DISK);
-        $tempDir = self::TEMP_DIR . '/' . $sessionId;
-        $analysisDir = $analysis->imageDirectory();
+        // Mover la foto: temporal privado -> definitivo privado
+        try {
+            $disk = Storage::disk(self::DISK);
+            $tempDir = self::TEMP_DIR . '/' . $sessionId;
 
-        foreach ($disk->files($tempDir) as $path) {
-            $disk->move($path, $analysisDir . '/' . basename($path));
+            foreach ($disk->files($tempDir) as $path) {
+                $disk->move($path, $analysis->imageDirectory() . '/' . basename($path));
+            }
+
+            $disk->deleteDirectory($tempDir);
+        } catch (\Throwable $e) {
+            Log::error('Skin: no se pudo mover la foto de la orden', [
+                'analysis_id' => $analysis->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            // Se deshace todo: la orden no existe sin su foto y el cupo se devuelve.
+            $analysis->delete();
+            if ($isFree && $promo) {
+                PromoCode::whereKey($promo->id)->decrement('uses');
+            }
+
+            return $backToPreview('No pudimos guardar tu fotografía. Intenta nuevamente.');
         }
 
-        $disk->deleteDirectory($tempDir);
         session()->forget([
             'skin_analysis_' . $sessionId,
             'skin_validated_' . $sessionId,
             'skin_last_token',
         ]);
 
-        // Descuento del 100%: no hay nada que cobrar, se procesa directamente.
-        if ($finalPrice === 0) {
-            $this->approveAnalysis($analysis, null);
+        if ($isFree) {
+            $this->approveAnalysis($analysis, null, false); // el cupo ya se consumió arriba
 
             return redirect()->route('skin-analysis.result', ['token' => $analysis->access_token]);
         }
@@ -353,19 +413,18 @@ class SkinAnalysisController extends Controller
             'reference' => $reference,
             'amount_in_cents' => $amountInCents,
             'currency' => self::CURRENCY,
-            'meta_title_medicalAnalysis' => 'Análisis Avanzado de Piel con IA - Payment',
-            'meta_description_medicalAnalysis' => 'Obtén un informe preliminar de tus lesiones cutáneas en minutos.',
+            ...$this->meta(' - Payment'),
         ]);
     }
 
     /**
      * GET /skin-analysis/payment/result/{token}
+     * Wompi devuelve aquí al paciente con ?id=<transacción>.
      */
     public function processPaymentResult(string $token): RedirectResponse
     {
         $analysis = $this->findPayableAnalysis($token);
 
-        // Wompi devuelve el id de la transacción en ?id=...
         $transactionId = request('id') ?? request('transaction_id');
         if (!$transactionId) {
             return redirect()->route('skin-analysis.payment', ['token' => $token])
@@ -387,10 +446,18 @@ class SkinAnalysisController extends Controller
 
         $status = $response['status'] ?? null;
 
-        if ($status === 'APPROVED' && $this->transactionMatchesAnalysis($response, $analysis)) {
-            $this->approveAnalysis($analysis, $transactionId);
+        if ($status === 'APPROVED') {
+            if ($this->transactionMatchesAnalysis($response, $analysis)) {
+                $this->approveAnalysis($analysis, $transactionId);
 
-            return redirect()->route('skin-analysis.result', ['token' => $token]);
+                return redirect()->route('skin-analysis.result', ['token' => $token]);
+            }
+
+            // Aprobada pero de otra orden u otro monto: no se acredita.
+            Log::warning('Skin payment: transacción aprobada que no coincide con la orden', [
+                'analysis_id' => $analysis->id,
+                'transaction_id' => $transactionId,
+            ]);
         }
 
         if ($status === 'PENDING') {
@@ -403,6 +470,10 @@ class SkinAnalysisController extends Controller
         return redirect()->route('skin-analysis.payment', ['token' => $token])
             ->with('error', 'El pago fue rechazado. Intenta nuevamente.');
     }
+
+    // =====================================================================
+    // 4. Resultado
+    // =====================================================================
 
     /**
      * GET /skin-analysis/result/{token}
@@ -420,8 +491,7 @@ class SkinAnalysisController extends Controller
         return view('skin-analysis.result', [
             'analysis' => $analysis,
             'is_processing' => $analysis->status === SkinAnalysis::STATUS_PROCESSING,
-            'meta_title_medicalAnalysis' => 'Análisis Avanzado de Piel con IA - Result',
-            'meta_description_medicalAnalysis' => 'Obtén un informe preliminar de tus lesiones cutáneas en minutos.',
+            ...$this->meta(' - Result'),
         ]);
     }
 
@@ -438,9 +508,44 @@ class SkinAnalysisController extends Controller
         return response()->json(['status' => $status]);
     }
 
-    // ---------------------------------------------------------------------
+    // =====================================================================
     // Helpers privados
-    // ---------------------------------------------------------------------
+    // =====================================================================
+
+    /**
+     * Variables de SEO que exige el layout.
+     */
+    private function meta(string $suffix = ''): array
+    {
+        return [
+            'meta_title_medicalAnalysis' => 'Análisis Avanzado de Piel con IA' . $suffix,
+            'meta_description_medicalAnalysis' => 'Obtén un informe preliminar de tus lesiones cutáneas en minutos.',
+        ];
+    }
+
+    /**
+     * Desglose de la orden en pesos a partir del descuento.
+     * La comisión de la pasarela se calcula sobre el precio ya con descuento.
+     *
+     * @return array{discount:int, final:int, fee:int, total:int}
+     */
+    private function priceBreakdown(int $discount): array
+    {
+        $final = max(0, self::BASE_PRICE - $discount);
+        $fee = $this->commissionFor($final);
+
+        return [
+            'discount' => $discount,
+            'final' => $final,
+            'fee' => $fee,
+            'total' => $final + $fee,
+        ];
+    }
+
+    private function commissionFor(int|float $amount): int
+    {
+        return (int) round($amount * self::WOMPI_COMMISSION_RATE);
+    }
 
     /**
      * Consulta a la IA si la foto es técnicamente adecuada.
@@ -492,37 +597,21 @@ class SkinAnalysisController extends Controller
     }
 
     /**
-     * Valida el código promocional SIN consumirlo (el uso se registra solo cuando el pago se aprueba).
+     * Consume un uso del código de forma atómica.
+     * Devuelve false si el cupo se agotó entre la validación y el consumo.
      */
-    private function validatePromoCode(string $code, int $basePrice): array
+    private function consumePromo(PromoCode $promo): bool
     {
-        $promo = PromoCode::where('code', strtoupper($code))->first();
-
-        if (!$promo || !$promo->is_active) {
-            return ['valid' => false, 'discount' => 0];
-        }
-        if ($promo->usage_limit && $promo->times_used >= $promo->usage_limit) {
-            return ['valid' => false, 'discount' => 0];
-        }
-        if ($promo->valid_from && now()->lt($promo->valid_from)) {
-            return ['valid' => false, 'discount' => 0];
-        }
-        if ($promo->valid_until && now()->gt($promo->valid_until)) {
-            return ['valid' => false, 'discount' => 0];
-        }
-
-        $discount = $promo->discount_type === 'percentage'
-            ? (int) round(($basePrice * $promo->discount_value) / 100)
-            : (int) $promo->discount_value;
-
-        return ['valid' => true, 'discount' => min($discount, $basePrice)];
+        return PromoCode::whereKey($promo->id)
+            ->where(fn ($q) => $q->whereNull('max_uses')->orWhereColumn('uses', '<', 'max_uses'))
+            ->increment('uses') > 0;
     }
 
     /**
-     * Marca el pago como completado, consume el código promocional y dispara el procesamiento.
+     * Pasa la orden a "processing", consume el código (si aplica) y dispara el análisis.
      * Es idempotente: si dos requests llegan a la vez, solo el primero avanza.
      */
-    private function approveAnalysis(SkinAnalysis $analysis, ?string $transactionId): void
+    private function approveAnalysis(SkinAnalysis $analysis, ?string $transactionId, bool $consumePromo = true): void
     {
         $updated = SkinAnalysis::whereKey($analysis->id)
             ->whereIn('status', SkinAnalysis::PAYABLE_STATUSES)
@@ -536,14 +625,31 @@ class SkinAnalysisController extends Controller
             return;
         }
 
-        if ($analysis->promo_code) {
-            PromoCode::where('code', strtoupper($analysis->promo_code))->increment('times_used');
+        if ($consumePromo && $analysis->promo_code) {
+            $promo = PromoCode::where('code', strtoupper($analysis->promo_code))->first();
+
+            // El pago ya se aprobó: si el cupo se agotó justo ahora, solo se deja constancia.
+            if ($promo && !$this->consumePromo($promo)) {
+                Log::warning('Skin: cupo del código agotado al aprobar el pago', [
+                    'analysis_id' => $analysis->id,
+                    'promo_code' => $analysis->promo_code,
+                ]);
+            }
         }
 
         $analysis = $analysis->fresh();
 
         SkinAnalysisJob::dispatch($analysis);
-        Mail::to($analysis->customer_email)->queue(new SkinAnalysisReceived($analysis));
+
+        try {
+            Mail::to($analysis->customer_email)->queue(new SkinAnalysisReceived($analysis));
+        } catch (\Throwable $e) {
+            // Un fallo del correo no debe romper el flujo: el análisis ya está en marcha.
+            Log::warning('Skin: no se pudo encolar el correo de recepción', [
+                'analysis_id' => $analysis->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -581,10 +687,5 @@ class SkinAnalysisController extends Controller
     private function payableAmount(SkinAnalysis $analysis): int
     {
         return (int) $analysis->total_amount;
-    }
-
-    private function commissionFor(int|float $amount): int
-    {
-        return (int) round($amount * self::WOMPI_COMMISSION_RATE);
     }
 }

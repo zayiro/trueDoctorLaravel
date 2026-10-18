@@ -2,41 +2,79 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\MedicalAnalysis;
-use App\Models\Setting;
-use App\Models\PromoCode;
-use App\Services\AnalysisPricingService;
-use App\Services\AI\AIVisionManager;
 use App\Jobs\ProcessMedicalAnalysisAI;
 use App\Mail\ExamAnalysisReady;
+use App\Models\MedicalAnalysis;
+use App\Models\PromoCode;
+use App\Models\Setting;
+use App\Services\AI\AIVisionManager;
+use App\Services\MedicalAnalysisFilePurger;
+use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Spatie\PdfToImage\Pdf;
-use Spatie\PdfToImage\Enums\OutputFormat;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
+use Illuminate\Validation\Rule;
+use Spatie\PdfToImage\Enums\OutputFormat;
+use Spatie\PdfToImage\Pdf;
 
 class MedicalAnalysisController extends Controller
 {
     const SUPPORTED_LANGUAGES = ['es', 'en', 'fr', 'pt', 'de'];
     const DEFAULT_LANGUAGE = 'es';
 
+    private const EXAM_TYPES = ['lab', 'xray', 'ultrasound', 'ct', 'mri', 'mammography', 'dicom'];
+    private const IMAGING_TYPES = ['xray', 'ct', 'mri', 'ultrasound', 'mammography', 'dicom'];
+
+    /** Precios por defecto si el panel de configuración aún no tiene el ajuste. */
+    private const DEFAULT_PRICES = [
+        'lab' => 12000,
+        'xray' => 18000,
+        'ultrasound' => 16000,
+        'ct' => 30000,
+        'mri' => 35000,
+        'dicom' => 30000,
+        'mammography' => 22000,
+    ];
+
+    /** Decimación por defecto (cada N-ésima página/imagen) si el panel no define otra. */
+    private const DEFAULT_DECIMATION = [
+        'ct' => 3,
+        'mri' => 3,
+        'xray' => 1,
+        'ultrasound' => 1,
+        'mammography' => 1,
+        'dicom' => 1,
+        'lab' => 2,
+    ];
+
+    private const PRIVATE_DISK = 'private';
+    private const EXAM_DIR = 'medical-exams';
+
+    private const SESSION_KEYS = [
+        'medical_analysis_files',
+        'medical_analysis_total_size',
+        'medical_analysis_data',
+        'medical_analysis_price',
+    ];
+
     public function __construct() {}
+
+    // =====================================================================
+    // Páginas públicas y carga
+    // =====================================================================
 
     /**
      * Mostrar página principal de análisis médicos
      */
     public function index()
     {
-        $priceSetting = Setting::get('exam_type_lab_price', 12000);
-        $price = number_format($priceSetting, 0, ',', '.');
-        $meta_title_medicalAnalysis = 'OpenDoctorOnline | Interpreta tus exámenes médicos con Inteligencia Artificial';
-        $meta_description_medicalAnalysis = 'Análisis médico online con IA. Laboratorio e imagenología (radiografías, tomografías, resonancias). Diagnóstico instantáneo, cita médica virtual y presencial disponible.';
+        $price = number_format($this->getPrices()['lab'], 0, ',', '.');
 
-        return view('medical-analysis.index', compact('price', 'meta_title_medicalAnalysis', 'meta_description_medicalAnalysis'));
+        return view('medical-analysis.index', ['price' => $price, ...$this->meta()]);
     }
 
     /**
@@ -44,25 +82,12 @@ class MedicalAnalysisController extends Controller
      */
     public function showUploadForm()
     {
-        $prices = [
-            'lab' => (int)Setting::get('exam_type_lab_price', 12000),
-            'xray' => (int)Setting::get('exam_type_xray_price', 18000),
-            'ultrasound' => (int)Setting::get('exam_type_ultrasound_price', 16000),
-            'ct' => (int)Setting::get('exam_type_ct_price', 30000),
-            'mri' => (int)Setting::get('exam_type_mri_price', 35000),
-            'dicom' => (int)Setting::get('exam_type_dicom_price', 30000),
-            'mammography' => (int)Setting::get('exam_type_mammography_price', 22000),
-        ];
-
-        $meta_title_medicalAnalysis = 'OpenDoctorOnline | Interpreta tus exámenes médicos con Inteligencia Artificial';
-        $meta_description_medicalAnalysis = 'Análisis médico online con IA. Laboratorio e imagenología (radiografías, tomografías, resonancias). Diagnóstico instantáneo, cita médica virtual y presencial disponible.';
-
-        return view('medical-analysis.upload', compact('prices', 'meta_title_medicalAnalysis', 'meta_description_medicalAnalysis'));
+        return view('medical-analysis.upload', ['prices' => $this->getPrices(), ...$this->meta()]);
     }
 
     /**
      * ✅ PASO 1: Guardar archivos temporales en sesión
-     * 
+     *
      * Valida archivos, calcula precio, guarda datos en sesión
      * Redirige a preview para que usuario revise su orden
      */
@@ -72,32 +97,29 @@ class MedicalAnalysisController extends Controller
             'medical_files' => 'required|array|max:5',
             'medical_files.*' => 'file|mimes:pdf,jpg,jpeg,png,dcm|max:10240',
             'customer_email' => 'required|email',
-            'selected_language' => 'required|in:es,en,fr,pt,de',
-            'detected_exam_type' => 'required|in:lab,xray,ultrasound,ct,mri,mammography,dicom',
+            'selected_language' => ['required', Rule::in(self::SUPPORTED_LANGUAGES)],
+            'detected_exam_type' => ['required', Rule::in(self::EXAM_TYPES)],
             'reason_type' => 'nullable|in:routine,monitoring,symptoms,other',
             'reason_custom' => 'nullable|string|max:500',
         ]);
 
+        // Si el usuario ya había subido archivos antes, se descartan: no deben quedar huérfanos.
+        $this->discardTempUpload();
+
         $files = [];
         $totalSize = 0;
-        
+
         foreach ($request->file('medical_files') as $file) {
-            $path = $file->store('temp-uploads', 'local');
             $files[] = [
                 'name' => $file->getClientOriginalName(),
                 'size' => $file->getSize(),
-                'path' => $path,
+                'path' => $file->store('temp-uploads', 'local'),
             ];
             $totalSize += $file->getSize();
         }
 
-        // Obtener precio según tipo de examen
-        $examType = $validated['detected_exam_type'];
-        
-        $prices = $this->getPrices();
-        $price = $prices[$examType] ?? 12000;
+        $price = $this->basePriceFor($validated['detected_exam_type']);
 
-        // Guardar TODO en sesión
         session([
             'medical_analysis_files' => $files,
             'medical_analysis_total_size' => $totalSize,
@@ -107,23 +129,17 @@ class MedicalAnalysisController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'price'  => $price,
-            'redirect_url' => route('medical-analysis.preview')
+            'price' => $price,
+            'redirect_url' => route('medical-analysis.preview'),
         ]);
     }
 
     /**
      * ✅ PASO 2: Mostrar preview de la orden
-     * 
-     * Lee sesión, muestra archivos, precio y permite aplicar código promo
-     * Usuario decide si procede o vuelve atrás
      */
     public function preview()
     {
-        $files = session('medical_analysis_files', []);
-        $totalSize = session('medical_analysis_total_size', 0);
         $validated = session('medical_analysis_data', []);
-        $price = session('medical_analysis_price', 12000);
 
         if (empty($validated)) {
             return redirect()->route('medical-analysis.upload')
@@ -131,16 +147,20 @@ class MedicalAnalysisController extends Controller
         }
 
         return view('medical-analysis.preview', [
-            'files' => $files,
-            'totalSize' => $totalSize,
+            'files' => session('medical_analysis_files', []),
+            'totalSize' => session('medical_analysis_total_size', 0),
             'examType' => $validated['detected_exam_type'],
-            'price' => $price,
+            'price' => $this->basePriceFor($validated['detected_exam_type']),
             'email' => $validated['customer_email'],
             'language' => $validated['selected_language'],
             'reasonType' => $validated['reason_type'] ?? null,
             'reasonCustom' => $validated['reason_custom'] ?? null,
         ]);
     }
+
+    // =====================================================================
+    // Orden y pago
+    // =====================================================================
 
     /**
      * ✅ PASO 3: Crear registro en BD
@@ -157,10 +177,7 @@ class MedicalAnalysisController extends Controller
         $data = session('medical_analysis_data', []);
 
         if (empty($files) || empty($data)) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Sesión expirada. Por favor, intenta de nuevo.'
-            ], 400);
+            return $this->jsonError('Sesión expirada. Por favor, intenta de nuevo.', 400);
         }
 
         $detectedType = strtolower(trim($data['detected_exam_type']));
@@ -169,105 +186,75 @@ class MedicalAnalysisController extends Controller
         $reasonType = $data['reason_type'] ?? null;
         $reasonCustom = trim($data['reason_custom'] ?? '');
 
-        // Validar tipo de examen
-        if (!in_array($detectedType, ['lab', 'xray', 'ultrasound', 'ct', 'mri', 'mammography', 'dicom'])) {
-            return response()->json([
-                'status' => 'error',
-                'message' => "Tipo de examen no válido: {$detectedType}"
-            ], 422);
+        if (!in_array($detectedType, self::EXAM_TYPES, true)) {
+            return $this->jsonError("Tipo de examen no válido: {$detectedType}", 422);
         }
 
         // Precio base y descuento, calculados en el servidor
-        $basePrice = (int) ($this->getPrices()[$detectedType] ?? 30000);
+        $basePrice = $this->basePriceFor($detectedType);
         $promoInput = trim((string) $request->input('promotional_code', ''));
 
         [$promo, $discount, $price] = $this->resolvePricing($promoInput, $basePrice);
 
         // Si enviaron un código que ya no es válido, no se cobra un precio distinto al que vieron.
         if ($promoInput !== '' && !$promo) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'El código promocional ya no es válido. Quítalo o prueba con otro.'
-            ], 422);
+            return $this->jsonError('El código promocional ya no es válido. Quítalo o prueba con otro.', 422);
         }
 
         $isFree = $price === 0;
 
         // Guardar archivos en almacenamiento privado
-        $storedPaths = [];
-        foreach ($files as $fileData) {
-            $tempPath = $fileData['path'];
-            $finalPath = 'medical-exams/' . basename($tempPath);
-
-            if (Storage::disk('local')->exists($tempPath)) {
-                Storage::disk('private')->put(
-                    $finalPath,
-                    Storage::disk('local')->get($tempPath)
-                );
-                $storedPaths[] = $finalPath;
-            }
-        }
+        $storedPaths = $this->moveTempFilesToPrivate($files);
 
         if (empty($storedPaths)) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Error al guardar los archivos.'
-            ], 500);
+            return $this->jsonError('Error al guardar los archivos.', 500);
         }
 
         // Orden gratis: el cupo se consume de forma atómica antes de crear el análisis.
         if ($isFree && $promo && !$this->consumePromo($promo)) {
-            foreach ($storedPaths as $path) {
-                Storage::disk('private')->delete($path);
+            $this->deletePrivateFiles($storedPaths);
+
+            return $this->jsonError('Este código ya no está disponible.', 422);
+        }
+
+        try {
+            // El access_token lo genera el modelo (hook creating).
+            $analysis = MedicalAnalysis::create([
+                'file_paths' => json_encode($storedPaths),
+                'exam_type' => $detectedType,
+                'customer_email' => $email,
+                'reason_type' => $reasonType,
+                'reason_custom' => $reasonCustom,
+                'promo_code' => $promo?->code,
+                'price' => $price, // lo que realmente se cobra, ya con descuento
+                'status' => $isFree ? 'processing' : 'pending',
+                'payment_status' => $isFree ? 'completed' : 'pending',
+                'analysis_language' => $language,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Orden de examen: no se pudo crear el registro', ['message' => $e->getMessage()]);
+
+            // Se deshace todo: sin registro no deben quedar archivos y el cupo se devuelve.
+            $this->deletePrivateFiles($storedPaths);
+            if ($isFree && $promo) {
+                PromoCode::whereKey($promo->id)->decrement('uses');
             }
 
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Este código ya no está disponible.'
-            ], 422);
+            return $this->jsonError('No pudimos crear tu orden. Intenta nuevamente.', 500);
         }
 
-        // El access_token lo genera el modelo (hook creating).
-        $analysis = MedicalAnalysis::create([
-            'file_paths' => json_encode($storedPaths),
-            'exam_type' => $detectedType,
-            'customer_email' => $email,
-            'reason_type' => $reasonType,
-            'reason_custom' => $reasonCustom,
-            'promo_code' => $promo?->code,
-            'price' => $price, // lo que realmente se cobra, ya con descuento
-            'status' => $isFree ? 'processing' : 'pending',
-            'payment_status' => $isFree ? 'completed' : 'pending',
-            'analysis_language' => $language,
-        ]);
-
-        // Limpiar sesión
-        session()->forget(['medical_analysis_files', 'medical_analysis_total_size', 'medical_analysis_data', 'medical_analysis_price']);
-
-        // Limpiar archivos temporales
-        foreach ($files as $fileData) {
-            Storage::disk('local')->delete($fileData['path']);
-        }
+        // Limpia la sesión y los archivos temporales
+        $this->discardTempUpload();
 
         // Camino gratuito: dispara la IA y va directo al resultado
         if ($isFree) {
             ProcessMedicalAnalysisAI::dispatch($analysis);
-
-            if ($analysis->customer_email) {
-                try {
-                    Mail::to($analysis->customer_email)->send(new ExamAnalysisReady($analysis));
-                } catch (\Throwable $e) {
-                    \Log::warning('Orden gratuita: no se pudo enviar el correo', [
-                        'analysis_id' => $analysis->id,
-                        'message' => $e->getMessage(),
-                    ]);
-                }
-            }
+            $this->notifyCustomer($analysis);
 
             return response()->json([
                 'status' => 'success',
                 'access_token' => $analysis->access_token,
-                'redirect_url' => route('medical-analysis.show', $analysis->access_token)
+                'redirect_url' => route('medical-analysis.show', $analysis->access_token),
             ]);
         }
 
@@ -275,23 +262,342 @@ class MedicalAnalysisController extends Controller
         return response()->json([
             'status' => 'success',
             'access_token' => $analysis->access_token,
-            'redirect_url' => route('medical-analysis.payment-gateway', $analysis->access_token)
+            'redirect_url' => route('medical-analysis.payment-gateway', $analysis->access_token),
         ]);
     }
 
     /**
-     * Pantalla de resultado de una orden gratuita (total = 0): no pasa por Wompi.
+     * ✅ PASO 4: Mostrar página de pago con widget Wompi
+     *
+     * El precio de la orden ya incluye el descuento (se calculó en processDocuments),
+     * así que aquí NO se vuelve a aplicar ningún código.
      */
-    public function freeResult(string $token)
+    public function paymentGateway($token)
     {
-        $analysis = MedicalAnalysis::where('access_token', $token)
-            ->where('payment_status', 'completed')
-            ->where('price', 0)
-            ->firstOrFail();
+        $analysis = MedicalAnalysis::where('access_token', $token)->firstOrFail();
 
-        $paymentStatus = 'APPROVED';
+        if ($analysis->payment_status === 'completed') {
+            return redirect()->route('medical-analysis.show', $token)
+                ->with('info', 'El pago ya fue procesado.');
+        }
 
-        return view('medical-analysis.payment-result', compact('analysis', 'paymentStatus'));
+        $finalAmount = (int) round((float) $analysis->price);
+
+        if ($finalAmount <= 0) {
+            return redirect()->route('medical-analysis.show', $token)
+                ->with('error', 'Esta orden no requiere pago.');
+        }
+
+        // Referencia de pago: "{id}-{ymdH}-{aleatorio}" (processPaymentResult valida el prefijo "{id}-")
+        $paymentReference = $analysis->id . '-' . Carbon::now()->format('ymdH') . '-' . strtoupper(Str::random(5));
+        $analysis->update(['payment_id' => $paymentReference]);
+
+        $amountInCents = $finalAmount * 100;
+        $currency = 'COP';
+
+        $signatureIntegrity = hash(
+            'sha256',
+            $paymentReference . $amountInCents . $currency . config('services.wompi.integrity_secret')
+        );
+
+        return view('medical-analysis.payment-gateway', [
+            'analysis' => $analysis,
+            'price' => $finalAmount,
+            'wompi' => [
+                'public_key' => config('services.wompi.public_key'),
+                'currency' => $currency,
+                'amount_in_cents' => $amountInCents,
+                'reference' => $paymentReference,
+                'signature_integrity' => $signatureIntegrity,
+                'redirect_url' => route('medical-analysis.payment-result', $token),
+            ],
+        ]);
+    }
+
+    /**
+     * ✅ PASO 5: Procesar resultado del pago (Callback de Wompi)
+     *
+     * Valida la transacción con Wompi (estado, referencia y monto).
+     * Si APROBADO → marca pagado de forma atómica, dispara la IA y avisa al cliente.
+     * Si RECHAZADO → permite reintentar el pago.
+     */
+    public function processPaymentResult(Request $request, $token)
+    {
+        $analysis = MedicalAnalysis::where('access_token', $token)->firstOrFail();
+        $transactionId = $request->query('id');
+
+        if (!$transactionId) {
+            return redirect()->route('home')->with('error', 'Falta el identificador del pago.');
+        }
+
+        $paymentStatus = 'ERROR';
+
+        try {
+            $response = Http::timeout(15)
+                ->withToken(config('services.wompi.public_key'))
+                ->get(config('services.wompi.endpoint') . "/transactions/{$transactionId}");
+
+            if ($response->successful()) {
+                $transaction = $response->json('data') ?? [];
+                $paymentStatus = $transaction['status'] ?? 'ERROR';
+
+                if ($paymentStatus === 'APPROVED') {
+                    if ($this->transactionMatches($transaction, $analysis)) {
+                        $this->markAsPaid($analysis, (string) $transactionId);
+                    } else {
+                        // Aprobada, pero de otra orden u otro monto: no se acredita.
+                        Log::warning('Pago aprobado que no coincide con la orden', [
+                            'analysis_id' => $analysis->id,
+                            'transaction_id' => $transactionId,
+                        ]);
+                        $paymentStatus = 'ERROR';
+                    }
+                } elseif ($paymentStatus === 'PENDING') {
+                    $this->setPaymentStatus($analysis, 'pending');
+                } else {
+                    $this->setPaymentStatus($analysis, 'failed');
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error('Error en Callback de Wompi: ' . $e->getMessage());
+            $paymentStatus = 'ERROR';
+            $this->setPaymentStatus($analysis, 'error');
+        }
+
+        return view('medical-analysis.payment-result', [
+            'analysis' => $analysis->fresh(),
+            'paymentStatus' => $paymentStatus,
+        ]);
+    }
+
+    /**
+     * ✅ PASO 6: Ver informe completo (después de pagar y procesar con IA)
+     */
+    public function showResult($token)
+    {
+        $analysis = MedicalAnalysis::where('access_token', $token)->firstOrFail();
+
+        if ($analysis->payment_status !== 'completed') {
+            return redirect()->route('medical-analysis.payment-gateway', $token)
+                ->with('error', 'Debes procesar el pago primero.');
+        }
+
+        return view('medical-analysis.show', [
+            'analysis' => $analysis,
+            'price' => $analysis->price,
+        ]);
+    }
+
+    // =====================================================================
+    // Códigos promocionales
+    // =====================================================================
+
+    /**
+     * Validar código promocional (solo para mostrar el descuento: el precio real
+     * se recalcula en processDocuments).
+     */
+    public function validatePromoCode(Request $request)
+    {
+        $validated = $request->validate([
+            'code' => 'required|string|max:50',
+        ]);
+
+        $basePrice = $this->basePriceFromSession();
+
+        if ($basePrice === null) {
+            return response()->json(['valid' => false, 'message' => 'La sesión expiró. Carga tus archivos nuevamente.']);
+        }
+
+        $code = PromoCode::where('code', strtoupper(trim($validated['code'])))->first();
+
+        if (!$code) {
+            return response()->json(['valid' => false, 'message' => 'Código no encontrado.']);
+        }
+
+        if (!$code->is_active) {
+            return response()->json(['valid' => false, 'message' => 'Código inactivo.']);
+        }
+
+        if ($code->starts_at && now()->lt(Carbon::parse($code->starts_at))) {
+            return response()->json(['valid' => false, 'message' => 'Código aún no está disponible.']);
+        }
+
+        if ($code->expires_at && now()->gt(Carbon::parse($code->expires_at))) {
+            return response()->json(['valid' => false, 'message' => 'Código expirado.']);
+        }
+
+        if ($code->max_uses !== null && $code->uses >= $code->max_uses) {
+            return response()->json(['valid' => false, 'message' => 'Código agotado.']);
+        }
+
+        $discountAmount = $code->discountFor($basePrice);
+        $finalPrice = $basePrice - $discountAmount;
+
+        return response()->json([
+            'valid' => true,
+            'discount_type' => $code->type,
+            'discount_value' => (float) $code->reward,
+            'discount_amount' => $discountAmount,
+            'final_price' => $finalPrice,
+            'is_free' => $finalPrice === 0,
+            'message' => 'Código aplicado correctamente.',
+        ]);
+    }
+
+    // =====================================================================
+    // Eliminación
+    // =====================================================================
+
+    /**
+     * Elimina un examen y TODOS sus archivos.
+     *
+     * Borra primero los archivos del disco privado y solo después el registro: si algún archivo
+     * no se puede borrar, el registro se conserva para poder reintentar y no quedan archivos huérfanos.
+     *
+     * IMPORTANTE: la ruta debe ir protegida (autenticación y permiso de administrador).
+     * El examen se resuelve por access_token, no por id numérico.
+     */
+    public function destroy(MedicalAnalysis $analysis): RedirectResponse
+    {
+        if ($analysis->status === 'processing') {
+            return redirect()->back()->with('error', 'El examen se está procesando. Inténtalo cuando termine.');
+        }
+
+        $result = $this->purger()->purge($analysis);
+
+        if (!empty($result['failed'])) {
+            return redirect()->back()->with('error', 'No se pudieron eliminar todos los archivos del examen. No se eliminó el registro; inténtalo de nuevo.');
+        }
+
+        $analysis->delete();
+
+        Log::info('Examen eliminado', [
+            'analysis_id' => $analysis->id,
+            'files_deleted' => $result['deleted'],
+        ]);
+
+        return redirect()->back()->with('success', 'El examen y sus archivos han sido eliminados correctamente.');
+    }
+
+    // =====================================================================
+    // Análisis con IA (lo ejecuta el Job ProcessMedicalAnalysisAI)
+    // =====================================================================
+
+    /**
+     * Procesar archivos, generar imágenes, enviar a la IA y guardar el resultado.
+     */
+    public function analyzeWithAI(MedicalAnalysis $analysis, ?string $provider = null, bool $withFallback = true, string $selectedLanguage = self::DEFAULT_LANGUAGE)
+    {
+        $selectedLanguage = trim(strtolower($selectedLanguage));
+        if (!in_array($selectedLanguage, self::SUPPORTED_LANGUAGES)) {
+            Log::warning("Análisis #{$analysis->id}: idioma no soportado, usando default.");
+            $selectedLanguage = self::DEFAULT_LANGUAGE;
+        }
+
+        //modificar mas adelante esto en ingles
+        $reasons = [
+            'routine'    => 'Control de rutina anual o chequeo preventivo.',
+            'monitoring' => 'Seguimiento continuo de una patología médica existente.',
+            'symptoms'   => 'Evaluación motivada por sintomatología reciente del paciente.',
+            'other'      => 'Motivos complementarios.'
+        ];
+
+        $clinicalReason = $reasons[$analysis->reason_type] ?? $analysis->reason_type;
+        $additionalDetails = $analysis->reason_custom ?? 'No se proporcionaron detalles adicionales.';
+
+        [$systemPrompt, $userText] = $this->generatePrompts($selectedLanguage, $clinicalReason, $additionalDetails, $analysis->exam_type);
+
+        $filePaths = $this->purger()->paths($analysis);
+
+        if (empty($filePaths)) {
+            Log::error("Análisis #{$analysis->id}: no tiene archivos asociados.");
+            $analysis->update(['status' => 'failed']);
+            return;
+        }
+
+        // Procesar archivos a imágenes
+        $images = $this->processFilesIntoImages($filePaths, $analysis->id, $analysis->exam_type);
+
+        if (empty($images)) {
+            Log::error("Análisis #{$analysis->id}: no se generaron imágenes.");
+            $analysis->update(['status' => 'failed']);
+            return;
+        }
+
+        // Límite máximo de imágenes
+        if (count($images) > 40) {
+            Log::warning("Análisis #{$analysis->id}: " . count($images) . " imágenes, truncadas a 40.");
+            $images = array_slice($images, 0, 40);
+        }
+
+        try {
+            $order = $provider
+                ? array_unique([$provider, $provider === 'claude' ? 'openai' : 'claude'])
+                : $this->providerOrder($analysis->exam_type);
+
+            $outcome = AIVisionManager::analyzeWithFallback($systemPrompt, $userText, $images, $order);
+
+            $analysis->update([
+                'ai_response' => $outcome['result'],
+                'ai_provider' => $outcome['provider_used'],
+                'analysis_language' => $selectedLanguage,
+                'status' => 'completed',
+            ]);
+
+            $this->deleteSourceFiles($analysis);
+        } catch (\Throwable $e) {
+            Log::error("Análisis #{$analysis->id}: fallo IA: " . $e->getMessage());
+            $analysis->update(['status' => 'failed']);
+        }
+    }
+
+    // =====================================================================
+    // Helpers privados
+    // =====================================================================
+
+    private function meta(): array
+    {
+        return [
+            'meta_title_medicalAnalysis' => 'OpenDoctorOnline | Interpreta tus exámenes médicos con Inteligencia Artificial',
+            'meta_description_medicalAnalysis' => 'Análisis médico online con IA. Laboratorio e imagenología (radiografías, tomografías, resonancias). Diagnóstico instantáneo, cita médica virtual y presencial disponible.',
+        ];
+    }
+
+    private function jsonError(string $message, int $status)
+    {
+        return response()->json(['status' => 'error', 'message' => $message], $status);
+    }
+
+    private function purger(): MedicalAnalysisFilePurger
+    {
+        return app(MedicalAnalysisFilePurger::class);
+    }
+
+    /**
+     * Precios por tipo: valores por defecto, reemplazados por los del panel de configuración.
+     */
+    private function getPrices(): array
+    {
+        $stored = Setting::where('group', 'pricing')
+            ->pluck('value', 'key')
+            ->mapWithKeys(fn ($value, $key) => [str_replace(['exam_type_', '_price'], '', $key) => (int) $value])
+            ->filter(fn (int $value) => $value > 0)
+            ->all();
+
+        return array_merge(self::DEFAULT_PRICES, $stored);
+    }
+
+    private function basePriceFor(string $examType): int
+    {
+        return (int) ($this->getPrices()[$examType] ?? self::DEFAULT_PRICES['lab']);
+    }
+
+    /** Precio base del examen que el usuario tiene en sesión, o null si la sesión expiró. */
+    private function basePriceFromSession(): ?int
+    {
+        $examType = session('medical_analysis_data.detected_exam_type');
+
+        return $examType ? $this->basePriceFor($examType) : null;
     }
 
     /**
@@ -327,294 +633,159 @@ class MedicalAnalysisController extends Controller
     }
 
     /**
-     * ✅ PASO 4: Mostrar página de pago con widget Wompi
-     * 
-     * Renderiza vista con widget de Wompi para que usuario pague
-     * Genera firma de integridad y datos para la transacción
+     * Evita acreditar una transacción aprobada de otra orden o de otro monto.
      */
-    public function paymentGateway($token)
+    private function transactionMatches(array $transaction, MedicalAnalysis $analysis): bool
     {
-        $analysis = MedicalAnalysis::where('access_token', $token)->firstOrFail();
+        $reference = (string) ($transaction['reference'] ?? '');
 
-        if ($analysis->payment_status === 'completed') {
-            return redirect()->route('medical-analysis.show', $token)
-                ->with('info', 'El pago ya fue procesado.');
+        if ($reference === '' || !str_starts_with($reference, $analysis->id . '-')) {
+            return false;
         }
 
-        // Calcular monto final con descuento si aplica
-        $finalAmount = $analysis->price;
-        if ($analysis->promo_code) {
-            $promoCode = PromoCode::where('code', $analysis->promo_code)->first();
-            if ($promoCode) {
-                if ($promoCode->discount_type === 'percentage') {
-                    $discount = ceil($finalAmount * ($promoCode->discount_value / 100));
-                } else {
-                    $discount = $promoCode->discount_value;
-                }
-                $finalAmount = max(0, $finalAmount - $discount);
-            }
-        }
+        $expectedCents = (int) round((float) $analysis->price * 100);
 
-        // Generar referencia de pago dinámica (igual que el método antiguo)
-        $prefix = Carbon::now()->format('ymdH');                
-        $random = strtoupper(Str::random(5));                                
-        $paymentReference = $analysis->id . "-" . $prefix . "-" . $random;
-
-        // Guardar payment_id en BD
-        $analysis->update(['payment_id' => $paymentReference]);
-
-        // Generar firma Wompi (igual que el método antiguo)
-        $amountInCents = (int) ($finalAmount * 100);
-        $currency = "COP";
-        $publicKey = config('services.wompi.public_key');
-        $integritySecret = config('services.wompi.integrity_secret');
-        
-        $stringPayload = $paymentReference . $amountInCents . $currency . $integritySecret;
-        $signatureIntegrity = hash('sha256', $stringPayload);
-
-        return view('medical-analysis.payment-gateway', [
-            'analysis' => $analysis,
-            'price' => $finalAmount,
-            'wompi' => [
-                'public_key' => $publicKey,
-                'currency' => $currency,
-                'amount_in_cents' => $amountInCents,
-                'reference' => $paymentReference,
-                'signature_integrity' => $signatureIntegrity,
-                'redirect_url' => route('medical-analysis.payment-result', $token)
-            ]
-        ]);
+        return (int) ($transaction['amount_in_cents'] ?? -1) === $expectedCents;
     }
 
     /**
-     * ✅ PASO 5: Procesar resultado del pago (Callback de Wompi)
-     * 
-     * Valida transacción con Wompi API
-     * Si APROBADO → Dispara Job ProcessMedicalAnalysisAI, envía email
-     * Si RECHAZADO → Permite reintentar pago
-     * Renderiza vista con resultado del pago
+     * Marca el pago como completado de forma atómica (si dos requests llegan a la vez,
+     * solo el primero avanza), consume el código promocional y dispara el análisis.
      */
-    public function processPaymentResult(Request $request, $token)
+    private function markAsPaid(MedicalAnalysis $analysis, string $transactionId): void
     {
-        $analysis = MedicalAnalysis::where('access_token', $token)->firstOrFail();
-        $transactionId = $request->query('id');
-
-        if (!$transactionId) {
-            return redirect()->route('home')->with('error', 'Falta el identificador del pago.');
-        }
-
-        $baseUrl = config('services.wompi.endpoint');
-        $paymentStatus = 'ERROR';
-
-        try {
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . config('services.wompi.public_key')
-            ])->get("{$baseUrl}/transactions/{$transactionId}");
-
-            if ($response->successful()) {
-                $paymentStatus = $response->json('data.status') ?? 'ERROR';
-
-                // ✅ GUARDAR TRANSACTION ID
-                $analysis->update(['wompi_transaction_id' => $transactionId]);
-
-                if ($paymentStatus === 'APPROVED') {
-                    if ($analysis->payment_status !== 'completed') {
-                        // ✅ ACTUALIZAR STATUS A "processing"
-                        $analysis->update([
-                            'payment_status' => 'completed',
-                            'status' => 'processing'
-                        ]);
-
-                        // ✅ DISPARAR JOB ASINCRÓNICO CON IA
-                        ProcessMedicalAnalysisAI::dispatch($analysis);
-
-                        if ($analysis->customer_email) {
-                            Mail::to($analysis->customer_email)->send(
-                                new ExamAnalysisReady($analysis)
-                            );
-                        }
-                    }
-                } elseif ($paymentStatus === 'PENDING') {
-                    $analysis->update(['payment_status' => 'pending']);
-                } else {
-                    $analysis->update(['payment_status' => 'failed']);
-                }
-            }
-        } catch (\Exception $e) {
-            logger()->error('Error en Callback de Wompi: ' . $e->getMessage());
-            $paymentStatus = 'ERROR';
-            $analysis->update(['payment_status' => 'error']);
-        }
-
-        return view('medical-analysis.payment-result', compact('analysis', 'paymentStatus'));
-    }
-
-    /**
-     * ✅ PASO 6: Ver informe completo (después de pagar y procesar con IA)
-     * 
-     * Verifica que el pago fue aprobado
-     * Muestra pantalla de espera si aún se procesa con IA
-     * Muestra informe completo cuando IA termina
-     */
-    public function showResult($token)
-    {
-        $analysis = MedicalAnalysis::where('access_token', $token)->firstOrFail();
-
-        // Verificar que el pago fue aprobado
-        if ($analysis->payment_status !== 'completed') {
-            return redirect()->route('medical-analysis.payment-gateway', $token)
-                ->with('error', 'Debes procesar el pago primero.');
-        }
-
-        $price = $analysis->price;
-
-        return view('medical-analysis.show', [
-            'analysis' => $analysis,
-            'price' => $price
-        ]);
-    }
-
-    /**
-     * Validar código promocional
-     * 
-     * Verifica código: estado, fechas, límite de uso
-     * Calcula descuento según tipo (porcentaje o cantidad fija)
-     */    
-    public function validatePromoCode(Request $request)
-    {
-        $validated = $request->validate([
-            'code' => 'required|string|max:50',
-        ]);
-
-        $code = PromoCode::where('code', strtoupper(trim($validated['code'])))->first();
-
-        if (!$code) {
-            return response()->json(['valid' => false, 'message' => 'Código no encontrado.']);
-        }
-
-        if (!$code->is_active) {
-            return response()->json(['valid' => false, 'message' => 'Código inactivo.']);
-        }
-
-        if ($code->starts_at && now()->lt(\Carbon\Carbon::parse($code->starts_at))) {
-            return response()->json(['valid' => false, 'message' => 'Código aún no está disponible.']);
-        }
-
-        if ($code->expires_at && now()->gt(\Carbon\Carbon::parse($code->expires_at))) {
-            return response()->json(['valid' => false, 'message' => 'Código expirado.']);
-        }
-
-        if ($code->max_uses !== null && $code->uses >= $code->max_uses) {
-            return response()->json(['valid' => false, 'message' => 'Código agotado.']);
-        }
-
-        $price = (int) session('medical_analysis_price', 30000);
-
-        $discountAmount = $code->type === 'percent'
-            ? (int) round($price * (float) $code->reward / 100)
-            : (int) round((float) $code->reward);
-
-        $discountAmount = max(0, min($discountAmount, $price));
-        $finalPrice = $price - $discountAmount;
-
-        return response()->json([
-            'valid' => true,
-            'discount_type' => $code->type,
-            'discount_value' => (float) $code->reward,
-            'discount_amount' => $discountAmount,
-            'final_price' => $finalPrice,
-            'is_free' => $finalPrice === 0,
-            'message' => 'Código aplicado correctamente.',
-        ]);
-    }    
-
-    /**
-     * Procesar análisis con IA (se ejecuta desde Job asincrónico)
-     * 
-     * Llamado por ProcessMedicalAnalysisAI Job después de pago confirmado
-     * Procesa archivos, genera imágenes, envía a IA y guarda resultado
-     */
-    public function analyzeWithAI(MedicalAnalysis $analysis, ?string $provider = null, bool $withFallback = true, string $selectedLanguage = self::DEFAULT_LANGUAGE)
-    {
-        $selectedLanguage = trim(strtolower($selectedLanguage));
-        if (!in_array($selectedLanguage, self::SUPPORTED_LANGUAGES)) {
-            Log::warning("Análisis #{$analysis->id}: idioma no soportado, usando default.");
-            $selectedLanguage = self::DEFAULT_LANGUAGE;
-        }
-
-        //modificar mas adelante esto en ingles
-        $reasons = [
-            'routine'    => 'Control de rutina anual o chequeo preventivo.',
-            'monitoring' => 'Seguimiento continuo de una patología médica existente.',
-            'symptoms'   => 'Evaluación motivada por sintomatología reciente del paciente.',
-            'other'      => 'Motivos complementarios.'
-        ];
-
-        $clinicalReason = $reasons[$analysis->reason_type] ?? $analysis->reason_type;
-        $additionalDetails = $analysis->reason_custom ?? 'No se proporcionaron detalles adicionales.';
-
-        [$systemPrompt, $userText] = $this->generatePrompts($selectedLanguage, $clinicalReason, $additionalDetails, $analysis->exam_type);
-
-        $filePaths = json_decode($analysis->file_paths, true) ?? [];
-
-        if (empty($filePaths)) {
-            Log::error("Análisis #{$analysis->id}: no tiene archivos asociados.");
-            $analysis->update(['status' => 'failed']);
-            return;
-        }
-
-        // Procesar archivos a imágenes
-        $images = $this->processFilesIntoImages($filePaths, $analysis->id, $analysis->exam_type);
-
-        if (empty($images)) {
-            Log::error("Análisis #{$analysis->id}: no se generaron imágenes.");
-            $analysis->update(['status' => 'failed']);
-            return;
-        }
-
-        // Límite máximo de imágenes
-        if (count($images) > 40) {
-            Log::warning("Análisis #{$analysis->id}: " . count($images) . " imágenes, truncadas a 40.");
-            $images = array_slice($images, 0, 40);
-        }
-
-        try {
-            $order = $provider
-                ? array_unique([$provider, $provider === 'claude' ? 'openai' : 'claude'])
-                : ['claude', 'openai'];
-
-            $outcome = AIVisionManager::analyzeWithFallback($systemPrompt, $userText, $images, $order);
-
-            $aiResult = $outcome['result'];
-            $providerUsed = $outcome['provider_used'];
-
-            $analysis->update([
-                'ai_response' => $aiResult,
-                'ai_provider' => $providerUsed,
-                'analysis_language' => $selectedLanguage,
-                'status' => 'completed',
+        $updated = MedicalAnalysis::whereKey($analysis->id)
+            ->where('payment_status', '!=', 'completed')
+            ->update([
+                'payment_status' => 'completed',
+                'status' => 'processing',
+                'wompi_transaction_id' => $transactionId,
             ]);
 
-            $this->deleteSourceFiles($analysis, $filePaths);
+        if (!$updated) {
+            return;
+        }
+
+        if ($analysis->promo_code) {
+            $promo = PromoCode::where('code', strtoupper($analysis->promo_code))->first();
+
+            // El pago ya se aprobó: si el cupo se agotó justo ahora, no se anula nada.
+            if ($promo) {
+                $this->consumePromo($promo);
+            }
+        }
+
+        $analysis->refresh();
+
+        ProcessMedicalAnalysisAI::dispatch($analysis);
+        $this->notifyCustomer($analysis);
+    }
+
+    /** Cambia el estado de pago salvo que el pago ya esté completado. */
+    private function setPaymentStatus(MedicalAnalysis $analysis, string $status): void
+    {
+        MedicalAnalysis::whereKey($analysis->id)
+            ->where('payment_status', '!=', 'completed')
+            ->update(['payment_status' => $status]);
+    }
+
+    /** Un fallo del correo nunca debe afectar al pago ni al análisis. */
+    private function notifyCustomer(MedicalAnalysis $analysis): void
+    {
+        if (!$analysis->customer_email) {
+            return;
+        }
+
+        try {
+            Mail::to($analysis->customer_email)->send(new ExamAnalysisReady($analysis));
         } catch (\Throwable $e) {
-            Log::error("Análisis #{$analysis->id}: fallo IA: " . $e->getMessage());
-            $analysis->update(['status' => 'failed']);
+            Log::warning('No se pudo enviar el correo del análisis', [
+                'analysis_id' => $analysis->id,
+                'message' => $e->getMessage(),
+            ]);
         }
     }
 
     /**
-     * Generar prompts para IA (SIMPLIFICADO)
-     * 
-     * Prompt en español y agrega instrucción de idioma
-     * Claude entrega el resultado en el idioma solicitado
+     * Copia los archivos temporales (disco local) al disco privado definitivo, sin cargarlos en memoria.
+     * Devuelve las rutas finales.
+     */
+    private function moveTempFilesToPrivate(array $files): array
+    {
+        $local = Storage::disk('local');
+        $private = Storage::disk(self::PRIVATE_DISK);
+        $stored = [];
+
+        foreach ($files as $fileData) {
+            $tempPath = $fileData['path'] ?? null;
+
+            if (!$tempPath || !$local->exists($tempPath)) {
+                continue;
+            }
+
+            $stream = $local->readStream($tempPath);
+
+            if (!is_resource($stream)) {
+                continue;
+            }
+
+            $finalPath = self::EXAM_DIR . '/' . basename($tempPath);
+            $private->writeStream($finalPath, $stream);
+            fclose($stream);
+
+            $stored[] = $finalPath;
+        }
+
+        return $stored;
+    }
+
+    private function deletePrivateFiles(array $paths): void
+    {
+        foreach ($paths as $path) {
+            Storage::disk(self::PRIVATE_DISK)->delete($path);
+        }
+    }
+
+    /**
+     * Descarta la subida temporal en curso: borra los archivos temporales y limpia la sesión.
+     */
+    private function discardTempUpload(): void
+    {
+        foreach (session('medical_analysis_files', []) as $file) {
+            if (!empty($file['path'])) {
+                Storage::disk('local')->delete($file['path']);
+            }
+        }
+
+        session()->forget(self::SESSION_KEYS);
+    }
+
+    /**
+     * Orden de proveedores de IA según los ajustes del panel (primario y fallback).
+     * Laboratorio e imagenología tienen cada uno el suyo.
+     */
+    private function providerOrder(string $examType): array
+    {
+        $group = in_array($examType, self::IMAGING_TYPES, true) ? 'imaging' : 'lab';
+        $providers = ['gpt-4o' => 'openai', 'claude-sonnet-4-5' => 'claude'];
+
+        $primaryModel = Setting::where('key', "{$group}_ai_primary_model")->value('value');
+        $fallbackModel = Setting::where('key', "{$group}_ai_fallback_model")->value('value');
+
+        $primary = $providers[$primaryModel] ?? 'claude';
+        $fallback = $providers[$fallbackModel] ?? 'openai';
+
+        return array_values(array_unique([$primary, $fallback]));
+    }
+
+    /**
+     * Generar prompts para IA: prompt en español más la instrucción de idioma.
      */
     private function generatePrompts(string $language, string $clinicalReason, string $additionalDetails, ?string $examType = null): array
     {
-        // ✅ Cargar prompts en español (única fuente de verdad)
         [$systemPrompt, $userTemplate] = $this->getPromptAI($clinicalReason, $additionalDetails, $examType);
 
-        // ✅ Agregar instrucción de idioma al final
-        $languageInstructions = match($language) {
+        $languageInstructions = match ($language) {
             'en' => 'Responde SOLO en Ingles.',
             'fr' => 'Responde SOLO en Frances.',
             'pt' => 'Responde SOLO en Portugues.',
@@ -622,8 +793,7 @@ class MedicalAnalysisController extends Controller
             default => 'Responde SOLO en Español.'
         };
 
-        $patientContext = "CONTEXTO DEL PACIENTE";
-        $userText = "{$patientContext}:\n- Motivo: {$clinicalReason}\n- Detalles: {$additionalDetails}\n\n" . $userTemplate . "\n\n{$languageInstructions}";
+        $userText = "CONTEXTO DEL PACIENTE:\n- Motivo: {$clinicalReason}\n- Detalles: {$additionalDetails}\n\n" . $userTemplate . "\n\n{$languageInstructions}";
 
         return [$systemPrompt, $userText];
     }
@@ -635,7 +805,7 @@ class MedicalAnalysisController extends Controller
     {
         $patientContext = "CONTEXTO DEL PACIENTE:\n- Motivo: {$clinicalReason}\n- Detalles: {$additionalDetails}";
 
-        if (in_array($examType, ['xray', 'ct', 'mri', 'ultrasound', 'mammography', 'dicom'])) {
+        if (in_array($examType, self::IMAGING_TYPES, true)) {
             $userText = "{$patientContext}\n\nAnaliza este estudio de imagenología como un experto radiólogo. Proporciona:\n\n1. HALLAZGOS CLAVE: Las observaciones más importantes\n2. ÁREAS DE INTERÉS CLÍNICO: Qué requiere seguimiento\n3. IMPRESIÓN RADIOLÓGICA: Posibles diagnósticos\n4. RECOMENDACIONES: Estudios de seguimiento y vigilancia\n\nSé preciso pero accesible para el paciente. Indica claramente si algo requiere atención urgente.";
 
             $systemPrompt = "Actúa como un radiólogo clínico experto con excelentes habilidades de comunicación.
@@ -671,35 +841,19 @@ class MedicalAnalysisController extends Controller
     }
 
     /**
-     * Eliminar archivos de origen después de procesar
+     * Elimina los archivos de origen después de procesar y limpia la referencia en la BD.
      */
-    protected function deleteSourceFiles(MedicalAnalysis $analysis, array $filePaths): void
+    protected function deleteSourceFiles(MedicalAnalysis $analysis): void
     {
-        $eliminados = 0;
-        $fallidos = [];
+        $result = $this->purger()->purge($analysis);
 
-        foreach ($filePaths as $path) {
-            try {
-                if (Storage::disk('private')->exists($path)) {
-                    Storage::disk('private')->delete($path);
-                    $eliminados++;
-                }
-            } catch (\Throwable $e) {
-                $fallidos[] = $path;
-                Log::warning("Análisis #{$analysis->id}: no se pudo borrar '{$path}': " . $e->getMessage());
-            }
-        }
+        $analysis->update(['file_paths' => null]);
 
-        $analysis->update([
-            'file_paths' => null,
-            'file_path'  => null,
-        ]);
-
-        Log::info("Análisis #{$analysis->id}: limpieza completada. Eliminados: {$eliminados}/" . count($filePaths));
+        Log::info("Análisis #{$analysis->id}: limpieza completada. Eliminados: {$result['deleted']}, fallidos: " . count($result['failed']));
     }
 
     /**
-     * Procesar archivos en imágenes para IA
+     * Procesar archivos en imágenes para IA. Las imágenes temporales de PDF se borran siempre.
      */
     private function processFilesIntoImages(array $filePaths, int $analysisId, string $examType): array
     {
@@ -707,25 +861,28 @@ class MedicalAnalysisController extends Controller
         $tempFilesToCleanup = [];
         $decimationFactor = $this->getDecimationFactor($examType);
 
-        foreach ($filePaths as $index => $path) {
-            $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        try {
+            foreach ($filePaths as $index => $path) {
+                $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
-            if ($extension === 'pdf') {
-                $filePath = Storage::disk('private')->path($path);
-                $images = array_merge($images, $this->convertPdfToImages($filePath, $index, $analysisId, $tempFilesToCleanup, $decimationFactor));
-            } else {
-                $content = Storage::disk('private')->get($path);
-                if (!empty($content)) {
-                    $images[] = [
-                        'base64' => base64_encode($content),
-                        'mime' => $this->getMimeType($extension),
-                    ];
+                if ($extension === 'pdf') {
+                    $filePath = Storage::disk(self::PRIVATE_DISK)->path($path);
+                    $images = array_merge($images, $this->convertPdfToImages($filePath, $index, $analysisId, $tempFilesToCleanup, $decimationFactor));
+                } else {
+                    $content = Storage::disk(self::PRIVATE_DISK)->get($path);
+
+                    if (!empty($content)) {
+                        $images[] = [
+                            'base64' => base64_encode($content),
+                            'mime' => $this->getMimeType($extension),
+                        ];
+                    }
                 }
             }
-        }
-
-        foreach ($tempFilesToCleanup as $tempFile) {
-            @unlink($tempFile);
+        } finally {
+            foreach ($tempFilesToCleanup as $tempFile) {
+                @unlink($tempFile);
+            }
         }
 
         return $images;
@@ -737,7 +894,7 @@ class MedicalAnalysisController extends Controller
     private function convertPdfToImages(string $filePath, int $index, int $analysisId, &$tempFilesToCleanup, int $decimationFactor = 1): array
     {
         $images = [];
-        
+
         try {
             $pdf = new Pdf($filePath);
             $totalPages = $pdf->pageCount();
@@ -782,15 +939,17 @@ class MedicalAnalysisController extends Controller
     }
 
     /**
-     * Obtener factor de decimación según tipo de examen
+     * Factor de decimación: el del panel de configuración, o el valor por defecto del tipo.
      */
     private function getDecimationFactor(string $examType): int
     {
-        return match($examType) {
-            'ct', 'mri' => 3,
-            'xray', 'ultrasound', 'mammography', 'dicom' => 1,
-            default => 2
-        };
+        $stored = Setting::where('key', "{$examType}_auto_decimation")->value('value');
+
+        $factor = $stored !== null
+            ? (int) $stored
+            : (self::DEFAULT_DECIMATION[$examType] ?? 2);
+
+        return max(1, $factor);
     }
 
     /**
@@ -798,7 +957,7 @@ class MedicalAnalysisController extends Controller
      */
     private function getMimeType(string $extension): string
     {
-        return match(strtolower($extension)) {
+        return match (strtolower($extension)) {
             'pdf' => 'application/pdf',
             'jpg', 'jpeg' => 'image/jpeg',
             'png' => 'image/png',
@@ -806,20 +965,5 @@ class MedicalAnalysisController extends Controller
             'dcm', 'dicom' => 'application/dicom',
             default => 'application/octet-stream'
         };
-    }
-
-    /**
-     * Obtener precios dinámicos desde settings
-     */
-    private function getPrices(): array
-    {
-        return Setting::where('group', 'pricing')
-            ->pluck('value', 'key')
-            ->mapWithKeys(function($value, $key) {
-                // Convierte: exam_type_lab_price → lab
-                $examType = str_replace(['exam_type_', '_price'], '', $key);
-                return [$examType => (int)$value];
-            })
-            ->toArray();
     }
 }
