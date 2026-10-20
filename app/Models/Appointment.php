@@ -216,4 +216,9 @@ class Appointment extends Model
 
         return $query;
     }
+
+    //para asociar los archivos en que se pueden subir desde la cita por zoom
+    public function files() { 
+        return $this->hasMany(AppointmentFile::class); 
+    }
 }

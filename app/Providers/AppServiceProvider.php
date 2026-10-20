@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\Appointment;
+use App\Observers\AppointmentObserver;
+
 use App\Models\Doctor;
 use App\Observers\DoctorObserver;
 
@@ -13,9 +16,6 @@ use App\Observers\UserObserver;
 
 use App\Models\Address;
 use App\Observers\AddressObserver;
-
-use App\Models\Appointment;
-use App\Observers\AppointmentObserver;
 
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;

@@ -47,6 +47,7 @@ use App\Http\Controllers\ClinicScheduleController;
 use App\Http\Controllers\ClinicAppointmentController;
 use App\Http\Controllers\SymptomDirectoryController;
 use App\Http\Controllers\AppointmentStateController;
+use App\Http\Controllers\AppointmentFileController;
 use App\Http\Controllers\SubscriptionController;
 
 use App\Http\Controllers\Admin\AdminController;
@@ -390,6 +391,15 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/partner/gallery/{image}', [GalleryController::class, 'destroy'])->name('partner.gallery.destroy');
 });
 
+Route::middleware('auth')
+->prefix('appointments/{appointment}/files')
+->name('appointments.files.')
+->group(function () {
+    Route::get('/', [AppointmentFileController::class, 'index'])->name('index');
+    Route::post('/', [AppointmentFileController::class, 'store'])->middleware('throttle:20,1')->name('store');
+    Route::get('/{file}', [AppointmentFileController::class, 'show'])->name('show');
+});
+
 // ========================================================
 // 🌍 ENDPOINTS PÚBLICOS DE CONSULTA (ACCESO LIBRE PARA LOS USUARIOS)
 // ========================================================
@@ -582,6 +592,14 @@ Route::post('/skin-analysis/before-preview', [SkinAnalysisController::class, 'be
     ->name('skin-analysis.before-preview');
 
 Route::post('/skin-analysis/promo-codes/validate', [SkinAnalysisController::class, 'validatePromo'])
+    ->name('skin-analysis.promo-codes.validate');   
+    
+Route::get('/skin-analysis/status/{token}', [SkinAnalysisController::class, 'status'])
+    ->middleware('throttle:30,1')
+    ->name('skin-analysis.status');
+    
+Route::post('/skin-analysis/promo-codes/validate', [SkinAnalysisController::class, 'validatePromo'])
+    ->middleware('throttle:20,1')
     ->name('skin-analysis.promo-codes.validate');    
 
 // Pública para verificación

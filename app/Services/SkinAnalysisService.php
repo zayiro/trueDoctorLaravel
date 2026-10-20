@@ -5,7 +5,6 @@ namespace App\Services;
 use Anthropic\Client;
 use App\Mail\SkinAnalysisReady;
 use App\Models\SkinAnalysis;
-use App\Support\SkinAnalysisText;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -15,6 +14,15 @@ class SkinAnalysisService
     private const DISK = 'private';
     private const AI_MODEL = 'claude-sonnet-5-5';
     private const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
+
+    /** Idioma en el que la IA redacta el informe (el que eligió el paciente). */
+    private const LANGUAGE_NAMES = [
+        'es' => 'español',
+        'en' => 'English',
+        'fr' => 'français',
+        'pt' => 'português',
+        'de' => 'Deutsch',
+    ];
 
     private const SYSTEM_PROMPT = <<<'PROMPT'
 Eres un asistente de apoyo para la evaluación preliminar de imágenes de piel dentro de una plataforma de telemedicina. Describes lo que se observa y orientas al paciente sobre los siguientes pasos. NO eres un médico y NO emites diagnósticos definitivos.
@@ -113,7 +121,7 @@ PROMPT;
 
     protected function callClaudeApi(array $images, SkinAnalysis $analysis): string
     {
-        $languageName = SkinAnalysisText::LANGUAGE_NAMES[$analysis->analysis_language] ?? 'español';
+        $languageName = self::LANGUAGE_NAMES[$analysis->analysis_language] ?? 'español';
         $system = str_replace('__LANGUAGE__', $languageName, self::SYSTEM_PROMPT);
 
         $bodyLocation = $analysis->body_location ?: 'No especificada';
