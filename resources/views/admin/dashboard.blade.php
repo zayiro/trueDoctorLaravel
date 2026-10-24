@@ -4,11 +4,15 @@
     $isClinic = $user->role === 'clinic';
     $isAdmin = $user->role === 'admin';
 
+    $appointmentRouteSection = route('patient.appointments.index');
+
     $validationStatus = 'approved';
     if ($isDoctor) {
         $validationStatus = $user->doctor?->validation_status ?? 'missing';
+        $appointmentRouteSection = route('partner.appointments.index');
     } elseif ($isClinic) {
         $validationStatus = $user->clinic?->validation_status ?? 'missing';
+        $appointmentRouteSection = route('partner.appointments.index');
     }
 
     $breadcrumbs = [
@@ -307,10 +311,12 @@
                             <h3 class="text-2xl font-black text-emerald-900 mt-2">{{ $appointmentsTodayPresencial }}</h3>
                         </div>
 
-                        <div class="lg:col-span-1 bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100">
-                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Próximos espacios</span>
-                            <h3 class="text-2xl font-black text-slate-800 mt-2">{{ $upcomingAppointmentsCount }}</h3>
-                        </div>
+                        <a href="{{ $appointmentRouteSection }}">
+                            <div class="lg:col-span-1 bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100">
+                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Próximos espacios</span>
+                                <h3 class="text-2xl font-black text-slate-800 mt-2">{{ $upcomingAppointmentsCount }}</h3>
+                            </div>
+                        </a>
 
                         <div class="lg:col-span-1 bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100">
                             <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Absentismo Global</span>

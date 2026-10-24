@@ -72,6 +72,18 @@ class Address extends Model
     }
 
     /**
+     * 🔒 SCOPE: sede reservable = activa.
+     * Las sedes eliminadas (SoftDeletes) ya las excluye Eloquent en cualquier consulta
+     * sobre Address o a través de una relación (whereHas), pero NO en consultas que
+     * parten de otra tabla (por ejemplo, Schedule::pluck('address_id')).
+     * Por eso toda búsqueda de disponibilidad debe llegar a las sedes por esta vía.
+     */
+    public function scopeBookable(Builder $query): Builder
+    {
+        return $query->where($query->getModel()->qualifyColumn('status'), true);
+    }
+
+    /**
      * Relación inversa uno a muchos con el Médico (si la sede es una consulta privada).
      */
     public function doctor(): BelongsTo

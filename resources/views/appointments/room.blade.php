@@ -15,6 +15,16 @@
     // Solo el paciente sube archivos a la reunión (el doctor y el administrador solo los ven).
     $isPatient = !$isProfessional && $roleName !== 'admin';
 
+    // Consulta finalizada: por estado de la cita o porque ya pasó su hora de término.
+    $statusValue = $appointment->status instanceof \BackedEnum
+        ? $appointment->status->value
+        : (string) $appointment->status;
+
+    $endsAt = $startsAt->copy()->addMinutes((int) $appointment->duration);
+
+    $consultationEnded = in_array($statusValue, ['completed', 'cancelled'], true)
+        || now()->greaterThanOrEqualTo($endsAt);
+
     // Configuración que lee el componente Alpine (@js escapa los valores de forma segura)
     $cfg = [
         'date' => \Carbon\Carbon::parse($appointment->date)->format('Y-m-d'),
@@ -144,13 +154,14 @@
                         <h3 class="font-semibold text-gray-900">Archivos de la reunión</h3>
 
                         @if ($isPatient)
-                            <button type="button" @click="$store.roomFiles.open()"
+                            <button type="button" x-show="!finished" x-cloak @click="$store.roomFiles.open()"
                                     class="inline-flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700">
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 20h16"/>
                                 </svg>
                                 Subir archivo
                             </button>
+                            <span x-show="finished" x-cloak class="text-xs text-gray-400">Consulta finalizada</span>
                         @endif
                     </div>
 
@@ -345,6 +356,7 @@
                 timerClass: 'bg-blue-50 text-blue-700',
                 startTime: null,
                 endTime: null,
+                finished: config.ended,
 
                 // Parpadea el reloj durante los últimos 5 minutos de la consulta
                 get isEnding() {
@@ -425,6 +437,7 @@
                             this.timerText = 'Consulta finalizada';
                             this.timerClass = 'bg-red-100 text-red-700 border border-red-300 font-bold px-4 py-2 rounded-full';
                             this.minutesRemaining = 0;
+                            this.finished = true;
 
                             if (typeof ZoomMtg !== 'undefined') {
                                 this.forceCloseZoomMeeting();
@@ -477,6 +490,7 @@
                             .then(data => {
                                 if (data.status === 'completed' || data.status === 'cancelled') {
                                     clearInterval(checkStatusInterval);
+                                    this.finished = true;
 
                                     this.timerText = 'Consulta terminada';
                                     this.timerClass = 'bg-red-600 text-white font-bold animate-pulse px-4 py-2 rounded-full';

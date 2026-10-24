@@ -23,14 +23,17 @@ class ExpireUnpaidAppointment implements ShouldQueue
 
     public function handle(): void
     {
-        // Estado más reciente desde la base de datos
         $appointment = $this->appointment->fresh();
 
-        // Solo expira lo que sigue esperando pago. Una cita pagada, gratis (código del 100%),
-        // ya cancelada o completada no se toca.
-        if (!$appointment
-            || $appointment->payment_status !== 'pending'
-            || in_array($appointment->status, ['cancelled', 'completed'], true)) {
+        if (!$appointment) {
+            return;
+        }
+
+        // Solo expira lo que sigue esperando pago: pendiente, sin fecha de pago.
+        // Una cita pagada, gratis (código del 100%), cancelada o completada no se toca.
+        if ($this->raw($appointment->payment_status) !== 'pending'
+            || $this->raw($appointment->status) !== 'pending'
+            || $appointment->paid_at !== null) {
             return;
         }
 
@@ -38,6 +41,8 @@ class ExpireUnpaidAppointment implements ShouldQueue
         // no encuentra la fila en 'pending' y no hace nada.
         $cancelled = Appointment::whereKey($appointment->id)
             ->where('payment_status', 'pending')
+            ->where('status', 'pending')
+            ->whereNull('paid_at')
             ->update([
                 'status'         => 'cancelled',
                 'payment_status' => 'cancelled',
@@ -52,7 +57,6 @@ class ExpireUnpaidAppointment implements ShouldQueue
             'reference'      => $appointment->reference,
         ]);
 
-        // Notificar al paciente
         $appointment->refresh();
         $patientEmail = $appointment->patient?->user?->email;
 
@@ -63,5 +67,15 @@ class ExpireUnpaidAppointment implements ShouldQueue
                 Log::error('Error enviando email de expiración: ' . $e->getMessage());
             }
         }
+    }
+
+    /** Valor en texto de un campo que puede ser un enum o un string. */
+    private function raw(mixed $value): ?string
+    {
+        if ($value instanceof \BackedEnum) {
+            return (string) $value->value;
+        }
+
+        return $value === null ? null : (string) $value;
     }
 }

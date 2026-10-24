@@ -635,21 +635,27 @@ class AppointmentController extends Controller
         // 1. Cargar todas las relaciones necesarias desde el inicio para evitar consultas N+1
         $appointment->load(['doctor.user', 'clinic', 'service', 'address.city', 'patient.user']);
 
-        // 🏷️ INTEGRACIÓN DE CUPONES: Validar si existe un descuento del 100% pendiente en la sesión
-        if (session()->has('pending_promo_code') && (float)session('pending_discount_amount') >= (float)$appointment->price) {
-            
-            // 🚀 LÓGICA DE INCREMENTO DEL CÓDIGO PROMOCIONAL
-            // Buscamos el cupón usando el string guardado en la sesión
+        // 🏷️ INTEGRACIÓN DE CUPONES: descuento del 100% pendiente en la sesión
+        if (session()->has('pending_promo_code')
+            && (float) session('pending_discount_amount') >= (float) $appointment->price
+            && $appointment->payment_status->value !== PaymentStatus::PAID->value) {
+
+            // Solo el paciente de esta cita puede aplicar un cupón sobre ella
+            abort_unless($appointment->patient?->user?->id === auth()->id(), 403);
+
             $promoCode = PromoCode::where('code', session('pending_promo_code'))->first();
-            
-            if ($promoCode) {
-                // Incrementa atómicamente la columna 'uses' en +1 y guarda el cambio inmediatamente
-                $promoCode->increment('uses');
+
+            // El cupo se consume de forma atómica: si se agotó, la cita no se regala
+            if (!$promoCode || !$promoCode->isValid(auth()->id()) || !$this->consumePromo($promoCode)) {
+                session()->forget(['pending_promo_code', 'pending_discount_amount']);
+
+                return redirect()->route('home')
+                    ->with('error', 'El código promocional ya no está disponible.');
             }
-            
+
             // Registrar de forma definitiva el beneficio en la base de datos
             $appointment->update([
-                'promo_code'      => session('pending_promo_code'),
+                'promo_code'      => $promoCode->code,
                 'discount_amount' => $appointment->price, // El descuento es la totalidad del valor base
                 'status'          => AppointmentStatus::CONFIRMED->value,
                 'payment_status'  => PaymentStatus::PAID->value, // Forzamos el estado de pago para aprobar el blindaje virtual
@@ -711,6 +717,17 @@ class AppointmentController extends Controller
         $appointment = $this->processPostConfirmation($appointment, $activeUser);
         
         return view('appointments.success', compact('appointment'));
+    }
+
+    /**
+     * Consume un uso del código de forma atómica.
+     * Devuelve false si el cupo se agotó entre la validación y el consumo.
+     */
+    private function consumePromo(PromoCode $promo): bool
+    {
+        return PromoCode::whereKey($promo->id)
+            ->where(fn ($q) => $q->whereNull('max_uses')->orWhereColumn('uses', '<', 'max_uses'))
+            ->increment('uses') > 0;
     }
 
     /**
@@ -806,6 +823,48 @@ class AppointmentController extends Controller
     public function startZoom(Appointment $appointment)
     {
         $appointment->update(['zoom_started' => true]);
+
+        // Se envia email de notificacion al paciente de que el doctor ha permitido el acceso a la video llamada
+
+        $patientEmail = $appointment->patient?->user?->email;
+        if ($patientEmail) {
+            // 1. URL exacta de la ruta de la videollamada
+            $roomUrl = route('appointments.room', ['appointment' => $appointment->id]);
+
+            // 2. Envía el correo inyectando la URL en el enlace HTML
+            Mail::send([], [], function ($message) use ($patientEmail, $roomUrl) {
+                $message->to($patientEmail)
+                        ->subject('El doctor te espera en la videollamada')
+                        ->html("
+                            <div style='font-family: Arial, sans-serif; padding: 20px; line-height: 1.6;'>
+                                <h2 style='color: #1e3a8a;'>¡Tu videollamada está lista!</h2>
+                                <p>El doctor ha permitido tu acceso a la sala virtual. Puedes ingresar haciendo clic en el siguiente botón:</p>
+                                <p style='margin-top: 25px;'>
+                                    <a href='{$roomUrl}' style='padding: 12px 25px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;'>
+                                        Ingresar a la Sala
+                                    </a>
+                                </p>
+                                <p style='margin-top: 25px; font-size: 0.9em; color: #666;'>Si el botón no funciona, copia y pega este enlace en tu navegador:<br>{$roomUrl}</p>
+
+                                <p style='margin-top: 25px; font-size: 0.9em; color: #666;'>Si el botón no funciona, copia y pega este enlace en tu navegador:<br>{$roomUrl}</p>
+                    
+                                <!-- Línea Divisoria -->
+                                <hr style='border: 0; border-top: 1px solid #e5e7eb; margin: 40px 0 20px 0;'>
+                                
+                                <!-- Footer Solicitado -->
+                                <footer style='font-size: 0.85em; color: #6b7280; line-height: 1.5;'>
+                                    <p style='margin: 0 0 10px 0;'>Mensaje automático generado por la suite de <strong>opendoctorOnline</strong>. Por favor, no respondas directamente a este correo.</p>
+                                    <p style='margin: 0 0 15px 0;'>Soporte técnico: <a href='mailto:support@opendoctor.online' style='color: #2563eb; text-decoration: none;'>support@opendoctor.online</a>.</p>
+                                    <p style='margin: 0;'>
+                                        © 2026 opendoctor.online. <br>
+                                        <a href='https://opendoctor.online/privacy' style='color: #6b7280; text-decoration: underline;'>Privacidad</a> | <a href='https://opendoctor.online/terms' style='color: #6b7280; text-decoration: underline;'>Términos</a>
+                                    </p>
+                                </footer>
+                            </div>
+                        ");
+            });
+        }
+
         return response()->json(['success' => true]);
     }
 

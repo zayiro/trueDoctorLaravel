@@ -53,7 +53,7 @@
     @endif
 
     <!-- Sección: Buscador de medicos por especialidades medicas y por ciudad (opcional) o por sintomas -->
-    <div class="relative z-40 bg-white pb-20 pt-16 lg:pt-30">
+    <div class="relative z-40 bg-white pb-20 sm:pb-10 pt-16 lg:pt-30">
         <div class="max-w-7xl mx-auto px-6 lg:px-8">
             <div class="text-center mb-12">
                 <h1 class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
@@ -78,127 +78,200 @@
         </div>
     </div>    
 
-    <section class="py-12 px-4">
-        <div class="max-w-6xl mx-auto">            
-            <!-- Grid Responsivo: 1 columna en mobile, 2 en desktop -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                
-                <!-- COLUMNA IZQUIERDA: Imagen -->
-                <div class="order-2 md:order-1">
-                    <img src="{{ asset('images/telemedicina.png') }}" 
-                        alt="Telemedicina" 
-                        class="w-full h-auto rounded-2xl shadow-xl">
+    <!-- Teleconsulta Hero Section -->
+    <section class="relative bg-white md:py-10 px-4 overflow-hidden">
+        <!-- Destellos orgánicos sutiles de fondo -->
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full pointer-events-none opacity-40">
+            <div class="absolute top-[-5%] right-[-5%] w-[400px] h-[400px] bg-blue-200/20 rounded-full blur-[100px]"></div>
+            <div class="absolute bottom-[5%] left-[-5%] w-[450px] h-[450px] bg-emerald-200/20 rounded-full blur-[110px]"></div>
+        </div>
+
+        <div class="relative max-w-7xl mx-auto px-4 z-10">
+            <!-- Contenedor Principal Unificado en Gris Suave -->
+            <div class="bg-slate-50 backdrop-blur-xl rounded-3xl p-6 sm:p-10 md:p-14 border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 items-center">
                     
-                    <div class="mt-4 p-3">
-                        <h5 class="mb-3 text-2xl font-semibold text-gray-600 tracking-tight text-heading leading-8">¿Qué es la teleconsulta?</h5>
-                        <ul class="space-y-3 mb-8">
-                            <li class="flex items-center gap-3">
-                                <svg class="w-5 h-5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    <!-- COLUMNA IZQUIERDA: Textos y Beneficios Clave -->
+                    <div class="md:col-span-7 space-y-6 text-left">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-2 pt-2.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-700/10 tracking-wide uppercase">
+                            Atención Médica Inmediata
+                        </span>
+                        
+                        <h2 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight">
+                            Consultas Médicas <span class="text-blue-600 block sm:inline">en línea</span>
+                        </h2>
+                        
+                        <p class="text-slate-600 text-base md:text-lg leading-relaxed max-w-xl">
+                            Accede a nuestro servicio de teleconsulta y recibe atención médica experta desde cualquier lugar, eliminando traslados innecesivos.
+                        </p>
+
+                        <!-- Beneficios Rápidos Exclusivos -->
+                        <div class="flex flex-wrap gap-4 pt-2">
+                            <span class="flex items-center gap-2 text-sm font-semibold text-slate-700 bg-white px-3 py-1.5 rounded-lg border border-slate-200/60 shadow-sm">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Disponible 24/7
+                            </span>
+                            <span class="flex items-center gap-2 text-sm font-semibold text-slate-700 bg-white px-3 py-1.5 rounded-lg border border-slate-200/60 shadow-sm">
+                                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0110 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"/></svg> Doctores Certificados
+                            </span>
+                        </div>
+                        <!-- Botón de Agendamiento Principal -->
+                        <div class="pt-4 border-t border-slate-200/60">
+                            <a href="{{ url('/search') }}?specialty=medicina-general" class="group w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-200 shadow-md shadow-blue-600/15 flex items-center justify-center gap-2.5 text-base transform active:scale-[0.98]">
+                                Agendar Cita
+                                <svg class="w-4 h-4 text-blue-200 group-hover:text-white group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                                 </svg>
-                                <span class="text-gray-700">Es una consulta médica por videollamada.</span>
-                            </li>
-                            <li class="flex items-center gap-3">
-                                <svg class="w-5 h-5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                                </svg>
-                                <span class="text-gray-700">Hablas con un doctor desde tu casa u oficina.</span>
-                            </li>
-                            <li class="flex items-center gap-3">
-                                <svg class="w-5 h-5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                                </svg>
-                                <span class="text-gray-700">Evitas filas y salas de espera.</span>
-                            </li>
-                            <li class="flex items-center gap-3">
-                                <svg class="w-5 h-5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                                </svg>
-                                <span class="text-gray-700">Fácil acceso, usas el computador o tu celular.</span>
-                            </li>
-                        </ul>                    
+                            </a>
+                        </div>
+
+                        <!-- Módulo Informativo Integrado en la estructura -->
+                        <div class="space-y-3 pt-6">
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">¿Cómo funciona la teleconsulta?</h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div class="flex items-start gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                                    <svg class="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+                                    <span class="text-sm text-slate-600 leading-normal">Consulta médica profesional mediante videollamada segura.</span>
+                                </div>
+                                <div class="flex items-start gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                                    <svg class="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+                                    <span class="text-sm text-slate-600 leading-normal">Conversa con tu doctor desde la comodidad de tu hogar u oficina.</span>
+                                </div>
+                                <div class="flex items-start gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                                    <svg class="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+                                    <span class="text-sm text-slate-600 leading-normal">Ahorra tiempo valioso al evitar filas y salas de espera.</span>
+                                </div>
+                                <div class="flex items-start gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                                    <svg class="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+                                    <span class="text-sm text-slate-600 leading-normal">Fácil acceso desde cualquier celular, tablet o computadora.</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                
-                <!-- COLUMNA DERECHA: Texto -->
-                <div class="order-1 md:order-2">             
-                    <h1 class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
-                        Consultas Médicas <span class="text-blue-600">en línea</span>
-                    </h1>
-                    <p class="text-lg text-gray-600 mb-6 leading-relaxed">                        
-                        Servicio de Teleconsulta, atención médica desde cualquier lugar
-                    </p>
-                    <ul class="space-y-3 mb-8">
-                        <li class="flex items-center gap-3">
-                            <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
-                            </svg>
-                            <span class="text-gray-700">Disponible 24/7</span>
-                        </li>
-                        <li class="flex items-center gap-3">
-                            <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
-                            </svg>
-                            <span class="text-gray-700">Doctores certificados</span>
-                        </li>
-                        <li class="flex items-center gap-3">
-                            <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"/>
-                            </svg>
-                            <span class="text-gray-700">Precios accesibles</span>
-                        </li>
-                    </ul>
-                    <a href="{{ url('/search') }}?specialty=medicina-general" class="block w-full md:w-auto md:inline-block px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white text-center font-bold rounded-lg transition shadow-lg">
-                        Agendar Cita
-                    </a>
+                    <!-- COLUMNA DERECHA: Elemento Visual -->
+                    <div class="md:col-span-5 flex justify-center items-center">
+                        <div class="relative w-full max-w-sm md:max-w-none group">
+                            <!-- Efecto sutil de brillo perimetral en la imagen al hacer hover -->
+                            <div class="absolute inset-0 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
+                            <img src="{{ asset('images/telemedicina.png') }}" 
+                                alt="Plataforma de Telemedicina Avanzada" 
+                                class="w-full h-auto rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.03)] border border-slate-200/60 object-cover transform group-hover:scale-[1.01] transition-all duration-300">
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Sección de Promoción: Análisis Clínico con IA -->
-    <div class="relative bg-white pb-20 pt-16 overflow-hidden">
-        <section class="max-w-7xl mx-auto px-6">
-            <!-- Cambiado a un fondo oscuro profundo con bordes blancos semi-transparentes para contraste perfecto sobre Slate -->
-            <div class="relative bg-slate-950 rounded-3xl overflow-hidden shadow-2xl border border-white/10">
-                
-                <!-- Elementos visuales de fondo (Brillo tecnológico sutil) -->
-                <div class="absolute -top-24 -right-24 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
-                <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    <section class="relative bg-white pt-4 px-4 pb-10 overflow-hidden">
+        <!-- Destellos de luz orgánicos muy suaves en tonos salud -->
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full pointer-events-none opacity-40">
+            <div class="absolute top-[-10%] right-[-5%] w-[450px] h-[450px] bg-blue-200/30 rounded-full blur-[100px]"></div>
+            <div class="absolute bottom-[10%] left-[-5%] w-[450px] h-[450px] bg-emerald-200/20 rounded-full blur-[100px]"></div>
+        </div>
 
-                <div class="grid md:grid-cols-12 gap-4 p-4 md:p-8 items-center relative z-10">
+        <div class="relative max-w-7xl mx-auto pt-10 px-4 sm:px-6 z-10">
+            <!-- Tarjeta Principal de Cristal Luminoso -->
+            <div class="bg-slate-50 backdrop-blur-xl rounded-3xl p-6 sm:p-10 md:p-14 border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 items-center">
                     
                     <!-- Columna Texto (Izquierda) -->
-                    <div class="md:col-span-7 space-y-5 text-left">    
-                        <!-- Textos Persuasivos -->
-                        <h1 class="text-5xl lg:text-7xl font-black text-white tracking-tight mb-6">
-                            Interpreta tus exámenes médicos <span class="text-blue-600">con Inteligencia Artificial</span>
-                        </h1>
-                        <p class="text-slate-300 leading-relaxed">                            
-                            Obtén un <span class="text-blue-200 font-semibold">análisis técnico asistido por IA</span> para complementar la opinión de tu médico. Facilita la comprensión de tus exámenes y colabora en la búsqueda de una solución más eficiente.
-                        </p>
-                        <p class="text-slate-300 leading-relaxed">                            
-                            Nuestro asistente de análisis médico con IA procesa tus resultados en segundos, ofreciendo un soporte técnico avanzado para respaldar el criterio de tu especialista y agilizar el diagnóstico.
-                        </p>                        
+                    <div class="md:col-span-7 space-y-6 text-left">    
+                        <span class="inline-flex items-center gap-1.5 px-3 py-2 pt-2.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-700/10 tracking-wide uppercase">
+                            Segunda Opinión Médica con IA
+                        </span>
 
-                        <!-- Pequeños checks de confianza rápida -->
-                        <div class="flex flex-wrap gap-x-6 gap-y-2 pt-2 text-md text-slate-400 font-medium">
-                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Análisis de Biomarcadores</span>
-                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Análisis Multidocumento</span>
-                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Privacidad 100% Protegida</span>
-                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Reporte Inmediato</span>                            
-                            <span class="flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> Copia Segura en tu Email</span>
+                        <h2 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight">
+                            Interpreta tus exámenes médicos <span class="text-blue-600">con Inteligencia Artificial</span>
+                        </h2>
+                        
+                        <p class="text-slate-600 text-base md:text-lg leading-relaxed max-w-xl">                            
+                            Obtén un informe técnico asistido por IA en segundos. Diseñado para ayudarte a comprender tus biomarcadores de forma clara y complementar el criterio de tu especialista.
+                        </p>
+                        <!-- Grid de Estudios Soportados (UI Limpia) -->
+                        <div class="space-y-4 pt-5 border-t border-slate-100">
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Estudios Soportados</p>
+                            
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <!-- 1. Laboratorio -->
+                                <div class="flex items-center space-x-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                                    <div class="p-2 bg-blue-50 text-blue-600 rounded-lg shrink-0">
+                                        <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-800 text-sm font-semibold">Laboratorio</p>
+                                        <p class="text-[11px] text-slate-400">Sangre, orina y bioquímica</p>
+                                    </div>
+                                </div>
+
+                                <!-- 2. Radiografía -->
+                                <div class="flex items-center space-x-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                                    <div class="p-2 bg-indigo-50 text-indigo-600 rounded-lg shrink-0">
+                                        <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path stroke-linecap="round" d="M12 6v12M8 10h8M7 14h10" /></svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-800 text-sm font-semibold">Radiografía</p>
+                                        <p class="text-[11px] text-slate-400">Placas Rayos X convencionales</p>
+                                    </div>
+                                </div>
+
+                                <!-- 3. Ecografía -->
+                                <div class="flex items-center space-x-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                                    <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg shrink-0">
+                                        <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-800 text-sm font-semibold">Ecografía</p>
+                                        <p class="text-[11px] text-slate-400">Ultrasonido y Doppler</p>
+                                    </div>
+                                </div>
+
+                                <!-- 4. Tomografía -->
+                                <div class="flex items-center space-x-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                                    <div class="p-2 bg-sky-50 text-sky-600 rounded-lg shrink-0">
+                                        <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-800 text-sm font-semibold">Tomografía</p>
+                                        <p class="text-[11px] text-slate-400">Estudios seriados (TAC)</p>
+                                    </div>
+                                </div>
+
+                                <!-- 5. Resonancia -->
+                                <div class="flex items-center space-x-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                                    <div class="p-2 bg-violet-50 text-violet-600 rounded-lg shrink-0">
+                                        <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-800 text-sm font-semibold">Resonancia</p>
+                                        <p class="text-[11px] text-slate-400">RMN de alta definición</p>
+                                    </div>
+                                </div>
+
+                                <!-- 6. DICOM -->
+                                <div class="flex items-center space-x-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                                    <div class="p-2 bg-teal-50 text-teal-600 rounded-lg shrink-0">
+                                        <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-800 text-sm font-semibold">DICOM</p>
+                                        <p class="text-[11px] text-slate-400">Archivos médicos (.dcm)</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-
                     <!-- Columna Interactiva / CTA (Derecha) -->
-                    <div class="md:col-span-5 flex flex-col items-center justify-center" x-data="{ loading: false }">
-                        
+                    <div class="md:col-span-5 flex flex-col items-center justify-center mt-8 md:mt-0" x-data="{ loading: false }">
+                        <!-- Tarjeta Blanca de Acción -->
+                        <div class="w-full bg-slate-50/60 rounded-2xl border border-slate-200/60 p-6 md:p-8 text-center space-y-6">
+                            <div class="space-y-1">
+                                <p class="text-xs uppercase tracking-wider font-bold text-slate-400">Procesador Inteligente</p>
+                                <h4 class="text-slate-800 font-extrabold text-lg">¿Listo para comenzar?</h4>
+                            </div>
 
-                        <!-- Caja de acción con fondo sutilmente más claro que el fondo negro para dar relieve -->
-                        <div class="w-full bg-slate-900 border border-white/5 p-6 md:p-8 rounded-2xl shadow-xl text-center space-y-6">
-
-                            <!-- Enlace directo al Index explicativo -->
+                            <!-- Botón Principal Clínico -->
                             <a href="{{ route('medical-analysis.index') }}" 
                             @click="
                                 loading = true;
@@ -210,212 +283,132 @@
                                     });
                                 }
                             "
-                            :class="loading ? 'opacity-70 cursor-not-allowed' : ''"
-                            class="group w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:-translate-y-0.5 shadow-lg shadow-blue-500/20 flex items-center justify-center gap-3 text-base">
-                                <span x-show="!loading">Análizar mis exámenes con IA</span>
-                                <span x-show="loading">Cargando...</span>
-                                <i class="fa-solid fa-arrow-right text-sm transition-transform group-hover:translate-x-1" x-show="!loading"></i>
+                            :class="loading ? 'opacity-70 cursor-not-allowed pointer-events-none' : ''"
+                            class="group w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-200 shadow-md shadow-blue-600/15 flex items-center justify-center gap-2.5 text-base transform active:scale-[0.98]">
+                                
+                                <span x-show="!loading">Analizar exámenes con IA</span>
+                                <span x-show="loading" class="flex items-center gap-2">
+                                    <svg class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Cargando...
+                                </span>
+                                
+                                <svg class="w-4 h-4 text-blue-200 group-hover:text-white group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                                </svg>
                             </a>
 
-                            <p class="text-[11px] text-slate-500 leading-normal">
-                                Cumple con normativas internacionales de protección de datos de salud de forma estricta.
-                            </p>
-                        </div>
-                        <div>
-                            <ul class="list-none flex flex-wrap gap-x-6 gap-y-2 pt-8 text-md text-slate-400 font-medium">
-                                <li>
-                                    <div class="flex items-center space-x-3">
-                                        <!-- Icono de Radiografía con fondo suave -->
-                                        <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
-                                            <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <p class="text-slate-300 text-base md:text-lg leading-relaxed">Exámenes de Laboratorio</p>
-                                            <p class="text-xs text-gray-500">Sangre, orina y perfiles bioquímicos</p>
-                                        </div>
-                                    </div>
-                                </li>
-                                <li>
-                                    <div class="flex items-center space-x-3">
-                                        <!-- Icono de Radiografía con fondo suave -->
-                                        <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
-                                            <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <rect x="3" y="3" width="18" height="18" rx="2" />
-                                                <path stroke-linecap="round" d="M12 6v12M8 10h8M7 14h10" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <p class="text-slate-300 text-base md:text-lg leading-relaxed">Radiografía</p>
-                                            <p class="text-xs text-gray-500">Placas e imágenes de Rayos X convencionales</p>
-                                        </div>
-                                    </div>
-                                </li>
-                                <li>
-                                    <div class="flex items-center space-x-3">
-                                        <!-- Icono de Radiografía con fondo suave -->
-                                        <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
-                                            <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <p class="text-slate-300 text-base md:text-lg leading-relaxed">Ecografía</p>
-                                            <p class="text-xs text-gray-500">Ultrasonido diagnóstico y Doppler</p>
-                                        </div>
-                                    </div>
-                                </li>
-                                <li>
-                                    <div class="flex items-center space-x-3">
-                                        <!-- Icono de Radiografía con fondo suave -->
-                                        <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
-                                            <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <p class="text-slate-300 text-base md:text-lg leading-relaxed">Tomografía</p>
-                                            <p class="text-xs text-gray-500">Estudios tomográficos seriados (TAC)</p>
-                                        </div>
-                                    </div>
-                                </li>
-                                <li>
-                                    <div class="flex items-center space-x-3">
-                                        <!-- Icono de Radiografía con fondo suave -->
-                                        <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
-                                            <span class="text-lg leading-none select-none">🧠</span>
-                                        </div>
-                                        <div>
-                                            <p class="text-slate-300 text-base md:text-lg leading-relaxed">Resonancia</p>
-                                            <p class="text-xs text-gray-500">Resonancia Magnética Nuclear de alta definición</p>
-                                        </div>
-                                    </div>
-                                </li>
-                                <li>
-                                    <div class="flex items-center space-x-3">
-                                        <!-- Icono de Radiografía con fondo suave -->
-                                        <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
-                                            <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <p class="text-slate-300 text-base md:text-lg leading-relaxed">DICOM</p>
-                                            <p class="text-xs text-gray-500">Carga directa de archivos de imagen médica (.dcm)</p>
-                                        </div>
-                                    </div>
-                                </li>
-                            </ul>
+                            <div class="pt-3 border-t border-slate-200">
+                                <p class="text-[11px] text-slate-400 leading-normal">
+                                    Tu privacidad está asegurada. Cumplimos con estándares estrictos de protección de datos de salud.
+                                </p>
+                            </div>
                         </div>
                     </div>
 
                 </div>
-                
-            </div>
-        </section>
-    </div>
-
-    <!-- Skin Analysis Hero Section -->
-    <section class="bg-gradient-to-br from-rose-50 via-amber-50 to-orange-50 py-16 md:py-24 px-4 md:px-6">
-        <div class="max-w-6xl mx-auto">
-            
-            <!-- Header -->
-            <div class="text-center mb-16">
-                <div class="text-center mb-6">
-                    <h1 class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
-                        Analiza tu Piel <span class="text-blue-600">al Instante</span>
-                    </h1>
-                </div>
-                <p class="text-lg text-gray-600 max-w-2xl mx-auto">
-                    3 pasos simples para detectar cambios de piel potencialmente graves
-                </p>
-            </div>
-
-            <!-- Steps Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                
-                <!-- Step 1 -->
-                <div class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-                    <div class="bg-gradient-to-br from-orange-100 to-amber-100 h-50 flex items-center justify-center relative overflow-hidden rounded-t-2xl">
-                        <span class="absolute top-4 left-4 bg-gray-900 text-white text-sm font-bold px-4 py-1.5 rounded-full flex items-center gap-2 z-10">
-                            Paso 1
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                            </svg>
-                        </span>
-                        
-                        <!-- Imagen -->
-                        <img src="{{ asset('images/skin-analysis/mancha-piel.jpg') }}" alt="Análisis de piel" class="w-full h-full object-cover">
-                    </div>
-                    
-                    <div class="p-6">
-                        <h4 class="text-xl font-bold text-gray-900 mb-2">Toma una Foto</h4>
-                        <p class="text-gray-600">
-                            Sube una foto clara del área de piel que te preocupa
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Step 2 -->
-                <div class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-                    <div class="bg-gradient-to-br from-orange-100 to-amber-100 h-50 flex items-center justify-center relative overflow-hidden rounded-t-2xl">
-                        <span class="absolute top-4 left-4 bg-gray-900 text-white text-sm font-bold px-4 py-1.5 rounded-full flex items-center gap-2 z-10">
-                            Paso 2
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                            </svg>
-                        </span>
-                        
-                        <!-- Imagen -->
-                        <img src="{{ asset('images/skin-analysis/step-2.webp') }}" alt="Análisis de piel" class="w-full h-full object-cover">
-                    </div>
-                    
-                    <div class="p-6">
-                        <h4 class="text-xl font-bold text-gray-900 mb-2">IA Analiza</h4>
-                        <p class="text-gray-600">
-                            Nuestra IA detecta signos tempranos de condiciones de piel
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Step 3 -->
-                <div class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-                    <div class="bg-gradient-to-br from-orange-100 to-amber-100 h-50 flex items-center justify-center relative overflow-hidden rounded-t-2xl">
-                        <span class="absolute top-4 left-4 bg-gray-900 text-white text-sm font-bold px-4 py-1.5 rounded-full flex items-center gap-2 z-10">
-                            Paso 3
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                            </svg>
-                        </span>
-                        
-                        <!-- Imagen -->
-                        <img src="{{ asset('images/skin-analysis/2.webp') }}" alt="Análisis de piel" class="w-full h-full object-cover">
-                    </div>
-                    
-                    <div class="p-6">
-                        <h4 class="text-xl font-bold text-gray-900 mb-2">Recibe Resultado</h4>
-                        <p class="text-gray-600">
-                            Análisis detallado y recomendaciones de próximos pasos
-                        </p>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- CTA Button -->
-            <div class="flex justify-center mb-16">                
-                <a href="{{ route('skin-analysis.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition duration-200">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.757l.108.464.464.108a1 1 0 010 1.942l-.464.108-.108.464a1 1 0 11-1.934-.484l.066-.284-.284-.066a1 1 0 010-1.942l.284-.066.066-.284A1 1 0 0112 2zm0 10a1 1 0 01.967.757l.108.464.464.108a1 1 0 010 1.942l-.464.108-.108.464a1 1 0 11-1.934-.484l.066-.284-.284-.066a1 1 0 010-1.942l.284-.066.066-.284A1 1 0 0112 12z" clip-rule="evenodd" />
-                    </svg>
-                    COMENZAR ANÁLISIS
-                </a>
             </div>
         </div>
     </section>
 
-    <!-- Sección registro de profesionales de la salud en el directorio de OpenDoctorOnline -->
+    <!-- Skin Analysis Hero Section -->
+    <section class="relative bg-white md:py-20 px-4 pb-20 pt-5 overflow-hidden">
+        <!-- Destellos de luz orgánicos muy suaves en el fondo de la página -->
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full pointer-events-none opacity-40">
+            <div class="absolute top-[-5%] left-[-5%] w-[400px] h-[400px] bg-blue-200/30 rounded-full blur-[100px]"></div>
+            <div class="absolute bottom-[5%] right-[-5%] w-[450px] h-[450px] bg-indigo-200/20 rounded-full blur-[110px]"></div>
+        </div>
+
+        <div class="relative max-w-7xl mx-auto px-4 z-10">
+            <!-- Contenedor Principal Estilizado en Gris Suave (Consistencia Visual) -->
+            <div class="bg-slate-50 backdrop-blur-xl rounded-3xl p-6 sm:p-10 md:p-14 border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+                
+                <!-- Header Interno -->
+                <div class="text-center mb-12 md:mb-16">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-2 pt-2.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-700/10 mb-5 tracking-wide uppercase">
+                        Tecnología Inteligente
+                    </span>
+                    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight max-w-3xl mx-auto leading-tight">
+                        Analiza tu Piel 
+                        <span class="text-blue-600 block sm:inline">al Instante</span>
+                    </h1>
+                    <p class="mt-4 text-base md:text-lg text-slate-600 max-w-xl mx-auto leading-relaxed">
+                        3 pasos simples para detectar cambios de piel potencialmente graves con el respaldo de nuestra Inteligencia Artificial.
+                    </p>
+                </div>
+                <!-- Steps Cards Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mb-12">
+                    <!-- Paso 1 -->
+                    <div class="group relative bg-white rounded-2xl border border-slate-200/60 p-3 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between">
+                        <div>
+                            <div class="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-slate-100">
+                                <span class="absolute top-3 left-3 bg-slate-900/90 backdrop-blur-sm text-white text-[11px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 z-10 shadow-sm">
+                                    <span>01</span>
+                                    <span class="text-slate-500">/</span>
+                                    <span class="text-slate-300">Paso</span>
+                                </span>
+                                <img src="{{ asset('images/skin-analysis/mancha-piel.jpg') }}" alt="Toma una foto clara de tu piel" class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 ease-out">
+                            </div>
+                            <div class="p-4 pt-5">
+                                <h4 class="text-lg font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors duration-200">Toma una Foto</h4>
+                                <p class="text-slate-600 text-sm leading-relaxed">Sube una foto clara y bien iluminada del área de piel que te preocupa.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Paso 2 -->
+                    <div class="group relative bg-white rounded-2xl border border-slate-200/60 p-3 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between">
+                        <div>
+                            <div class="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-slate-100">
+                                <span class="absolute top-3 left-3 bg-slate-900/90 backdrop-blur-sm text-white text-[11px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 z-10 shadow-sm">
+                                    <span>02</span>
+                                    <span class="text-slate-500">/</span>
+                                    <span class="text-slate-300">Paso</span>
+                                </span>
+                                <img src="{{ asset('images/skin-analysis/step-2.webp') }}" alt="Análisis automatizado por IA" class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 ease-out">
+                            </div>
+                            <div class="p-4 pt-5">
+                                <h4 class="text-lg font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors duration-200">IA Analiza</h4>
+                                <p class="text-slate-600 text-sm leading-relaxed">Nuestra IA procesa los patrones visuales buscando signos dermatológicos tempranos.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Paso 3 -->
+                    <div class="group relative bg-white rounded-2xl border border-slate-200/60 p-3 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between">
+                        <div>
+                            <div class="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-slate-100">
+                                <span class="absolute top-3 left-3 bg-slate-900/90 backdrop-blur-sm text-white text-[11px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 z-10 shadow-sm">
+                                    <span>03</span>
+                                    <span class="text-slate-500">/</span>
+                                    <span class="text-slate-300">Paso</span>
+                                </span>
+                                <img src="{{ asset('images/skin-analysis/2.webp') }}" alt="Informe clínico inmediato" class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 ease-out">
+                            </div>
+                            <div class="p-4 pt-5">
+                                <h4 class="text-lg font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors duration-200">Recibe Resultado</h4>
+                                <p class="text-slate-600 text-sm leading-relaxed">Obtén un análisis detallado, nivel de riesgo estimado y próximos pasos sugeridos.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- CTA Button -->
+                <div class="flex justify-center pt-4">
+                    <a href="{{ route('skin-analysis.index') }}" class="group w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-200 shadow-md shadow-blue-600/15 flex items-center justify-center gap-2.5 text-base transform active:scale-[0.98]">
+                        Comenzar análisis clínico
+                        <svg class="w-4 h-4 text-blue-200 group-hover:text-white group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                        </svg>
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Sección registro de profesionales de la salud en el directorio de opendoctor.online -->
     <section class="relative overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50/50 py-16 sm:py-24">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-center">
@@ -423,73 +416,77 @@
             <!-- Columna Izquierda: Contenido y Propuesta de Valor -->
             <div class="flex flex-col justify-center text-center lg:text-left">
                 <!-- Etiqueta superior -->
-                <span class="inline-flex self-center lg:self-start items-center rounded-full bg-blue-100 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-blue-800 mb-6">
+                <span class="inline-flex self-center lg:self-start items-center rounded-full bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-700/10 px-4 py-2 pt-2.5 text-xs font-semibold uppercase tracking-wider text-blue-800 mb-6">
                 Para Profesionales de la Salud
                 </span>
                 
                 <!-- Título Principal -->
-                <h2 class="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">
+                <h2 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">
                 Digitaliza tu consulta y expande tu <span class="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">reputación médica</span>
                 </h2>
                 
                 <p class="mt-4 text-base sm:text-lg text-slate-600 max-w-2xl mx-auto lg:mx-0">
-                Únete al directorio de especialistas de <strong class="text-slate-900 font-semibold">OpenDoctorOnline</strong>. Permite que cientos de pacientes encuentren tu perfil, agenden citas en línea y conozcan tu trayectoria profesional.
+                Únete al directorio de especialistas de <span class="text-lg font-black text-slate-900 tracking-tight">
+                    Open<span class="text-indigo-600">Doctor</span><span class="text-emerald-500">Online</span></span>. Permite que cientos de pacientes encuentren tu perfil, agenden citas en línea y conozcan tu trayectoria profesional.
                 </p>
 
                 <!-- Lista de Beneficios con Heroicons -->
                 <div class="mt-8 space-y-4 max-w-xl mx-auto lg:mx-0 text-left">
-                <!-- Beneficio 1 -->
-                <div class="flex items-start gap-4">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-200">
-                    <!-- Heroicon: eye -->
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                    </svg>
+                    <!-- Beneficio 1 -->
+                    <div class="flex items-start gap-4">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-200">
+                        <!-- Heroicon: eye -->
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                        </div>
+                        <div>
+                        <h3 class="font-semibold text-slate-900">Mayor visibilidad local</h3>
+                        <p class="text-sm text-slate-600">Posiciona tu consultorio frente a pacientes que buscan activamente tu especialidad en tu ciudad.</p>
+                        </div>
                     </div>
-                    <div>
-                    <h3 class="font-semibold text-slate-900">Mayor visibilidad local</h3>
-                    <p class="text-sm text-slate-600">Posiciona tu consultorio frente a pacientes que buscan activamente tu especialidad en tu ciudad.</p>
-                    </div>
-                </div>
 
-                <!-- Beneficio 2 -->
-                <div class="flex items-start gap-4">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-200">
-                    <!-- Heroicon: calendar-days -->
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-                    </svg>
+                    <!-- Beneficio 2 -->
+                    <div class="flex items-start gap-4">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-200">
+                        <!-- Heroicon: calendar-days -->
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                        </svg>
+                        </div>
+                        <div>
+                        <h3 class="font-semibold text-slate-900">Gestión de citas inteligente</h3>
+                        <p class="text-sm text-slate-600">Herramientas automatizadas de agenda para reducir el ausentismo y organizar tus horarios sin esfuerzo.</p>
+                        </div>
                     </div>
-                    <div>
-                    <h3 class="font-semibold text-slate-900">Gestión de citas inteligente</h3>
-                    <p class="text-sm text-slate-600">Herramientas automatizadas de agenda para reducir el ausentismo y organizar tus horarios sin esfuerzo.</p>
-                    </div>
-                </div>
 
-                <!-- Beneficio 3 -->
-                <div class="flex items-start gap-4">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-200">
-                    <!-- Heroicon: ShieldCheck -->
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
-                    </svg>
+                    <!-- Beneficio 3 -->
+                    <div class="flex items-start gap-4">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-200">
+                        <!-- Heroicon: ShieldCheck -->
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+                        </svg>
+                        </div>
+                        <div>
+                        <h3 class="font-semibold text-slate-900">Perfil médico verificado</h3>
+                        <p class="text-sm text-slate-600">Construye confianza digital mostrando tus certificaciones, opiniones reales de pacientes y logros.</p>
+                        </div>
                     </div>
-                    <div>
-                    <h3 class="font-semibold text-slate-900">Perfil médico verificado</h3>
-                    <p class="text-sm text-slate-600">Construye confianza digital mostrando tus certificaciones, opiniones reales de pacientes y logros.</p>
-                    </div>
-                </div>
                 </div>
 
                 <!-- Botones de Acción -->
                 <div class="mt-10 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-                <a href="{{ route('partner.register') }}" class="w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition duration-200">
-                    Registrarme como Especialista
-                </a>
-                <a href="{{ route('plans.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-6 py-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition duration-200">
-                    Saber más sobre los planes
-                </a>
+                    <a href="{{ route('partner.register') }}" class="group w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-200 shadow-md shadow-blue-600/15 flex items-center justify-center gap-2.5 text-base transform active:scale-[0.98]">
+                        Registrarme como Especialista
+                        <svg class="w-4 h-4 text-blue-200 group-hover:text-white group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                        </svg>
+                    </a>   
+                    <a href="{{ route('plans.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-6 py-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition duration-200">
+                        Saber más sobre los planes
+                    </a>
                 </div>
             </div>
 
@@ -515,6 +512,7 @@
         </div>
     </section>
 
+    <!-- Agendar una cita medica por telemedicina -->
     <section class="py-10 px-4 bg-gray-50">
         <div class="max-w-5xl mx-auto pb-5">            
             <div class="text-center mb-6">
@@ -556,6 +554,7 @@
         </div>
     </section>  
 
+    <!-- Como consultar un medico o especialista médico en opendoctor.online -->
     <section class="py-16 pt-16 px-4 bg-white">
         <div class="max-w-6xl mx-auto">            
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -595,6 +594,7 @@
         </div>
     </section>    
     
+    <!-- Pasos para reservar una cita médica en opendoctor.online -->
     <section class="py-16 px-4 bg-gray-50">
         <div class="max-w-6xl mx-auto">            
             <!-- Timeline Desktop -->
@@ -734,31 +734,15 @@
             </div>
         </div>
     </section>
-
-    <section class="py-16 px-4 bg-white">
-        <div class="max-w-6xl mx-auto">
-            <h2 class="text-4xl text-indigo-900 font-bold text-center mb-12">Especialidades Disponibles</h2>
-            
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                @foreach(['Medicina General', 'Cardiología', 'Dermatología', 'Pediatría', 'Ginecología', 'Psicología', 'Neurocirugía', 'Endocrinología'] as $specialty)
-                    <div class="p-6 border border-gray-200 rounded-xl hover:border-blue-600 hover:shadow-lg transition text-center">
-                        <svg class="w-8 h-8 text-blue-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <p class="font-bold text-gray-800">{{ $specialty }}</p>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-    </section>
     
     <!-- Componente Automático de Enlazado de Síntomas para SEO -->
-    <div class="relative bg-white pb-10 pt-10 lg:pt-4 overflow-hidden">
+    <section class="relative bg-white pb-10 pt-10 lg:pt-4 overflow-hidden">
         <section class="my-5 max-w-7xl mx-auto px-4">
             <x-symptom-cards-home />
         </section>
-    </div>
+    </section>
 
+    <!-- Comentarios de los pacientes -->
     <section class="py-10 px-4 bg-gray-50">
         <div class="max-w-6xl mx-auto pb-5">
             <h2 class="text-4xl text-indigo-900 font-bold text-center mb-12">Lo que dicen nuestros pacientes</h2>
@@ -809,6 +793,7 @@
         </div>
     </section>
 
+    <!-- Texto de Privacidad -->
     <section class="py-16 px-4 bg-white">
         <div class="max-w-4xl mx-auto">
             <h2 class="text-4xl text-indigo-900 font-bold text-center mb-12">Tu privacidad es nuestra prioridad</h2>
@@ -857,6 +842,7 @@
         </div>
     </section>
 
+    <!-- Preguntas frecuentes -->
     <section class="py-16 px-4 bg-gray-50">
         <div class="max-w-4xl mx-auto">
             <h2 class="text-4xl text-indigo-900 font-bold text-center mb-12">Preguntas Frecuentes</h2>

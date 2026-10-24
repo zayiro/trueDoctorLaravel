@@ -2,73 +2,65 @@
 
 namespace App\Services;
 
-use Carbon\Carbon;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 
 class ColombiaHolidayService
 {
     /**
-     * Calcula y retorna un array indexado con todos los festivos de Colombia para un año específico.
+     * Festivos de Colombia de un año: ['AAAA-MM-DD' => true].
      * Uso: $festivos = ColombiaHolidayService::getHolidays(2026);
      */
     public static function getHolidays(int $year): array
     {
-        // A. Festivos con Fecha Fija Absoluta
-        $fixedHolidays = [
-            "$year-01-01", // Año Nuevo
-            "$year-05-01", // Día del Trabajo
-            "$year-07-15", // Fiesta de Bogotá
-            "$year-07-20", // Día de la independencia
-            "$year-08-07", // Batalla de Boyacá
-            "$year-12-08", // Inmaculada Concepción
-            "$year-12-25", // Navidad
-        ];
+        $holidays = [];
 
-        // B. Festivos regidos por la Ley Emiliani (Se mueven al siguiente Lunes si no son Lunes)
-        $emilianiDates = [
-            "$year-01-06", // Reyes Magos
-            "$year-03-19", // San José
-            "$year-06-08", // Corpus christi
-            "$year-06-15", // Sagrado Corazón de Jesús
-            "$year-06-29", // San Pedro y San Pablo
-            "$year-07-13", // Día de la Virgen de Chiquinquirá
-            "$year-08-15", // Asunción de la Virgen
-            "$year-10-12", // Día de la Raza
-            "$year-11-01", // Todos los Santos
-            "$year-11-11", // Independencia de Cartagena
-        ];
-
-        // C. Cálculo de la Semana Santa Variable (Fórmula de Gauss integrada nativa)
-        $daysAfterMarch21 = easter_days($year);
-        $easterSunday = Carbon::createFromDate($year, 3, 21)->addDays($daysAfterMarch21);
-        
-        $juevesSanto = (clone $easterSunday)->subDays(3)->toDateString();
-        $viernesSanto = (clone $easterSunday)->subDays(2)->toDateString();
-        
-        // Fiestas móviles calculadas que también se arrastran al Lunes por Ley Emiliani
-        $ascension = (clone $easterSunday)->addDays(43)->toDateString();     // Ascensión
-        $corpusChristi = (clone $easterSunday)->addDays(64)->toDateString(); // Corpus Christi
-        $sagradoCorazon = (clone $easterSunday)->addDays(71)->toDateString(); // Sagrado Corazón
-
-        $colombianHolidays = [];
-
-        // Inyectar fechas fijas
-        foreach ($fixedHolidays as $date) { 
-            $colombianHolidays[$date] = true; 
+        // A. Fechas fijas
+        foreach (['01-01', '05-01', '07-20', '08-07', '12-08', '12-25'] as $monthDay) {
+            $holidays["$year-$monthDay"] = true;
         }
 
-        // Inyectar fechas Emiliani móviles calculadas
-        foreach (array_merge($emilianiDates, [$ascension, $corpusChristi, $sagradoCorazon]) as $date) {
-            $carbonDate = Carbon::parse($date);
-            if ($carbonDate->dayOfWeek !== Carbon::MONDAY) {
-                $carbonDate->next(Carbon::MONDAY);
-            }
-            $colombianHolidays[$carbonDate->toDateString()] = true;
+        // B. Ley Emiliani con fecha base fija: si no cae en lunes, pasan al lunes siguiente
+        //    (Reyes, San José, San Pedro y San Pablo, Asunción, Día de la Raza, Todos los Santos, Independencia de Cartagena)
+        foreach (['01-06', '03-19', '06-29', '08-15', '10-12', '11-01', '11-11'] as $monthDay) {
+            $holidays[self::toMonday(CarbonImmutable::parse("$year-$monthDay"))] = true;
         }
 
-        // Inyectar Semana Santa fija
-        $colombianHolidays[$juevesSanto] = true;
-        $colombianHolidays[$viernesSanto] = true;
+        // C. Semana Santa y fiestas móviles (se calculan desde el Domingo de Pascua)
+        $easter = CarbonImmutable::create($year, 3, 21)->addDays(easter_days($year));
 
-        return $colombianHolidays;
+        $holidays[$easter->subDays(3)->toDateString()] = true; // Jueves Santo
+        $holidays[$easter->subDays(2)->toDateString()] = true; // Viernes Santo
+
+        // Ascensión (jueves +39), Corpus Christi (jueves +60) y Sagrado Corazón (viernes +68):
+        // por la Ley Emiliani se trasladan al lunes siguiente (+43, +64 y +71).
+        foreach ([39, 60, 68] as $daysAfterEaster) {
+            $holidays[self::toMonday($easter->addDays($daysAfterEaster))] = true;
+        }
+
+        return $holidays;
+    }
+
+    /**
+     * Festivos de todos los años que toca un rango de fechas.
+     * Sirve cuando el horizonte de agenda cruza el fin de año (por ejemplo, diciembre → enero).
+     */
+    public static function getHolidaysBetween(CarbonInterface $from, CarbonInterface $to): array
+    {
+        $holidays = [];
+
+        for ($year = $from->year; $year <= $to->year; $year++) {
+            $holidays += self::getHolidays($year);
+        }
+
+        return $holidays;
+    }
+
+    /** Ley Emiliani: si la fecha no es lunes, pasa al lunes siguiente. */
+    private static function toMonday(CarbonImmutable $date): string
+    {
+        return $date->dayOfWeekIso === 1
+            ? $date->toDateString()
+            : $date->next(CarbonImmutable::MONDAY)->toDateString();
     }
 }

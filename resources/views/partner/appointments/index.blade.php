@@ -29,9 +29,9 @@ $breadcrumbs = [
                 <div class="text-sm font-medium">{{ session('error') }}</div>
             </div>
         @endif
-
+        
         <!-- HEADER INTELIGENTE MULTIPERFIL -->
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8 bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8 bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">            
             <div>
                 <h2 class="text-3xl font-black text-gray-900 tracking-tight">Control de Citas</h2>
                 <p class="text-sm text-gray-500 mt-1">
@@ -40,6 +40,15 @@ $breadcrumbs = [
                     @else
                         Citas consolidadas para el <strong>{{ \Carbon\Carbon::parse($date)->translatedFormat('d \d\e F, Y') }}</strong>
                     @endif
+
+                    <div class="pt-4 border-t border-slate-200/60">
+                        <a href="{{ route('partner.booking.create') }}" class="group w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-200 shadow-md shadow-blue-600/15 flex items-center justify-center gap-2.5 text-base transform active:scale-[0.98]">
+                            Agendar Nueva Cita
+                            <svg class="w-4 h-4 text-blue-200 group-hover:text-white group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                            </svg>
+                        </a>
+                    </div>
                 </p>
             </div>
             

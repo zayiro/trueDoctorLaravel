@@ -61,6 +61,8 @@ use App\Http\Controllers\Admin\PromoCodeController;
 use App\Http\Controllers\MedicalAnalysisController;
 use App\Http\Controllers\CityController;
 
+use App\Http\Controllers\AppointmentBookingController;
+
 use Spatie\Honeypot\ProtectAgainstSpam; 
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
@@ -245,6 +247,12 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::delete('/partner/expertises/{expertise}', [MedicalExpertiseController::class, 'destroy'])->name('partner.expertises.destroy');    
 
     Route::post('/partner/appointments/{id}/generate-zoom', [AppointmentController::class, 'generateZoomLink'])->name('partner.appointments.generate_zoom');
+
+    // agendar cita medica por parte del doctor, clinica tipo (SPA)
+    Route::get('/partner/booking', [AppointmentBookingController::class, 'create'])->name('partner.booking.create');
+    // Endpoints asíncronos para guardar y limpiar el estado de la sesión
+    Route::post('/partner/booking/session-update', [AppointmentBookingController::class, 'updateSession'])->name('partner.booking.session.update');
+    Route::post('/partner/booking/session-clear', [AppointmentBookingController::class, 'clearSession'])->name('partner.booking.session.clear');
 
     Route::get('/campaigns', \App\Livewire\Campaigns\CampaignIndex::class)->name('campaigns.index');
     Route::get('/campaigns/create', \App\Livewire\Campaigns\CreateCampaign::class)->name('campaigns.create');

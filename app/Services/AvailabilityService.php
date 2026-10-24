@@ -17,94 +17,71 @@ class AvailabilityService
     }
 
     /**
-     * 🚀 NUEVO: Obtiene el próximo turno en TODAS las sedes del doctor
-     * Sin importar dirección (virtual o presencial)
-     * 
-     * ✅ Busca en todas las sedes donde el doctor atiende
-     * ✅ Retorna el MÁS CERCANO
-     * ✅ Valida modalidades (virtual/presencial)
-     * ✅ Respeta festivos y horarios
+     * Obtiene el próximo turno en TODAS las sedes reservables de los doctores.
+     *
+     * FASE 0:
+     *  - Solo cuenta sedes activas y no eliminadas (Address::bookable()).
+     *  - Respeta el tenant: con $clinicId solo sedes de esa clínica; sin él, solo sedes particulares.
      */
     public function getNextAvailableTurnAnyAddress(array $doctorIds, ?int $clinicId = null): ?Carbon
     {
         if (empty($doctorIds)) {
-            //Log::warning('AvailabilityService: doctorIds vacío');
             return null;
         }
 
         try {
-            // 1️⃣ OBTENER TODAS LAS SEDES DONDE ESTOS DOCTORES ATIENDEN
-            $addressIds = Schedule::whereIn('doctor_id', $doctorIds)
+            // 1️⃣ SEDES RESERVABLES DONDE ESTOS DOCTORES ATIENDEN
+            $addressIds = Schedule::query()
+                ->whereIn('doctor_id', $doctorIds)
                 ->where('is_active', true)
+                ->whereHas('address', function ($query) use ($clinicId) {
+                    $query->bookable();
+
+                    if ($clinicId === null) {
+                        $query->whereNull('clinic_id');
+                    } else {
+                        $query->where('clinic_id', $clinicId);
+                    }
+                })
                 ->distinct()
                 ->pluck('address_id')
-                ->toArray();
+                ->all();
 
             if (empty($addressIds)) {
-                /*Log::warning('AvailabilityService: No hay sedes configuradas para estos doctores', [
-                    'doctors' => $doctorIds,
-                ]);*/
                 return null;
             }
 
-            /*Log::info('AvailabilityService: Buscando en múltiples sedes', [
-                'doctors' => $doctorIds,
-                'addressCount' => count($addressIds),
-                'addresses' => $addressIds,
-            ]);*/
-
-            // 2️⃣ BUSCAR EN CADA SEDE Y COMPARAR RESULTADOS
+            // 2️⃣ BUSCAR EN CADA SEDE Y QUEDARSE CON EL TURNO MÁS CERCANO
             $earliestTurn = null;
 
             foreach ($addressIds as $addressId) {
-                $turnInThisAddress = $this->getNextAvailableTurn(
-                    $doctorIds,
-                    $addressId,
-                    $clinicId
-                );
+                $turnInThisAddress = $this->getNextAvailableTurn($doctorIds, (int) $addressId, $clinicId);
 
-                // Si encontramos un turno en esta sede
-                if ($turnInThisAddress) {
-                    // Si es el primero o es más cercano que el anterior
-                    if (!$earliestTurn || $turnInThisAddress->lessThan($earliestTurn)) {
-                        $earliestTurn = $turnInThisAddress;
-                    }
+                if ($turnInThisAddress && (!$earliestTurn || $turnInThisAddress->lessThan($earliestTurn))) {
+                    $earliestTurn = $turnInThisAddress;
                 }
-            }
-
-            if ($earliestTurn) {
-                /*Log::info('AvailabilityService: ✅ TURNO MÁS PRÓXIMO ENCONTRADO', [
-                    'dateTime' => $earliestTurn->format('Y-m-d H:i:s'),
-                    'dayName' => $earliestTurn->format('l'),
-                ]);*/
-            } else {
-                /*Log::warning('AvailabilityService: No hay turnos disponibles en ninguna sede', [
-                    'doctors' => $doctorIds,
-                ]);*/
             }
 
             return $earliestTurn;
 
-        } catch (\Exception $e) {
-            /*Log::error('AvailabilityService: Error en getNextAvailableTurnAnyAddress', [
+        } catch (\Throwable $e) {
+            // Un fallo ya no se traga en silencio: queda en el log (solo identificadores, sin datos personales).
+            Log::error('AvailabilityService: error en getNextAvailableTurnAnyAddress', [
                 'doctor_ids' => $doctorIds,
-                'clinic_id' => $clinicId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);*/
+                'clinic_id'  => $clinicId,
+                'error'      => $e->getMessage(),
+            ]);
 
             return null;
         }
     }
 
     /**
-     * 🔧 ORIGINAL: Obtiene próximo turno en una sede específica
-     * (Mantiene la lógica detallada con logging)
+     * Obtiene el próximo turno en una sede específica.
      */
     public function getNextAvailableTurn(array $doctorIds, int $addressId, ?int $clinicId = null): ?Carbon
     {
         if (empty($doctorIds)) {
-            //Log::warning('AvailabilityService: doctorIds vacío');
             return null;
         }
 
@@ -112,59 +89,37 @@ class AvailabilityService
             $tz = 'America/Bogota';
             $nowLocal = Carbon::now($tz);
             $minNoticeHours = $this->repository->getMinNoticeHours($clinicId, $doctorIds);
-            $startSearchingFrom = $nowLocal->copy()->addHours((int)$minNoticeHours);
-            $slotDurationMinutes = max(1, (int)$this->repository->getSlotDurationMinutes($addressId));
+            $startSearchingFrom = $nowLocal->copy()->addHours((int) $minNoticeHours);
+            $slotDurationMinutes = max(1, (int) $this->repository->getSlotDurationMinutes($addressId));
 
-            /*Log::info('AvailabilityService: Iniciando búsqueda en sede específica', [
-                'doctors' => $doctorIds,
-                'address' => $addressId,
-                'clinic' => $clinicId,
-                'minNoticeHours' => $minNoticeHours,
-                'nowLocal' => $nowLocal->format('Y-m-d H:i:s'),
-                'startSearching' => $startSearchingFrom->format('Y-m-d H:i:s'),
-                'slotDuration' => $slotDurationMinutes,
-            ]);*/
+            // Festivos de este año y del siguiente (el barrido puede cruzar el fin de año)
+            $colombianHolidays = ColombiaHolidayService::getHolidays($nowLocal->year)
+                + ColombiaHolidayService::getHolidays($nowLocal->year + 1);
 
-            // Validar festivos una sola vez
-            $colombianHolidays = \App\Services\ColombiaHolidayService::getHolidays($nowLocal->year);
-
-            // 2. BARRIDO SECUENCIAL DEL CALENDARIO (Próximos 14 días)
+            // BARRIDO SECUENCIAL DEL CALENDARIO (próximos 14 días)
             for ($i = 0; $i < 14; $i++) {
                 $currentDate = $nowLocal->copy()->addDays($i);
                 $dayOfWeek = $currentDate->dayOfWeekIso;
                 $dateStr = $currentDate->toDateString();
 
-                // ✅ VALIDACIÓN 1: Saltar festivos
+                // Saltar festivos
                 if (array_key_exists($dateStr, $colombianHolidays)) {
-                    /*Log::info("AvailabilityService: Saltando festivo", [
-                        'date' => $dateStr,
-                        'holiday' => $colombianHolidays[$dateStr]
-                    ]);*/
                     continue;
                 }
 
-                // ⚡ Obtener horarios
-                $schedules = $this->repository->getSchedulesForDay($addressId, $doctorIds, $dayOfWeek);
+                // Horarios activos del día
+                $schedules = $this->repository
+                    ->getSchedulesForDay($addressId, $doctorIds, $dayOfWeek)
+                    ->where('is_active', true);
 
                 if ($schedules->isEmpty()) {
-                    /*Log::info("AvailabilityService: Sin horarios en address $addressId para el día", [
-                        'date' => $dateStr,
-                        'dayOfWeek' => $dayOfWeek
-                    ]);*/
                     continue;
                 }
 
-                /*Log::info("AvailabilityService: Horarios encontrados", [
-                    'date' => $dateStr,
-                    'address' => $addressId,
-                    'count' => $schedules->count(),
-                ]);*/
-
-                // 3. EXTRACCIÓN DE INDISPONIBILIDADES Y CITAS
                 $unavailabilities = $this->repository->getUnavailabilitiesForDate($doctorIds, $currentDate, $addressId);
                 $occupiedAppointments = $this->repository->getOccupiedAppointmentsForDate($doctorIds, $addressId, $currentDate);
 
-                // 4. EVALUAR CADA HORARIO
+                // EVALUAR CADA HORARIO
                 foreach ($schedules as $schedule) {
                     $doctorId = $schedule->doctor_id;
 
@@ -184,19 +139,19 @@ class AvailabilityService
                         $slotTime = $blockStart->copy();
                         $currentTimeStr = $slotTime->format('H:i:s');
 
-                        // ✅ Control estricto de aviso mínimo
-                        if ($currentDate->isToday() && $slotTime->lessThan($startSearchingFrom)) {
+                        // FASE 0: la anticipación mínima se aplica cualquier día, no solo hoy
+                        if ($slotTime->lessThan($startSearchingFrom)) {
                             $blockStart->addMinutes($slotDurationMinutes);
                             continue;
                         }
 
-                        // ✅ Validar indisponibilidad del doctor
+                        // Indisponibilidad del doctor
                         if ($this->isDoctorUnavailableAtTime($unavailabilities, $doctorId, $currentTimeStr, $clinicId)) {
                             $blockStart->addMinutes($slotDurationMinutes);
                             continue;
                         }
 
-                        // ✅ Validar si hay cita ocupada
+                        // Cita ocupada
                         $isSlotOccupied = $occupiedAppointments
                             ->where('doctor_id', $doctorId)
                             ->contains(function ($app) use ($currentTimeStr) {
@@ -210,7 +165,7 @@ class AvailabilityService
                             continue;
                         }
 
-                        // 🔥 TURNO ENCONTRADO EN ESTA SEDE
+                        // TURNO ENCONTRADO EN ESTA SEDE
                         return $slotTime;
                     }
                 }
@@ -218,27 +173,27 @@ class AvailabilityService
 
             return null;
 
-        } catch (\Exception $e) {
-            /*Log::error('AvailabilityService: Error en getNextAvailableTurn', [
+        } catch (\Throwable $e) {
+            Log::error('AvailabilityService: error en getNextAvailableTurn', [
                 'doctor_ids' => $doctorIds,
                 'address_id' => $addressId,
-                'clinic_id' => $clinicId,
-                'error' => $e->getMessage(),
-            ]);*/
+                'clinic_id'  => $clinicId,
+                'error'      => $e->getMessage(),
+            ]);
 
             return null;
         }
     }
 
     /**
-     * 🔒 Validación de indisponibilidad
+     * Validación de indisponibilidad
      */
     private function isDoctorUnavailableAtTime($unavailabilities, int $doctorId, string $currentTimeStr, ?int $clinicId = null): bool
     {
         return $unavailabilities->where('doctor_id', $doctorId)
             ->contains(function ($unavailability) use ($currentTimeStr, $clinicId) {
                 if ($unavailability->address && $unavailability->address->clinic_id && $clinicId) {
-                    if ((int)$unavailability->address->clinic_id !== (int)$clinicId) {
+                    if ((int) $unavailability->address->clinic_id !== (int) $clinicId) {
                         return false;
                     }
                 }
