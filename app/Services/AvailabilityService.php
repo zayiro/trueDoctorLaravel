@@ -4,6 +4,9 @@ namespace App\Services;
 
 use App\Repositories\AvailabilityRepository;
 use App\Models\Schedule;
+use App\Services\Availability\AvailabilityQuery;
+use App\Services\Availability\AvailabilityResolver;
+use App\Services\Availability\ShadowComparator;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -27,6 +30,22 @@ class AvailabilityService
     {
         if (empty($doctorIds)) {
             return null;
+        }
+
+        // FASE 3 (interruptor): si BOOKING_NEW_SEARCH=true se usa el motor nuevo.
+        // Si falla, se cae al motor viejo para no dejar la búsqueda sin turnos.
+        if (config('booking.new_availability.search')) {
+            try {
+                $slot = app(AvailabilityResolver::class)->nextSlot(new AvailabilityQuery($doctorIds, $clinicId));
+
+                return $slot ? Carbon::instance($slot->start) : null;
+            } catch (\Throwable $e) {
+                Log::error('AvailabilityService: falló el motor nuevo; se usa el anterior', [
+                    'doctor_ids' => $doctorIds,
+                    'clinic_id'  => $clinicId,
+                    'error'      => $e->getMessage(),
+                ]);
+            }
         }
 
         try {
@@ -61,6 +80,9 @@ class AvailabilityService
                     $earliestTurn = $turnInThisAddress;
                 }
             }
+
+            // FASE 2 (modo sombra): compara con el motor nuevo sin cambiar el resultado.
+            app(ShadowComparator::class)->compareNextTurn($doctorIds, $clinicId, $earliestTurn);
 
             return $earliestTurn;
 

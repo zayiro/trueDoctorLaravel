@@ -31,7 +31,7 @@ class AppointmentObserver
     public function created(Appointment $appointment)
     {
         try {
-            DB::transaction(function () use ($appointment) {
+            /*DB::transaction(function () use ($appointment) {
                 // =========================================================================
                 // FLUJO DE CREACIÓN: PREPARAR CITA VIRTUAL (ZOOM) SI APLICA
                 // =========================================================================
@@ -60,7 +60,10 @@ class AppointmentObserver
                 }
 
                 Log::info('Cita ID ' . $appointment->id . ' creada exitosamente en transacción.');
-            });
+            });*/
+            //validar porque esta parte ya no es necesaria, si estoy creando la cita esta funcionalidad interfiere 
+            // y evita que se cree la cita por el flujo normal, y si comento la funcion entonces si se crea la cita zoom normalmente
+            // desde el flujo de reservacion de la pagina
         } catch (Throwable $e) {
             Log::error('Error crítico al crear cita ID ' . $appointment->id . ': ' . $e->getMessage());
             throw $e;

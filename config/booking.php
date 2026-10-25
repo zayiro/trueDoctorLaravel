@@ -27,4 +27,7 @@ return [
 
     // Modo sombra: calcula con el motor nuevo y registra las diferencias, sin cambiar lo que ve el usuario.
     'shadow' => env('BOOKING_SHADOW', false),
+
+    // Fracción de las consultas que se comparan en modo sombra (0.1 = 10 %). Cada comparación hace unas 8 consultas extra.
+    'shadow_sample_rate' => (float) env('BOOKING_SHADOW_SAMPLE', 0.1),
 ];

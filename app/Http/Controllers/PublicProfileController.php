@@ -11,6 +11,9 @@ use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Services\ColombiaHolidayService;
+use App\Services\Availability\AvailabilityQuery;
+use App\Services\Availability\AvailabilityResolver;
+use Illuminate\Support\Facades\Log;
 
 class PublicProfileController extends Controller
 {              
@@ -332,7 +335,32 @@ class PublicProfileController extends Controller
                 ->where('start_date', '<=', $maxDate->toDateString())
                 ->where('end_date', '>=', $now->toDateString())
                 ->get();
-            // 4. ESCANEO DINÁMICO DEL HORIZONTE DE DISPONIBILIDAD
+            // FASE 5 (interruptor BOOKING_NEW_PROFILE): el calendario sale del motor único de disponibilidad.
+            // Si falla, se usa el barrido anterior para no dejar el calendario vacío.
+            $useNewEngine = false;
+
+            if (config('booking.new_availability.profile')) {
+                try {
+                    $newDates = app(AvailabilityResolver::class)->enabledDates(
+                        new AvailabilityQuery([(int) $doctor->id], $fromClinicId ? (int) $fromClinicId : null, $targetAddressId),
+                        $now->copy()->startOfDay(),
+                        $maxDate->copy()->startOfDay()
+                    );
+
+                    $enabledDates = $newDates;
+                    $nextAvailableDate = $newDates[0] ?? $todayColombia;
+                    $useNewEngine = true;
+                } catch (\Throwable $e) {
+                    Log::error('PublicProfile: falló el motor nuevo; se usa el anterior', [
+                        'doctor_id'  => $doctor->id,
+                        'address_id' => $targetAddressId,
+                        'error'      => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            // 4. ESCANEO DINÁMICO DEL HORIZONTE DE DISPONIBILIDAD (motor anterior)
+            if (!$useNewEngine) {
             for ($dayOffset = 0; $dayOffset <= $maxAdvanceDays; $dayOffset++) {
                 $evalDate = $now->copy()->addDays($dayOffset);
                 $evalDateString = $evalDate->toDateString();
@@ -399,6 +427,7 @@ class PublicProfileController extends Controller
                     $enabledDates[] = $evalDateString;
                 }
             }
+            } // fin del barrido anterior
         }
 
         if ($addressId) {

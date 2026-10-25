@@ -27,6 +27,7 @@ class ZoomService
 
     /**
      * Obtiene el token de acceso Server-to-Server OAuth de Zoom
+     * ⚡ OPTIMIZADO: Lanza excepciones controladas en segundo plano para activar el Backoff del Job.
      */
     private function getAccessToken()
     {
@@ -36,30 +37,56 @@ class ZoomService
 
         $url = "https://zoom.us/oauth/token";
 
-        $response = Http::asForm()
-            ->withHeaders([
-                'Authorization' => 'Basic ' . base64_encode("{$this->clientId}:{$this->clientSecret}")
-            ])->post($url, [
-                'grant_type' => 'account_credentials',
-                'account_id' => $this->accountId
-            ]);
+        try {
+            $clientId = trim($this->clientId);
+            $clientSecret = trim($this->clientSecret);
+            $accountId = trim($this->accountId); 
 
-        if ($response->failed()) {
-            Log::error('ZoomService Auth Error: Falló la obtención del token.', [
-                'status' => $response->status(),
-                'body'   => $response->body()
-            ]);
+            /*$response = Http::asForm()
+                ->withHeaders([
+                    'Authorization' => 'Basic ' . base64_encode("{$clientId}:{$clientSecret}")
+                ])->post($url, [
+                    'grant_type' => 'account_credentials',
+                    'account_id' => $accountId
+                ]);*/
+
+            $response = Http::asForm()
+                ->withBasicAuth($clientId, $clientSecret)
+                ->post($url, [
+                    'grant_type' => 'account_credentials',
+                    'account_id' => $accountId
+                ]);    
+
+            if ($response->failed()) {
+                Log::error('ZoomService Auth Error: Falló la obtención del token.', [
+                    'status' => $response->status(),
+                    'body'   => $response->body()
+                ]);
+                
+                return null;
+            }
+
+            $data = $response->json();
+
+            $token = $data['access_token'] ?? null;
+
+            if ($token) {
+                Cache::put('zoom_s2s_access_token', $token, now()->addMinutes(55));                
+            } else {
+                throw new \Exception("Error de autenticación con Zoom API: Código " . $response->status());
+            }
+
+            return $token;
+
+        } catch (Throwable $e) {
+            Log::error('ZoomService Token Exception: ' . $e->getMessage());
+            
+            if (app()->runningInConsole()) {
+                throw $e;
+            }
+            
             return null;
         }
-
-        $data = $response->json();
-        $token = $data['access_token'] ?? null;
-
-        if ($token) {
-            Cache::put('zoom_s2s_access_token', $token, now()->addMinutes(55));
-        }
-
-        return $token;
     }
 
     /**
@@ -80,19 +107,18 @@ class ZoomService
 
             if (!$token) {
                 $errorMsg = 'No se pudo proceder sin un token válido.';
-                Log::error('ZoomService Error: ' . $errorMsg, []);
+                Log::error('ZoomService Error: ' . $errorMsg);
                 
-                // Disparar compensación si hay cita asociada
                 if ($appointment) {
                     ZoomSagaCompensation::compensateCreateMeetingFailure($appointment, $errorMsg);
                 }
                 
-                return null;
+                // 🚀 Lanzar siempre
+                throw new \Exception($errorMsg);
             }
 
             $url = "{$this->apiBaseUrl}/users/{$this->hostEmail}/meetings";
-
-            $response = Http::withToken($token)->post($url, [
+            $payload = [
                 'topic'      => $topic,
                 'type'       => 2, 
                 'start_time' => $startDateTime,
@@ -105,9 +131,22 @@ class ZoomService
                     'jbh_custom_minutes' => 0, 
                     'mute_upon_entry'    => false,
                     'waiting_room'       => true, 
-                    'meeting_authentication' => false // Evita que pida login de cuentas Zoom personales
+                    'meeting_authentication' => false 
                 ]
-            ]);
+            ];
+
+            $response = Http::withToken($token)->post($url, $payload);
+
+            // 🔄 ESTRATEGIA SELF-HEALING: Si el token guardado en caché dio un 401 falso positivo, 
+            // limpiamos la caché y lo intentamos exactamente una vez más inmediatamente.
+            if ($response->status() === 401) {
+                Cache::forget('zoom_s2s_access_token');
+                $token = $this->getAccessToken();
+                
+                if ($token) {
+                    $response = Http::withToken($token)->post($url, $payload);
+                }
+            }
 
             if ($response->status() !== 201) {
                 $errorMsg = "La API no devolvió el código 201. Status: {$response->status()}";
@@ -116,9 +155,12 @@ class ZoomService
                     'body'   => $response->body()
                 ]);
                 
-                // Disparar compensación si hay cita asociada
                 if ($appointment) {
                     ZoomSagaCompensation::compensateCreateMeetingFailure($appointment, $errorMsg);
+                }
+                
+                if (app()->runningInConsole()) {
+                    throw new \Exception("Error en Zoom API (Create meeting status {$response->status()}): {$response->body()}");
                 }
                 
                 return null;
@@ -133,9 +175,12 @@ class ZoomService
                     'payload' => is_array($data) ? $data : 'Formato corrupto'
                 ]);
                 
-                // Disparar compensación si hay cita asociada
                 if ($appointment) {
                     ZoomSagaCompensation::compensateCreateMeetingFailure($appointment, $errorMsg);
+                }
+                
+                if (app()->runningInConsole()) {
+                    throw new \Exception("Estructura JSON inválida recibida de Zoom en createMeeting.");
                 }
                 
                 return null;
@@ -143,19 +188,23 @@ class ZoomService
 
             return [
                 'meeting_id'   => $data['id'],
-                'password'     => $data['password'] ?? '', // Almacenamos la clave autogenerada de la sala
-                'url_partner'   => $data['start_url'], 
-                'url_patient' => $data['join_url'],  
+                'password'     => $data['password'] ?? '', 
+                'url_partner'  => $data['start_url'], 
+                'url_patient'  => $data['join_url'],  
             ];
+
         } catch (Throwable $e) {
             $errorMsg = "Excepción: {$e->getMessage()}";
             Log::error('ZoomService Exception en createMeeting: ' . $errorMsg, [
                 'trace' => $e->getTraceAsString()
             ]);
             
-            // Disparar compensación si hay cita asociada
             if ($appointment) {
                 ZoomSagaCompensation::compensateCreateMeetingFailure($appointment, $errorMsg);
+            }
+            
+            if (app()->runningInConsole()) {
+                throw $e;
             }
             
             return null;
@@ -313,7 +362,7 @@ class ZoomService
         }
     }
 
-    /**
+        /**
      * 👇 BLOQUE NUEVO 1: REAGENDAR O RECREAR LA REUNIÓN EXISTENTE
      * Intenta actualizar la sala de Zoom actual. Si el ID ya no existe en Zoom (404),
      * automáticamente genera una sala nueva para evitar atascar el flujo del paciente.
@@ -340,18 +389,31 @@ class ZoomService
                     ZoomSagaCompensation::compensateUpdateMeetingFailure($appointment, $errorMsg, $originalData);
                 }
                 
-                return null;
+                // 🚀 Lanzar siempre
+                throw new \Exception($errorMsg);
             }
 
             $url = "{$this->apiBaseUrl}/meetings/{$meetingId}";
-
-            // Intentar actualizar la reunión existente en la API de Zoom (PATCH)
-            $response = Http::withToken($token)->patch($url, [
+            $payload = [
                 'topic'      => $topic,
                 'start_time' => $startDateTime,
                 'duration'   => $durationMinutes,
                 'timezone'   => config('app.timezone', 'America/Bogota')
-            ]);
+            ];
+
+            // Intentar actualizar la reunión existente en la API de Zoom (PATCH)
+            $response = Http::withToken($token)->patch($url, $payload);
+
+            // 🔄 ESTRATEGIA SELF-HEALING: Si el token guardado en caché dio un 401 falso positivo, 
+            // limpiamos la caché y lo intentamos exactamente una vez más inmediatamente de forma transparente.
+            if ($response->status() === 401) {
+                Cache::forget('zoom_s2s_access_token');
+                $token = $this->getAccessToken(); // Lanza excepción interna si falla totalmente el OAuth s2s
+                
+                if ($token) {
+                    $response = Http::withToken($token)->patch($url, $payload);
+                }
+            }
 
             // Caso Exitoso 204 No Content: La sala fue reprogramada correctamente
             if ($response->status() === 204) {
@@ -370,6 +432,11 @@ class ZoomService
                 if ($newMeeting) {
                     return array_merge(['action' => 'recreated'], $newMeeting);
                 }
+                
+                // Si el Plan B también retorna null por alguna razón, forzamos excepción en el Job
+                if (app()->runningInConsole()) {
+                    throw new \Exception("El Plan B falló al intentar recrear la reunión inexistente (404).");
+                }
             }
 
             // Si falla por otra razón (ej: 400 Bad Request, límites de cuenta)
@@ -383,6 +450,10 @@ class ZoomService
                 ZoomSagaCompensation::compensateUpdateMeetingFailure($appointment, $errorMsg, $originalData);
             }
             
+            if (app()->runningInConsole()) {
+                throw new \Exception("Error en Zoom API (Update meeting status {$response->status()}): {$response->body()}");
+            }
+            
             return null;
         } catch (Throwable $e) {
             $errorMsg = "Excepción: {$e->getMessage()}";
@@ -393,6 +464,11 @@ class ZoomService
             
             if ($appointment) {
                 ZoomSagaCompensation::compensateUpdateMeetingFailure($appointment, $errorMsg, $originalData);
+            }
+            
+            // Re-lanzar para que SyncZoomMeetingJob lo procese en la tabla zoom_creation_failures
+            if (app()->runningInConsole()) {
+                throw $e;
             }
             
             return null;

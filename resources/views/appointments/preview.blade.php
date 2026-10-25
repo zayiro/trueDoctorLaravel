@@ -192,8 +192,7 @@
                                 body: JSON.stringify({ code: this.couponCode, appointment_id: this.appointmentId, subtotal: this.subtotal })
                             });
 
-                            let data = await response.json();
-                            console.log(data);
+                            let data = await response.json();                            
 
                             // Cambiamos 'data.valid' por 'data.success' que es lo que envía tu Laravel
                             if (response.ok && data.success) {

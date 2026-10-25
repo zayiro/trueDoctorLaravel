@@ -43,6 +43,25 @@ class Patient extends Model
         'active'                  => 'boolean',
     ];
 
+    protected static function booted()
+    {
+        // Antes de guardar (crear o actualizar), generamos el Blind Index automáticamente
+        static::saving(function ($patient) {
+            if ($patient->isDirty('identification') && $patient->identification) {
+                $patient->identification_blind_index = self::generateBlindIndex($patient->identification);
+            }
+        });
+    }
+
+    /**
+     * Genera un hash único, seguro e irreversible para realizar búsquedas.
+     */
+    public static function generateBlindIndex(string $value): string
+    {
+        // Usamos la APP_KEY de Laravel como SALT secreto para el hash
+        return hash_hmac('sha256', $value, config('app.key'));
+    }
+
     // 2. Crea un atributo virtual (Accessor)
     public function getAgeAttribute()
     {

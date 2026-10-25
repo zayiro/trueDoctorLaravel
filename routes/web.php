@@ -253,6 +253,7 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     // Endpoints asíncronos para guardar y limpiar el estado de la sesión
     Route::post('/partner/booking/session-update', [AppointmentBookingController::class, 'updateSession'])->name('partner.booking.session.update');
     Route::post('/partner/booking/session-clear', [AppointmentBookingController::class, 'clearSession'])->name('partner.booking.session.clear');
+    Route::post('/booking/search-patient', [AppointmentBookingController::class, 'searchPatient'])->name('partner.booking.search_patient');
 
     Route::get('/campaigns', \App\Livewire\Campaigns\CampaignIndex::class)->name('campaigns.index');
     Route::get('/campaigns/create', \App\Livewire\Campaigns\CreateCampaign::class)->name('campaigns.create');

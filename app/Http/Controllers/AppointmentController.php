@@ -32,6 +32,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Http;
 use App\Mail\AppointmentConfirmed;
+use App\Mail\VirtualRoomAccessMail;
 use Carbon\Carbon;
 use App\Notifications\MailLimitExceededNotification;
 use Illuminate\Support\Facades\Notification;
@@ -206,19 +207,22 @@ class AppointmentController extends Controller
 
         // 🔒 CONTROL NATIVO DE TELEMEDICINA ASÍNCRONA
         if ($service->type === 'virtual' || $address->is_virtual) {
-            try {
-                // Invocamos al servicio de Zoom inyectado para estructurar la sala virtual
-                $zoomMeeting = $this->zoomService->createMeeting([
-                    'topic'      => "Consulta Médica: " . $service->name,
-                    'start_time' => Carbon::parse("$dateInput $startTime")->toIso8601String(),
-                    'duration'   => (int) $pivotDuration,
-                ]);
+            try {                
+                $startDateTime = Carbon::parse(Carbon::parse($dateInput)->format('Y-m-d') . ' ' . $startTime)->toIso8601String();
+                    
+                $zoomMeeting = $this->zoomService->createMeeting(
+                    "Telemedicina_Ref: {$service->name}",
+                    $startDateTime,
+                    (int) $pivotDuration
+                );
 
-                // Acoplamos las credenciales seguras de la API de Zoom
-                $appointmentData['zoom_meeting_id']   = $zoomMeeting['id'];
-                $appointmentData['zoom_start_url']    = $zoomMeeting['start_url'];
-                $appointmentData['zoom_join_url']     = $zoomMeeting['join_url'];
-                $appointmentData['meeting_link']      = $zoomMeeting['join_url'];
+                if ($zoomMeeting) {
+                    // Acoplamos las credenciales seguras de la API de Zoom
+                    $appointmentData['zoom_meeting_id']   = $zoomMeeting['id'];
+                    $appointmentData['zoom_start_url']    = $zoomMeeting['start_url'];
+                    $appointmentData['zoom_join_url']     = $zoomMeeting['join_url'];
+                    $appointmentData['meeting_link']      = $zoomMeeting['join_url'];
+                }
             } catch (\Exception $e) {
                 // ⚠️ TRATAMIENTO DE ERRORES ASÍNCRONO NATIVO (OPENDOCTOR)
                 // Si la API de Zoom falla, se crea un link temporal y se delega la corrección al Job
@@ -407,11 +411,7 @@ class AppointmentController extends Controller
     {        
         // 1. Proteger el acceso al paso: si no existe intento de reserva activo, abortar
         $bookingData = session('booking_data');
-        \Log::warning('BookingData check', [
-            'bookingData' => $bookingData,
-            'session_all' => session()->all(),
-        ]);
-
+        
         if (!$bookingData || !isset($bookingData['doctor_id'])) {
             \Log::warning('no hay bookingData');
             return redirect()->to('/')->with('error', 'Sesión inválida o datos de reserva incompletos.');
@@ -644,7 +644,7 @@ class AppointmentController extends Controller
             abort_unless($appointment->patient?->user?->id === auth()->id(), 403);
 
             $promoCode = PromoCode::where('code', session('pending_promo_code'))->first();
-
+      
             // El cupo se consume de forma atómica: si se agotó, la cita no se regala
             if (!$promoCode || !$promoCode->isValid(auth()->id()) || !$this->consumePromo($promoCode)) {
                 session()->forget(['pending_promo_code', 'pending_discount_amount']);
@@ -679,8 +679,8 @@ class AppointmentController extends Controller
 
         $activeUser = Auth::user();
 
-        // ✅ EXCEPCIÓN: Si la cita fue pagada hace menos de 5 minutos (viene de Wompi)
-        $comingFromPayment = $appointment->paid_at && $appointment->paid_at->diffInMinutes(now()) <= 7;
+        // ✅ EXCEPCIÓN: Si la cita fue pagada hace menos o igual a 10 minutos (viene de Wompi)
+        $comingFromPayment = $appointment->paid_at && $appointment->paid_at->diffInMinutes(now()) <= 10;
 
         if (!$activeUser && !$comingFromPayment) {
             abort(401, 'Debes iniciar sesión para visualizar el comprobante de tu cita.');
@@ -827,42 +827,11 @@ class AppointmentController extends Controller
         // Se envia email de notificacion al paciente de que el doctor ha permitido el acceso a la video llamada
 
         $patientEmail = $appointment->patient?->user?->email;
+        $patientName = $appointment->patient?->user?->name;
+
         if ($patientEmail) {
-            // 1. URL exacta de la ruta de la videollamada
             $roomUrl = route('appointments.room', ['appointment' => $appointment->id]);
-
-            // 2. Envía el correo inyectando la URL en el enlace HTML
-            Mail::send([], [], function ($message) use ($patientEmail, $roomUrl) {
-                $message->to($patientEmail)
-                        ->subject('El doctor te espera en la videollamada')
-                        ->html("
-                            <div style='font-family: Arial, sans-serif; padding: 20px; line-height: 1.6;'>
-                                <h2 style='color: #1e3a8a;'>¡Tu videollamada está lista!</h2>
-                                <p>El doctor ha permitido tu acceso a la sala virtual. Puedes ingresar haciendo clic en el siguiente botón:</p>
-                                <p style='margin-top: 25px;'>
-                                    <a href='{$roomUrl}' style='padding: 12px 25px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;'>
-                                        Ingresar a la Sala
-                                    </a>
-                                </p>
-                                <p style='margin-top: 25px; font-size: 0.9em; color: #666;'>Si el botón no funciona, copia y pega este enlace en tu navegador:<br>{$roomUrl}</p>
-
-                                <p style='margin-top: 25px; font-size: 0.9em; color: #666;'>Si el botón no funciona, copia y pega este enlace en tu navegador:<br>{$roomUrl}</p>
-                    
-                                <!-- Línea Divisoria -->
-                                <hr style='border: 0; border-top: 1px solid #e5e7eb; margin: 40px 0 20px 0;'>
-                                
-                                <!-- Footer Solicitado -->
-                                <footer style='font-size: 0.85em; color: #6b7280; line-height: 1.5;'>
-                                    <p style='margin: 0 0 10px 0;'>Mensaje automático generado por la suite de <strong>opendoctorOnline</strong>. Por favor, no respondas directamente a este correo.</p>
-                                    <p style='margin: 0 0 15px 0;'>Soporte técnico: <a href='mailto:support@opendoctor.online' style='color: #2563eb; text-decoration: none;'>support@opendoctor.online</a>.</p>
-                                    <p style='margin: 0;'>
-                                        © 2026 opendoctor.online. <br>
-                                        <a href='https://opendoctor.online/privacy' style='color: #6b7280; text-decoration: underline;'>Privacidad</a> | <a href='https://opendoctor.online/terms' style='color: #6b7280; text-decoration: underline;'>Términos</a>
-                                    </p>
-                                </footer>
-                            </div>
-                        ");
-            });
+            Mail::to($patientEmail)->send(new VirtualRoomAccessMail($patientName, $roomUrl, $appointment->id));            
         }
 
         return response()->json(['success' => true]);
@@ -1020,8 +989,7 @@ class AppointmentController extends Controller
             ->where('appointment_id', $appointment->id)
             ->exists();
 
-        $isVirtual = ($appointment->service?->type === 'virtual')
-                || ($appointment->address?->type === 'virtual');
+        $isVirtual = ($appointment->service?->type === 'virtual') || ($appointment->address?->type === 'virtual');
 
         if ($isVirtual && !$appointment->zoom_meeting_id && !$hasCreationFailure) {
             try {
@@ -1031,7 +999,7 @@ class AppointmentController extends Controller
                     if ($fresh->zoom_meeting_id) return;
 
                     $startDateTime = Carbon::parse(Carbon::parse($fresh->date)->format('Y-m-d') . ' ' . $fresh->start_time)->toIso8601String();
-
+                    
                     $zoomMeeting = $this->zoomService->createMeeting(
                         "Telemedicina_Ref: {$fresh->reference}",
                         $startDateTime,
@@ -1044,6 +1012,7 @@ class AppointmentController extends Controller
                             'meeting_link'    => $zoomMeeting['url_patient'],
                             'zoom_start_url'  => $zoomMeeting['url_partner'],
                         ]);
+
                         DB::table('zoom_creation_failures')->where('appointment_id', $fresh->id)->delete();
                         $appointment->fill($fresh->toArray())->syncOriginal();
                     } else {
@@ -1143,11 +1112,9 @@ class AppointmentController extends Controller
                 throw $e;
             }
 
-            // 🔥 MARCAR COMO ENVIADO AL FINAL
             $appointment->update(['email_sent' => true]);
         }
 
-        // ── 3. Retornar instancia fresca para la vista
         return $appointment->fresh(['doctor.user', 'clinic', 'service', 'address.city', 'patient.user']);
     }
 

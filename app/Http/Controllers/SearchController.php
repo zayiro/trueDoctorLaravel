@@ -500,12 +500,6 @@ class SearchController extends Controller
                 $doctorIds = $doctorsQuery->pluck('doctors.id')->toArray();
                 $specialistsCount = count($doctorIds);
 
-                $availabilityService = app(AvailabilityService::class);
-                $backupTurn = $availabilityService->getNextAvailableTurnAnyAddress(
-                    $doctorIds,
-                    $clinic->id
-                );
-
                 $groupedResults->put($uniqueKey, [
                     'type'        => 'clinic',
                     'id'          => $clinic->id,
@@ -517,7 +511,7 @@ class SearchController extends Controller
                     'model'       => $clinic,
                     'address_id'  => $request->city_id ? $address->id : null,
                     'subtitle'    => "{$address->name} • {$address->address}",                    
-                    'next_turn'   => $backupTurn ? ($backupTurn->isToday() ? 'Hoy ' : '') . ucfirst($backupTurn->isoFormat('dddd D [de] MMMM — h:mm A')) : 'Sin turnos próximos disponibles'
+                    'availability' => ['doctor_ids' => $doctorIds, 'clinic_id' => $clinic->id],
                 ]);
 
             } else {
@@ -525,12 +519,6 @@ class SearchController extends Controller
                 $uniqueKey = 'doctor_' . $doctor->id;
 
                 if ($groupedResults->has($uniqueKey)) continue;
-
-                $availabilityService = app(AvailabilityService::class);
-                $backupTurn = $availabilityService->getNextAvailableTurnAnyAddress(
-                    [$doctor->id],
-                    null
-                );
 
                 $langNames = ['co' => 'Colombia', 'es' => 'Español', 'en' => 'Inglés', 'pt' => 'Portugués', 'fr' => 'Francés', 'de' => 'Alemán'];
                 $rawLang = $doctor->languages;
@@ -569,7 +557,7 @@ class SearchController extends Controller
                     'country_code'      => $doctor->country_code,
                     'address_id'        => $request->city_id ? $address->id : null,
                     'subtitle'          => $address->type === 'virtual' ? 'Atención Online' : "{$address->name} • {$address->address}",                  
-                    'next_turn'         => $backupTurn ? ($backupTurn->isToday() ? 'Hoy ' : '') . ucfirst($backupTurn->isoFormat('dddd D [de] MMMM — h:mm A')) : 'Sin turnos próximos disponibles'
+                    'availability'      => ['doctor_ids' => [$doctor->id], 'clinic_id' => null],
                 ]);
             }
         }
@@ -577,8 +565,27 @@ class SearchController extends Controller
         $page = LengthAwarePaginator::resolveCurrentPage();
         $perPage = 10;
         
+        // El próximo turno se calcula SOLO para los resultados de esta página (antes, para todos los resultados).
+        $availabilityService = app(AvailabilityService::class);
+        $pageItems = $groupedResults->values()->forPage($page, $perPage)->values()->map(
+            function (array $item) use ($availabilityService) {
+                $turn = $availabilityService->getNextAvailableTurnAnyAddress(
+                    $item['availability']['doctor_ids'],
+                    $item['availability']['clinic_id']
+                );
+
+                $item['next_turn'] = $turn
+                    ? ($turn->isToday() ? 'Hoy ' : '') . ucfirst($turn->isoFormat('dddd D [de] MMMM — h:mm A'))
+                    : 'Sin turnos próximos disponibles';
+
+                unset($item['availability']);
+
+                return $item;
+            }
+        );
+
         $resultsPage = new LengthAwarePaginator(
-            $groupedResults->values()->forPage($page, $perPage)->values(),
+            $pageItems,
             $groupedResults->count(),
             $perPage,
             $page,

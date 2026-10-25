@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->unique()->constrained()->onDelete('cascade');
             $table->string('identification')->unique()->nullable();
+            // Guardará el hash SHA-256 e irá indexado para búsquedas ultrarrápidas
+            $table->string('identification_blind_index')->nullable()->index();
             $table->string('phone')->nullable();
             $table->enum('blood_type', ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'])->nullable();
             $table->date('birth_date')->nullable();

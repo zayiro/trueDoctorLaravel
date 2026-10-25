@@ -7,6 +7,7 @@ namespace App\Services\Availability;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use DateTimeInterface;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -55,6 +56,27 @@ final class AvailabilityResolver
      * Próximo turno reservable (con su doctor y su sede). Para la búsqueda.
      */
     public function nextSlot(AvailabilityQuery $query): ?Slot
+    {
+        // Caché corta (60 s): la búsqueda calcula el próximo turno de muchos resultados por página.
+        // Se guarda dentro de un arreglo para que "sin turnos" (null) también se cachee.
+        $ids = $query->doctorIds;
+        sort($ids);
+
+        $key = sprintf(
+            'availability:next:%s:%s:%s:%s:%s',
+            $query->clinicId ?? 'particular',
+            implode('-', $ids),
+            $query->addressId ?? 'all',
+            $query->serviceId ?? 'any',
+            $query->excludeAppointmentId ?? 'none',
+        );
+
+        $cached = Cache::remember($key, 60, fn () => ['slot' => $this->computeNextSlot($query)]);
+
+        return $cached['slot'];
+    }
+
+    private function computeNextSlot(AvailabilityQuery $query): ?Slot
     {
         $now = $this->now();
         $windowDays = (int) config('booking.next_slot_window_days', 30);

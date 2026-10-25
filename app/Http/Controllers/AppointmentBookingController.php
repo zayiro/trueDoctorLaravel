@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Patient;
+use Illuminate\Http\JsonResponse;
 
 class AppointmentBookingController extends Controller
 {
@@ -41,5 +43,41 @@ class AppointmentBookingController extends Controller
     {
         session()->forget('appointment_flow');
         return response()->json(['status' => 'success']);
+    }
+
+    /**
+     * Busca un paciente en el sistema por su número de identificación encriptado.
+     */
+    public function searchPatient(Request $request): JsonResponse
+    {
+        $identification = $request->input('identification');
+
+        if (empty($identification)) {
+            return response()->json(['found' => false, 'message' => 'Identificación vacía.'], 400);
+        }
+
+        // 1. Generamos el mismo hash para la identificación buscada
+        $blindIndex = Patient::generateBlindIndex($identification);
+
+        // 2. Buscamos de forma directa, indexada e instantánea en la BD
+        $patient = Patient::with('user')
+            ->where('identification_blind_index', $blindIndex)
+            ->where('active', true)
+            ->first();
+
+        if ($patient) {
+            return response()->json([
+                'found' => true,
+                'patient' => [
+                    'id' => $patient->id,
+                    'name' => $patient->user->name ?? 'Paciente sin nombre',
+                    'email' => $patient->user->email ?? '',
+                    'phone' => $patient->phone ?? '', 
+                    'identification' => $identification,
+                ]
+            ]);
+        }
+
+        return response()->json(['found' => false]);
     }
 }

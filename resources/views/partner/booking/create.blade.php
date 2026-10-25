@@ -95,26 +95,35 @@ $breadcrumbs = [
                                 <p class="text-sm text-slate-500">Introduce el documento de identidad para verificar el perfil en OpenDoctor.</p>
                             </div>
 
-                            <!-- Buscador por Identificación -->
+                            <!-- Buscador Real conectado a la Base de Datos con Criptografía -->
                             <div class="flex flex-col sm:flex-row gap-3">
                                 <div class="relative flex-1">
                                     <input type="text" x-model="searchId" @input="saveField('root', 'search_id', searchId)" placeholder="Ej. 10402030" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all text-sm font-medium">
                                 </div>
                                 <button @click="
                                     loading = true;
-                                    // Simulación de búsqueda en base de datos
-                                    setTimeout(() => { 
-                                        loading = false; 
-                                        if(searchId === '123') { 
+                                    fetch('{{ route('partner.booking.search_patient') }}', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                        },
+                                        body: JSON.stringify({ identification: searchId })
+                                    })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        loading = false;
+                                        if (data.found) {
                                             patientFound = true;
-                                            patientData = { name: 'Carlos Mendoza', email: 'carlos@mail.com', countryCode: '+57', phone: '3001234567', identification: searchId };
-                                        } else { 
+                                            patientData = data.patient;
+                                        } else {
                                             patientFound = false;
                                             patientData = { name: '', email: '', countryCode: '+57', phone: '', identification: searchId };
                                         }
                                         saveField('root', 'patient_found', patientFound);
                                         saveField('patient', 'all', patientData);
-                                    }, 800);
+                                    })
+                                    .catch(() => { loading = false; alert('Error al consultar el servidor.'); });
                                 " class="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 text-sm shadow-sm active:scale-[0.98]">
                                     <svg x-show="loading" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                     <span x-text="loading ? 'Buscando...' : 'Verificar Identificación'"></span>
@@ -122,20 +131,30 @@ $breadcrumbs = [
                             </div>
 
                             <!-- SUB-PASO A: Paciente Encontrado Exitosamente -->
-                            <div x-show="patientFound === true" x-transition class="bg-emerald-50 border border-emerald-200/60 p-4 rounded-xl flex items-center justify-between">
+                            <div x-show="patientFound === true" 
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 transform scale-95"
+                                x-transition:enter-end="opacity-100 transform scale-100"
+                                class="bg-emerald-50 border border-emerald-200/60 p-4 rounded-xl flex items-center justify-between">
+                                
                                 <div class="flex items-center gap-3">
-                                    <div class="p-2 bg-emerald-500/10 text-emerald-600 rounded-lg">
-                                        <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0110 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043a3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"/></svg>
+                                    <div class="p-2 bg-emerald-500/10 text-emerald-600 rounded-lg shrink-0">
+                                        <svg xmlns="http://w3.org" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0110 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043a3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"/>
+                                        </svg>
                                     </div>
                                     <div>
                                         <p class="text-sm font-bold text-slate-800" x-text="patientData.name"></p>
                                         <p class="text-xs text-slate-500" x-text="'Paciente verificado • ' + patientData.email"></p>
                                     </div>
                                 </div>
-                                <button @click="currentStep = 2; saveField('root', 'current_step', 2)" class="text-xs font-bold text-blue-600 bg-white border border-slate-200 hover:border-slate-300 shadow-sm px-3 py-2 rounded-lg transition-all">Continuar al agendamiento &rarr;</button>
+                                
+                                <button @click="currentStep = 2; saveField('root', 'current_step', 2)" class="text-xs font-bold text-blue-600 bg-white border border-slate-200 hover:border-slate-300 shadow-sm px-3 py-2 rounded-lg transition-all shrink-0">
+                                    Continuar al agendamiento &rarr;
+                                </button>
                             </div>
 
-                            <!-- SUB-PASO B: Formulario Express (Si NO existe) -->
+                            <!-- SUB-PASO B: Formulario Express (Si NO existe en el sistema) -->
                             <div x-show="patientFound === false" x-transition class="bg-white border border-slate-200/80 p-5 rounded-2xl space-y-4 shadow-sm">
                                 <div class="flex items-center gap-2 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-200/40 px-3 py-1.5 rounded-lg w-fit">
                                     ⚠️ Paciente no registrado. Complete los datos para su creación express.
@@ -152,12 +171,12 @@ $breadcrumbs = [
                                         <input type="email" x-model="patientData.email" @input="saveField('patient', 'email', patientData.email)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all">
                                     </div>
 
-                                    <!-- Bloque del Teléfono Móvil Adaptado Reactivamente -->
+                                    <!-- Selector Internacional de Teléfono Móvil -->
                                     <div class="space-y-1 sm:col-span-1">
                                         <label for="phone" class="text-xs font-bold text-slate-500">Teléfono móvil *</label>
                                         <div class="flex mt-1 rounded-xl shadow-sm border border-slate-200 bg-white focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-600 overflow-hidden transition-all">
-                                            <select name="country_code" id="country_code" x-model="patientData.countryCode" @change="saveField('patient', 'country_code', patientData.countryCode)" required class="bg-slate-50 text-slate-700 text-sm border-0 border-r border-slate-200 rounded-l-xl focus:ring-0 px-6 cursor-pointer">
-                                                <option value="+57">🇲🇵 +57</option>
+                                            <select name="country_code" id="country_code" x-model="patientData.countryCode" @change="saveField('partner.booking.session.update', 'country_code', patientData.countryCode)" required class="bg-slate-50 text-slate-700 text-sm border-0 border-r border-slate-200 rounded-l-xl focus:ring-0 px-4 cursor-pointer">
+                                                <option value="+57">🇨🇴 +57</option>
                                                 <option value="+54">🇦🇷 +54</option>
                                                 <option value="+591">🇧🇴 +591</option>
                                                 <option value="+55">🇧🇷 +55</option>
@@ -182,11 +201,13 @@ $breadcrumbs = [
                                 </div>
 
                                 <div class="flex justify-end pt-2">
-                                    <button @click="currentStep = 2; saveField('root', 'current_step', 2)" :disabled="!patientData.name || !patientData.email || !patientData.phone" class="disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-all shadow-sm">Crear y Continuar &rarr;</button>
+                                    <button @click="currentStep = 2; saveField('root', 'current_step', 2)" :disabled="!patientData.name || !patientData.email || !patientData.phone" class="disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-all shadow-sm">
+                                        Crear y Continuar &rarr;
+                                    </button>
                                 </div>
                             </div>
 
-                        </div>
+                        </div> <!-- Cierre del contenedor del paso 1 -->
                         
                         <!-- PASO 2: Datos de la Cita Médica -->
                         <div x-show="currentStep === 2" 
@@ -203,7 +224,7 @@ $breadcrumbs = [
                                 <button @click="currentStep = 1; saveField('root', 'current_step', 1)" class="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors">&larr; Volver a Paciente</button>
                             </div>
 
-                            <!-- Configuración del Espacio de la Cita -->
+                            <!-- Configuración del Espacio y Tiempo de la Cita -->
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div class="space-y-1">
                                     <label class="text-xs font-bold text-slate-500">Tipo de Sede *</label>
@@ -231,6 +252,7 @@ $breadcrumbs = [
                                 </div>
                             </div>
 
+
                             <!-- Módulo de Gestión de Recaudación / Pago -->
                             <div class="bg-white border border-slate-200/80 p-4 rounded-2xl space-y-3">
                                 <label class="text-xs font-bold text-slate-500 uppercase tracking-wider block">Método de Recaudación / Pago</label>
@@ -256,7 +278,6 @@ $breadcrumbs = [
                             <div class="flex justify-end pt-2">
                                 <button @click="
                                     loading = true;
-                                    // CORREGIDO: Se removió el prefijo duplicado partner.
                                     fetch('{{ route('partner.booking.session.clear') }}', {
                                         method: 'POST',
                                         headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
@@ -272,11 +293,11 @@ $breadcrumbs = [
                                 </button>
                             </div>
 
-                        </div>
-                    </div>
-                </div>
+                        </div> <!-- Cierre del contenedor de pasos -->
+                    </div> <!-- Cierre del contenedor principal blanco de cristal -->
+                </div> <!-- Cierre del contenedor max-w-4xl -->
             </div>
-        </section>
+        </section> <!-- Cierre definitivo del componente wrapper -->
 
     </div>    
 </x-admin-layout>
