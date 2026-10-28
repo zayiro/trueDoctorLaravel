@@ -50,16 +50,14 @@ $breadcrumbs = [
                             <!-- Inputs de Hora de Inicio y Fin -->
                             <div class="flex items-center space-x-2">
                                 <input type="time" 
-                                       name="schedules[{{ $schedule->id }}][start_time]" 
-                                       value="{{ old('schedules.'.$schedule->id.'.start_time', $schedule->start_time->format('H:i')) }}"
-                                       class="rounded-xl border-gray-200 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 shadow-inner font-bold text-slate-700" required />
-                                
+                                    name="schedules[{{ $schedule->id }}][start_time]" 
+                                    value="{{ old('schedules.'.$schedule->id.'.start_time', substr($schedule->start_time, 0, 5)) }}"
+                                    class="rounded-xl border-gray-200 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 shadow-inner font-bold text-slate-700" required />
                                 <span class="text-slate-400 text-xs font-semibold lowercase px-1">a</span>
-                                
                                 <input type="time" 
-                                       name="schedules[{{ $schedule->id }}][end_time]" 
-                                       value="{{ old('schedules.'.$schedule->id.'.end_time', $schedule->end_time->format('H:i')) }}"
-                                       class="rounded-xl border-gray-200 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 shadow-inner font-bold text-slate-700" required />
+                                    name="schedules[{{ $schedule->id }}][end_time]" 
+                                    value="{{ old('schedules.'.$schedule->id.'.end_time', substr($schedule->end_time, 0, 5)) }}"
+                                    class="rounded-xl border-gray-200 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500 shadow-inner font-bold text-slate-700" required />
                             </div>
 
                             <!-- Toggle Switch Estilizado en Tailwind (Habilitado/Deshabilitado) -->

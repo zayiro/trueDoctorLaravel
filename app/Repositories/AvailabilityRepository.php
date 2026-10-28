@@ -8,84 +8,56 @@ use App\Models\Unavailability;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 
-/**
- * 📦 REPOSITORIO DE DISPONIBILIDAD
- * 
- * Centraliza todas las consultas de cálculo de slots y turnos disponibles.
- * Implementa estrategia de caché para optimizar consultas repetidas.
- * Invalida caché automáticamente cuando se confirman nuevas reservas.
- */
 class AvailabilityRepository
 {
-    /**
-     * Prefijo para las claves de caché
-     */
     private const CACHE_PREFIX = 'availability:';
-    
-    /**
-     * Duración del caché en minutos (30 minutos por defecto)
-     */
-    private const CACHE_TTL = 30;
+    private const CACHE_TTL = 30; // 30 minutos
 
-    /**
-     * Obtiene el margen mínimo de aviso (colchón logístico)
-     * 
-     * @param int|null $clinicId ID de la clínica
-     * @param array $doctorIds IDs de los doctores
-     * @return int Horas de aviso mínimo
-     */
     public function getMinNoticeHours(?int $clinicId = null, array $doctorIds = []): int
     {
         $cacheKey = self::CACHE_PREFIX . 'min_notice:' . ($clinicId ?? 'doctors:' . implode(',', $doctorIds));
 
         return Cache::remember($cacheKey, self::CACHE_TTL * 60, function () use ($clinicId, $doctorIds) {
             if (!is_null($clinicId)) {
-                return DB::table('clinic_settings')
-                    ->where('clinic_id', $clinicId)
-                    ->value('min_notice_hours') ?? 2;
-            } else {
-                return DB::table('doctor_settings')
-                    ->whereIn('doctor_id', $doctorIds)
-                    ->value('min_notice_hours') ?? 2;
+                return (int) (DB::table('clinic_settings')->where('clinic_id', $clinicId)->value('min_notice_hours') ?? 2);
             }
+            
+            // Si hay múltiples doctores, tomamos el mínimo aviso más restrictivo (o el primero, pero min() es más seguro)
+            return (int) (DB::table('doctor_settings')->whereIn('doctor_id', $doctorIds)->min('min_notice_hours') ?? 2);
         });
     }
 
-    /**
-     * Obtiene la duración del servicio en una sede
-     * 
-     * @param int $addressId ID de la sede
-     * @return int Duración en minutos
-     */
+    public function getBufferTimeMinutes(?int $clinicId = null, ?int $doctorId = null): int
+    {
+        $cacheKey = self::CACHE_PREFIX . 'buffer:' . ($clinicId ?? 'doctor:' . $doctorId);
+
+        return Cache::remember($cacheKey, self::CACHE_TTL * 60, function () use ($clinicId, $doctorId) {
+            if (!is_null($clinicId)) {
+                return (int) (DB::table('clinic_settings')->where('clinic_id', $clinicId)->value('buffer_time_minutes') ?? 0);
+            }
+            if (!is_null($doctorId)) {
+                return (int) (DB::table('doctor_settings')->where('doctor_id', $doctorId)->value('buffer_time_minutes') ?? 0);
+            }
+            return 0;
+        });
+    }
+
     public function getSlotDurationMinutes(int $addressId): int
     {
         $cacheKey = self::CACHE_PREFIX . 'slot_duration:' . $addressId;
 
         return Cache::remember($cacheKey, self::CACHE_TTL * 60, function () use ($addressId) {
-            return DB::table('address_service')
-                ->where('address_id', $addressId)
-                ->value('duration') ?? 20;
+            return (int) (DB::table('address_service')->where('address_id', $addressId)->value('duration') ?? 20);
         });
     }
 
-    /**
-     * Obtiene los horarios programados para un día específico
-     * 
-     * @param int $addressId ID de la sede
-     * @param array $doctorIds IDs de los doctores
-     * @param int $dayOfWeek Día de la semana (1-7)
-     * @return \Illuminate\Database\Eloquent\Collection
-     */
     public function getSchedulesForDay(int $addressId, array $doctorIds, int $dayOfWeek)
     {
         $cacheKey = self::CACHE_PREFIX . 'schedules:' . $addressId . ':' . implode(',', $doctorIds) . ':' . $dayOfWeek;
 
         $cached = Cache::get($cacheKey);
-        
         if ($cached !== null) {
-            // Reconstruir Collection desde array cacheado
             return collect($cached)->map(function ($item) {
                 $schedule = new Schedule();
                 foreach ($item as $key => $value) {
@@ -99,31 +71,20 @@ class AvailabilityRepository
             ->where('address_id', $addressId)
             ->whereIn('doctor_id', $doctorIds)
             ->where('day', $dayOfWeek)
+            ->where('is_active', true) // 🔒 Blindaje: solo horarios activos
             ->get();
 
-        // Cachear como array primitivo
         Cache::put($cacheKey, $schedules->toArray(), self::CACHE_TTL * 60);
-
         return $schedules;
     }
 
-    /**
-     * Obtiene las indisponibilidades de los doctores para una fecha específica
-     * 
-     * @param array $doctorIds IDs de los doctores
-     * @param Carbon $date Fecha a evaluar
-     * @param int|null $addressId ID de la sede (opcional)
-     * @return \Illuminate\Database\Eloquent\Collection
-     */
     public function getUnavailabilitiesForDate(array $doctorIds, Carbon $date, ?int $addressId = null)
     {
         $dateStr = $date->toDateString();
         $cacheKey = self::CACHE_PREFIX . 'unavailabilities:' . implode(',', $doctorIds) . ':' . $dateStr . ':' . ($addressId ?? 'all');
 
         $cached = Cache::get($cacheKey);
-        
         if ($cached !== null) {
-            // Reconstruir Collection desde array cacheado
             return collect($cached)->map(function ($item) {
                 $unavailability = new Unavailability();
                 foreach ($item as $key => $value) {
@@ -143,29 +104,17 @@ class AvailabilityRepository
             })
             ->get();
 
-        // Cachear como array primitivo
         Cache::put($cacheKey, $unavailabilities->toArray(), self::CACHE_TTL * 60);
-
         return $unavailabilities;
     }
 
-    /**
-     * Obtiene las citas confirmadas/pendientes para una fecha específica
-     * 
-     * @param array $doctorIds IDs de los doctores
-     * @param int $addressId ID de la sede
-     * @param Carbon $date Fecha a evaluar
-     * @return \Illuminate\Database\Eloquent\Collection
-     */
     public function getOccupiedAppointmentsForDate(array $doctorIds, int $addressId, Carbon $date)
     {
         $dateStr = $date->toDateString();
         $cacheKey = self::CACHE_PREFIX . 'appointments:' . implode(',', $doctorIds) . ':' . $addressId . ':' . $dateStr;
 
         $cached = Cache::get($cacheKey);
-        
         if ($cached !== null) {
-            // Reconstruir Collection desde array cacheado
             return collect($cached)->map(function ($item) {
                 $appointment = new Appointment();
                 foreach ($item as $key => $value) {
@@ -175,109 +124,67 @@ class AvailabilityRepository
             });
         }
 
-        $appointments = Appointment::with(['doctor'])
-            ->whereIn('doctor_id', $doctorIds)
+        $appointments = Appointment::whereIn('doctor_id', $doctorIds)
             ->where('address_id', $addressId)
             ->where('date', $dateStr)
             ->whereIn('status', ['pending', 'confirmed'])
             ->get(['id', 'start_time', 'end_time', 'doctor_id']);
 
-        // Cachear como array primitivo
         Cache::put($cacheKey, $appointments->toArray(), self::CACHE_TTL * 60);
-
         return $appointments;
     }
 
-    /**
-     * Invalida el caché de disponibilidad para un doctor/clínica específico
-     * Se ejecuta automáticamente cuando se confirma una nueva cita
-     * 
-     * @param int|null $clinicId ID de la clínica
-     * @param array $doctorIds IDs de los doctores
-     * @param int|null $addressId ID de la sede
-     * @return void
-     */
     public function invalidateAvailabilityCache(?int $clinicId = null, array $doctorIds = [], ?int $addressId = null): void
     {
         try {
-            // Invalidar caché de margen mínimo
-            $minNoticeKey = self::CACHE_PREFIX . 'min_notice:' . ($clinicId ?? 'doctors:' . implode(',', $doctorIds));
-            Cache::forget($minNoticeKey);
-
-            // Invalidar caché de duración de slots
-            if ($addressId) {
-                $slotDurationKey = self::CACHE_PREFIX . 'slot_duration:' . $addressId;
-                Cache::forget($slotDurationKey);
+            $keysToForget = [];
+            
+            // Invalidar caché de min_notice (tanto para clínica como para doctores individuales)
+            if ($clinicId !== null) {
+                $keysToForget[] = self::CACHE_PREFIX . 'min_notice:' . $clinicId;
+                $keysToForget[] = self::CACHE_PREFIX . 'buffer:' . $clinicId;
             }
-
-            // Invalidar caché de horarios para todos los días de la semana
-            if ($addressId && !empty($doctorIds)) {
-                for ($day = 1; $day <= 7; $day++) {
-                    $scheduleKey = self::CACHE_PREFIX . 'schedules:' . $addressId . ':' . implode(',', $doctorIds) . ':' . $day;
-                    Cache::forget($scheduleKey);
-                }
+            
+            // Invalidar para cada doctor individualmente
+            foreach ($doctorIds as $docId) {
+                $keysToForget[] = self::CACHE_PREFIX . 'min_notice:doctors:' . $docId;
+                $keysToForget[] = self::CACHE_PREFIX . 'buffer:doctor:' . $docId;
             }
-
-            // Invalidar caché de indisponibilidades para los próximos 14 días
+            
+            // Invalidar caché combinado (cuando se pasan múltiples doctores)
             if (!empty($doctorIds)) {
-                for ($i = 0; $i < 14; $i++) {
-                    $date = Carbon::now()->addDays($i)->toDateString();
-                    $unavailabilityKey = self::CACHE_PREFIX . 'unavailabilities:' . implode(',', $doctorIds) . ':' . $date . ':' . ($addressId ?? 'all');
-                    Cache::forget($unavailabilityKey);
+                $keysToForget[] = self::CACHE_PREFIX . 'min_notice:doctors:' . implode(',', $doctorIds);
+            }
+            
+            // Invalidar caché de schedules, unavailabilities y appointments
+            if ($addressId && !empty($doctorIds)) {
+                foreach ($doctorIds as $docId) {
+                    for ($day = 1; $day <= 7; $day++) {
+                        $keysToForget[] = self::CACHE_PREFIX . 'schedules:' . $addressId . ':' . $docId . ':' . $day;
+                    }
+                    
+                    for ($i = 0; $i < 14; $i++) {
+                        $date = Carbon::now()->addDays($i)->toDateString();
+                        $keysToForget[] = self::CACHE_PREFIX . 'unavailabilities:' . $docId . ':' . $date . ':' . $addressId;
+                        $keysToForget[] = self::CACHE_PREFIX . 'unavailabilities:' . $docId . ':' . $date . ':all';
+                        $keysToForget[] = self::CACHE_PREFIX . 'appointments:' . $docId . ':' . $addressId . ':' . $date;
+                    }
                 }
             }
 
-            // Invalidar caché de citas ocupadas para los próximos 14 días
-            if (!empty($doctorIds) && $addressId) {
-                for ($i = 0; $i < 14; $i++) {
-                    $date = Carbon::now()->addDays($i)->toDateString();
-                    $appointmentKey = self::CACHE_PREFIX . 'appointments:' . implode(',', $doctorIds) . ':' . $addressId . ':' . $date;
-                    Cache::forget($appointmentKey);
-                }
+            if ($addressId) {
+                $keysToForget[] = self::CACHE_PREFIX . 'slot_duration:' . $addressId;
             }
 
-            /*Log::info('AvailabilityRepository: Caché invalidado', [
-                'clinic_id' => $clinicId,
-                'doctor_ids' => $doctorIds,
-                'address_id' => $addressId
-            ]);*/
-        } catch (\Exception $e) {
-            /*Log::error('AvailabilityRepository: Error al invalidar caché', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);*/
-        }
-    }
-
-    /**
-     * Invalida TODO el caché de disponibilidad (operación nuclear)
-     * Usar solo en casos excepcionales
-     * 
-     * @return void
-     */
-    public function flushAllAvailabilityCache(): void
-    {
-        try {
+            foreach ($keysToForget as $key) {
+                Cache::forget($key);
+            }
+            
+            // Como medida de seguridad, invalidar TODO el caché de disponibilidad
             Cache::tags(['availability'])->flush();
-            //Log::warning('AvailabilityRepository: Caché completo de disponibilidad limpiado');
+            
         } catch (\Exception $e) {
-            /*Log::error('AvailabilityRepository: Error al limpiar caché completo', [
-                'error' => $e->getMessage()
-            ]);*/
+            Log::error('Error invalidando caché de disponibilidad', ['error' => $e->getMessage()]);
         }
-    }
-
-    /**
-     * Obtiene estadísticas de caché para debugging
-     * 
-     * @return array
-     */
-    public function getCacheStats(): array
-    {
-        return [
-            'prefix' => self::CACHE_PREFIX,
-            'ttl_minutes' => self::CACHE_TTL,
-            'timestamp' => now()
-        ];
     }
 }

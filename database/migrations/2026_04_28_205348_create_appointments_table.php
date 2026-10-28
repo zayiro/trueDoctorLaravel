@@ -48,7 +48,8 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->boolean('email_sent')->default(false);
             $table->boolean('reminder_sent')->default(false);
-            $table->unsignedInteger('reschedule_count')->default(0);                        
+            $table->unsignedInteger('reschedule_count')->default(0);    
+            $table->softDeletes(); // Agrega la columna deleted_at TIMESTAMP NULL                    
             $table->timestamps();
 
             // Índice compuesto para validación de disponibilidad

@@ -104,7 +104,7 @@
                         type="submit" 
                         id="submitBtn"
                         x-bind:disabled="loading"
-                        class="w-full inline-flex items-center justify-center px-6 py-3.5 text-sm font-black text-white rounded-xl transition duration-200 shadow-md shadow-blue-500/10 focus:ring-4 focus:outline-none"
+                        class="group w-full sm:w-auto max-w-max sm:max-w-none bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 shadow-md shadow-blue-600/15 flex items-center justify-center gap-2.5 text-base transform active:scale-[0.98]"
                         x-bind:class="loading ? 'bg-blue-700 opacity-80 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.99] focus:ring-blue-100 dark:focus:ring-blue-900'"
                     >
                         <!-- Estado 1: Enviando -->
@@ -120,11 +120,13 @@
 
                         <!-- Estado 2: Texto Normal -->
                         <template x-if="!loading">
-                            <div class="flex items-center justify-center">
-                                <svg class="w-5 h-5 me-2.5 transition-transform group-hover:translate-x-1" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+                            <div class="flex items-center justify-center">                               
+                                <span class="tracking-wide uppercase text-[13px] font-black mr-2">
+                                    {{ __('Enviar Mensaje') }}                                    
+                                </span>
+                                <svg class="w-4 h-4 text-blue-200 group-hover:text-white group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                                 </svg>
-                                <span class="tracking-wide uppercase text-[13px] font-black">{{ __('Enviar Mensaje') }}</span>
                             </div>
                         </template>
                     </button>

@@ -16,7 +16,7 @@
                                 Open<span style="color: #2563eb;">Doctor</span><span style="color: #64748b; font-size: 14px; font-weight: 400;">.online</span>
                             </div>
                             <div style="display: inline-block; background-color: #dcfce7; color: #15803d; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 9999px; text-transform: uppercase;">
-                                ✓ Cita Confirmada
+                                ✓ Cita Actualizada
                             </div>
                         </td>
                     </tr>
@@ -32,7 +32,11 @@
                                         Ingresar a la videoconsulta
                                     </a>
                                 </p>
-                                <p style='margin-top: 25px; font-size: 0.9em; color: #666;'>Si el botón no funciona, copia y pega este enlace en tu navegador:<br>{$roomUrl}</p>
+                             
+                                <p style="margin-top: 25px; font-size: 0.9em; color: #666;">
+                                    Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
+                                    <a href="https://opendoctor.online/appointments/{{ $appointmentId }}/room" style="color: #007bff; text-decoration: none;">https://opendoctor.online/appointments/{{ $appointmentId }}/room</a>
+                                </p>
 
                                 <!-- Línea Divisoria -->
                                 <hr style='border: 0; border-top: 1px solid #e5e7eb; margin: 40px 0 20px 0;'>                                

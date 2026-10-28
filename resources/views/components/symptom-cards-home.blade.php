@@ -16,17 +16,18 @@
 @endphp
 
 @if($randomSymptoms->isNotEmpty())
-    <section class="max-w-7xl mx-auto px-4" aria-labelledby="symptoms-home-title">
-        <div class="flex flex-col md:flex-row md:items-end justify-between mb-8">
-            <div>
-                <h2 id="symptoms-home-title" class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight dark:text-white">
-                    ¿No sabes a qué especialista médico consultar?
-                </h2>
+    <section class="max-w-7xl mx-auto" aria-labelledby="symptoms-home-title">
+        <div class="mb-8">
+            <div>                
+                <h1 id="symptoms-home-title" class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
+                    ¿No sabes a qué especialista
+                    <span class="text-blue-600">médico consultar?</span>
+                </h1>
                 <p class="text-slate-500 text-sm sm:text-base mt-1 dark:text-slate-400">
                     Orientación clínica basada en síntomas comunes y derivación médica inmediata.
                 </p>
             </div>
-            <a href="{{ route('symptom.index') }}" class="text-sm font-bold text-blue-600 hover:text-blue-700 transition inline-flex items-center gap-1.5 mt-4 md:mt-0 group dark:text-blue-400 dark:hover:text-blue-300">
+            <a href="{{ route('symptom.index') }}" class="text-md font-bold text-blue-600 hover:text-blue-700 transition inline-flex items-center gap-1.5 mt-4 md:mt-0 group dark:text-blue-400 dark:hover:text-blue-300">
                 Ver diccionario completo de síntomas
                 <svg class="w-4 h-4 transform group-hover:translate-x-1 transition-transform" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
@@ -81,12 +82,12 @@
                     </div>
 
                     <!-- Enlace comercial directo del buscador -->
-                    <div class="pt-3 border-t border-slate-50 dark:border-gray-700">
-                        <a href="{{ url('/search') }}?specialty={{ $symptom->specialty_slug }}" class="w-full inline-flex justify-center items-center p-4 text-base font-black text-center text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition shadow-sm focus:ring-4 focus:ring-blue-100">
+                    <div class="pt-3 border-t border-slate-50 dark:border-gray-700">                        
+                        <a href="{{ url('/search') }}?specialty={{ $symptom->specialty_slug }}" 
+                        class="group w-full sm:w-auto max-w-max sm:max-w-none bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 shadow-md shadow-blue-600/15 flex items-center justify-center gap-2.5 text-base transform active:scale-[0.98]">
                             Agendar Especialista de {{ $symptom->specialty_name }}
-                            <!-- SVG Nativo: Calendar de Heroicons -->
-                            <svg class="w-3.5 h-3.5 ml-1.5" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008zm6.75-4.5h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H16.5v-.008zm0 2.25h.008v.008H16.5V15z" />
+                            <svg class="w-4 h-4 text-blue-200 group-hover:text-white group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                             </svg>
                         </a>
                     </div>

@@ -1,5 +1,8 @@
-<x-guest-layout>
-    <div class="bg-white py-12 px-4 mt-5">
+<x-guest-layout
+    meta-title-medical-analysis="Planes y Tarifas desde $0 | OpenDoctor Online" 
+    meta-description-medical-analysis="Encuentra el plan ideal para tu práctica médica o clínica. Desde nuestro Plan Esencial gratuito hasta el Plan Gold por $950.000/año con citas ilimitadas, agenda en tiempo real e historias clínicas con IA."
+>
+    <div class="bg-white py-12 px-4">
         <div class="max-w-7xl mx-auto text-center mb-12 mt-5">
             <h2 class="text-4xl font-black text-gray-900 mb-2">Planes que crecen contigo</h2>            
             <p class="text-lg text-gray-600">Potencia tu visibilidad en la web y gestiona tus citas de forma profesional.</p>
@@ -12,7 +15,7 @@
                     @click="tab = 'especialistas'" 
                     :class="tab === 'especialistas' ? 'border-blue-600 text-blue-600 font-semibold' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                     class="w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors duration-200 focus:outline-none">
-                    Para Especialistas
+                    Para Doctores
                 </button>
                 <button 
                     @click="tab = 'clinicas'" 
@@ -29,7 +32,7 @@
                     {{-- Planes para Especialistas (Doctores) --}}
                     <div class="max-w-6xl mx-auto my-8">
                         <div class="text-center mb-10">
-                            <p class="text-lg text-gray-600">Valido para los <strong class="text-emerald-500">primeros 50 especialistas</strong></p>    
+                            <p class="text-lg text-gray-600">Valido para los <strong class="text-emerald-500">primeros 50 doctores</strong></p>    
                             <p class="text-lg text-gray-600">Planes diseñados para profesionales de la salud independientes</p>    
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">

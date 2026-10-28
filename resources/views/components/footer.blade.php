@@ -7,7 +7,7 @@
                 <span class="text-lg font-black text-slate-900 tracking-tight">
                     Open<span class="text-indigo-600">Doctor</span><span class="text-emerald-500">Online</span>
                 </span>
-                <span class="text-xs font-semibold text-slate-400">| © {{ date('Y') }}</span>
+                <span class="text-xs font-semibold text-slate-400 pt-1.5">| © {{ date('Y') }}</span>
             </div>
 
             <!-- Centro: Enlaces de navegación rápida -->
@@ -18,7 +18,7 @@
                 <a href="{{ route('privacy.show') }}" class="hover:text-indigo-600 transition-colors">Política de Privacidad</a>
                 <a href="{{ route('support.show') }}" class="hover:text-indigo-600 transition-colors">Soporte Técnico</a>
                 <a href="{{ route('plans.index') }}" class="hover:text-indigo-600 transition-colors">Planes</a>
-                <a href="https://www.websispro-gov.co" class="hover:text-indigo-600 transition-colors" target="_blank">ReTHUS</a>
+                <a href="https://web.sispro.gov.co/THS/Cliente/ConsultasPublicas/ConsultaPublicaDeTHxIdentificacion.aspx" class="hover:text-indigo-600 transition-colors" target="_blank">ReTHUS</a>
             </div>
 
             <!-- Lado Derecho: Estado del Sistema / Redes -->

@@ -17,14 +17,15 @@
         @if($pendingAppointment)
             <div class="relative z-40 bg-white pb-10 pt-10">
                 <div class="max-w-7xl mx-auto px-4 mt-4">                
-                    <div id="alert-1" class="p-4 mb-4 text-sm text-indigo-800 rounded-2xl bg-indigo-50 border border-indigo-100 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" role="alert">
+                    <div id="alert-1" class="p-4 mb-4 text-sm text-indigo-800 rounded-2xl bg-indigo-50 border border-indigo-100 shadow-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" role="alert">
                         <span class="font-bold text-indigo-900 block shrink-0">¡Tienes una reserva en curso!</span> 
                         <span class="text-indigo-700">
-                            Detectamos que no completaste el pago de tu videoconsulta con el 
+                            Completa ahora el pago de tu videoconsulta con el 
                             <strong>{{ $pendingAppointment->doctor->gender === 'male' ? 'Dr. ' : 'Dra. ' }}{{ ucfirst($pendingAppointment->doctor->user->name) }}</strong>.
+                            Y no pierdas tu reservación médica.
                         </span>
                         <a href="{{ route('appointments.preview', $pendingAppointment->id) }}" 
-                        class="inline-flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-xl transition shadow-sm cursor-pointer">
+                        class="inline-flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase tracking-wider px-4 py-2 pt-2.5 rounded-xl transition shadow-sm cursor-pointer">
                             Retomar y pagar
                         </a>
                         <span class="sr-only">Close</span>
@@ -53,7 +54,7 @@
     @endif
 
     <!-- Sección: Buscador de medicos por especialidades medicas y por ciudad (opcional) o por sintomas -->
-    <div class="relative z-40 bg-white pb-20 sm:pb-10 pt-16 lg:pt-30">
+    <section class="relative z-40 bg-white pb-20 sm:pb-10 pt-16 lg:pt-30">
         <div class="max-w-7xl mx-auto px-6 lg:px-8">
             <div class="text-center mb-12">
                 <h1 class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
@@ -76,10 +77,10 @@
                 </svg>
             </div>
         </div>
-    </div>    
+    </section>    
 
     <!-- Teleconsulta Hero Section -->
-    <section class="relative bg-white md:py-10 px-4 overflow-hidden">
+    <section class="relative bg-white md:py-10 overflow-hidden">
         <!-- Destellos orgánicos sutiles de fondo -->
         <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full pointer-events-none opacity-40">
             <div class="absolute top-[-5%] right-[-5%] w-[400px] h-[400px] bg-blue-200/20 rounded-full blur-[100px]"></div>
@@ -164,7 +165,7 @@
     </section>
 
     <!-- Sección de Promoción: Análisis Clínico con IA -->
-    <section class="relative bg-white pt-4 px-4 pb-10 overflow-hidden">
+    <section class="relative z-40 bg-white md:py-10 overflow-hidden">
         <!-- Destellos de luz orgánicos muy suaves en tonos salud -->
         <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full pointer-events-none opacity-40">
             <div class="absolute top-[-10%] right-[-5%] w-[450px] h-[450px] bg-blue-200/30 rounded-full blur-[100px]"></div>
@@ -265,7 +266,7 @@
                     <!-- Columna Interactiva / CTA (Derecha) -->
                     <div class="md:col-span-5 flex flex-col items-center justify-center mt-8 md:mt-0" x-data="{ loading: false }">
                         <!-- Tarjeta Blanca de Acción -->
-                        <div class="w-full bg-slate-50/60 rounded-2xl border border-slate-200/60 p-6 md:p-8 text-center space-y-6">
+                        <div class="w-full bg-white rounded-2xl border border-slate-200/60 p-6 md:p-8 text-center space-y-6">
                             <div class="space-y-1">
                                 <p class="text-xs uppercase tracking-wider font-bold text-slate-400">Procesador Inteligente</p>
                                 <h4 class="text-slate-800 font-extrabold text-lg">¿Listo para comenzar?</h4>
@@ -284,7 +285,7 @@
                                 }
                             "
                             :class="loading ? 'opacity-70 cursor-not-allowed pointer-events-none' : ''"
-                            class="group w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-200 shadow-md shadow-blue-600/15 flex items-center justify-center gap-2.5 text-base transform active:scale-[0.98]">
+                            class="group w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-xl transition-all duration-200 shadow-md shadow-blue-600/15 flex items-center justify-center gap-2.5 text-base transform active:scale-[0.98]">
                                 
                                 <span x-show="!loading">Analizar exámenes con IA</span>
                                 <span x-show="loading" class="flex items-center gap-2">
@@ -314,14 +315,14 @@
     </section>
 
     <!-- Skin Analysis Hero Section -->
-    <section class="relative bg-white md:py-20 px-4 pb-20 pt-5 overflow-hidden">
+    <section class="relative z-40 bg-white md:py-10 overflow-hidden">
         <!-- Destellos de luz orgánicos muy suaves en el fondo de la página -->
         <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full pointer-events-none opacity-40">
             <div class="absolute top-[-5%] left-[-5%] w-[400px] h-[400px] bg-blue-200/30 rounded-full blur-[100px]"></div>
             <div class="absolute bottom-[5%] right-[-5%] w-[450px] h-[450px] bg-indigo-200/20 rounded-full blur-[110px]"></div>
         </div>
 
-        <div class="relative max-w-7xl mx-auto px-4 z-10">
+        <div class="relative max-w-7xl mx-auto pt-10 px-4 z-10">
             <!-- Contenedor Principal Estilizado en Gris Suave (Consistencia Visual) -->
             <div class="bg-slate-50 backdrop-blur-xl rounded-3xl p-6 sm:p-10 md:p-14 border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
                 
@@ -395,8 +396,9 @@
                     </div>
                 </div>
                 <!-- CTA Button -->
-                <div class="flex justify-center pt-4">
-                    <a href="{{ route('skin-analysis.index') }}" class="group w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-200 shadow-md shadow-blue-600/15 flex items-center justify-center gap-2.5 text-base transform active:scale-[0.98]">
+                <div class="flex justify-center pt-4">                    
+                    <a href="{{ route('skin-analysis.index') }}" 
+                    class="group w-full sm:w-auto max-w-max sm:max-w-none bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 shadow-md shadow-blue-600/15 flex items-center justify-center gap-2.5 text-base transform active:scale-[0.98]">
                         Comenzar análisis clínico
                         <svg class="w-4 h-4 text-blue-200 group-hover:text-white group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
@@ -409,7 +411,7 @@
     </section>
 
     <!-- Sección registro de profesionales de la salud en el directorio de opendoctor.online -->
-    <section class="relative overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50/50 py-16 sm:py-24">
+    <section class="relative z-40 bg-white overflow-hidden py-16 sm:py-24">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-center">
             
@@ -479,7 +481,7 @@
                 <!-- Botones de Acción -->
                 <div class="mt-10 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
                     <a href="{{ route('partner.register') }}" class="group w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-200 shadow-md shadow-blue-600/15 flex items-center justify-center gap-2.5 text-base transform active:scale-[0.98]">
-                        Registrarme como Especialista
+                        Registrarme como Doctor
                         <svg class="w-4 h-4 text-blue-200 group-hover:text-white group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                         </svg>
@@ -745,7 +747,10 @@
     <!-- Comentarios de los pacientes -->
     <section class="py-10 px-4 bg-gray-50">
         <div class="max-w-6xl mx-auto pb-5">
-            <h2 class="text-4xl text-indigo-900 font-bold text-center mb-12">Lo que dicen nuestros pacientes</h2>
+            <h1 class="text-5xl lg:text-7xl text-center font-black text-slate-900 tracking-tight mb-10">
+                Lo que dicen nuestros
+                <span class="text-blue-600">pacientes</span>
+            </h1>
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <!-- Testimonio 1 -->
@@ -793,11 +798,13 @@
         </div>
     </section>
 
-    <!-- Texto de Privacidad -->
+    <!-- Texto de Privacidad de los datos del paciente medico -->
     <section class="py-16 px-4 bg-white">
-        <div class="max-w-4xl mx-auto">
-            <h2 class="text-4xl text-indigo-900 font-bold text-center mb-12">Tu privacidad es nuestra prioridad</h2>
-            
+        <h1 class="text-5xl lg:text-7xl text-center font-black text-slate-900 tracking-tight mb-10">
+            Tu privacidad es nuestra
+            <span class="text-blue-600">prioridad</span>
+        </h1>
+        <div class="max-w-4xl mx-auto">                        
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div class="flex gap-4">
                     <svg class="w-6 h-6 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -845,8 +852,10 @@
     <!-- Preguntas frecuentes -->
     <section class="py-16 px-4 bg-gray-50">
         <div class="max-w-4xl mx-auto">
-            <h2 class="text-4xl text-indigo-900 font-bold text-center mb-12">Preguntas Frecuentes</h2>
-            
+            <h1 class="text-5xl lg:text-7xl text-center font-black text-slate-900 tracking-tight mb-10">
+                Preguntas
+                <span class="text-blue-600">Frecuentes</span>
+            </h1>
             <div class="space-y-4">
                 <details class="bg-white p-6 rounded-xl cursor-pointer group">
                     <summary class="flex justify-between items-center font-black text-gray-900">
@@ -891,9 +900,13 @@
         </div>
     </section>
 
+    <!-- Medios de pago seguros para pagar tu reservacion medica -->
     <section class="py-16 px-4 bg-white">
         <div class="max-w-5xl mx-auto">
-            <h2 class="text-4xl text-indigo-900 font-bold text-center mb-4">Medios de Pago Seguros</h2>
+            <h1 class="text-5xl lg:text-7xl text-center font-black text-slate-900 tracking-tight mb-10">
+                Medios de Pago
+                <span class="text-blue-600">Seguros</span>
+            </h1>
             <p class="text-center text-gray-600 mb-12">Múltiples opciones de pago con la máxima seguridad</p>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -1000,6 +1013,8 @@
             </div>
         </div>
     </section>
+
+    <x-scroll-to-top />
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {

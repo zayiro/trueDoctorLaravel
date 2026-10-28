@@ -1,6 +1,6 @@
 <x-guest-layout
     meta-title-medical-analysis="Crear Cuenta Gratis | Únete a OpenDoctorOnline" 
-    meta-description-medical-analysis="Regístrate gratis en OpenDoctor.online. Si eres paciente, agenda citas y gestiona tu historial; si eres especialista, digitaliza tu consulta y organiza tu agenda médica hoy mismo."
+    meta-description-medical-analysis="Regístrate gratis en OpenDoctor. Elige tu perfil como Paciente para agendar citas y gestionar tu historial, o como Doctor para digitalizar tu agenda y consultas"
 >
     @if (session('info'))
         <div id="alert-info" class="flex items-center p-4 mb-4 text-info-800 rounded-2xl bg-info-50 border border-info-100 shadow-sm transition-opacity duration-500" role="alert">

@@ -59,6 +59,11 @@ trait ValidatesMultiTenantOwnership
     {
         $user = $user ?? Auth::user();
 
+        // 🔒 VALIDACIÓN DE EXISTENCIA: El servicio debe existir
+        if (!$service->exists) {
+            abort(404, 'El servicio médico no existe.');
+        }
+
         $belongsToOwner = DB::table('service_specialty')
             ->where('service_id', $service->id)
             ->where('user_id', $user->id)
@@ -89,7 +94,6 @@ trait ValidatesMultiTenantOwnership
         // Caso 1: Doctor en contexto institucional
         if ($user->role === 'doctor' && ($context['type'] ?? 'particular') === 'clinic') {
             $clinicId = (int)$context['id'];
-
             // Validar que la especialidad sea compartida entre doctor y clínica
             $isShared = DB::table('doctor_specialty')
                 ->where('doctor_id', $user->doctor->id)
@@ -98,11 +102,9 @@ trait ValidatesMultiTenantOwnership
                     $q->select('specialty_id')->from('clinic_specialty')->where('clinic_id', $clinicId);
                 })
                 ->exists();
-
             if (!$isShared) {
                 abort(403, 'Esta especialidad no es compartida entre tu perfil y la clínica activa.');
             }
-
             return true;
         }
 
@@ -112,11 +114,9 @@ trait ValidatesMultiTenantOwnership
                 ->where('clinic_id', $user->clinic->id)
                 ->where('specialty_id', $specialty->id)
                 ->exists();
-
             if (!$hasSpecialty) {
                 abort(403, 'Tu clínica no tiene esta especialidad registrada.');
             }
-
             return true;
         }
 
@@ -126,11 +126,9 @@ trait ValidatesMultiTenantOwnership
                 ->where('doctor_id', $user->doctor->id)
                 ->where('specialty_id', $specialty->id)
                 ->exists();
-
             if (!$hasSpecialty) {
                 abort(403, 'No tienes esta especialidad registrada en tu perfil.');
             }
-
             return true;
         }
 
@@ -139,7 +137,7 @@ trait ValidatesMultiTenantOwnership
 
     /**
      * 🔒 Valida que todas las sedes seleccionadas pertenezcan al usuario autenticado.
-     * Útil para sincronización masiva en address_service.
+     * ✅ OPTIMIZADO: Usa una sola consulta con whereIn en lugar de N+1.
      *
      * @param array $addressIds
      * @param User|null $user
@@ -149,23 +147,58 @@ trait ValidatesMultiTenantOwnership
     protected function validateAddressesOwnership(array $addressIds, ?User $user = null): bool
     {
         $user = $user ?? Auth::user();
-        $context = session('doctor_context');
 
-        foreach ($addressIds as $addressId) {
-            $address = Address::find($addressId);
-            if (!$address) {
-                abort(404, "La sede con ID {$addressId} no existe.");
-            }
-
-            $this->validateAddressOwnership($address, $user);
+        if (empty($addressIds)) {
+            return true;
         }
 
-        return true;
+        // 🔒 OPTIMIZACIÓN: Una sola consulta para verificar que todas las sedes existen y pertenecen al usuario
+        $context = session('doctor_context');
+
+        // Caso 1: Doctor en contexto institucional
+        if ($user->role === 'doctor' && ($context['type'] ?? 'particular') === 'clinic') {
+            $clinicId = (int)$context['id'];
+            $validCount = Address::whereIn('id', $addressIds)
+                ->where('clinic_id', $clinicId)
+                ->count();
+
+            if ($validCount !== count($addressIds)) {
+                abort(403, 'Una o más sedes seleccionadas no pertenecen a la clínica activa.');
+            }
+            return true;
+        }
+
+        // Caso 2: Clínica pura
+        if ($user->role === 'clinic') {
+            $validCount = Address::whereIn('id', $addressIds)
+                ->where('clinic_id', $user->clinic->id)
+                ->count();
+
+            if ($validCount !== count($addressIds)) {
+                abort(403, 'Una o más sedes seleccionadas no pertenecen a tu clínica.');
+            }
+            return true;
+        }
+
+        // Caso 3: Doctor independiente
+        if ($user->role === 'doctor') {
+            $validCount = Address::whereIn('id', $addressIds)
+                ->where('doctor_id', $user->doctor->id)
+                ->whereNull('clinic_id')
+                ->count();
+
+            if ($validCount !== count($addressIds)) {
+                abort(403, 'Una o más sedes seleccionadas no pertenecen a tu consultorio particular.');
+            }
+            return true;
+        }
+
+        abort(403, 'Perfil de usuario no válido para validar sedes.');
     }
 
     /**
      * 🔒 Valida que todas las especialidades seleccionadas pertenezcan al usuario autenticado.
-     * Útil para sincronización masiva en service_specialty.
+     * ✅ OPTIMIZADO: Usa una sola consulta con whereIn en lugar de N+1.
      *
      * @param array $specialtyIds
      * @param User|null $user
@@ -176,16 +209,56 @@ trait ValidatesMultiTenantOwnership
     {
         $user = $user ?? Auth::user();
 
-        foreach ($specialtyIds as $specialtyId) {
-            $specialty = Specialty::find($specialtyId);
-            if (!$specialty) {
-                abort(404, "La especialidad con ID {$specialtyId} no existe.");
-            }
-
-            $this->validateSpecialtyOwnership($specialty, $user);
+        if (empty($specialtyIds)) {
+            return true;
         }
 
-        return true;
+        $context = session('doctor_context');
+
+        // Caso 1: Doctor en contexto institucional
+        if ($user->role === 'doctor' && ($context['type'] ?? 'particular') === 'clinic') {
+            $clinicId = (int)$context['id'];
+            $validCount = DB::table('doctor_specialty')
+                ->where('doctor_id', $user->doctor->id)
+                ->whereIn('specialty_id', $specialtyIds)
+                ->whereIn('specialty_id', function($q) use ($clinicId) {
+                    $q->select('specialty_id')->from('clinic_specialty')->where('clinic_id', $clinicId);
+                })
+                ->count();
+
+            if ($validCount !== count($specialtyIds)) {
+                abort(403, 'Una o más especialidades no son compartidas entre tu perfil y la clínica activa.');
+            }
+            return true;
+        }
+
+        // Caso 2: Clínica pura
+        if ($user->role === 'clinic') {
+            $validCount = DB::table('clinic_specialty')
+                ->where('clinic_id', $user->clinic->id)
+                ->whereIn('specialty_id', $specialtyIds)
+                ->count();
+
+            if ($validCount !== count($specialtyIds)) {
+                abort(403, 'Una o más especialidades no pertenecen a tu clínica.');
+            }
+            return true;
+        }
+
+        // Caso 3: Doctor independiente
+        if ($user->role === 'doctor') {
+            $validCount = DB::table('doctor_specialty')
+                ->where('doctor_id', $user->doctor->id)
+                ->whereIn('specialty_id', $specialtyIds)
+                ->count();
+
+            if ($validCount !== count($specialtyIds)) {
+                abort(403, 'Una o más especialidades no pertenecen a tu perfil médico.');
+            }
+            return true;
+        }
+
+        abort(403, 'Perfil de usuario no válido para validar especialidades.');
     }
 
     /**

@@ -203,9 +203,12 @@
                             </li>
                         </template>
                     </ul>
-                    <div class="border-4 border-indigo-200 border-2 border-t-indigo-500"></div>
-                    <p class="mt-3 text-sm text-gray-500">
-                        El paciente puede subir archivos
+                    <div class="border-4 border-indigo-200 border-2 border-t-indigo-500"></div>                    
+                    <p class="mt-4">
+                        <div class="text-sm text-gray-500 font-bold mb-3">¿Tienes estudios o imágenes médicas?</div>
+                        <div class="text-sm text-gray-500">
+                            Tienes la opción de <span class="text-indigo-500 font-bold">subir archivos</span> como resultados de exámenes de laboratorio, radiografías o fotografías de la zona afectada para que el doctor pueda revisarlos detalladamente durante tu consulta.
+                        <div>
                     </p>
                 </section>
 

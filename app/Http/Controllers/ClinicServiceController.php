@@ -1,9 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
-use App\Models\Service;
 use App\Models\Address;
+use App\Models\Appointment;
+use App\Models\Service;
+use App\Models\Specialty;
+use App\Repositories\AvailabilityRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -11,204 +16,67 @@ use Illuminate\Support\Facades\DB;
 class ClinicServiceController extends Controller
 {
     /**
-     * Helper metodológico para capturar el contexto comercial de la clínica.
+     * Resuelve el contexto comercial de la clínica autenticada.
+     * 
+     *  Usa $user->role (campo del modelo) en lugar de hasRole() de Spatie
+     * para consistencia con el resto del sistema multi-tenant.
      */
     private function getClinicContext()
     {
         $user = Auth::user();
-
+        
         if ($user->role !== 'clinic') {
             abort(403, 'Acceso exclusivo para administradores de centros médicos.');
         }
-
-        $clinic = $user->clinic;
-
-        if (!$clinic) {
-            abort(404, 'Perfil institucional de la clínica no encontrado.');
-        }
-
-        return $clinic;
+        
+        return $user->clinic ?? abort(404, 'Perfil institucional de la clínica no encontrado.');
     }
-    
-        /**
+
+    /**
      * Listar la grilla de servicios que la clínica ofrece en sus respectivas sedes.
      */
     public function index()
     {
-        // 1. Capturar el contexto comercial de la clínica e incluir su plan SaaS
         $clinic = $this->getClinicContext();
         $clinic->load('plan');
 
-        // 🎯 SOPORTE MULTI-TENANT: Definimos el alias $owner exigido por la vista
-        $owner = $clinic;
-
-        // 2. Obtener únicamente las sedes físicas o virtuales de esta clínica
+        // Sedes físicas o virtuales de la clínica (excluyendo sedes de médicos independientes)
         $addresses = Address::where('clinic_id', $clinic->id)
-            ->whereNull('doctor_id') // Excluimos sedes independientes de médicos
-            ->whereNull('deleted_at') // Respetando SoftDeletes
+            ->whereNull('doctor_id')
+            ->whereNull('deleted_at')
             ->get();
 
         $addressIds = $addresses->pluck('id');
 
-        // 3. REFACTORIZACIÓN CRÍTICA: Mapear la variable $services con Eager Loading
-        // Cargamos los servicios globales asociados a estas sedes con sus especialidades e infraestructura pivot
+        // Servicios asociados a las sedes de la clínica
         $services = Service::where('active', true)
-            ->whereHas('addresses', function($query) use ($addressIds) {
+            ->whereHas('addresses', function ($query) use ($addressIds) {
                 $query->whereIn('address_id', $addressIds);
             })
             ->with([
-                'specialties', // Necesario para la segunda columna de tu tabla ($service->specialties)
-                'addresses' => function($query) use ($addressIds) {
+                'specialties',
+                'addresses' => function ($query) use ($addressIds) {
                     $query->whereIn('address_id', $addressIds)->withPivot('price', 'duration');
                 }
             ])
             ->get();
 
-        // 4. Catálogo global para flujos alternos o selectores de vinculación
+        // Catálogo global para selectores de vinculación
         $globalServices = Service::where('active', true)->get();
 
-        // 5. Conteo Multi-Tenant real de servicios únicos asignados en este inquilino
+        // Conteo de servicios únicos asignados a la clínica
         $uniqueServicesCount = DB::table('service_specialty')
-            ->where('user_id', auth()->id())
+            ->where('user_id', $clinic->user_id)
+            ->distinct('service_id')
             ->count();
 
-        // 🚀 RETORNO COMPLETO: Empaquetamos todas las variables para dar inmunidad total a la vista
         return view('partner.clinic.services.index', compact(
             'clinic',
-            'owner',
             'services',
             'addresses',
             'globalServices',
             'uniqueServicesCount'
         ));
-    }
-    
-        /**
-     * Registrar un nuevo servicio o enlazar uno existente distribuyendo tarifas por sede.
-     */
-    public function store(Request $request)
-    {
-        $clinic = $this->getClinicContext();
-        $plan = $clinic->plan ?? auth()->user()->plan;
-
-        // 🎯 FIX DE CONVERGENCIA MULTI-TENANT: Adaptamos los datos si Alpine los procesó como arreglos
-        if ($request->has('address_ids') && !$request->has('address_id')) {
-            $addressArray = $request->input('address_ids');
-            if (!empty($addressArray)) {
-                $request->merge(['address_id' => reset($addressArray)]);
-            }
-        }
-
-        // Si es un canal virtual, inyectamos la sede digital corporativa para saltar el validador rígido
-        if ($request->input('type') === 'virtual') {
-            $virtualAddress = Address::where('clinic_id', $clinic->id)->where('type', 'virtual')->first();
-            if ($virtualAddress) {
-                $request->merge(['address_id' => $virtualAddress->id]);
-            }
-        }
-
-        // 1. Validación Adaptativa Multi-Sede y Multi-Especialidad
-        $request->validate([
-            'service_id'   => 'required|string|max:255', // Captura el nombre de texto o ID numérico
-            'duration'     => 'required|integer|in:15,20,30,45,60',
-            'type'         => 'required|in:physical,virtual',
-            'specialties'  => 'required|array|min:1',
-            'specialties.*'=> 'exists:specialties,id',
-            // Validaciones combinadas flexibles
-            'address_id'   => 'required_if:type,physical|exists:addresses,id',
-            'price_virtual'=> 'required_if:type,virtual|nullable|numeric|min:0',
-            'address_ids'  => 'required_if:type,physical|nullable|array|min:1',
-            'prices'       => 'required_if:type,physical|nullable|array',
-        ]);
-
-        // 2. Control de Límites del Plan SaaS Corporativo
-        $maxServicesAllowed = $plan->max_services ?? 0;
-        $currentCount = DB::table('service_specialty')->where('user_id', auth()->id())->count();
-
-        if ($currentCount >= $maxServicesAllowed) {
-            return redirect()->back()->withInput()->withErrors(['limit' => "Has agotado la cuota de servicios ({$maxServicesAllowed}) permitidos en tu suscripción."]);
-        }
-
-        try {
-            // 3. Ejecutar bloque transaccional atómico
-            DB::transaction(function() use ($request, $clinic) {
-                
-                $inputService = $request->service_id;
-                
-                // Determinar si es un servicio existente (numérico) o uno nuevo (texto de creación)
-                if (!is_numeric($inputService)) {
-                    $existingService = Service::where('name', 'LIKE', trim($inputService))->first();
-                    
-                    if ($existingService) {
-                        $finalServiceId = $existingService->id;
-                    } else {
-                        // Crear el servicio global heredando la modalidad del formulario
-                        $newGlobalService = Service::create([
-                            'name'   => trim($inputService),
-                            'type'   => $request->type,
-                            'active' => true,
-                        ]);
-                        $finalServiceId = $newGlobalService->id;
-                    }
-                } else {
-                    $finalServiceId = (int) $inputService;
-                }
-
-                // Paso A: Vincular el servicio a las especialidades bajo el user_id de la organización
-                foreach ($request->specialties as $specialtyId) {
-                    DB::table('service_specialty')->updateOrInsert(
-                        [
-                            'service_id'   => $finalServiceId,
-                            'specialty_id' => $specialtyId,
-                            'user_id'      => auth()->id(), // Aislamiento Multi-Tenant
-                        ],
-                        ['created_at' => now(), 'updated_at' => now()]
-                    );
-                }
-
-                // Paso B: Distribuir tarifas comerciales e infraestructura
-                if ($request->type === 'virtual') {
-                    // Buscar o autogenerar la sede digital corporativa para video-consultas
-                    $virtualAddress = Address::where('clinic_id', $clinic->id)->where('type', 'virtual')->first();
-                    
-                    if (!$virtualAddress) {
-                        $virtualAddress = Address::create([
-                            'clinic_id' => $clinic->id,
-                            'doctor_id' => null,
-                            'name'      => 'Sede Digital - Telemedicina',
-                            'type'      => 'virtual',
-                        ]);
-                    }
-
-                    DB::table('address_service')->updateOrInsert(
-                        ['address_id' => $virtualAddress->id, 'service_id' => $finalServiceId],
-                        ['price' => $request->price_virtual, 'duration' => $request->duration, 'updated_at' => now(), 'created_at' => now()]
-                    );
-                } else {
-                    // Mapear cada una de las sedes físicas seleccionadas de forma diferencial
-                    foreach ($request->address_ids as $addressId) {
-                        $ownsAddress = Address::where('id', $addressId)->where('clinic_id', $clinic->id)->exists();
-                        
-                        if (!$ownsAddress) {
-                            throw new \Exception('Se detectó un intento de alteración de infraestructura no autorizada.');
-                        }
-
-                        $price = $request->prices[$addressId] ?? 0;
-
-                        DB::table('address_service')->updateOrInsert(
-                            ['address_id' => $addressId, 'service_id' => $finalServiceId],
-                            ['price' => $price, 'duration' => $request->duration, 'updated_at' => now(), 'created_at' => now()]
-                        );
-                    }
-                }
-            });
-
-            return redirect()->route('partner.clinic.services.index')
-                ->with('success', 'El servicio institucional y sus respectivas tarifas fueron almacenados con éxito en tu catálogo.');
-
-        } catch (\Exception $e) {
-            return redirect()->back()->withInput()->withErrors(['error' => 'Fallo de consistencia relacional: ' . $e->getMessage()]);
-        }
     }
 
     /**
@@ -216,34 +84,28 @@ class ClinicServiceController extends Controller
      */
     public function create()
     {
-        // 1. Capturar el contexto comercial de la clínica autenticada
         $clinic = $this->getClinicContext();
-        $owner = $clinic;
 
-        // 2. Obtener únicamente las sedes físicas o virtuales de esta clínica
+        // Sedes de la clínica
         $addresses = Address::where('clinic_id', $clinic->id)
             ->whereNull('doctor_id')
             ->whereNull('deleted_at')
             ->get();
 
-        // 3. Bandera operativa para evaluar si existen sedes físicas activas
         $hasAddresses = $addresses->where('type', 'physical')->count() > 0;
 
-        // 4. 🔒 SOLUCIÓN AL ERROR: Consulta directa a la tabla intermedia clinic_specialty
-        // Extraemos las especialidades asociadas a esta clínica sin depender de la relación en el modelo Specialty
-        $specialties = \App\Models\Specialty::whereIn('id', function($query) use ($clinic) {
+        //  CORRECCIÓN: Cargar especialidades reales de la clínica
+        $specialties = Specialty::whereIn('id', function ($query) use ($clinic) {
             $query->select('specialty_id')
-                  ->from('clinic_specialty')
-                  ->where('clinic_id', $clinic->id);
+                ->from('clinic_specialty')
+                ->where('clinic_id', $clinic->id);
         })->where('status', true)->get();
 
-        // 5. Cargar catálogo de procedimientos globales activos
+        // Catálogo de servicios globales activos
         $globalServices = Service::where('active', true)->get();
 
-        // 🚀 RETORNO INTEGRAL SIN COLISIONES DE MODELOS
         return view('partner.clinic.services.create', compact(
             'clinic',
-            'owner',
             'addresses',
             'globalServices',
             'hasAddresses',
@@ -251,127 +113,366 @@ class ClinicServiceController extends Controller
         ));
     }
 
-        /**
-     * Muestra el formulario para editar la tarifa de un servicio ya vinculado.
+    /**
+     * Registrar un nuevo servicio o enlazar uno existente distribuyendo tarifas por sede.
      */
-    public function edit($addressId, $serviceId)
+    public function store(Request $request, AvailabilityRepository $cacheRepo)
     {
         $clinic = $this->getClinicContext();
 
-        // Seguridad Multi-tenant: Validamos que la sede pertenezca a la clínica
-        $address = Address::where('id', $addressId)->where('clinic_id', $clinic->id)->firstOrFail();
-        
-        // Traemos el servicio cargando los datos de la tabla pivote real address_service
+        // Validación
+        $validated = $request->validate([
+            'service_name'  => 'required|string|max:100',
+            'type'          => 'required|in:physical,virtual',
+            'duration'      => 'required|integer|min:1|max:480',
+            'specialties'   => 'required|array|min:1',
+            'specialties.*' => 'exists:specialties,id',
+            'address_ids'   => 'required_if:type,physical|array|min:1',
+            'address_ids.*' => 'exists:addresses,id',
+            'prices'        => 'required_if:type,physical|array',
+            'price_virtual' => 'required_if:type,virtual|nullable|numeric|min:0|max:999999.99',
+        ], [
+            'specialties.required' => 'Debes asociar este servicio a al menos una especialidad médica.',
+            'duration.max'         => 'La duración no puede exceder 480 minutos (8 horas).',
+            'price_virtual.required_if' => 'Debes asignar un precio para consultas virtuales.',
+        ]);
+
+        // Validar que las especialidades pertenezcan a la clínica
+        $this->validateClinicSpecialties($validated['specialties'], $clinic);
+
+        // Validar que las sedes pertenezcan a la clínica
+        if ($validated['type'] === 'physical') {
+            $this->validateClinicAddresses($validated['address_ids'], $clinic);
+        }
+
+        // Control de límites del plan SaaS
+        $plan = $clinic->plan;
+        if ($plan) {
+            $currentCount = DB::table('service_specialty')
+                ->where('user_id', $clinic->user_id)
+                ->distinct('service_id')
+                ->count();
+            
+            if ($currentCount >= ($plan->max_services ?? 0)) {
+                return redirect()->back()->withInput()->withErrors([
+                    'limit' => "Has agotado la cuota de servicios ({$plan->max_services}) permitidos en tu suscripción."
+                ]);
+            }
+        }
+
+        try {
+            DB::transaction(function () use ($validated, $clinic, $cacheRepo) {
+                // Normalizar nombre del servicio
+                $normalizedName = $this->normalizeServiceName($validated['service_name']);
+
+                // Buscar o crear servicio global
+                $service = Service::firstOrCreate(
+                    [
+                        'name' => $normalizedName,
+                        'type' => $validated['type'],
+                    ],
+                    ['active' => true]
+                );
+
+                // Vincular servicio a especialidades con aislamiento por user_id de la clínica
+                $specialtySyncData = collect($validated['specialties'])
+                    ->mapWithKeys(fn ($id) => [$id => ['user_id' => $clinic->user_id]])
+                    ->all();
+
+                $service->specialties()->sync($specialtySyncData);
+
+                // Vincular servicio a sedes con precios
+                if ($validated['type'] === 'virtual') {
+                    $this->syncVirtualService($service, $clinic, $validated);
+                } else {
+                    $this->syncPhysicalService($service, $clinic, $validated);
+                }
+
+                // Invalidar caché de disponibilidad
+                $this->invalidateServiceCache($cacheRepo, $clinic, $service);
+            });
+
+            return redirect()->route('partner.clinic.services.index')
+                ->with('success', 'El servicio institucional y sus respectivas tarifas fueron almacenados con éxito en tu catálogo.');
+        } catch (\Exception $e) {
+            report($e);
+            return redirect()->back()->withInput()->withErrors([
+                'error' => 'Fallo de consistencia relacional: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Muestra el formulario para editar un servicio ya vinculado a la clínica.
+     */
+    public function edit($serviceId)
+    {
+        $clinic = $this->getClinicContext();
+
+        //  CORRECCIÓN: Cargar el servicio con sus relaciones
         $service = Service::where('id', $serviceId)
-            ->whereHas('addresses', function($q) use ($addressId) { $q->where('address_id', $addressId); })
+            ->whereHas('specialties', function ($query) use ($clinic) {
+                $query->where('service_specialty.user_id', $clinic->user_id);
+            })
+            ->with(['addresses', 'specialties'])
             ->firstOrFail();
 
-        // Inyectamos el objeto address con su relación cargada en memoria para leer $address->pivot
-        $address = $service->addresses()->where('address_id', $addressId)->first();
+        //  CORRECCIÓN: Cargar especialidades reales de la clínica
+        $specialties = Specialty::whereIn('id', function ($query) use ($clinic) {
+            $query->select('specialty_id')
+                ->from('clinic_specialty')
+                ->where('clinic_id', $clinic->id);
+        })->where('status', true)->get();
 
-        // --- SOLUCIÓN DE EMERGENCIA PARA PRODUCCIÓN ---
-        // Inicializamos las variables ausentes para evitar errores en las líneas 58, 59 y 86 de la vista
-        $specialties = collect(); 
-        $attachedSpecialtyIds = []; 
-        $addresses = collect([$address]); 
+        // IDs de especialidades ya vinculadas a este servicio por la clínica
+        $attachedSpecialtyIds = DB::table('service_specialty')
+            ->where('service_id', $service->id)
+            ->where('user_id', $clinic->user_id)
+            ->pluck('specialty_id')
+            ->toArray();
+
+        // Sedes de la clínica
+        $addresses = Address::where('clinic_id', $clinic->id)
+            ->whereNull('doctor_id')
+            ->whereNull('deleted_at')
+            ->get();
 
         return view('partner.clinic.services.edit', compact(
             'clinic',
-            'service', 
-            'address', 
-            'addresses', 
-            'specialties', 
+            'service',
+            'addresses',
+            'specialties',
             'attachedSpecialtyIds'
         ));
     }
 
-        /**
+    /**
      * Actualiza el catálogo institucional (Servicio, Especialidades y Tarifas por Sede).
      */
-    public function update(Request $request, $addressId, $serviceId)
+    public function update(Request $request, $serviceId, AvailabilityRepository $cacheRepo)
     {
-        // 1. Validamos estrictamente los inputs del formulario
-        $request->validate([
-            'name'            => 'required|string|max:255',
-            'duration'        => 'required|integer|in:15,20,30,45,60',
+        $clinic = $this->getClinicContext();
+
+        // Validación
+        $validated = $request->validate([
+            'name'            => 'required|string|max:100',
+            'duration'        => 'required|integer|min:1|max:480',
             'specialties'     => 'nullable|array',
             'specialties.*'   => 'exists:specialties,id',
             'address_ids'     => 'nullable|array',
+            'address_ids.*'   => 'exists:addresses,id',
             'prices'          => 'nullable|array',
-            'price_virtual'   => 'nullable|numeric|min:0',            
+            'price_virtual'   => 'nullable|numeric|min:0|max:999999.99',
         ]);
 
-        $clinic = $this->getClinicContext();
+        // Cargar servicio con validación de propiedad
+        $service = Service::where('id', $serviceId)
+            ->whereHas('specialties', function ($query) use ($clinic) {
+                $query->where('service_specialty.user_id', $clinic->user_id);
+            })
+            ->firstOrFail();
 
-        // 2. Seguridad Multi-tenant
-        $address = Address::where('id', $addressId)->where('clinic_id', $clinic->id)->firstOrFail();
-        $service = Service::where('id', $serviceId)->firstOrFail();
-
-        // 3. Actualizamos el nombre global del servicio
-        $service->update([
-            'name' => $request->name,
-        ]);
-
-        // 4. Sincronizamos el Módulo Taxonómico (Especialidades)
-        $service->specialties()->sync($request->input('specialties', []));
-
-        // 5. Persistencia corporativa de tarifas indexadas según modalidad
-        if ($service->type === 'virtual') {
-            $virtualAddress = Address::where('clinic_id', $clinic->id)
-                ->where('type', 'virtual')
-                ->first();
-
-            if ($virtualAddress) {
-                $service->addresses()->sync([
-                    $virtualAddress->id => [
-                        'price'    => $request->input('price_virtual', 0),
-                        'duration' => $request->duration
-                    ]
-                ]);
-            }
-        } else {
-            $syncData = [];
-            $selectedAddresses = $request->input('address_ids', []);
-            $prices = $request->input('prices', []);
-
-            foreach ($selectedAddresses as $id) {
-                // Validación estricta en caliente antes de guardar
-                $belongsToClinic = Address::where('id', $id)->where('clinic_id', $clinic->id)->exists();
-                
-                if ($belongsToClinic) {
-                    $syncData[$id] = [
-                        'price'    => $prices[$id] ?? 0,
-                        'duration' => $request->duration
-                    ];
-                }
-            }
-
-            // sync() guarda las sedes seleccionadas con sus precios y elimina las desmarcadas
-            $service->addresses()->sync($syncData);
+        // Validar que las especialidades pertenezcan a la clínica
+        if (!empty($validated['specialties'])) {
+            $this->validateClinicSpecialties($validated['specialties'], $clinic);
         }
 
-        return redirect()
-            ->route('partner.clinic.services.edit', [$addressId, $serviceId])
-            ->with('success', 'El catálogo institucional se ha actualizado correctamente.');
+        // Validar que las sedes pertenezcan a la clínica
+        if (!empty($validated['address_ids'])) {
+            $this->validateClinicAddresses($validated['address_ids'], $clinic);
+        }
+
+        try {
+            DB::transaction(function () use ($validated, $service, $clinic, $cacheRepo) {
+                // Actualizar nombre del servicio (normalizado)
+                $service->update([
+                    'name' => $this->normalizeServiceName($validated['name']),
+                ]);
+
+                // Sincronizar especialidades con aislamiento por user_id
+                if (isset($validated['specialties'])) {
+                    $specialtySyncData = collect($validated['specialties'])
+                        ->mapWithKeys(fn ($id) => [$id => ['user_id' => $clinic->user_id]])
+                        ->all();
+                    $service->specialties()->sync($specialtySyncData);
+                }
+
+                // Sincronizar sedes con precios
+                if ($service->type === 'virtual') {
+                    $this->syncVirtualService($service, $clinic, $validated);
+                } else {
+                    $this->syncPhysicalService($service, $clinic, $validated);
+                }
+
+                // Invalidar caché de disponibilidad
+                $this->invalidateServiceCache($cacheRepo, $clinic, $service);
+            });
+
+            return redirect()->route('partner.clinic.services.edit', $service->id)
+                ->with('success', 'El catálogo institucional se ha actualizado correctamente.');
+        } catch (\Exception $e) {
+            report($e);
+            return redirect()->back()->withInput()->withErrors([
+                'error' => 'Fallo de consistencia relacional: ' . $e->getMessage()
+            ]);
+        }
     }
 
-
     /**
-     * Desvincular un servicio de una sede específica de la clínica (Rompe la fila pivote).
+     * Desvincular un servicio de una sede específica de la clínica.
      */
-    public function destroy($addressId, $serviceId)
+    public function destroy($serviceId, $addressId, AvailabilityRepository $cacheRepo)
     {
         $clinic = $this->getClinicContext();
 
-        // Confirmar propiedad de la sede antes de eliminar el mapeo comercial
-        $address = Address::where('id', $addressId)
-            ->where('clinic_id', $clinic->id)
+        // Validar propiedad del servicio
+        $service = Service::where('id', $serviceId)
+            ->whereHas('specialties', function ($query) use ($clinic) {
+                $query->where('service_specialty.user_id', $clinic->user_id);
+            })
             ->firstOrFail();
 
-        // Rompemos la fila en la tabla intermedia address_service
-        $address->services()->detach($serviceId);
+        // Validar que la sede pertenezca a la clínica
+        $address = Address::where('id', $addressId)
+            ->where('clinic_id', $clinic->id)
+            ->whereNull('doctor_id')
+            ->firstOrFail();
+
+        //  CORRECCIÓN: Validar citas futuras antes de desvincular
+        $hasFutureAppointments = Appointment::where('address_id', $address->id)
+            ->where('service_id', $service->id)
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->where('date', '>=', now()->toDateString())
+            ->exists();
+
+        if ($hasFutureAppointments) {
+            return back()->with('error', 'No puedes desvincular este servicio porque tiene citas agendadas. Debes cancelarlas o reprogramarlas primero.');
+        }
+
+        // Desvincular servicio de la sede
+        $address->services()->detach($service->id);
+
+        // Invalidar caché
+        $doctorIds = Schedule::where('address_id', $address->id)
+            ->whereNotNull('doctor_id')
+            ->distinct()
+            ->pluck('doctor_id')
+            ->all();
+
+        if (!empty($doctorIds)) {
+            $cacheRepo->invalidateAvailabilityCache($clinic->id, $doctorIds, $address->id);
+        }
 
         return redirect()->route('partner.clinic.services.index')
             ->with('success', 'El servicio ha sido removido de la sede institucional correctamente.');
     }
-} // Cierre definitivo de la clase ClinicServiceController
+
+    /**
+     * Valida que todas las especialidades pertenezcan a la clínica.
+     */
+    private function validateClinicSpecialties(array $specialtyIds, $clinic): void
+    {
+        $validCount = DB::table('clinic_specialty')
+            ->where('clinic_id', $clinic->id)
+            ->whereIn('specialty_id', $specialtyIds)
+            ->count();
+
+        if ($validCount !== count($specialtyIds)) {
+            abort(403, 'Una o más especialidades no pertenecen a tu clínica.');
+        }
+    }
+
+    /**
+     * Valida que todas las sedes pertenezcan a la clínica.
+     */
+    private function validateClinicAddresses(array $addressIds, $clinic): void
+    {
+        $validCount = Address::whereIn('id', $addressIds)
+            ->where('clinic_id', $clinic->id)
+            ->whereNull('doctor_id')
+            ->count();
+
+        if ($validCount !== count($addressIds)) {
+            abort(403, 'Una o más sedes seleccionadas no pertenecen a tu clínica.');
+        }
+    }
+
+    /**
+     * Normaliza el nombre del servicio para búsqueda consistente.
+     */
+    private function normalizeServiceName(string $name): string
+    {
+        return trim(preg_replace('/\s+/', ' ', $name));
+    }
+
+    /**
+     * Sincroniza un servicio virtual con la sede digital de la clínica.
+     */
+    private function syncVirtualService(Service $service, $clinic, array $validated): void
+    {
+        // Buscar o crear sede virtual de la clínica
+        $virtualAddress = Address::where('clinic_id', $clinic->id)
+            ->where('type', 'virtual')
+            ->whereNull('doctor_id')
+            ->first();
+
+        if (!$virtualAddress) {
+            $virtualAddress = Address::create([
+                'clinic_id' => $clinic->id,
+                'doctor_id' => null,
+                'name'      => 'Sede Digital - Telemedicina',
+                'address'   => 'Plataforma Online',
+                'type'      => 'virtual',
+                'status'    => true,
+            ]);
+        }
+
+        $service->addresses()->sync([
+            $virtualAddress->id => [
+                'price'    => round((float) ($validated['price_virtual'] ?? 0), 2),
+                'duration' => (int) $validated['duration'],
+            ]
+        ]);
+    }
+
+    /**
+     * Sincroniza un servicio físico con las sedes seleccionadas.
+     */
+    private function syncPhysicalService(Service $service, $clinic, array $validated): void
+    {
+        $syncData = [];
+
+        foreach ($validated['address_ids'] as $addressId) {
+            $syncData[$addressId] = [
+                'price'    => round((float) ($validated['prices'][$addressId] ?? 0), 2),
+                'duration' => (int) $validated['duration'],
+            ];
+        }
+
+        $service->addresses()->sync($syncData);
+    }
+
+    /**
+     * Invalida el caché de disponibilidad para las sedes afectadas.
+     */
+    private function invalidateServiceCache(AvailabilityRepository $cacheRepo, $clinic, Service $service): void
+    {
+        $addressIds = $service->addresses()->pluck('id')->all();
+
+        if (empty($addressIds)) {
+            return;
+        }
+
+        $doctorIds = Schedule::whereIn('address_id', $addressIds)
+            ->whereNotNull('doctor_id')
+            ->distinct()
+            ->pluck('doctor_id')
+            ->all();
+
+        if (!empty($doctorIds)) {
+            foreach ($addressIds as $addressId) {
+                $cacheRepo->invalidateAvailabilityCache($clinic->id, $doctorIds, $addressId);
+            }
+        }
+    }
+}

@@ -9,6 +9,7 @@ use App\Services\Availability\AvailabilityResolver;
 use App\Services\Availability\ShadowComparator;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use App\Services\Scheduling\SlotOverlapChecker;
 
 class AvailabilityService
 {
@@ -19,13 +20,6 @@ class AvailabilityService
         $this->repository = $repository;
     }
 
-    /**
-     * Obtiene el próximo turno en TODAS las sedes reservables de los doctores.
-     *
-     * FASE 0:
-     *  - Solo cuenta sedes activas y no eliminadas (Address::bookable()).
-     *  - Respeta el tenant: con $clinicId solo sedes de esa clínica; sin él, solo sedes particulares.
-     */
     public function getNextAvailableTurnAnyAddress(array $doctorIds, ?int $clinicId = null): ?Carbon
     {
         if (empty($doctorIds)) {
@@ -33,12 +27,22 @@ class AvailabilityService
         }
 
         // FASE 3 (interruptor): si BOOKING_NEW_SEARCH=true se usa el motor nuevo.
-        // Si falla, se cae al motor viejo para no dejar la búsqueda sin turnos.
+        // Si falla O no encuentra turnos, se cae al motor viejo para no dejar la búsqueda sin turnos.
         if (config('booking.new_availability.search')) {
             try {
                 $slot = app(AvailabilityResolver::class)->nextSlot(new AvailabilityQuery($doctorIds, $clinicId));
 
-                return $slot ? Carbon::instance($slot->start) : null;
+                // 🔒 CORRECCIÓN CRÍTICA: Si el motor nuevo encuentra un slot, lo retorna.
+                // Si NO encuentra (devuelve null), NO retorna inmediatamente, sino que cae al legacy.
+                if ($slot) {
+                    return Carbon::instance($slot->start);
+                }
+                
+                Log::info('AvailabilityService: motor nuevo no encontró turnos, cayendo al legacy', [
+                    'doctor_ids' => $doctorIds,
+                    'clinic_id'  => $clinicId,
+                ]);
+                
             } catch (\Throwable $e) {
                 Log::error('AvailabilityService: falló el motor nuevo; se usa el anterior', [
                     'doctor_ids' => $doctorIds,
@@ -87,7 +91,6 @@ class AvailabilityService
             return $earliestTurn;
 
         } catch (\Throwable $e) {
-            // Un fallo ya no se traga en silencio: queda en el log (solo identificadores, sin datos personales).
             Log::error('AvailabilityService: error en getNextAvailableTurnAnyAddress', [
                 'doctor_ids' => $doctorIds,
                 'clinic_id'  => $clinicId,
@@ -98,9 +101,6 @@ class AvailabilityService
         }
     }
 
-    /**
-     * Obtiene el próximo turno en una sede específica.
-     */
     public function getNextAvailableTurn(array $doctorIds, int $addressId, ?int $clinicId = null): ?Carbon
     {
         if (empty($doctorIds)) {
@@ -108,32 +108,25 @@ class AvailabilityService
         }
 
         try {
-            $tz = 'America/Bogota';
+            $tz = config('app.timezone', 'America/Bogota');
             $nowLocal = Carbon::now($tz);
             $minNoticeHours = $this->repository->getMinNoticeHours($clinicId, $doctorIds);
             $startSearchingFrom = $nowLocal->copy()->addHours((int) $minNoticeHours);
             $slotDurationMinutes = max(1, (int) $this->repository->getSlotDurationMinutes($addressId));
 
-            // Festivos de este año y del siguiente (el barrido puede cruzar el fin de año)
-            $colombianHolidays = ColombiaHolidayService::getHolidays($nowLocal->year)
-                + ColombiaHolidayService::getHolidays($nowLocal->year + 1);
+            $colombianHolidays = \App\Services\ColombiaHolidayService::getHolidays($nowLocal->year)
+                + \App\Services\ColombiaHolidayService::getHolidays($nowLocal->year + 1);
 
-            // BARRIDO SECUENCIAL DEL CALENDARIO (próximos 14 días)
             for ($i = 0; $i < 14; $i++) {
                 $currentDate = $nowLocal->copy()->addDays($i);
                 $dayOfWeek = $currentDate->dayOfWeekIso;
                 $dateStr = $currentDate->toDateString();
 
-                // Saltar festivos
                 if (array_key_exists($dateStr, $colombianHolidays)) {
                     continue;
                 }
 
-                // Horarios activos del día
-                $schedules = $this->repository
-                    ->getSchedulesForDay($addressId, $doctorIds, $dayOfWeek)
-                    ->where('is_active', true);
-
+                $schedules = $this->repository->getSchedulesForDay($addressId, $doctorIds, $dayOfWeek);
                 if ($schedules->isEmpty()) {
                     continue;
                 }
@@ -141,60 +134,62 @@ class AvailabilityService
                 $unavailabilities = $this->repository->getUnavailabilitiesForDate($doctorIds, $currentDate, $addressId);
                 $occupiedAppointments = $this->repository->getOccupiedAppointmentsForDate($doctorIds, $addressId, $currentDate);
 
-                // EVALUAR CADA HORARIO
                 foreach ($schedules as $schedule) {
                     $doctorId = $schedule->doctor_id;
+                    $bufferTime = $this->repository->getBufferTimeMinutes($clinicId, $doctorId);
 
-                    $startTimeStr = $schedule->start_time instanceof Carbon
-                        ? $schedule->start_time->format('H:i:s')
-                        : Carbon::parse($schedule->start_time)->format('H:i:s');
+                    // 🔒 CORRECCIÓN CRÍTICA: Usar getRawOriginal() para obtener el valor crudo de la BD
+                    $startTimeRaw = $schedule->getRawOriginal('start_time');
+                    $endTimeRaw = $schedule->getRawOriginal('end_time');
 
-                    $endTimeStr = $schedule->end_time instanceof Carbon
-                        ? $schedule->end_time->format('H:i:s')
-                        : Carbon::parse($schedule->end_time)->format('H:i:s');
+                    // Extraer solo la parte de hora (HH:MM:SS) del valor crudo
+                    $startTimeStr = substr($startTimeRaw, 0, 8); // '06:00:00'
+                    $endTimeStr = substr($endTimeRaw, 0, 8);     // '18:00:00'
 
                     $blockStart = Carbon::parse($dateStr . ' ' . $startTimeStr, $tz);
                     $blockEnd = Carbon::parse($dateStr . ' ' . $endTimeStr, $tz);
 
-                    // Caminar por slots dentro del bloque
                     while ($blockStart->lessThan($blockEnd)) {
-                        $slotTime = $blockStart->copy();
-                        $currentTimeStr = $slotTime->format('H:i:s');
+                        $currentTimeStr = $blockStart->format('H:i:s');
+                        $slotEndStr = $blockStart->copy()->addMinutes($slotDurationMinutes)->format('H:i:s');
 
-                        // FASE 0: la anticipación mínima se aplica cualquier día, no solo hoy
-                        if ($slotTime->lessThan($startSearchingFrom)) {
-                            $blockStart->addMinutes($slotDurationMinutes);
+                        if ($blockStart->lessThan($startSearchingFrom)) {
+                            $blockStart->addMinutes($slotDurationMinutes + $bufferTime);
                             continue;
                         }
 
-                        // Indisponibilidad del doctor
-                        if ($this->isDoctorUnavailableAtTime($unavailabilities, $doctorId, $currentTimeStr, $clinicId)) {
-                            $blockStart->addMinutes($slotDurationMinutes);
+                        // 2. Validar indisponibilidad (delegado al checker centralizado)
+                        $isUnavailable = SlotOverlapChecker::isSlotUnavailableInCollection(
+                            unavailabilities: $unavailabilities,
+                            doctorId: $doctorId,
+                            slotStart: $currentTimeStr,
+                            slotEnd: $slotEndStr
+                        );
+
+                        if ($isUnavailable) {
+                            $blockStart->addMinutes($slotDurationMinutes + $bufferTime);
                             continue;
                         }
 
-                        // Cita ocupada
-                        $isSlotOccupied = $occupiedAppointments
-                            ->where('doctor_id', $doctorId)
-                            ->contains(function ($app) use ($currentTimeStr) {
-                                $appStart = Carbon::parse($app->start_time)->format('H:i:s');
-                                $appEnd = Carbon::parse($app->end_time)->format('H:i:s');
-                                return $currentTimeStr >= $appStart && $currentTimeStr < $appEnd;
-                            });
+                        // 3. Validar citas ocupadas (delegado al checker centralizado)
+                        $isSlotOccupied = SlotOverlapChecker::isSlotOccupiedInCollection(
+                            appointments: $occupiedAppointments,
+                            doctorId: $doctorId,
+                            slotStart: $currentTimeStr,
+                            slotEnd: $slotEndStr
+                        );
 
                         if ($isSlotOccupied) {
-                            $blockStart->addMinutes($slotDurationMinutes);
+                            $blockStart->addMinutes($slotDurationMinutes + $bufferTime);
                             continue;
                         }
 
-                        // TURNO ENCONTRADO EN ESTA SEDE
-                        return $slotTime;
+                        return $blockStart->copy();
                     }
                 }
             }
 
             return null;
-
         } catch (\Throwable $e) {
             Log::error('AvailabilityService: error en getNextAvailableTurn', [
                 'doctor_ids' => $doctorIds,
@@ -202,45 +197,12 @@ class AvailabilityService
                 'clinic_id'  => $clinicId,
                 'error'      => $e->getMessage(),
             ]);
-
             return null;
         }
-    }
-
-    /**
-     * Validación de indisponibilidad
-     */
-    private function isDoctorUnavailableAtTime($unavailabilities, int $doctorId, string $currentTimeStr, ?int $clinicId = null): bool
-    {
-        return $unavailabilities->where('doctor_id', $doctorId)
-            ->contains(function ($unavailability) use ($currentTimeStr, $clinicId) {
-                if ($unavailability->address && $unavailability->address->clinic_id && $clinicId) {
-                    if ((int) $unavailability->address->clinic_id !== (int) $clinicId) {
-                        return false;
-                    }
-                }
-
-                if (is_null($unavailability->start_time) && is_null($unavailability->end_time)) {
-                    return true;
-                }
-
-                if (!is_null($unavailability->start_time) && !is_null($unavailability->end_time)) {
-                    $blockStart = Carbon::parse($unavailability->start_time)->format('H:i:s');
-                    $blockEnd = Carbon::parse($unavailability->end_time)->format('H:i:s');
-                    return $currentTimeStr >= $blockStart && $currentTimeStr < $blockEnd;
-                }
-
-                return false;
-            });
     }
 
     public function invalidateAvailabilityCache(?int $clinicId = null, array $doctorIds = [], ?int $addressId = null): void
     {
         $this->repository->invalidateAvailabilityCache($clinicId, $doctorIds, $addressId);
-    }
-
-    public function getRepository(): AvailabilityRepository
-    {
-        return $this->repository;
     }
 }

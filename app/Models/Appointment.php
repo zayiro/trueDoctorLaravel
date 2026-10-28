@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
@@ -13,6 +16,8 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Appointment extends Model
 {
+    use SoftDeletes; // 🔒 CRÍTICO: Las citas médicas nunca se borran físicamente, solo se marcan como eliminadas para auditoría.
+
     /**
      * Los atributos que son asignables masivamente.
      */
@@ -38,36 +43,41 @@ class Appointment extends Model
         'platform_amount',
         'paid_at',
         'channel',
-        'meeting_link',     // Enlace para el paciente (o fallback interno)
-        'zoom_meeting_id',  // ID identificador de Zoom
-        'zoom_start_url',   // Enlace de inicio para el Doctor
+        'meeting_link',
+        'zoom_meeting_id',
+        'zoom_start_url',
         'zoom_started',
         'notes',
         'email_sent',
-        'reschedule_count', // Nuevo campo para contar reprogramaciones
+        'reschedule_count',
     ];
 
     /**
      * Los atributos que deben ser convertidos a tipos nativos.
-     * Garantiza que la fecha sea un objeto Carbon y el precio mantenga precisión flotante.
      */
     protected $casts = [
         'date'             => 'date',
+        'start_time'       => 'datetime:H:i:s', // 🔒 Asegura que siempre se maneje como hora válida
+        'end_time'         => 'datetime:H:i:s',
+        'duration'         => 'integer',        // 🔒 Evita tener que hacer (int) en el controlador
         'price'            => 'float',
         'status'           => \App\Enums\AppointmentStatus::class,
         'payment_status'   => \App\Enums\PaymentStatus::class,
         'reschedule_count' => 'integer',
-        'paid_at'          => 'datetime'
+        'paid_at'          => 'datetime',
+        'zoom_started'     => 'boolean',
+        'email_sent'       => 'boolean',
     ];
 
     protected static function booted()
     {
         static::creating(function ($appointment) {            
             do {
-                $prefix = Carbon::now()->format('ymdH');                
+                // Usa la zona horaria del negocio para el prefijo
+                $prefix = Carbon::now(config('app.timezone', 'America/Bogota'))->format('ymdH');                
                 $random = strtoupper(Str::random(3));                                
                 $code = $prefix . "-" . $random;
-            } while (self::where('reference', $code)->exists()); // Evita duplicados
+            } while (self::withTrashed()->where('reference', $code)->exists()); // Verifica incluso en soft deletes
 
             $appointment->reference = $code;
         });
@@ -99,8 +109,7 @@ class Appointment extends Model
         try {
             return Crypt::decryptString($value);
         } catch (DecryptException $e) {
-            // Ahora sí capturará la excepción correctamente si el dato es texto plano viejo
-            return $value; 
+            return $value; // Fallback seguro si el dato es texto plano viejo
         }
     }
 
@@ -122,13 +131,12 @@ class Appointment extends Model
         try {
             return Crypt::decryptString($value);
         } catch (DecryptException $e) {
-            // Retorna el texto plano sin romper la aplicación si no estaba cifrado
-            return $value; 
+            return $value; // Fallback seguro
         }
     }
 
     /**
-     * 🔥 NUEVA RELACIÓN: La Clínica institucional donde el paciente agendó su espacio.
+     * 🔥 RELACIÓN: La Clínica institucional donde el paciente agendó su espacio.
      */
     public function clinic(): BelongsTo
     {
@@ -151,12 +159,6 @@ class Appointment extends Model
         return $this->belongsTo(Address::class, 'address_id');
     }
 
-    // Relación con el Paciente (Usuario)
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
-
     /**
      * Relación con el Especialista Médico que atenderá la consulta.
      */
@@ -174,25 +176,48 @@ class Appointment extends Model
     }
 
     /**
+     * 🔒 CORRECCIÓN CRÍTICA: Relación correcta al User del paciente a través de la tabla patients.
+     * (Antes era un belongsTo(User::class) que fallaba porque no existe user_id en appointments).
+     */
+    public function patientUser(): HasOneThrough
+    {
+        return $this->hasOneThrough(
+            User::class,
+            Patient::class,
+            'id',       // Foreign key on patients table (patient_id en appointments apunta a esto)
+            'id',       // Foreign key on users table
+            'patient_id', // Local key on appointments table
+            'user_id'     // Local key on patients table
+        );
+    }
+
+    /**
      * 📋 RELACIÓN CON EVENTOS: Event Sourcing
      * Obtiene todos los eventos registrados para esta cita
      */
-    public function events()
+    public function events(): HasMany
     {
         return $this->hasMany(\App\Models\AppointmentEvent::class, 'appointment_id');
     }
 
     /**
-     * Obtiene el estado de la cita con la primera letra en mayúscula.
+     * Relación con archivos adjuntos de la cita (Zoom, etc.)
+     */
+    public function files(): HasMany
+    { 
+        return $this->hasMany(AppointmentFile::class, 'appointment_id'); 
+    }
+
+    /**
+     * Obtiene el estado de la cita con la primera letra en mayúscula (Attribute).
      */
     protected function statusLabel(): Attribute
     {
-        return Attribute::get(fn () => $this->status->value);
+        return Attribute::get(fn () => ucfirst($this->status->value));
     }
 
     /**
      * Scope local para segmentar las citas según el entorno multi-tenant actual.
-     * Mapea de forma transparente la llamada Appointment::forCurrentContext()
      */
     public function scopeForCurrentContext(Builder $query): Builder
     {
@@ -203,22 +228,14 @@ class Appointment extends Model
             return $query;
         }
 
-        // 2. Si el médico trabaja de forma independiente/particular
         if ($context['type'] === 'particular') {
-            // ⭐ AGREGAR ESTA LÍNEA: Filtrar por doctor_id también
             return $query->where('doctor_id', $user->doctor->id)->whereNull('clinic_id');
         }
 
-        // 3. En entorno institucional corporativo
         if ($context['type'] === 'clinic') {
             return $query->where('clinic_id', $context['id']);
         }
 
         return $query;
-    }
-
-    //para asociar los archivos en que se pueden subir desde la cita por zoom
-    public function files() { 
-        return $this->hasMany(AppointmentFile::class); 
     }
 }

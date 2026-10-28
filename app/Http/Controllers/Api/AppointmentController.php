@@ -15,6 +15,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 
+use App\Services\Availability\AvailabilityQuery;
+use App\Services\Availability\AvailabilityResolver;
+use App\Services\Availability\SlotPresenter;
+
 class AppointmentController extends Controller
 {
     /**
@@ -40,6 +44,8 @@ class AppointmentController extends Controller
      * GET /api/appointments/slots
      * Rate Limit: 60 requests/minuto
      */
+
+    /*
     public function getSlots(Request $request)
     {
         $request->validate([
@@ -63,8 +69,68 @@ class AppointmentController extends Controller
         }
 
         return response()->json($slots, 200);
-    }
+    }*/
 
+    public function getSlots(Request $request)
+    {
+        $request->validate([
+            'date' => 'required|date_format:Y-m-d',
+            'address_id' => 'required|exists:addresses,id,deleted_at,NULL',
+            'is_virtual' => 'required|in:true,false,1,0',
+            'duration' => 'nullable|integer|min:5|max:120',
+            'exclude_id' => 'nullable|integer'
+        ]);
+ 
+        // FASE 4 (interruptor BOOKING_NEW_SLOTS_API): motor único de disponibilidad.
+        if (config('booking.new_availability.slots_api')) {
+            try {
+                $address = Address::find($request->address_id);
+ 
+                // Igual que antes: una sede sin doctor propio no devuelve horarios.
+                if (!$address || !$address->doctor_id) {
+                    return response()->json([], 200);
+                }
+ 
+                $query = new AvailabilityQuery(
+                    doctorIds: [(int) $address->doctor_id],
+                    clinicId: $address->clinic_id ? (int) $address->clinic_id : null,
+                    addressId: (int) $address->id,
+                    excludeAppointmentId: $request->filled('exclude_id') ? (int) $request->exclude_id : null,
+                    durationMinutes: (int) $request->input('duration', 20), // se conserva la duración que envía la app
+                );
+ 
+                // La API siempre devolvió también los turnos pasados u ocupados, con available=false.
+                $slots = app(AvailabilityResolver::class)->slotsForDay(
+                    $query,
+                    Carbon::parse($request->date, config('booking.timezone', 'America/Bogota')),
+                    includePast: true
+                );
+ 
+                return response()->json(SlotPresenter::legacyApi($slots), 200);
+            } catch (\Throwable $e) {
+                Log::error('getSlots api: falló el motor nuevo; se usa el anterior', [
+                    'address_id' => $request->address_id,
+                    'error'      => $e->getMessage(),
+                ]);
+            }
+        }
+ 
+        // Motor anterior
+        $slots = $this->calculateAvailableSlots(
+            $request->date,
+            $request->address_id,
+            filter_var($request->is_virtual, FILTER_VALIDATE_BOOLEAN),
+            (int) $request->input('duration', 20),
+            $request->exclude_id
+        );
+ 
+        if ($slots === null) {
+            return response()->json([], 200);
+        }
+ 
+        return response()->json($slots, 200);
+    }
+    
     /**
      * Crear una cita con doble validación de seguridad
      * 
