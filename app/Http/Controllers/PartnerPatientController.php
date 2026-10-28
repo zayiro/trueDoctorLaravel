@@ -1,221 +1,221 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\Appointment;
-use App\Models\Patient;
 use App\Models\Doctor;
+use App\Models\Patient;
+use App\Models\PatientAllergy;
+use App\Models\PatientFamilyHistory;
 use App\Models\PatientHistory;
 use App\Models\PatientMedication;
-use App\Models\PatientAllergy;
 use App\Models\PatientSurgery;
-use App\Models\PatientFamilyHistory;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use App\Jobs\ProcessConsultationAudio;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Str;
 use App\Notifications\ConsultationAudioUploadFailedNotification;
-use Illuminate\Validation\Rule;
-use Illuminate\Pagination\Paginator;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Throwable;
 
 class PartnerPatientController extends Controller
 {
+    /**
+     * 🔒 Helper centralizado para obtener el perfil del médico autenticado.
+     * Evita la duplicación de consultas en cada método.
+     */
+    private function getAuthenticatedDoctor(): Doctor
+    {
+        $user = Auth::user();
+        return $user->doctor ?? abort(403, 'Perfil de médico no encontrado o no configurado.');
+    }
+
+    /**
+     * 🔒 Valida que el médico tenga una relación histórica con el paciente.
+     * Previene vulnerabilidades IDOR (Insecure Direct Object Reference).
+     */
+    private function ensurePatientRelation(Patient $patient, int $doctorId): void
+    {
+        $hasRelation = $patient->appointments()->where('doctor_id', $doctorId)->exists();
+        if (!$hasRelation) {
+            abort(403, 'No tienes permiso para acceder o modificar la información de este paciente.');
+        }
+    }
+
+    /**
+     * Muestra la lista de pacientes del médico, con búsqueda optimizada en SQL.
+     */
     public function index(Request $request)
-    {        
-        $user = auth()->user();
-        $doctor = $user->doctor; // ← Obtener el doctor vinculado al usuario
-        $doctorId = $doctor->id; // ← Este es el ID de la tabla doctors
-        $plan = $doctor->settings->plan;
+    {
+        $doctor = $this->getAuthenticatedDoctor();
+        $doctorId = $doctor->id;
+        $plan = $doctor->settings?->plan;
         $querySearch = $request->input('query');
 
-        // Base: Pacientes que han tenido citas con este doctor
+        // Query base: Pacientes que han tenido citas con este doctor
         $baseQuery = Patient::whereHas('appointments', function ($q) use ($doctorId) {
-            $q->where('doctor_id', $doctorId); // ← Ahora sí usa doctors.id
+            $q->where('doctor_id', $doctorId);
         })->with(['user', 'appointments']);
 
         if ($plan?->can_search_patients && $querySearch) {
-            $allPatients = $baseQuery->get();
-            
-            $filtered = $allPatients->filter(function ($patient) use ($querySearch) {
-                $searchLower = strtolower($querySearch);
-                return str_contains(strtolower($patient->user->name), $searchLower) ||
-                    str_contains(strtolower($patient->identification), $searchLower);
-            });
-
-            $page = $request->get('page', 1);
-            $perPage = 15;
-            $patients = new Paginator(
-                $filtered->forPage($page, $perPage),
-                $perPage,
-                $page,
-                ['path' => route('partner.patients.index'), 'query' => $request->query()]
-            );
-
+            // ✅ CORRECCIÓN CRÍTICA: Búsqueda en SQL, no en memoria (previene OOM)
+            $patients = $baseQuery->where(function ($q) use ($querySearch) {
+                $q->whereHas('user', function ($uq) use ($querySearch) {
+                    $uq->where('name', 'LIKE', "%{$querySearch}%")
+                       ->orWhere('email', 'LIKE', "%{$querySearch}%");
+                })->orWhere('identification', 'LIKE', "%{$querySearch}%");
+            })->paginate(15)->withQueryString();
         } else {
-            $patients = $baseQuery
-                ->whereHas('appointments', function ($q) use ($doctorId) {
-                    $q->where('doctor_id', $doctorId)
-                    ->whereDate('date', now());
-                })
-                ->limit($plan?->max_patients_list)
-                ->paginate(15);
+            // Modo restringido: Solo pacientes con citas de hoy, limitado por plan
+            $patients = $baseQuery->whereHas('appointments', function ($q) use ($doctorId) {
+                $q->where('doctor_id', $doctorId)
+                  ->whereDate('date', Carbon::today());
+            })
+            ->limit($plan?->max_patients_list ?? 15)
+            ->paginate(15);
         }
-        
+
         return view('partner.patients.index', compact('patients', 'plan'));
     }
 
-    public function storeHistory(Request $request, $id)
-    {        
-        $doctor = auth()->user();
-        $doctor = Doctor::where('user_id', $doctor->id)->first();
-
-        $patient = Patient::findOrFail($id);
-
-        // SEGURIDAD: el doctor solo puede escribir notas de pacientes con los que tiene una cita
-        $hasRelation = $patient->appointments()->where('doctor_id', $doctor->id)->exists();
-        if (! $hasRelation) {
-            abort(403, 'No tienes permiso para registrar una nota para este paciente.');
-        }
+    /**
+     * Registra una nota de evolución o historial clínico.
+     */
+    public function storeHistory(Request $request, int $patientId)
+    {
+        $doctor = $this->getAuthenticatedDoctor();
+        $patient = Patient::findOrFail($patientId);
         
+        $this->ensurePatientRelation($patient, $doctor->id);
+
         $validated = $request->validate([
-            'entry_type'              => ['required', 'in:consultation,follow_up,emergency,note'],
+            'entry_type'              => ['required', Rule::in(['consultation', 'follow_up', 'emergency', 'note'])],
             'reason_for_consultation' => ['required', 'string', 'max:255'],
             'symptoms'                => ['nullable', 'string'],
             'diagnosis'               => ['required', 'string'],
             'treatment_plan'          => ['nullable', 'string'],
             'appointment_id'          => ['nullable', 'exists:appointments,id'],
-
-            // Medicamento opcional: si viene el nombre, se vuelve obligatorio el resto
             'medication_name'         => ['nullable', 'required_with:medication_dosage,medication_frequency', 'string', 'max:255'],
             'medication_dosage'       => ['nullable', 'string', 'max:100'],
             'medication_frequency'    => ['nullable', 'string', 'max:100'],
             'medication_notes'        => ['nullable', 'string'],
         ]);
-        
-        DB::transaction(function () use ($validated, $patient, $doctor) {
-            PatientHistory::create([
-                'patient_id'               => $patient->id,
-                'doctor_id'                => $doctor->id,
-                'appointment_id'           => $validated['appointment_id'] ?? null,
-                'entry_type'               => $validated['entry_type'],
-                'reason_for_consultation'  => $validated['reason_for_consultation'],
-                'symptoms'                 => $validated['symptoms'] ?? null,
-                'diagnosis'                => $validated['diagnosis'],
-                'treatment_plan'           => $validated['treatment_plan'] ?? null,
-            ]);
 
-            if (! empty($validated['medication_name'])) {
-                PatientMedication::create([
-                    'patient_id' => $patient->id,
-                    'name'       => $validated['medication_name'],
-                    'dosage'     => $validated['medication_dosage'] ?? null,
-                    'frequency'  => $validated['medication_frequency'] ?? null,
-                    'notes'      => $validated['medication_notes'] ?? null,
-                    'active'     => true,
+        try {
+            DB::transaction(function () use ($validated, $patient, $doctor) {
+                PatientHistory::create([
+                    'patient_id'              => $patient->id,
+                    'doctor_id'               => $doctor->id,
+                    'appointment_id'          => $validated['appointment_id'] ?? null,
+                    'entry_type'              => $validated['entry_type'],
+                    'reason_for_consultation' => $validated['reason_for_consultation'],
+                    'symptoms'                => $validated['symptoms'] ?? null,
+                    'diagnosis'               => $validated['diagnosis'],
+                    'treatment_plan'          => $validated['treatment_plan'] ?? null,
                 ]);
-            }
-        });
 
-        return redirect()
-            ->route('partner.patients.show', $patient->id)
-            ->with('success', 'Nota de evolución guardada correctamente.');
+                if (!empty($validated['medication_name'])) {
+                    PatientMedication::create([
+                        'patient_id' => $patient->id,
+                        'name'       => $validated['medication_name'],
+                        'dosage'     => $validated['medication_dosage'] ?? null,
+                        'frequency'  => $validated['medication_frequency'] ?? null,
+                        'notes'      => $validated['medication_notes'] ?? null,
+                        'active'     => true,
+                    ]);
+                }
+            });
+
+            return redirect()->route('partner.patients.show', $patient->id)
+                ->with('success', 'Nota de evolución guardada correctamente.');
+        } catch (Throwable $e) {
+            Log::error("Error al guardar historial para paciente {$patient->id}", ['error' => $e->getMessage()]);
+            return redirect()->back()->with('error', 'Ocurrió un error al guardar la nota. Por favor, intenta de nuevo.');
+        }
     }
 
-    public function show($id, $reference = null)
+    /**
+     * Muestra la ficha completa del paciente.
+     */
+    public function show(int $patientId, ?string $reference = null)
     {
-        $doctor = auth()->user();
-        $doctor = Doctor::where('user_id', $doctor->id)->first();        
-        $plan = auth()->user()->doctor->settings->plan;
+        $doctor = $this->getAuthenticatedDoctor();
+        $plan = $doctor->settings?->plan;
 
-        // 1. Cargamos al paciente con sus relaciones
         $patient = Patient::with([
-            'user', 
-            'familyHistories', 
-            'city', 
-            'department', 
-            'appointments' => function($query) use ($doctor) {
+            'user',
+            'familyHistories',
+            'city',
+            'department',
+            'appointments' => function ($query) use ($doctor) {
                 $query->where('doctor_id', $doctor->id)
-                    ->where('date', '>=', Carbon::today())
-                    ->orderBy('date', 'asc')       // 1º Ordena por día (del más viejo al más futuro)
-                    ->orderBy('start_time', 'asc'); // 2º Ordena por hora dentro del mismo día
-            }, 
+                      ->whereDate('date', '>=', Carbon::today())
+                      ->orderBy('date', 'asc')
+                      ->orderBy('start_time', 'asc');
+            },
             'appointments.service'
-        ])->findOrFail($id);
+        ])->findOrFail($patientId);
 
-        // 2. SEGURIDAD: Verificar que el paciente tiene relación con este doctor
-        // Evita que un doctor vea datos de pacientes ajenos cambiando el ID en la URL        
-        if ($patient->appointments->isEmpty()) {
-            abort(403, 'No tienes permiso para acceder a la ficha de este paciente.');
-        }    
-        
-        // Capturamos el ID de la cita si viene en la URL
-        $appointmentId = '';
+        $this->ensurePatientRelation($patient, $doctor->id);
+
+        $appointmentId = null;
         $allowed = false;
+
         if ($reference) {
-            $appointment = Appointment::where('reference', $reference)->first(); 
-            $appointmentId = $appointment->id;
-                        
-            // Verificar si puede editar notas
-            $canEditNotes = $this->canEditNotes($appointment);
-            if ($canEditNotes) {
-               $allowed = true; 
+            $appointment = Appointment::where('reference', $reference)->first();
+            if ($appointment) {
+                $appointmentId = $appointment->id;
+                $allowed = $this->canEditNotes($appointment);
             }
         }
-        
-        return view('partner.patients.show', compact('patient', 'doctor', 'plan', 'appointmentId', 'reference', 'allowed'));
-    }    
 
-    private function canEditNotes(Appointment $appointment)
+        return view('partner.patients.show', compact('patient', 'doctor', 'plan', 'appointmentId', 'reference', 'allowed'));
+    }
+
+    /**
+     * Determina si una cita permite edición de notas (hasta 48h después).
+     */
+    private function canEditNotes(Appointment $appointment): bool
     {
-        // Si la cita es futura, NO puede editar
         if ($appointment->date->isFuture()) {
             return false;
         }
-
-        // Si la cita fue hace 48 horas o menos, SÍ puede editar
-        $horasDesdeConsulta = $appointment->date->diffInHours(now());
-        return $horasDesdeConsulta <= 48;
+        return now()->diffInHours($appointment->date) <= 48;
     }
 
-    // use App\Jobs\ProcessConsultationAudio;
-    // use Illuminate\Support\Facades\Cache;
-    // use Illuminate\Support\Str;
-    public function uploadConsultationAudio(Request $request, $id)
+    /**
+     * Procesa la subida de audio para el asistente de consulta con IA.
+     */
+    public function uploadConsultationAudio(Request $request, int $patientId): JsonResponse
     {
-        $doctor = auth()->user();
-        $doctor = Doctor::where('user_id', $doctor->id)->first();
+        $doctor = $this->getAuthenticatedDoctor();
+        $patient = Patient::findOrFail($patientId);
+        
+        $this->ensurePatientRelation($patient, $doctor->id);
 
-        $patient = Patient::findOrFail($id);
-
-        $hasRelation = $patient->appointments()->where('doctor_id', $doctor->id)->exists();
-        if (! $hasRelation) {
-            abort(403, 'No tienes permiso para registrar una nota para este paciente.');
+        $plan = $doctor->settings?->plan;
+        if (!$plan?->ai_scribe_enabled) {
+            return response()->json(['message' => 'Tu plan actual no incluye el asistente de consulta con IA.'], 403);
         }
 
-        // Gancho de plan: feature solo disponible si el plan del doctor lo habilita
-        $plan = $doctor->settings->plan;
-        if (! $plan->ai_scribe_enabled) {
-            return response()->json([
-                'message' => 'Tu plan actual no incluye el asistente de consulta con IA.',
-            ], 403);
-        }
-
-        $request->validate([
+        $validated = $request->validate([
             'audio' => ['required', 'file', 'mimes:webm,ogg,mp3,wav,m4a', 'max:51200'], // 50MB
         ]);
 
         $jobToken = (string) Str::uuid();
-        $tmpDisk = 'local'; // disco privado, no público
-        $tmpPath = "ai-scribe-tmp/{$jobToken}." . $request->file('audio')->extension();
+        $tmpDisk = 'local';
+        $extension = $request->file('audio')->extension();
+        $tmpPath = "ai-scribe-tmp/{$jobToken}.{$extension}";
 
-        $request->file('audio')->storeAs(
-            dirname($tmpPath),
-            basename($tmpPath),
-            $tmpDisk
-        );
+        $request->file('audio')->storeAs(dirname($tmpPath), basename($tmpPath), $tmpDisk);
 
         Cache::put("ai_scribe:{$jobToken}", ['status' => 'queued'], now()->addMinutes(15));
 
@@ -231,73 +231,76 @@ class PartnerPatientController extends Controller
         return response()->json(['job_token' => $jobToken]);
     }
 
-    public function consultationAudioStatus(string $jobToken)
+    /**
+     * Consulta el estado del procesamiento del audio.
+     */
+    public function consultationAudioStatus(string $jobToken): JsonResponse
     {
         $result = Cache::get("ai_scribe:{$jobToken}");
-
-        if (! $result) {
+        
+        if (!$result) {
             return response()->json(['status' => 'not_found'], 404);
         }
-
+        
         return response()->json($result);
     }
 
-    public function notifyPendingAudio(Request $request, $id)
+    /**
+     * Notifica al médico sobre un fallo en el procesamiento del audio.
+     */
+    public function notifyPendingAudio(Request $request, int $patientId): JsonResponse
     {
-        $doctor = auth()->user();
-        $doctor = Doctor::where('user_id', $doctor->id)->first();
-
-        $patient = Patient::findOrFail($id);
-
-        $hasRelation = $patient->appointments()->where('doctor_id', $doctor->id)->exists();
-        if (! $hasRelation) {
-            abort(403);
-        }
+        $doctor = $this->getAuthenticatedDoctor();
+        $patient = Patient::findOrFail($patientId);
+        
+        $this->ensurePatientRelation($patient, $doctor->id);
 
         $validated = $request->validate([
             'appointment_id' => ['nullable', 'exists:appointments,id'],
         ]);
 
-        auth()->user()->notify(
+        Auth::user()->notify(
             new ConsultationAudioUploadFailedNotification($patient, $validated['appointment_id'] ?? null)
         );
 
         return response()->json(['ok' => true]);
     }
 
-    public function updateCondition(Request $request, Patient $patient)
+    /**
+     * Actualiza las condiciones permanentes del paciente (AJAX).
+     */
+    public function updateCondition(Request $request, Patient $patient): JsonResponse
     {
-        // 1. Validar la petición (permitimos que sea null o string largo)
-        $request->validate([
+        $doctor = $this->getAuthenticatedDoctor();
+        $this->ensurePatientRelation($patient, $doctor->id);
+
+        $validated = $request->validate([
             'permanent_conditions' => 'nullable|string|max:1000',
         ]);
 
         try {
-            // 2. Actualizar el campo en el modelo
-            $patient->update([
-                'permanent_conditions' => $request->permanent_conditions,
-            ]);
-
-            // 3. Responder con éxito para el Fetch de Alpine
+            $patient->update(['permanent_conditions' => $validated['permanent_conditions']]);
+            
             return response()->json([
                 'success' => true,
                 'message' => 'Condición permanente actualizada con éxito.',
                 'permanent_conditions' => $patient->permanent_conditions
             ]);
-
-        } catch (\Exception $e) {
-            // 4. Manejo de errores internos
-            return response()->json([
-                'success' => false,
-                'message' => 'Ocurrió un error al intentar guardar los datos.'
-            ], 500);
+        } catch (Throwable $e) {
+            Log::error("Error al actualizar condiciones del paciente {$patient->id}", ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Ocurrió un error al guardar los datos.'], 500);
         }
     }
 
-    public function storeAllergy(Request $request, Patient $patient)
+    /**
+     * Registra una nueva alergia (AJAX).
+     */
+    public function storeAllergy(Request $request, Patient $patient): JsonResponse
     {
-        // Validamos estrictamente contra los ENUM de tu base de datos
-        $request->validate([
+        $doctor = $this->getAuthenticatedDoctor();
+        $this->ensurePatientRelation($patient, $doctor->id);
+
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'type' => ['required', Rule::in(['drug', 'food', 'environment', 'other'])],
             'severity' => ['required', Rule::in(['mild', 'moderate', 'severe'])],
@@ -305,34 +308,32 @@ class PartnerPatientController extends Controller
         ]);
 
         try {
-            // Creamos la alergia vinculándola al paciente actual
             $allergy = PatientAllergy::create([
                 'patient_id' => $patient->id,
-                'name' => $request->name,
-                'type' => $request->type,
-                'severity' => $request->severity,
-                'reaction' => $request->reaction,
+                'name' => $validated['name'],
+                'type' => $validated['type'],
+                'severity' => $validated['severity'],
+                'reaction' => $validated['reaction'],
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Alergia agregada correctamente.',
-                'allergy' => $allergy // Devolvemos el objeto para pintarlo en la vista con Alpine
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No se pudo registrar la alergia.'
-            ], 500);
+            return response()->json(['success' => true, 'message' => 'Alergia agregada correctamente.', 'allergy' => $allergy]);
+        } catch (Throwable $e) {
+            Log::error("Error al registrar alergia para paciente {$patient->id}", ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'No se pudo registrar la alergia.'], 500);
         }
     }
 
-    public function storeSurgery(Request $request, Patient $patient)
+    /**
+     * Registra una cirugía previa (AJAX).
+     */
+    public function storeSurgery(Request $request, Patient $patient): JsonResponse
     {
-        $request->validate([
+        $doctor = $this->getAuthenticatedDoctor();
+        $this->ensurePatientRelation($patient, $doctor->id);
+
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'year' => 'nullable|integer|digits:4|between:1900,' . date('Y'),
+            'year' => ['nullable', 'integer', 'digits:4', 'between:1900,' . date('Y')],
             'observations' => 'nullable|string|max:1000',
             'anesthesia_complications' => 'required|boolean',
             'anesthesia_details' => 'nullable|required_if:anesthesia_complications,1|string|max:1000',
@@ -341,30 +342,29 @@ class PartnerPatientController extends Controller
         try {
             $surgery = PatientSurgery::create([
                 'patient_id' => $patient->id,
-                'name' => $request->name,
-                'year' => $request->year,
-                'observations' => $request->observations,
-                'anesthesia_complications' => $request->anesthesia_complications,
-                'anesthesia_details' => $request->anesthesia_complications ? $request->anesthesia_details : null,
+                'name' => $validated['name'],
+                'year' => $validated['year'],
+                'observations' => $validated['observations'],
+                'anesthesia_complications' => $validated['anesthesia_complications'],
+                'anesthesia_details' => $validated['anesthesia_complications'] ? $validated['anesthesia_details'] : null,
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Cirugía registrada con éxito.',
-                'surgery' => $surgery
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No se pudo registrar la cirugía.'
-            ], 500);
+            return response()->json(['success' => true, 'message' => 'Cirugía registrada con éxito.', 'surgery' => $surgery]);
+        } catch (Throwable $e) {
+            Log::error("Error al registrar cirugía para paciente {$patient->id}", ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'No se pudo registrar la cirugía.'], 500);
         }
     }
 
-    public function storeFamilyHistory(Request $request, Patient $patient)
+    /**
+     * Registra un antecedente familiar (AJAX).
+     */
+    public function storeFamilyHistory(Request $request, Patient $patient): JsonResponse
     {
-        $request->validate([
+        $doctor = $this->getAuthenticatedDoctor();
+        $this->ensurePatientRelation($patient, $doctor->id);
+
+        $validated = $request->validate([
             'condition' => 'required|string|max:255',
             'relationship' => 'required|string|max:255',
             'notes' => 'nullable|string|max:1000',
@@ -373,22 +373,15 @@ class PartnerPatientController extends Controller
         try {
             $history = PatientFamilyHistory::create([
                 'patient_id' => $patient->id,
-                'condition' => $request->condition,
-                'relationship' => $request->relationship,
-                'notes' => $request->notes,
+                'condition' => $validated['condition'],
+                'relationship' => $validated['relationship'],
+                'notes' => $validated['notes'],
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Antecedente familiar registrado con éxito.',
-                'history' => $history
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No se pudo registrar el antecedente familiar.'
-            ], 500);
+            return response()->json(['success' => true, 'message' => 'Antecedente familiar registrado con éxito.', 'history' => $history]);
+        } catch (Throwable $e) {
+            Log::error("Error al registrar antecedente familiar para paciente {$patient->id}", ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'No se pudo registrar el antecedente.'], 500);
         }
     }
 }

@@ -165,6 +165,22 @@ class ClinicDoctorController extends Controller
                         'role'     => 'doctor',
                     ]);
 
+                    // A. Crear Usuario usando su ID como Contraseña inicial
+                    $user = new User([
+                        'name'     => trim($docData['name']),
+                        'email'    => strtolower(trim($docData['email'])),
+                        'password' => Hash::make(trim($docData['identification'])),
+                        'role'     => 'doctor',
+                    ]);
+
+                    //  CORRECCIÓN: Evitar doble envío de correos
+                    // El UserObserver enviará el correo de bienvenida, así que marcamos
+                    // que NO envíe el correo genérico (lo haremos nosotros con DirectDoctorWelcomeNotification)
+                    $user->skip_welcome_email = true;
+                    $user->skip_promo_code = true; // Los doctores de clínica no reciben promo code
+
+                    $user->save();
+
                     // Asignar rol en Spatie
                     $role = Role::firstOrCreate(['name' => 'doctor']);
                     $user->assignRole($role);
@@ -196,8 +212,8 @@ class ClinicDoctorController extends Controller
                     // C. Vincular directamente a la clínica como aprobado
                     $clinic->doctors()->attach($doctor->id, ['status' => 'approved']);
 
-                    // ⚠️ NOTA: El UserObserver puede estar enviando email de bienvenida también.
-                    // Si detectas doble envío, comenta la siguiente línea.
+                    // ✅ CORRECCIÓN: Ahora SÍ es seguro enviar esta notificación
+                    // porque el UserObserver NO envió el correo genérico (skip_welcome_email = true)
                     $user->notify(new DirectDoctorWelcomeNotification($clinic));
 
                     $registeredSuccessfully[] = $docData['name'];

@@ -9,6 +9,7 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use App\Services\Availability\CacheKeyBuilder;
 use InvalidArgumentException;
 
 /**
@@ -57,22 +58,8 @@ final class AvailabilityResolver
      */
     public function nextSlot(AvailabilityQuery $query): ?Slot
     {
-        // Caché corta (60 s): la búsqueda calcula el próximo turno de muchos resultados por página.
-        // Se guarda dentro de un arreglo para que "sin turnos" (null) también se cachee.
-        $ids = $query->doctorIds;
-        sort($ids);
-
-        $key = sprintf(
-            'availability:next:%s:%s:%s:%s:%s',
-            $query->clinicId ?? 'particular',
-            implode('-', $ids),
-            $query->addressId ?? 'all',
-            $query->serviceId ?? 'any',
-            $query->excludeAppointmentId ?? 'none',
-        );
-
+        $key = CacheKeyBuilder::nextSlot($query);
         $cached = Cache::remember($key, 60, fn () => ['slot' => $this->computeNextSlot($query)]);
-
         return $cached['slot'];
     }
 

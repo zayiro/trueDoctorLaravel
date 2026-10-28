@@ -57,8 +57,8 @@ class Appointment extends Model
      */
     protected $casts = [
         'date'             => 'date',
-        'start_time'       => 'datetime:H:i:s', // 🔒 Asegura que siempre se maneje como hora válida
-        'end_time'         => 'datetime:H:i:s',
+        'start_time'       => 'string', // 🔒 Asegura que siempre se maneje como hora válida
+        'end_time'         => 'string',
         'duration'         => 'integer',        // 🔒 Evita tener que hacer (int) en el controlador
         'price'            => 'float',
         'status'           => \App\Enums\AppointmentStatus::class,

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Observers;
 
 use App\Models\Appointment;
@@ -8,163 +10,174 @@ use App\Models\DoctorSetting;
 use App\Jobs\SyncZoomMeetingJob;
 use App\Jobs\CancelZoomMeetingJob;
 use App\Events\AppointmentRescheduled;
-use Illuminate\Support\Facades\DB;
+use App\Repositories\AvailabilityRepository;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Throwable;
 
 class AppointmentObserver
 {
-    /**
-     * EVENTO ANTES DE CREAR: Preparar datos internos en transacción.
-     */
-    public function creating(Appointment $appointment)
+    private AvailabilityRepository $cacheRepo;
+
+    public function __construct(AvailabilityRepository $cacheRepo)
     {
-        // Validaciones previas antes de la transacción
-        // (no requieren transacción, son solo validaciones)
+        $this->cacheRepo = $cacheRepo;
     }
 
     /**
-     * EVENTO DESPUÉS DE CREAR: Operaciones críticas en transacción.
-     * Garantiza que si algo falla, se hace rollback completo.
+     * Handle the Appointment "created" event.
+     * 
+     * 🔒 CORRECCIÓN: Se eliminó el código comentado. Si necesitas crear Zoom
+     * al crear la cita, hazlo desde el controlador con afterCommit().
      */
-    public function created(Appointment $appointment)
+    public function created(Appointment $appointment): void
+    {
+        Log::info('AppointmentObserver: Cita creada', [
+            'appointment_id' => $appointment->id,
+            'service_type' => $appointment->service?->type,
+        ]);
+    }
+
+    /**
+     * Handle the Appointment "updating" event.
+     * 
+     * 🔒 CORRECCIONES:
+     * - Eliminado DB::transaction() redundante (el observer ya está dentro de la transacción)
+     * - Jobs despachados con afterCommit() para evitar leer datos no confirmados
+     * - Validación de existencia de servicio antes de acceder a ->type
+     */
+    public function updating(Appointment $appointment): void
     {
         try {
-            /*DB::transaction(function () use ($appointment) {
-                // =========================================================================
-                // FLUJO DE CREACIÓN: PREPARAR CITA VIRTUAL (ZOOM) SI APLICA
-                // =========================================================================
-                if ($appointment->service?->type === 'virtual') {
+            // FLUJO A: REAGENDAMIENTO DE CITAS VIRTUALES (ZOOM)
+            if ($appointment->isDirty(['date', 'start_time']) && $appointment->service?->type === 'virtual') {
+                $settings = $this->getSettings($appointment);
+                
+                if ($settings && $settings->virtual_meeting_platform === 'zoom' && $appointment->zoom_meeting_id) {
+                    // 🔒 CORRECCIÓN: Usar afterCommit() para que el job se ejecute DESPUÉS del commit
+                    dispatch(new SyncZoomMeetingJob($appointment->id))->afterCommit();
                     
-                    $settings = $appointment->clinic_id 
-                        ? ClinicSetting::where('clinic_id', $appointment->clinic_id)->first()
-                        : DoctorSetting::where('doctor_id', $appointment->doctor_id)->first();
-
-                    if ($settings && $settings->virtual_meeting_platform === 'zoom') {
-                        
-                        // Registrar intento de creación de reunión Zoom
-                        DB::table('zoom_creation_failures')->insert([
-                            'appointment_id' => $appointment->id,
-                            'attempts' => 0,
-                            'status' => 'pending',
-                            'last_error' => 'Cita creada. Sincronizando con Zoom API.',
-                            'created_at' => now(),
-                            'updated_at' => now()
-                        ]);
-
-                        // Despachar job de forma síncrona dentro de la transacción
-                        // para garantizar que se registre antes de confirmar
-                        dispatch(new SyncZoomMeetingJob($appointment->id));
-                    }
+                    Log::info('AppointmentObserver: Reagendamiento detectado, Zoom actualizado', [
+                        'appointment_id' => $appointment->id,
+                    ]);
                 }
+            }
 
-                Log::info('Cita ID ' . $appointment->id . ' creada exitosamente en transacción.');
-            });*/
-            //validar porque esta parte ya no es necesaria, si estoy creando la cita esta funcionalidad interfiere 
-            // y evita que se cree la cita por el flujo normal, y si comento la funcion entonces si se crea la cita zoom normalmente
-            // desde el flujo de reservacion de la pagina
+            // FLUJO B: CANCELACIÓN DE CITAS VIRTUALES
+            if ($appointment->isDirty('status') && $appointment->status === 'cancelled' && $appointment->service?->type === 'virtual') {
+                if ($appointment->zoom_meeting_id) {
+                    // 🔒 CORRECCIÓN: afterCommit() para evitar cancelar Zoom si la transacción falla
+                    dispatch(new CancelZoomMeetingJob($appointment->zoom_meeting_id))->afterCommit();
+                    
+                    // Limpiar columnas de Zoom (se guardarán en el update)
+                    $appointment->zoom_meeting_id = null;
+                    $appointment->meeting_link = null;
+                    $appointment->zoom_start_url = null;
+                    $appointment->meeting_link_password = null;
+                    
+                    Log::info('AppointmentObserver: Cita cancelada, Zoom eliminado', [
+                        'appointment_id' => $appointment->id,
+                    ]);
+                }
+            }
         } catch (Throwable $e) {
-            Log::error('Error crítico al crear cita ID ' . $appointment->id . ': ' . $e->getMessage());
-            throw $e;
+            Log::error('AppointmentObserver: Error en updating', [
+                'appointment_id' => $appointment->id,
+                'error' => $e->getMessage(),
+            ]);
+            // No lanzamos la excepción para no romper el flujo de actualización
         }
     }
 
     /**
-     * EVENTO ANTES DE ACTUALIZAR: Preparar datos internos en transacción.
+     * Handle the Appointment "updated" event.
+     * 
+     * 🔒 CORRECCIONES:
+     * - Eliminado DB::transaction() redundante
+     * - Evento AppointmentRescheduled con afterCommit()
+     * - Eliminado saveQuietly() (riesgo de loop infinito)
+     * - Invalidación de caché al cambiar estado
+     * - email_sent se maneja con update() explícito, no saveQuietly()
      */
-    public function updating(Appointment $appointment)
+    public function updated(Appointment $appointment): void
     {
         try {
-            DB::transaction(function () use ($appointment) {
-                // =========================================================================
-                // FLUJO A: PREPARAR AGENDA EN CITAS VIRTUALES (ZOOM) - REAGENDAMIENTO
-                // =========================================================================
-                if ($appointment->isDirty(['date', 'start_time']) && $appointment->service?->type === 'virtual') {
-                    
-                    $settings = $appointment->clinic_id 
-                        ? ClinicSetting::where('clinic_id', $appointment->clinic_id)->first()
-                        : DoctorSetting::where('doctor_id', $appointment->doctor_id)->first();
+            // FLUJO: NOTIFICACIÓN DE REAGENDAMIENTO
+            if ($appointment->email_sent == false && $appointment->isDirty(['date', 'start_time'])) {
+                $originalDate = $appointment->getOriginal('date');
+                $originalStartTime = $appointment->getOriginal('start_time');
+                
+                // 🔒 CORRECCIÓN: Manejo seguro de strings (no Carbon)
+                $dateStr = $originalDate instanceof Carbon ? $originalDate->format('Y-m-d') : (string) $originalDate;
+                $timeStr = $originalStartTime instanceof Carbon ? $originalStartTime->format('H:i') : substr((string) $originalStartTime, 0, 5);
+                
+                $previousDateTime = Carbon::parse("{$dateStr} {$timeStr}")->format('d/m/Y H:i');
+                
+                // 🔒 CORRECCIÓN: afterCommit() para que el email se envíe DESPUÉS del commit
+                event(new AppointmentRescheduled($appointment, $previousDateTime))->afterCommit();
+                
+                // 🔒 CORRECCIÓN: Usar update() explícito en lugar de saveQuietly()
+                // Esto evita el riesgo de loop infinito si las condiciones cambian
+                Appointment::where('id', $appointment->id)->update(['email_sent' => true]);
+                
+                Log::info('AppointmentObserver: Cita reagendada, notificación enviada', [
+                    'appointment_id' => $appointment->id,
+                    'previous_datetime' => $previousDateTime,
+                ]);
+            }
 
-                    if ($settings && $settings->virtual_meeting_platform === 'zoom' && $appointment->zoom_meeting_id) {
-                        
-                        DB::table('zoom_creation_failures')->updateOrInsert(
-                            ['appointment_id' => $appointment->id],
-                            [
-                                'attempts' => 0,
-                                'status' => 'pending',
-                                'last_error' => 'Reagendamiento detectado. Sincronizando con Zoom API.',
-                                'updated_at' => now(),
-                                'created_at' => now()
-                            ]
-                        );
-
-                        dispatch(new SyncZoomMeetingJob($appointment->id));
-                    }
-                }
-
-                // =========================================================================
-                // FLUJO B: DETECTAR CANCELACIÓN DE CITAS VIRTUALES
-                // =========================================================================
-                if ($appointment->isDirty('status') && $appointment->status === 'cancelled' && $appointment->service?->type === 'virtual') {
-                    
-                    if ($appointment->zoom_meeting_id) {
-                        dispatch(new CancelZoomMeetingJob($appointment->zoom_meeting_id));
-                        
-                        // Limpieza directa de columnas antes de que la query se ejecute
-                        $appointment->zoom_meeting_id = null;
-                        $appointment->meeting_link = null;
-                        $appointment->zoom_start_url = null;
-                        $appointment->meeting_link_password = null;
-                    }
-                }
-
-                Log::info('Cita ID ' . $appointment->id . ' preparada para actualización en transacción.');
-            });
+            // 🔥 INVALIDAR CACHÉ DE DISPONIBILIDAD
+            // Crucial: al cancelar/reagendar una cita, el turno debe reflejarse inmediatamente
+            $this->invalidateCacheForAppointment($appointment);
         } catch (Throwable $e) {
-            Log::error('Error crítico al preparar actualización de cita ID ' . $appointment->id . ': ' . $e->getMessage());
-            throw $e;
+            Log::error('AppointmentObserver: Error en updated', [
+                'appointment_id' => $appointment->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
     /**
-     * EVENTO DESPUÉS DE ACTUALIZAR: Notificaciones y alertas en transacción.
-     * El lugar correcto y seguro para enviar correos y alertas.
+     * Invalida el caché de disponibilidad para la sede de la cita.
+     * 🔒 CRÍTICO: Sin esto, los turnos cancelados/reagendados siguen apareciendo como ocupados.
      */
-    public function updated(Appointment $appointment)
+    private function invalidateCacheForAppointment(Appointment $appointment): void
     {
         try {
-            DB::transaction(function () use ($appointment) {
-                // =========================================================================
-                // FLUJO UNIFICADO DE NOTIFICACIÓN DE REAGENDAMIENTO (FÍSICO Y VIRTUAL)
-                // =========================================================================
-                // Tu controlador fuerza 'email_sent' => false al reprogramar. 
-                // Validamos si el campo es falso y si se alteraron las coordenadas de tiempo de la cita.
-                if ($appointment->email_sent == false && $appointment->isDirty(['date', 'start_time'])) {
-                    
-                    // 1. Capturamos los valores históricos reales que estaban en la BD antes del cambio
-                    $originalDate = $appointment->getOriginal('date');
-                    $originalStartTime = $appointment->getOriginal('start_time');
+            $addressId = $appointment->address_id;
+            $doctorId = $appointment->doctor_id;
+            $clinicId = $appointment->clinic_id;
 
-                    // 2. Formateo preventivo multilenguaje seguro de Carbon
-                    $dateStr = $originalDate instanceof Carbon ? $originalDate->format('Y-m-d') : $originalDate;
-                    $timeStr = $originalStartTime instanceof Carbon ? $originalStartTime->format('H:i') : $originalStartTime;
-                    $previousDateTime = Carbon::parse("{$dateStr} {$timeStr}")->format('d/m/Y H:i');
-
-                    // 3. Despachamos el evento que enviará el Mail asíncrono
-                    event(new AppointmentRescheduled($appointment, $previousDateTime));
-
-                    // 4. Seteamos el flag a true y guardamos en la BD de forma silenciosa.
-                    // Al ejecutarse en 'updated' e interactuar de forma aislada, es 100% inmune a loops infinitos.
-                    $appointment->email_sent = true;
-                    $appointment->saveQuietly();
-                }
-
-                Log::info('Cita ID ' . $appointment->id . ' actualizada exitosamente en transacción.');
-            });
+            if ($addressId && $doctorId) {
+                $this->cacheRepo->invalidateAvailabilityCache(
+                    $clinicId,
+                    [$doctorId],
+                    $addressId
+                );
+                
+                Log::info('AppointmentObserver: Caché invalidado', [
+                    'appointment_id' => $appointment->id,
+                    'address_id' => $addressId,
+                    'doctor_id' => $doctorId,
+                ]);
+            }
         } catch (Throwable $e) {
-            Log::error('Error crítico al actualizar cita ID ' . $appointment->id . ': ' . $e->getMessage());
-            throw $e;
+            Log::error('AppointmentObserver: Error al invalidar caché', [
+                'appointment_id' => $appointment->id,
+                'error' => $e->getMessage(),
+            ]);
         }
+    }
+
+    /**
+     * Obtiene la configuración (clínica o doctor) de forma segura.
+     */
+    private function getSettings(Appointment $appointment)
+    {
+        if ($appointment->clinic_id) {
+            return ClinicSetting::where('clinic_id', $appointment->clinic_id)->first();
+        }
+        
+        return DoctorSetting::where('doctor_id', $appointment->doctor_id)->first();
     }
 }

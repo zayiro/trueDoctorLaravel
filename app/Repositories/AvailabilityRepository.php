@@ -8,6 +8,7 @@ use App\Models\Unavailability;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class AvailabilityRepository
 {
@@ -17,13 +18,10 @@ class AvailabilityRepository
     public function getMinNoticeHours(?int $clinicId = null, array $doctorIds = []): int
     {
         $cacheKey = self::CACHE_PREFIX . 'min_notice:' . ($clinicId ?? 'doctors:' . implode(',', $doctorIds));
-
         return Cache::remember($cacheKey, self::CACHE_TTL * 60, function () use ($clinicId, $doctorIds) {
             if (!is_null($clinicId)) {
                 return (int) (DB::table('clinic_settings')->where('clinic_id', $clinicId)->value('min_notice_hours') ?? 2);
             }
-            
-            // Si hay múltiples doctores, tomamos el mínimo aviso más restrictivo (o el primero, pero min() es más seguro)
             return (int) (DB::table('doctor_settings')->whereIn('doctor_id', $doctorIds)->min('min_notice_hours') ?? 2);
         });
     }
@@ -31,7 +29,6 @@ class AvailabilityRepository
     public function getBufferTimeMinutes(?int $clinicId = null, ?int $doctorId = null): int
     {
         $cacheKey = self::CACHE_PREFIX . 'buffer:' . ($clinicId ?? 'doctor:' . $doctorId);
-
         return Cache::remember($cacheKey, self::CACHE_TTL * 60, function () use ($clinicId, $doctorId) {
             if (!is_null($clinicId)) {
                 return (int) (DB::table('clinic_settings')->where('clinic_id', $clinicId)->value('buffer_time_minutes') ?? 0);
@@ -43,19 +40,26 @@ class AvailabilityRepository
         });
     }
 
+    /**
+     * 🔒 CORRECCIÓN CRÍTICA: Se agrega orderBy('duration', 'asc') para evitar que 
+     * MySQL devuelva una fila aleatoria cuando hay múltiples servicios con duraciones 
+     * distintas en la misma sede. Esto elimina el bug de "Hoy -> Viernes -> Sin turnos".
+     */
     public function getSlotDurationMinutes(int $addressId): int
     {
         $cacheKey = self::CACHE_PREFIX . 'slot_duration:' . $addressId;
-
+        
         return Cache::remember($cacheKey, self::CACHE_TTL * 60, function () use ($addressId) {
-            return (int) (DB::table('address_service')->where('address_id', $addressId)->value('duration') ?? 20);
+            return (int) (DB::table('address_service')
+                ->where('address_id', $addressId)
+                ->orderBy('duration', 'asc') // 🔒 BLINDAJE: Hace la consulta 100% determinista
+                ->value('duration') ?? 20);
         });
     }
 
     public function getSchedulesForDay(int $addressId, array $doctorIds, int $dayOfWeek)
     {
         $cacheKey = self::CACHE_PREFIX . 'schedules:' . $addressId . ':' . implode(',', $doctorIds) . ':' . $dayOfWeek;
-
         $cached = Cache::get($cacheKey);
         if ($cached !== null) {
             return collect($cached)->map(function ($item) {
@@ -71,7 +75,7 @@ class AvailabilityRepository
             ->where('address_id', $addressId)
             ->whereIn('doctor_id', $doctorIds)
             ->where('day', $dayOfWeek)
-            ->where('is_active', true) // 🔒 Blindaje: solo horarios activos
+            ->where('is_active', true)
             ->get();
 
         Cache::put($cacheKey, $schedules->toArray(), self::CACHE_TTL * 60);
@@ -82,7 +86,6 @@ class AvailabilityRepository
     {
         $dateStr = $date->toDateString();
         $cacheKey = self::CACHE_PREFIX . 'unavailabilities:' . implode(',', $doctorIds) . ':' . $dateStr . ':' . ($addressId ?? 'all');
-
         $cached = Cache::get($cacheKey);
         if ($cached !== null) {
             return collect($cached)->map(function ($item) {
@@ -112,7 +115,6 @@ class AvailabilityRepository
     {
         $dateStr = $date->toDateString();
         $cacheKey = self::CACHE_PREFIX . 'appointments:' . implode(',', $doctorIds) . ':' . $addressId . ':' . $dateStr;
-
         $cached = Cache::get($cacheKey);
         if ($cached !== null) {
             return collect($cached)->map(function ($item) {
@@ -138,31 +140,26 @@ class AvailabilityRepository
     {
         try {
             $keysToForget = [];
-            
-            // Invalidar caché de min_notice (tanto para clínica como para doctores individuales)
+
             if ($clinicId !== null) {
                 $keysToForget[] = self::CACHE_PREFIX . 'min_notice:' . $clinicId;
                 $keysToForget[] = self::CACHE_PREFIX . 'buffer:' . $clinicId;
             }
-            
-            // Invalidar para cada doctor individualmente
+
             foreach ($doctorIds as $docId) {
                 $keysToForget[] = self::CACHE_PREFIX . 'min_notice:doctors:' . $docId;
                 $keysToForget[] = self::CACHE_PREFIX . 'buffer:doctor:' . $docId;
             }
-            
-            // Invalidar caché combinado (cuando se pasan múltiples doctores)
+
             if (!empty($doctorIds)) {
                 $keysToForget[] = self::CACHE_PREFIX . 'min_notice:doctors:' . implode(',', $doctorIds);
             }
-            
-            // Invalidar caché de schedules, unavailabilities y appointments
+
             if ($addressId && !empty($doctorIds)) {
                 foreach ($doctorIds as $docId) {
                     for ($day = 1; $day <= 7; $day++) {
                         $keysToForget[] = self::CACHE_PREFIX . 'schedules:' . $addressId . ':' . $docId . ':' . $day;
                     }
-                    
                     for ($i = 0; $i < 14; $i++) {
                         $date = Carbon::now()->addDays($i)->toDateString();
                         $keysToForget[] = self::CACHE_PREFIX . 'unavailabilities:' . $docId . ':' . $date . ':' . $addressId;
@@ -179,10 +176,8 @@ class AvailabilityRepository
             foreach ($keysToForget as $key) {
                 Cache::forget($key);
             }
-            
-            // Como medida de seguridad, invalidar TODO el caché de disponibilidad
+
             Cache::tags(['availability'])->flush();
-            
         } catch (\Exception $e) {
             Log::error('Error invalidando caché de disponibilidad', ['error' => $e->getMessage()]);
         }

@@ -9,6 +9,11 @@ class PatientHistoryAttachment extends Model
 {
     protected $fillable = ['patient_id', 'name', 'file_path', 'file_type', 'file_size'];
 
+    public function patient(): BelongsTo
+    {
+        return $this->belongsTo(Patient::class);
+    }
+
     public function history()
     {
         return $this->belongsTo(PatientHistory::class, 'patient_id');
