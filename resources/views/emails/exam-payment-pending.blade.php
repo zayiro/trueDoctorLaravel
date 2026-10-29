@@ -39,7 +39,7 @@
                 <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 0 0 20px 0;">
                 
                 <!-- Pie de página -->
-                <p style="margin: 0 0 4px 0; font-size: 12px; color: #94a3b8; font-weight: 600;">OpenDoctor - Plataforma Médica</p>
+                <p style="margin: 0 0 4px 0; font-size: 12px; color: #94a3b8; font-weight: 600;">OpenDoctorOnline - Plataforma Médica</p>
                 <p style="margin: 0; font-size: 11px; color: #94a3b8;">Por tu seguridad, este enlace es de uso exclusivo para tu cuenta.</p>
             </td>
         </tr>

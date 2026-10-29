@@ -27,8 +27,9 @@
             </div>
             <h2 class="text-xl font-bold text-slate-900 mb-2">Para activar tu cuenta debemos validar tu documentación</h2>
             
-            <p class="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
-                En <span class="text-lg font-black text-slate-900 tracking-tight">Open<span class="text-indigo-600">Doctor</span></span> garantizamos la seguridad de los pacientes. 
+            <p class="text-md text-slate-600 max-w-4xl mx-auto leading-relaxed">
+                En <span class="text-lg font-black text-slate-900 tracking-tight">
+                            Open<span class="text-indigo-600">Doctor</span><span class="text-emerald-500">Online</span></span> garantizamos la seguridad de los pacientes. 
                 @if($type === 'clinic')
                     Tu centro médico no será público ni podrá habilitar agendas hasta que verifiquemos el <strong>código REPS institucional</strong> y el NIT de la organización.
                 @else
@@ -37,7 +38,7 @@
             </p>
 
             @if($status === 'rejected')
-                <div class="mt-5 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2 justify-center max-w-xl mx-auto">
+                <div class="mt-5 p-3 bg-red-50 border border-red-200 text-red-700 text-base rounded-xl flex items-center gap-2 justify-center max-w-5xl mx-auto">
                     <span>⚠️ <strong>Documentos rechazados:</strong> Los soportes anteriores no pudieron ser verificados. Por favor, vuelve a subirlos.</span>
                 </div>
             @endif
@@ -56,7 +57,7 @@
                         }
                     }
                 }">
-                    <label class="block text-sm font-medium text-slate-700">
+                    <label class="block text-md font-medium text-slate-700">
                         {{ $type === 'clinic' ? 'NIT de la Organización (Soporte RUT)' : 'Cédula de Identidad (Anverso / Reverso)' }}
                     </label>
                     
@@ -104,7 +105,7 @@
                         }
                     }
                 }">
-                    <label class="block text-sm font-medium text-slate-700">
+                    <label class="block text-md font-medium text-slate-700">
                         {{ $type === 'clinic' ? 'Certificación o Código de Habilitación REPS' : 'Tarjeta o Licencia Profesional Médica' }}
                     </label>
                     
@@ -144,9 +145,14 @@
                 </div>
             </div>
 
-            <button type="submit" class="w-full py-4 px-4 inline-flex justify-center items-center gap-x-2 text-lg font-semibold rounded-xl border border-transparent bg-blue-600 text-white hover:bg-blue-700 transition shadow-lg">
-                Enviar Documentación para Revisión
-            </button>
+            <div class="flex flex-col items-center mt-7 pt-6 space-y-6">
+                <button type="submit" class="group w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-200 shadow-md shadow-blue-600/15 flex items-center justify-center gap-2.5 text-base transform active:scale-[0.98]">
+                    Enviar documentación para revisión
+                    <svg class="w-4 h-4 text-blue-200 group-hover:text-white group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                    </svg>
+                </button>
+            </div>
         </form>
     @endif
 </div>

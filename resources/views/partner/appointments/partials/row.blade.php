@@ -209,11 +209,11 @@
                     <!-- Contenido -->
                     <div class="p-6 space-y-3">
                        <div class="p-1">
-                            <!-- 🌐 INICIAR CONSULTA (Principal) -->
-                            @if($app->address && $app->address->type === 'virtual' && $app->status_label === 'confirmed' && $app->zoom_start_url)
+                            <!-- 🌐 INICIAR CONSULTA (Principal) -->                             
+                            @if($app->address && $app->address->type === 'virtual' && $app->status_label === 'Confirmed' && $app->zoom_start_url)
                                 <a href="{{ route('appointments.room', ['appointment' => $app->id]) }}" target="_blank" 
                                 class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition w-full text-left">
-                                    💻 Iniciar Consulta
+                                    💻 Iniciar Teleconsulta
                                 </a>
                             @else
                                 <a href="{{ route('partner.patients.show', [$app->patient_id, $app->reference]) }}" target="_blank" 

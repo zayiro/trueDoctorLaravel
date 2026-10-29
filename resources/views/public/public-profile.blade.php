@@ -1,37 +1,4 @@
-<x-guest-layout>    
-    <!-- Inyección exclusiva para el HEAD (SEO Estructurado Avanzado Híbrido) -->
-    <x-slot:seo>
-        <meta name="title" content="{{ $seoTitle }}">
-        <meta name="description" content="{{ $seoDescription }}">
-        <meta name="robots" content="{{ $metaRobots }}">
-        @php
-            $isClinicProfile = $profileType === 'clinic';
-            
-            // 🛡️ SCHEMA DINÁMICO MULTI-TENANT: Adapta los microdatos automáticamente según el rol del perfil
-            $schemaData = [
-                "@context" => "https://schema.org",
-                "@type" => $isClinicProfile ? "MedicalBusiness" : "Physician",
-                "name" => $isClinicProfile ? $partner->name : ($partner->gender === 'female' ? 'Doctora ' . $partner->user->name : 'Doctor ' . $partner->user->name),
-                "image" => $partner->user->profile_photo_url ?? asset('images/default-clinic.png'),
-                "medicalSpecialty" => $partner->specialties->first()?->name ?? 'Medicina General',
-                "telephone" => $partner->phone ?? 'N/A',
-                "url" => url()->current(),
-                "description" => $partner->bio ? str(strip_tags($partner->bio))->limit(160, '...')->toString() : 'Servicios profesionales de salud dedicados a mantener y recuperar el bienestar humano.'
-            ];
-
-            if (isset($partner->reviews_count) && $partner->reviews_count > 0) {
-                $schemaData["aggregateRating"] = [
-                    "@type" => "AggregateRating",
-                    "ratingValue" => (string) $partner->rating,
-                    "reviewCount" => (string) $partner->reviews_count
-                ];
-            }
-        @endphp
-
-        <script type="application/ld+json">
-            {!! json_encode($schemaData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
-        </script>        
-   </x-slot:seo>
+<x-guest-layout>
 
    <style>
         /* 📅 REDUCCIÓN TIPOGRÁFICA Y ESCALA PREMIUM RESPONSIVA DE FLATPICKR */

@@ -1,68 +1,112 @@
+@props([
+    'meta_title' => null, 
+    'meta_description' => null, 
+    'keywords' => null, 
+    'meta_robots' => null,
+    'meta_canonical' => null,
+    'meta_image' => null
+])
+
 @php
-    $title = isset($meta_title) ? $meta_title : 'Plataforma de agendamiento médico en línea';
-    $description = isset($meta_description) ? $meta_description : 'Plataforma de agendamiento médico en línea. Consulta especialistas, realiza análisis con IA y agenda citas médicas en tiempo real. Telemedicina solicita y recibe tu cita';
+    // 1. Corregimos a camelCase (como Laravel procesa los atributos con guion de Blade)
+    $name = !empty($meta_title) ? $meta_title : "OpenDoctor - Plataforma Médica Digital";
+
+    // 2. Validación de Descripción con rotación aleatoria
+    if (empty($meta_description)) {
+        $descriptions = [
+            "Plataforma de agendamiento médico en línea. Consulta especialistas, realiza análisis con IA y agenda citas médicas en tiempo real. Telemedicina solicita y recibe tu cita.",
+            "Encuentra médicos especialistas en línea. Triage inteligente con IA, citas médicas por telemedicina en tiempo real y análisis digital avanzado.",
+            "Agenda citas médicas en tiempo real y realiza consultas virtuales. Telemedicina avanzada con análisis de exámenes e Inteligencia Artificial."
+        ];
+        $description = $descriptions[array_rand($descriptions)];
+    } else {
+        // Ahora sí capturará "Crea tu cuenta profesional en OpenDoctor de forma gratuita..."
+        $description = $meta_description;
+    }
+
+    $finalKeywords = !empty($keywords) ? $keywords : 'Agenda cita médica online, consulta especialista...';
+    $finalRobots = !empty($meta_robots) ? $meta_robots : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
+    $finalCanonical = !empty($meta_canonical) ? $meta_canonical : url()->current();
+    $finalImage = !empty($meta_image) ? $meta_image : asset('/images/logoAuth.jpg');
+    
     $schemaJson = json_encode([
         '@context' => 'https://schema.org',
-        '@type' => 'MedicalBusiness',
-        '@id' => config('app.url'),
-        'name' => 'OpenDoctorOnline',
-        'description' => 'Plataforma de agendamiento médico en línea. Consulta especialistas, realiza análisis con IA y agenda citas médicas en tiempo real. Telemedicina solicita y recibe tu cita',
+        '@type' => 'WebApplication',
+        'name' => $name,
         'url' => config('app.url'),
-        'logo' => asset('images/logoOpenDoctor.jpg'),
-        'image' => asset('images/logoOpenDoctor.jpg'),
-        'telephone' => '+573026433874',
-        'email' => 'contacto@opendoctor.online',
-        'areaServed' => [
-            [
-                '@type' => 'Country',
-                'name' => 'Colombia'
-            ],
-            [
-                '@type' => 'Country',
-                'name' => 'México'
-            ],
-            [
-                '@type' => 'Country',
-                'name' => 'Perú'
-            ],
-            [
-                '@type' => 'Country',
-                'name' => 'Argentina'
-            ]
+        "applicationCategory" => "HealthApplication",
+        "operatingSystem" => "All",
+        "browserRequirements" => "Requires HTML5 / JavaScript",
+        "inLanguage" => "es",        
+        "image" => asset(config('app.url') . "/images/logoAuth.jpg"),        
+        "description" => $description,
+        "featureList" => [
+            "Telemedicina y citas médicas virtuales por videoconferencia (Zoom) y presenciales en consultorio",
+            "Análisis de piel mediante Inteligencia Artificial para la detección y orientación de afecciones cutáneas",
+            "Segunda opinión médica por Inteligencia Artificial para la interpretación y análisis digital de exámenes (Laboratorio, Ecografía, Radiografía, Tomografía, Resonancia, DICOM)"
         ],
-        'offers' => [
+        "about" => [
             [
-                '@type' => 'Service',
-                'name' => 'Agendamiento de Citas Médicas',
-                'description' => 'Agenda consultas con especialistas en línea o presenciales',
-                'areaServed' => 'CO,MX,PE,AR'
+                "@type" => "MedicalSpecialty",
+                "name" => "Telemedicine"
             ],
             [
-                '@type' => 'Service',
-                'name' => 'Analisis Médico con IA',
-                'description' => 'Análisis instantaáneo de síntomas con inteligencia artificial',
-                'areaServed' => 'CO,MX,PE,AR'
+                "@type" => "MedicalSpecialty",
+                "name" => "GeneralMedicine"
+            ],
+            [
+                "@type" => "MedicalSpecialty",
+                "name" => "Dermatology"
+            ],
+            [
+                "@type" => "MedicalProcedure",
+                "name" => "DiagnosticProcedure"
+            ]
+        ],        
+        "author" => [
+            "@type" => "Organization",
+            "name" => "OpenDoctorOnline",
+            "url" => config('app.url'),
+            'logo' => asset(config('app.url') . '/images/logoAuth.jpg'),
+            "telephone" => "+573026433874",
+            "areaServed" => [
+                "@type" => "AdministrativeArea",
+                "name" => "World"
+            ],
+        ],
+        "hasPart" => [
+            [
+                "@type" => "FAQPage",
+                "mainEntity" => [
+                    [
+                        "@type" => "Question",
+                        "name" => "¿Cómo funciona la segunda opinión por Inteligencia Artificial para exámenes médicos?",
+                        "acceptedAnswer" => [
+                            "@type" => "Answer",
+                            "text" => "Nuestra IA analiza digitalmente reportes y archivos de exámenes médicos como laboratorios, ecografías, radiografías, tomografías y resonancias magnéticas, ofreciendo una interpretación clínica preliminar de alta precisión que sirve como respaldo o segunda opinión orientativa."
+                        ]
+                    ],
+                    [
+                        "@type" => "Question",
+                        "name" => "¿En qué consiste el análisis de piel con Inteligencia Artificial de OpenDoctor?",
+                        "acceptedAnswer" => [
+                            "@type" => "Answer",
+                            "text" => "Es un componente digital avanzado que permite procesar imágenes de la piel para identificar, evaluar y ofrecer una orientación médica inmediata sobre posibles afecciones cutáneas, facilitando el pre-diagnóstico antes de tu consulta dermatológica."
+                        ]
+                    ],
+                    [
+                        "@type" => "Question",
+                        "name" => "¿Las consultas virtuales por telemedicina incluyen recetas médicas?",
+                        "acceptedAnswer" => [
+                            "@type" => "Answer",
+                            "text" => "Sí, a través de las videollamadas integradas por Zoom, los especialistas verificados de OpenDoctorOnline pueden emitir órdenes, guías de tratamiento y recetas médicas válidas de acuerdo con la evaluación clínica realizada en tiempo real."
+                        ]
+                    ]
+                ]
             ]
         ]
-    ], JSON_UNESCAPED_SLASHES);
-    $keywords = 'Agenda cita médica online, consulta especialista, telemedicina Colombia, plataforma agendamiento, cita médica virtual, Exámenes de laboratorio online';
-
-    if (isset($metaTitleMedicalAnalysis)) {        
-        $title = $metaTitleMedicalAnalysis;
-        $description = $metaDescriptionMedicalAnalysis;
-        $schemaJson = json_encode([
-            '@context' => 'https://schema.org',
-            '@type' => 'MedicalBusiness',
-            'name' => 'OpenDoctorOnline',
-            'url' => config('app.url'),
-            'logo' => asset('images/logoOpenDoctor.jpg'),
-            'description' => $meta_description,
-            'telephone' => '+573026433874',
-            'areaServed' => ['CO', 'MX', 'PE', 'AR']            
-        ]);
-        $keywords ='Análisis médico IA, Interpreta tus exámenes médicos con Inteligencia Artificial, interpretar análisis de sangre online gratis, evaluación médica rápida,  Lee e interpreta tus resultados online médicos con IA, Interpretación de pruebas de laboratorio en línea, análisis de síntomas gratis, Interpreta tus análisis de sangre, orina y heces online con IA en minutos, Como leer resultados de laboratorio de sangre, Interpretación de exámenes de laboratorio PDF gratis, valores normales de exámenes de laboratorio pdf, Lector de exámenes médicos gratis, ia para leer resultados de laboratorio gratis';
-    }
-        
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    $keywords = 'Agenda cita médica online, consulta especialista, telemedicina Colombia, plataforma agendamiento, cita médica virtual, Exámenes de laboratorio online, Analisis de Piel por Inteligencia Artificial, Laboratorio, Ecografía, Radiografía, Tomografía, Resonancia, DICOM';        
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -73,32 +117,25 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
         
-        @if (isset($seo) && $seo->isNotEmpty())
-            {{ $seo }}            
-        @else        
-            <title>{{ $title ?? 'OpenDoctorOnline | Orientacion Medica' }}</title>            
-            <meta name="description" content="{{ $description ?? 'Análisis médico online con IA. Consulta especialistas en Colombia, diagnostico instantaneo, cita médica virtual y presencial disponible.' }}">            
-        @endif
-
-        <meta name="robots" content="{{ 'index, follow, max-snippet:-1, max-image-preview:large' }}">
-        <meta name="googlebot" content="index,follow">
-        <meta name="keywords" content="{{ $keywords }}">
-    
-        <link rel="canonical" href="{{ $meta_canonical ?? url()->current() }}">
+        <title>{{ $name }}</title>
+        <meta name="description" content="{{ $description }}">
+        <meta name="keywords" content="{{ $finalKeywords }}">
+        <meta name="robots" content="{{ $finalRobots }}">
+        <link rel="canonical" href="{{ $finalCanonical }}">
         
         <meta name="author" content="OpenDoctorOnline">
         <meta property="og:type" content="website">
         <meta property="og:site_name" content="OpenDoctorOnline">
-        <meta property="og:title" content="{{ $title ?? 'OpenDoctorOnline - Encuentra tu especialista y agenda tu cita' }}">
-        <meta property="og:description" content="{{ $description ?? 'Busca especialistas medicos, agenda tu cita y recibe recordatorios automaticos.' }}">
+        <meta property="og:title" content="{{ $name }}">
+        <meta property="og:description" content="{{ $description }}">
         <meta property="og:url" content="{{ url()->current() }}">
         <meta property="og:image" content="{{ asset('images/og-logo.png') }}">
         <meta property="og:image:width" content="1200">
         <meta property="og:image:height" content="630">
         
         <meta name="twitter:card" content="summary_large_image">
-        <meta name="twitter:title" content="{{ $ogTitle ?? 'OpenDoctorOnline' }}">
-        <meta name="twitter:description" content="{{ $description ?? 'Busca especialistas medicos y agenda tu cita.' }}">
+        <meta name="twitter:title" content="{{ $name }}">
+        <meta name="twitter:description" content="{{ $description }}">
         <meta name="twitter:image" content="{{ asset('images/og-logo.png') }}">
 
         <!-- Fonts -->

@@ -1,33 +1,7 @@
-<x-guest-layout>
-    <!-- Inyección exclusiva para el HEAD -->
-    <x-slot:seo>
-        <title>{{ $metaTitle }}</title>
-        <meta name="title" content="{{ $metaTitle }}">
-        <meta name="description" content="{{ $metaDesc }}">
-        <meta name="robots" content="index, follow">
-        <link rel="canonical" href="{{ request()->url() }}">
-        
-        @php
-            // Schema estructurado para la página de catálogo de orientación médica
-            $catalogSchema = [
-                "@context" => "https://schema.org",
-                "@type" => "MedicalWebPage",
-                "name" => $metaTitle,
-                "description" => $metaDesc,
-                "url" => request()->url(),
-                "inLanguage" => "es",
-                "medicalAudience" => [
-                    "@type" => "MedicalAudience",
-                    "audienceType" => "Patients"
-                ]
-            ];
-        @endphp
-
-        <script type="application/ld+json">
-            {!! json_encode($catalogSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
-        </script>
-    </x-slot:seo>
-    
+<x-guest-layout
+    meta_title="Guía de Orientación Médica por Síntomas - OpenDoctorOnline"
+    meta_description="Selecciona tus síntomas para evaluar el nivel de urgencia sugerido por nuestra Inteligencia Artificial. Conecta y agenda una cita inmediata con especialistas verificados."
+>
     <div class="max-w-7xl mx-auto px-4 py-8 mt-5">
         <div class="w-full mt-6">
             

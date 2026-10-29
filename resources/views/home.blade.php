@@ -1,5 +1,4 @@
 <x-guest-layout>
-
     @auth
         @php
             // Buscamos si el paciente tiene alguna cita virtual abandonada hoy

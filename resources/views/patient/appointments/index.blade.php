@@ -78,12 +78,12 @@ $hasStatusFilter = filled(request('status'));
                 <ul class="space-y-4">
                     @forelse($upcomingAppointments as $appointment)
                         @php
-                        switch ($appointment->status_label) {
+                        switch ($appointment->status->value) {
                             case 'confirmed': $statusText = 'Confirmada'; break;
                             case 'pending': $statusText = 'Pendiente'; break;
                             case 'cancelled': $statusText = 'Cancelada'; break;
                             case 'completed': $statusText = 'Completada'; break;
-                            default: $statusText = ucfirst($appointment->status_label); break;
+                            default: $statusText = ucfirst($appointment->status->value); break;
                         }
 
                         $dateOnly = \Carbon\Carbon::parse($appointment->date)->toDateString(); 
@@ -379,12 +379,12 @@ $hasStatusFilter = filled(request('status'));
                 <ul class="space-y-4">
                     @forelse($pastAppointments as $appointment)
                         @php                        
-                        switch ($appointment->status) {
+                        switch ($appointment->status->value) {
                             case 'confirmed': $statusText = 'Confirmada'; break;
                             case 'pending': $statusText = 'Pendiente'; break;
                             case 'cancelled': $statusText = 'Cancelada'; break;
                             case 'completed': $statusText = 'Completada'; break;
-                            default: $statusText = ucfirst($appointment->status_label); break;
+                            default: $statusText = ucfirst($appointment->status->value); break;
                         }
                         @endphp
 

@@ -636,21 +636,45 @@ class AppointmentController extends Controller
         $appointment->update(['notes' => $request->input('notes')]);
         return response()->json(['success' => true]);
     }
-
+    
     public function endZoomMeeting(Appointment $appointment, ZoomService $zoomService): JsonResponse
     {
+        // 1. Validar que exista una reunión de Zoom vinculada
         if (!$appointment->zoom_meeting_id) {
-            return response()->json(['message' => 'La cita no tiene una reunión activa.'], 422);
+            // Si no hay zoom, igual podemos marcarla como completada localmente
+            $appointment->update(['status' => AppointmentStatus::COMPLETED->value]);
+            return response()->json([
+                'success' => true, 
+                'message' => 'La consulta ha sido marcada como finalizada.'
+            ]);
         }
 
+        // 2. Intentar cerrar la reunión en Zoom
         $closedInZoom = $zoomService->endMeeting($appointment->zoom_meeting_id);
 
         if ($closedInZoom) {
-            $appointment->update(['status' => AppointmentStatus::COMPLETED->value]); // Asumiendo que tienes COMPLETED en tu Enum
-            return response()->json(['success' => true, 'message' => 'La videollamada fue finalizada con éxito.']);
+            // 3. Éxito: Zoom cerró la reunión, actualizamos nuestra BD
+            $appointment->update(['status' => AppointmentStatus::COMPLETED->value]);
+            
+            return response()->json([
+                'success' => true, 
+                'message' => 'La videollamada fue finalizada con éxito.'
+            ]);
         }
 
-        return response()->json(['success' => false, 'message' => 'No se pudo cerrar la sesión en los servidores de Zoom.'], 500);
+        // 4. FALLBACK DE RESILIENCIA: Si Zoom falla (ej: error 4711 de scopes), 
+        // igual marcamos la cita como completada en NUESTRA base de datos para no bloquear al usuario.
+        Log::warning('Zoom falló al cerrar la reunión, pero se marcó como completada localmente', [
+            'appointment_id' => $appointment->id,
+            'zoom_meeting_id' => $appointment->zoom_meeting_id,
+        ]);
+
+        $appointment->update(['status' => AppointmentStatus::COMPLETED->value]);
+
+        return response()->json([
+            'success' => true, // Devolvemos true al frontend para que el usuario pueda salir
+            'message' => 'La consulta ha sido finalizada en el sistema (Nota: Ocurrió un problema de sincronización con Zoom).'
+        ], 200);
     }
 
     public function paymentResult(Request $request)

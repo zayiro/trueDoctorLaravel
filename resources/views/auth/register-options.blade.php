@@ -1,6 +1,6 @@
 <x-guest-layout
-    meta-title-medical-analysis="Crear Cuenta Gratis | Únete a OpenDoctorOnline" 
-    meta-description-medical-analysis="Regístrate gratis en OpenDoctor. Elige tu perfil como Paciente para agendar citas y gestionar tu historial, o como Doctor para digitalizar tu agenda y consultas"
+    meta_title="Crear Cuenta Gratis | Únete a OpenDoctorOnline" 
+    meta_description="Regístrate gratis en OpenDoctor. Elige tu perfil como Paciente para agendar citas y gestionar tu historial, o como Doctor para digitalizar tu agenda y consultas"
 >
     @if (session('info'))
         <div id="alert-info" class="flex items-center p-4 mb-4 text-info-800 rounded-2xl bg-info-50 border border-info-100 shadow-sm transition-opacity duration-500" role="alert">
@@ -36,6 +36,7 @@
                     </div>
                     <h3 class="text-xl font-bold text-slate-800 mb-2">Soy Paciente</h3>
                     <p class="text-sm text-slate-500">Busca doctores, agenda citas y gestiona tu historial médico.</p>
+                      <span class="inline-flex items-center gap-x-1.5 py-1.5 px-3 rounded-full text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-500/20 dark:text-teal-400 mt-3">SELECCIONAR</span>
                 </a>
 
                 <!-- Opción: Especialista -->
@@ -45,6 +46,7 @@
                     </div>
                     <h3 class="text-xl font-bold text-slate-800 mb-2">Soy Doctor</h3>
                     <p class="text-sm text-slate-500">Gestiona tu agenda, sedes y atiende a tus pacientes digitalmente.</p>
+                    <span class="inline-flex items-center gap-x-1.5 py-1.5 px-3 rounded-full text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-500/20 dark:text-teal-400 mt-3">SELECCIONAR</span>
                 </a>
 
                 <!-- Opción: Clínica -->

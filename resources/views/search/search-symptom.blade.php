@@ -1,4 +1,7 @@
-<x-guest-layout>
+<x-guest-layout
+    meta_title="Guía de Orientación Médica por Síntomas OpenDoctorOnline"
+    meta_description="Selecciona tus síntomas para evaluar el nivel de urgencia sugerido por nuestra Inteligencia Artificial. Conecta y agenda una cita inmediata con especialistas verificados."
+>
     <div class="relative bg-white py-10 overflow-hidden">      
         <div class="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
             <div x-data="{

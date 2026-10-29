@@ -90,7 +90,7 @@
                 </table>
                 <p style="margin: 20px 0 0 0; font-size: 11px; color: #94a3b8; text-align: center;">
                     Este es un correo automático enviado por el backend de tu plataforma SaaS.<br>
-                    © {{ date('Y') }} OpenDoctor. Todos los derechos reservados.
+                    © {{ date('Y') }} OpenDoctor.online Todos los derechos reservados.
                 </p>
             </td>
         </tr>

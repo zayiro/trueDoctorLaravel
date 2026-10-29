@@ -37,7 +37,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'webhooks/wompi',
         ]);
         $middleware->web(append: [
-            \App\Http\Middleware\SeoOptimizationMiddleware::class,
             EnsureDoctorContext::class,
             TenantMiddleware::class,
             BlockSqlInjection::class,

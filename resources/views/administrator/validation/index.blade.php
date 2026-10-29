@@ -16,7 +16,7 @@ $breadcrumbs = [
         <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8 pb-4 border-b border-slate-200">
             <div>
                 <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Validación de Cuentas Comerciales</h1>
-                <p class="text-sm text-slate-500 mt-1">Revisa las credenciales de médicos y clínicas postuladas para activar sus cuentas.</p>
+                <p class="text-md text-slate-500 mt-1">Revisa las credenciales de médicos y clínicas postuladas para activar sus cuentas.</p>
             </div>
             
             <div class="mt-4 md:mt-0 bg-indigo-50 text-indigo-700 text-xs font-semibold px-4 py-2 rounded-full border border-indigo-100 self-start">

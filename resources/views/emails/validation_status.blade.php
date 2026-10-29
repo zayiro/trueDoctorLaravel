@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Actualización de Cuenta - OpenDoctor</title>    
+    <title>Actualización de Cuenta - OpenDoctorOnline</title>    
     <style>
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; background-color: #f4f6f8; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
         .wrapper { width: 100%; table-layout: fixed; background-color: #f4f6f8; padding-bottom: 40px; padding-top: 40px; }

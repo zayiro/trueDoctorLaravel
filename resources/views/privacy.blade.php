@@ -1,4 +1,7 @@
-<x-guest-layout>
+<x-guest-layout
+    meta-title="Aviso de Privacidad y Confidencialidad | OpenDoctorOnline"
+    meta-description="Consulta nuestro aviso de privacidad. Conoce de qué manera recopilamos, resguardamos y tratamos de forma segura tus datos médicos y personales en OpenDoctorOnline."
+>
     <div class="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 mt-8">
         <div class="max-w-7xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             

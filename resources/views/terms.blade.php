@@ -1,4 +1,7 @@
-<x-guest-layout>
+<x-guest-layout
+    meta-title="Términos de Servicio y Condiciones de Uso | OpenDoctorOnline"
+    meta-description="Consulta las condiciones legales, regulaciones de uso y responsabilidades de nuestra plataforma médica digital en OpenDoctorOnline. Tu seguridad es nuestra prioridad."
+>
     <div class="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 mt-8">
         <div class="max-w-7xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             

@@ -1,61 +1,29 @@
-<x-guest-layout>
-    <div class="mt-8">
-        <div class="mx-auto max-w-6xl px-4 py-8 lg:py-14">
-            <div class="grid lg:grid-cols-2 rounded-[28px] overflow-hidden shadow-2xl shadow-black/10 border border-black/5">
-
-                {{-- PANEL IZQUIERDO: mensaje de marca --}}
-                <div class="relative px-8 py-10 lg:p-12 flex flex-col justify-between"
-                     style="background: linear-gradient(165deg,#0D3937 0%,#134744 55%,#186B62 100%); color:#F1ECE1;">
-
-                    <div>
-                        <div class="flex items-center gap-3 mb-12">
-                            <svg width="38" height="38" viewBox="0 0 40 40" fill="none">
-                                <rect x="6" y="8" width="28" height="26" rx="5" stroke="#D9A441" stroke-width="1.4"/>
-                                <line x1="6" y1="15" x2="34" y2="15" stroke="#D9A441" stroke-width="1.4"/>
-                                <line x1="13" y1="5" x2="13" y2="11" stroke="#D9A441" stroke-width="1.4" stroke-linecap="round"/>
-                                <line x1="27" y1="5" x2="27" y2="11" stroke="#D9A441" stroke-width="1.4" stroke-linecap="round"/>
-                                <path d="M13.5 24l4 4L27 18.5" stroke="#F1ECE1" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                            <span class="od-eyebrow text-[11px]" style="color:#BFE0D6;">OpenDoctor · Pacientes</span>
-                        </div>
-
-                        <h1 class="od-display text-[2rem] lg:text-[2.4rem] leading-[1.18] font-medium mb-5">
-                            Encuentra a tu médico.<br>Agenda en minutos.
-                        </h1>
-                        <p class="text-[15px] leading-relaxed max-w-sm mb-11" style="color:#CFE6DC;">
-                            Crea tu cuenta para buscar especialistas, reservar tu cita y recibir recordatorios automáticos por Email y WhatsApp para que nunca se te pase la hora.
-                        </p>
-
-                        <ol class="space-y-5 mt-3">
-                            <li class="flex gap-4">
-                                <span class="od-eyebrow shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px]" style="background:rgba(217,164,65,.16); color:#D9A441; border:1px solid rgba(217,164,65,.4);">1</span>
-                                <span class="text-sm pt-0.5" style="color:#E6F1EC;">Creas tu cuenta</span>
-                            </li>
-                            <li class="flex gap-4">
-                                <span class="od-eyebrow shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px]" style="background:rgba(217,164,65,.16); color:#D9A441; border:1px solid rgba(217,164,65,.4);">2</span>
-                                <span class="text-sm pt-0.5" style="color:#E6F1EC;">Buscas tu médico ideal</span>
-                            </li>
-                            <li class="flex gap-4">
-                                <span class="od-eyebrow shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px]" style="background:rgba(217,164,65,.16); color:#D9A441; border:1px solid rgba(217,164,65,.4);">3</span>
-                                <span class="text-sm pt-0.5" style="color:#E6F1EC;">Agenda tu cita (Virtual por Zoom o presencial en consultorio)</span>
-                            </li>
-                        </ol>
-                    </div>
-
-                    <div class="hidden lg:flex gap-2 flex-wrap mt-12">
-                        @foreach (['Recordatorios por WhatsApp', 'Todas las especialidades', 'Reserva sin llamadas'] as $badge)
-                            <span class="od-eyebrow text-[10px] px-3 py-1.5 rounded-full" style="background:rgba(255,255,255,.06); color:#BFE0D6; border:1px solid rgba(255,255,255,.14);">
-                                {{ $badge }}
-                            </span>
-                        @endforeach
-                    </div>
-                </div>
-
-                {{-- PANEL DERECHO: formulario --}}
-                <div class="bg-[#FBF8F3] px-6 py-10 lg:p-12">
-                    <p class="od-eyebrow text-[11px] mb-2" style="color:#8FA39D;">Registro de pacientes</p>
-                    <h2 class="od-display text-[1.7rem] mb-7" style="color:#12302E;">Crea tu cuenta</h2>
-
+<x-guest-layout
+    meta_title="Registro de Pacientes | Únete a OpenDoctorOnline"
+    meta_description="Encuentra a tus especialistas, recibe recordatorios automáticos por WhatsApp y gestiona tus citas médicas desde un solo lugar y sin esfuerzo."
+>
+    <section class="relative z-40 bg-white overflow-hidden py-16 sm:py-24">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="mb-12">
+                <!-- Etiqueta superior -->
+                    <span class="inline-flex self-center lg:self-start items-center rounded-full bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-700/10 px-4 py-2 pt-2.5 text-xs font-semibold uppercase tracking-wider text-blue-800 mb-6">
+                    Para Pacientes
+                    </span>
+                    
+                    <!-- Título Principal -->
+                    <h2 class="text-center text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">
+                        Accede a los mejores especialistas y <span class="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">cuida tu bienestar</span>
+                    </h2>
+                    
+                    <p class="text-center mt-4 text-base sm:text-lg text-slate-600 max-w-5xl mx-auto lg:mx-0">
+                        Encuentra al especialista ideal en <span class="text-lg font-black text-slate-900 tracking-tight">
+                        Open<span class="text-indigo-600">Doctor</span><span class="text-emerald-500">Online</span></span>. Explora perfiles de cientos de médicos, conoce su trayectoria profesional y agenda tu cita en línea de forma rápida y segura.<span class="text-lg font-black text-slate-900 tracking-tight">                        
+                    </p>
+            </div>
+            <div class="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-center">
+            
+                <!-- Columna Izquierda: Contenido y Propuesta de Valor -->
+                <div class="flex flex-col">                    
                     <x-validation-errors class="mb-4" />
 
                     <form method="POST" action="{{ route('register') }}" class="space-y-4" x-data="{ showPass: false, showConfirm: false, loading: false }" @submit="loading = true">
@@ -134,26 +102,46 @@
                                 </x-label>
                             </div>
                         @endif
-
-                        <div class="flex items-center justify-between mt-7">
-                            <a class="text-sm text-slate-500 hover:text-[#12302E] underline-offset-2 hover:underline" href="{{ route('login') }}">
-                                {{ __('¿Ya tienes cuenta?') }}
-                            </a>
-
+                        
+                        <div class="flex flex-col items-center mt-7 pt-6 space-y-6">
                             <button type="submit" ::disabled="loading"
-                                class="inline-flex items-center px-6 py-2.5 rounded-xl text-sm font-semibold text-white shadow-sm transition disabled:opacity-70"
-                                style="background:#E4633C;"
-                                onmouseover="this.style.background='#C94F2C'" onmouseout="this.style.background='#E4633C'">
-                                <svg x-show="loading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" x-cloak>
+                                class="group w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-200 shadow-md shadow-blue-600/15 flex items-center justify-center gap-2.5 text-base transform active:scale-[0.98]">                                                                
+                                <span x-text="loading ? 'Validando...' : 'Registrarme como Paciente'"></span> 
+                                <svg x-show="loading" x-cloak class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
-                                <span x-text="loading ? 'Validando...' : 'Crear cuenta'"></span>
+                                <svg x-show="!loading" class="w-4 h-4 text-blue-200 group-hover:text-white group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                                </svg>                               
                             </button>
+                                
+                            <a class="text-sm text-slate-500 hover:text-[#12302E] underline-offset-2 hover:underline" href="{{ route('login') }}">
+                                {{ __('¿Ya tienes cuenta?') }}
+                            </a>                            
                         </div>
                     </form>
                 </div>
+
+                <!-- Columna Derecha: Composición de Imagen Estilizada -->
+                <div class="relative mx-auto w-full max-w-md lg:max-w-none lg:mx-0 flex justify-center">
+                    <!-- Elementos decorativos de fondo -->
+                    <div class="absolute -top-4 -left-4 w-72 h-72 bg-blue-400 rounded-full filter blur-3xl opacity-20 animate-pulse"></div>
+                    <div class="absolute -bottom-4 -right-4 w-72 h-72 bg-indigo-400 rounded-full filter blur-3xl opacity-20"></div>
+                    
+                    <!-- Contenedor de Imagen -->
+                    <div class="relative overflow-hidden transform lg:rotate-1 hover:rotate-0 transition duration-300">
+                    <img 
+                        src="{{ asset('images/doctor-and-patient-consultation-isometric-illustration-png.webp') }}" 
+                        alt="Médico especialista usando plataforma OpenDoctor" 
+                        class="h-[350px] w-full object-cover sm:h-[450px] md:w-[500px]"
+                        style="mask-image: linear-gradient(to bottom, black 75%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 75%, transparent 100%);"
+                        loading="lazy"
+                    />
+                    </div>                
+                </div>
+
             </div>
         </div>
-    </div>
+    </section>
 </x-guest-layout>

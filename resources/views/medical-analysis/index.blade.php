@@ -1,6 +1,6 @@
 <x-guest-layout
-    :meta-title-medical-analysis="$meta_title_medicalAnalysis"
-    :meta-description-medical-analysis="$meta_description_medicalAnalysis"
+    :meta_title="$meta_title_medicalAnalysis"
+    :meta_description="$meta_description_medicalAnalysis"
 >
 @php
     $exams = [

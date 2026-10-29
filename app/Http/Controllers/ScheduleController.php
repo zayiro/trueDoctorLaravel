@@ -428,7 +428,7 @@ class ScheduleController extends Controller
             }
 
             // Validar solapamiento global del doctor
-            if (\App\Services\Scheduling\SlotOverlapChecker::overlapsWithSchedules(
+            if (SlotOverlapChecker::overlapsWithSchedules(
                 doctorId: $targetDoctorId,
                 dayOfWeek: $day,
                 newStart: $startTimeFormatted,

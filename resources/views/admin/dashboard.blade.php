@@ -213,9 +213,9 @@
                 @if(($isDoctor || $isClinic) && $validationStatus !== 'approved')
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-[2rem] border border-gray-100 shadow-lg">
                         <div>
-                            <span class="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em] mb-1 block">Verificación en Curso</span>
+                            <span class="text-base font-black text-amber-600 uppercase tracking-[0.2em] mb-1 block">{{ $validationStatus === 'pending_validation' ? 'Verificación en Curso' : 'Documentación rechazada, intentalo nuevamente!'  }}</span>
                             <h2 class="text-3xl font-black text-slate-800 tracking-tight">¡Hola, {{ $user->name }}!</h2>
-                            <p class="text-xs text-slate-400 mt-0.5">Para habilitar tu consola analítica y empezar a operar con tu agenda, completa tus soportes legales.</p>
+                            <p class="text-md text-slate-400 mt-0.5">Para habilitar tu consola analítica y empezar a operar con tu agenda, completa tus soportes legales.</p>
                         </div>
                     </div>
                     <x-verify-docs :type="$user->role" :status="$validationStatus" />

@@ -636,12 +636,12 @@ switch ($patient->gender) {
             <div class="space-y-2">
                 @forelse($patient->appointments->take(3) as $history)
                 @php
-                $status = match($history->status_label ?? $history->status) {
+                $status = match($history->status_label ?? $history->status->value) {
                     'confirmed' => 'Confirmada',
                     'pending' => 'Pendiente',
                     'cancelled' => 'Cancelada',
                     'completed' => 'Completada',
-                    default => ucfirst($history->status),
+                    default => ucfirst($history->status->value),
                 };
                 @endphp
                 <div class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition">

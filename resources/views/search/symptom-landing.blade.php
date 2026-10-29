@@ -1,65 +1,7 @@
-<x-guest-layout>
-    <!-- Inyección exclusiva para el HEAD -->
-    <x-slot:seo>
-        <title>{{ $metaTitle }}</title>
-        <meta name="title" content="{{ $metaTitle }}">
-        <meta name="description" content="{{ $metaDesc }}">
-        <meta name="robots" content="{{ $symptom->urgency_level === 'Alta' ? 'noindex, follow' : 'index, follow' }}">
-        <link rel="canonical" href="{{ request()->url() }}">
-        
-        @php
-            // Schema.org de nivel médico para fragmentos enriquecidos (Rich Snippets)
-            $schemaData = [
-                "@context" => "https://schema.org",
-                "@type" => "MedicalWebPage",
-                "name" => $metaTitle,
-                "description" => $metaDesc,
-                "url" => request()->url(),
-                "inLanguage" => "es",
-                "mainContentOfPage" => [
-                    "@type" => "WebPageElement",
-                    "cssSelector" => ".symptom-content"
-                ],
-                "medicalAudience" => [
-                    "@type" => "MedicalAudience",
-                    "audienceType" => "Patients"
-                ]
-            ];
-
-            // Schema estructurado para las migas de pan (Breadcrumbs)
-            $breadcrumbData = [
-                "@context" => "https://schema.org",
-                "@type" => "BreadcrumbList",
-                "itemListElement" => [
-                    [
-                        "@type" => "ListItem",
-                        "position" => 1,
-                        "name" => "Inicio",
-                        "item" => url('/')
-                    ],
-                    [
-                        "@type" => "ListItem",
-                        "position" => 2,
-                        "name" => "Síntomas",
-                        "item" => url('/sintomas')
-                    ],
-                    [
-                        "@type" => "ListItem",
-                        "position" => 3,
-                        "name" => $symptom->search_query,
-                        "item" => request()->url()
-                    ]
-                ]
-            ];
-        @endphp
-
-        <script type="application/ld+json">
-            {!! json_encode($schemaData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
-        </script>
-        <script type="application/ld+json">
-            {!! json_encode($breadcrumbData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
-        </script>
-    </x-slot:seo>
+<x-guest-layout
+    meta_title="Guía de Orientación Médica por Síntomas OpenDoctorOnline"
+    meta_description="Selecciona tus síntomas para evaluar el nivel de urgencia sugerido por nuestra Inteligencia Artificial. Conecta y agenda una cita inmediata con especialistas verificados."
+>
     
     <div class="max-w-7xl mx-auto px-4 py-8 mt-5 symptom-content">
         <div class="w-full">
