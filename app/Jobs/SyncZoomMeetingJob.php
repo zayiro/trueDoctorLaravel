@@ -63,7 +63,8 @@ class SyncZoomMeetingJob implements ShouldQueue
 
         try {
             // Formatear los datos exactos requeridos por tu ZoomService existente
-            $startDateTime = $appointment->date . 'T' . $appointment->start_time;
+            // $appointment->date es Carbon (cast 'date'): concatenarlo directo genera "Y-m-d 00:00:00T..." (inválido)
+            $startDateTime = $appointment->date->format('Y-m-d') . ' ' . $appointment->start_time;
             $topic = "Cita Médica Ref: {$appointment->reference}";
 
             // 🔄 Invocar tu método del servicio para actualizar el cronograma en la API de Zoom
@@ -84,7 +85,7 @@ class SyncZoomMeetingJob implements ShouldQueue
                         'zoom_meeting_id'       => $result['meeting_id'],
                         'meeting_link'          => $result['url_patient'],
                         'zoom_start_url'        => $result['url_partner'],
-                        'meeting_link_password' => $result['password'],
+                        'meeting_link_password' => ($result['password'] ?? '') ?: null,
                     ]);
                 }
 

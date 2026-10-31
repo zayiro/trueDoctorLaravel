@@ -209,17 +209,54 @@
                     <!-- Contenido -->
                     <div class="p-6 space-y-3">
                        <div class="p-1">
-                            <!-- 🌐 INICIAR CONSULTA (Principal) -->                             
-                            @if($app->address && $app->address->type === 'virtual' && $app->status_label === 'Confirmed' && $app->zoom_start_url)
-                                <a href="{{ route('appointments.room', ['appointment' => $app->id]) }}" target="_blank" 
-                                class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition w-full text-left">
-                                    💻 Iniciar Teleconsulta
-                                </a>
-                            @else
+                            @php
+                                $statusValue = $app->status instanceof \BackedEnum 
+                                    ? $app->status->value 
+                                    : (string) $app->status;
+                            @endphp
+
+                            @if ($statusValue === 'completed')
+                                {{-- ✅ CITA COMPLETADA: Mostrar enlace correcto a Historia Clínica --}}
                                 <a href="{{ route('partner.patients.show', [$app->patient_id, $app->reference]) }}" target="_blank" 
-                                class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition w-full text-left">
-                                    📋 Iniciar Consulta
+                                class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition w-full text-left">
+                                    📋 Ver Historia Clínica
                                 </a>
+
+                            @elseif ($statusValue === 'cancelled')
+                                {{-- 🚫 CITA CANCELADA: Mostrar mensaje (sin enlace) --}}
+                                <span class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-400 bg-gray-50 rounded-lg w-full text-left cursor-not-allowed">
+                                    Consulta cancelada
+                                </span>
+
+                            @elseif ($statusValue === 'confirmed')
+                                {{-- ✅ CITA CONFIRMADA: Mostrar acción según tipo --}}
+                                @if($app->address && $app->address->type === 'virtual' && $app->zoom_start_url)
+                                    {{-- Virtual: Iniciar Teleconsulta --}}
+                                    <a href="{{ route('appointments.room', ['appointment' => $app->id]) }}" target="_blank" 
+                                    class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition w-full text-left">
+                                        💻 Iniciar Teleconsulta
+                                    </a>
+                                @else
+                                    {{-- Presencial: Iniciar Consulta --}}
+                                    <a href="{{ route('partner.patients.show', [$app->patient_id, $app->reference]) }}" target="_blank" 
+                                    class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition w-full text-left">
+                                        📋 Iniciar Consulta
+                                    </a>
+                                @endif
+
+                            @else
+                                {{-- ⏳ OTROS ESTADOS (Pending, etc.): Mostrar según tipo --}}
+                                @if($app->address && $app->address->type === 'virtual' && $app->zoom_start_url)
+                                    <a href="{{ route('appointments.room', ['appointment' => $app->id]) }}" target="_blank" 
+                                    class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition w-full text-left">
+                                        💻 Ir a Teleconsulta
+                                    </a>
+                                @else
+                                    <a href="{{ route('partner.patients.show', [$app->patient_id, $app->reference]) }}" target="_blank" 
+                                    class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition w-full text-left">
+                                        📋 Ver Consulta
+                                    </a>
+                                @endif
                             @endif
                             
                             <!-- Completar -->

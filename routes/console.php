@@ -48,3 +48,6 @@ Schedule::call(function () {
 ->at('03:00')
 ->name('clear-cities-cache')
 ->withoutOverlapping();
+
+//Marca como completadas las citas virtuales cuyo horario ya terminó, se ejecuta cada hora
+Schedule::command('appointments:complete-expired')->hourly();

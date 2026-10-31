@@ -44,6 +44,7 @@ class Appointment extends Model
         'paid_at',
         'channel',
         'meeting_link',
+        'meeting_link_password',
         'zoom_meeting_id',
         'zoom_start_url',
         'zoom_started',
@@ -132,6 +133,39 @@ class Appointment extends Model
             return Crypt::decryptString($value);
         } catch (DecryptException $e) {
             return $value; // Fallback seguro
+        }
+    }
+
+    /**
+     * 🔒 MUTADOR: Encripta la contraseña de la reunión de Zoom antes de guardarla.
+     * Es idempotente: si el valor ya es un payload cifrado de Laravel, no se vuelve a cifrar.
+     */
+    public function setMeetingLinkPasswordAttribute($value)
+    {
+        if ($value === null || $value === '') {
+            $this->attributes['meeting_link_password'] = null;
+            return;
+        }
+
+        try {
+            Crypt::decryptString($value);
+            $this->attributes['meeting_link_password'] = $value; // ya estaba cifrado
+        } catch (DecryptException $e) {
+            $this->attributes['meeting_link_password'] = Crypt::encryptString((string) $value);
+        }
+    }
+
+    /**
+     * 🔓 ACCESSOR: Descifra de forma segura la contraseña de la reunión de Zoom
+     */
+    public function getMeetingLinkPasswordAttribute($value)
+    {
+        if (!$value) return null;
+
+        try {
+            return Crypt::decryptString($value);
+        } catch (DecryptException $e) {
+            return $value; // Fallback seguro si el dato es texto plano
         }
     }
 

@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Appointment;
+use Carbon\Carbon;
+use RuntimeException;
 use Throwable;
 
 class ZoomService
@@ -16,6 +18,11 @@ class ZoomService
     protected $apiBaseUrl = 'https://api.zoom.us/v2';
     protected $hostEmail;
 
+    // Credenciales de la app "General" con Meeting SDK habilitado (pestaña Embed).
+    // NO son las de Server-to-Server OAuth: esas no pueden firmar el JWT del SDK (error 3712).
+    protected $sdkClientId;
+    protected $sdkClientSecret;
+
     public function __construct()
     {
         // Usamos config() si ya están mapeados, o un fallback directo en caso de caché en AWS
@@ -23,6 +30,8 @@ class ZoomService
         $this->clientId     = config('services.zoom.client_id');
         $this->clientSecret = config('services.zoom.client_secret');
         $this->hostEmail    = config('services.zoom.host_email');
+        $this->sdkClientId     = config('services.zoom.sdk_client_id');
+        $this->sdkClientSecret = config('services.zoom.sdk_client_secret');
     }
 
     /**
@@ -121,7 +130,7 @@ class ZoomService
             $payload = [
                 'topic'      => $topic,
                 'type'       => 2, 
-                'start_time' => $startDateTime,
+                'start_time' => $this->formatStartTime($startDateTime),
                 'duration'   => $durationMinutes,
                 'timezone'   => config('app.timezone', 'America/Bogota'),
                 'settings'   => [
@@ -186,6 +195,10 @@ class ZoomService
                 return null;
             }
 
+            if (empty($data['password'])) {
+                Log::warning('ZoomService: Zoom no devolvió password para la reunión.', ['meeting_id' => $data['id']]);
+            }
+
             return [
                 'meeting_id'   => $data['id'],
                 'password'     => $data['password'] ?? '', 
@@ -212,36 +225,164 @@ class ZoomService
     }
 
     /**
-     * Genera la firma segura (JWT) requerida por el SDK de Zoom en el Frontend
-     * 
+     * Client ID de la app General (Meeting SDK). Es el valor que va en sdkKey / appKey.
+     */
+    public function getSdkClientId(): string
+    {
+        $id = trim((string) $this->sdkClientId);
+
+        if ($id === '') {
+            throw new RuntimeException('Falta services.zoom.sdk_client_id (ZOOM_SDK_CLIENT_ID). Debe ser el Client ID de una app General con Meeting SDK habilitado, no el de Server-to-Server OAuth.');
+        }
+
+        return $id;
+    }
+
+    /**
+     * Genera la firma segura (JWT) requerida por el Meeting SDK en el Frontend.
+     *
+     * Debe firmarse con el Client ID/Secret de una app General con Meeting SDK habilitado.
+     * Las credenciales de Server-to-Server OAuth producen error 3712 (Signature is invalid).
+     *
      * @param string|int $meetingNumber ID de la reunión de Zoom
      * @param int $role 0 para Paciente (Asistente), 1 para Médico (Anfitrión)
      * @return string
      */
     public function generateSdkSignature($meetingNumber, $role = 0)
     {
+        $sdkKey    = $this->getSdkClientId();
+        $sdkSecret = trim((string) $this->sdkClientSecret);
+
+        if ($sdkSecret === '') {
+            throw new RuntimeException('Falta services.zoom.sdk_client_secret (ZOOM_SDK_CLIENT_SECRET).');
+        }
+
         $iat = time() - 30;
-        $exp = $iat + 7200; // Válida por 2 horas de consulta
+        $exp = $iat + 7200; // Zoom exige entre 30 min y 48 h desde iat
 
         $header = json_encode(['alg' => 'HS256', 'typ' => 'JWT']);
-        
+
+        // appKey (requerido en la doc actual) + sdkKey (compatibilidad Web); mismo valor = Client ID
         $payload = json_encode([
-            'sdkKey'   => $this->clientId,
-            'mn'       => $meetingNumber,
-            'role'     => $role,
+            'appKey'   => $sdkKey,
+            'sdkKey'   => $sdkKey,
+            'mn'       => (string) preg_replace('/\D/', '', (string) $meetingNumber),
+            'role'     => (int) $role,
             'iat'      => $iat,
             'exp'      => $exp,
-            'tokenExp' => $exp
+            'tokenExp' => $exp,
         ]);
 
         // Algoritmo manual Base64Url compatible con JWT estándar
         $base64UrlHeader = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
         $base64UrlPayload = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($payload));
 
-        $signature = hash_hmac('sha256', $base64UrlHeader . "." . $base64UrlPayload, $this->clientSecret, true);
+        $signature = hash_hmac('sha256', $base64UrlHeader . "." . $base64UrlPayload, $sdkSecret, true);
         $base64UrlSignature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
 
         return $base64UrlHeader . "." . $base64UrlPayload . "." . $base64UrlSignature;
+    }
+
+    /**
+     * ZAK (Zoom Access Key) del usuario anfitrión de las reuniones.
+     * Obligatorio para INICIAR una reunión desde el SDK (role 1).
+     * Requiere el scope user:read:token:admin (o user:read:admin) en la app Server-to-Server.
+     *
+     * @return string|null
+     */
+    public function getHostZak(int $ttlSeconds = 7200): ?string
+    {
+        try {
+            $token = $this->getAccessToken();
+
+            if (!$token) {
+                Log::error('ZoomService ZAK Error: sin token de acceso.');
+                return null;
+            }
+
+            $url   = "{$this->apiBaseUrl}/users/{$this->hostEmail}/token";
+            $query = ['type' => 'zak', 'ttl' => $ttlSeconds];
+
+            $response = Http::withToken($token)->get($url, $query);
+
+            if ($response->status() === 401) {
+                Cache::forget('zoom_s2s_access_token');
+                $token = $this->getAccessToken();
+
+                if ($token) {
+                    $response = Http::withToken($token)->get($url, $query);
+                }
+            }
+
+            if ($response->failed()) {
+                Log::error('ZoomService ZAK Error: no se pudo obtener el ZAK del host.', [
+                    'status' => $response->status(),
+                    'body'   => $response->body(),
+                ]);
+                return null;
+            }
+
+            return $response->json('token') ?: null;
+        } catch (Throwable $e) {
+            Log::error('ZoomService Exception en getHostZak: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Consulta una reunión existente (sirve para recuperar la password de citas antiguas).
+     * Requiere el scope meeting:read:meeting:admin (o meeting:read:admin).
+     *
+     * @param string|int $meetingId
+     * @return array|null
+     */
+    public function getMeeting($meetingId): ?array
+    {
+        try {
+            $token = $this->getAccessToken();
+
+            if (!$token || !$meetingId) {
+                return null;
+            }
+
+            $url = "{$this->apiBaseUrl}/meetings/{$meetingId}";
+
+            $response = Http::withToken($token)->get($url);
+
+            if ($response->status() === 401) {
+                Cache::forget('zoom_s2s_access_token');
+                $token = $this->getAccessToken();
+
+                if ($token) {
+                    $response = Http::withToken($token)->get($url);
+                }
+            }
+
+            if ($response->failed()) {
+                Log::error('ZoomService Get Meeting Error', [
+                    'meeting_id' => $meetingId,
+                    'status'     => $response->status(),
+                    'body'       => $response->body(),
+                ]);
+                return null;
+            }
+
+            return $response->json();
+        } catch (Throwable $e) {
+            Log::error('ZoomService Exception en getMeeting: ' . $e->getMessage(), ['meeting_id' => $meetingId]);
+            return null;
+        }
+    }
+
+    /**
+     * Zoom espera start_time local (yyyy-MM-ddTHH:mm:ss) + campo timezone, o GMT con "Z".
+     * Normalizamos a la zona de la app para no depender de offsets ISO 8601.
+     */
+    private function formatStartTime($startDateTime): string
+    {
+        $tz = config('app.timezone', 'America/Bogota');
+
+        return Carbon::parse($startDateTime)->setTimezone($tz)->format('Y-m-d\TH:i:s');
     }
 
     /**
@@ -396,7 +537,7 @@ class ZoomService
             $url = "{$this->apiBaseUrl}/meetings/{$meetingId}";
             $payload = [
                 'topic'      => $topic,
-                'start_time' => $startDateTime,
+                'start_time' => $this->formatStartTime($startDateTime),
                 'duration'   => $durationMinutes,
                 'timezone'   => config('app.timezone', 'America/Bogota')
             ];

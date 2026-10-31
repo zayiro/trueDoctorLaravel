@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('patient_id')->constrained()->onDelete('cascade');
             $table->foreignId('doctor_id')->constrained()->onDelete('cascade');
             $table->foreignId('appointment_id')->nullable()->constrained()->onDelete('set null');
-
+            
             // ── Metadatos (no encriptados — necesarios para filtros) ─────
             $table->enum('entry_type', ['consultation', 'follow_up', 'emergency', 'note']);
             $table->enum('status', ['draft', 'signed', 'amended'])->default('draft');

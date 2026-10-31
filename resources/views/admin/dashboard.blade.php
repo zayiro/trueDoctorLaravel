@@ -198,6 +198,7 @@
                         @forelse($pastAppointments as $appointment)
                             <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-xl mb-2 border border-slate-100">
                                 <div>
+                                    <p class="text-xs font-bold text-indigo-700">{{ $appointment->reference }}</p>
                                     <p class="text-xs font-bold text-slate-700">Dr. {{ $appointment->doctor->user->name ?? 'Specialist' }}</p>
                                     <p class="text-[11px] text-slate-400">{{ \Carbon\Carbon::parse($appointment->date)->format('d/m/Y') }}</p>
                                 </div>

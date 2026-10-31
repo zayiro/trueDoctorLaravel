@@ -17,15 +17,15 @@ class ZoomSagaCompensation
 {
     /**
      * Compensa el fallo de creación de reunión Zoom
-     * Marca la cita con estado de error y libera el slot reservado
+     * Registra el fallo para reintento y deja nota en la cita. NO cambia su status ni libera el horario
      */
     public static function compensateCreateMeetingFailure(Appointment $appointment, string $errorMessage): void
     {
         try {
             DB::transaction(function () use ($appointment, $errorMessage) {
-                // 1. Marcar la cita con estado de error específico
-                $appointment->update([
-                    'status' => 'zoom_creation_failed',
+                // 1. Dejar constancia en las notas. El status NO se modifica: AppointmentStatus no tiene estados de error de Zoom
+                //    y la cita ya está pagada/confirmada; el fallo queda en zoom_creation_failures para reintento.
+                $appointment->updateQuietly([
                     'notes' => ($appointment->notes ?? '') . "\n[ZOOM ERROR] " . $errorMessage . " [" . now()->format('Y-m-d H:i:s') . "]"
                 ]);
 
@@ -40,13 +40,6 @@ class ZoomSagaCompensation
                         'created_at' => now()
                     ]
                 );
-
-                // 3. Liberar el slot en la tabla de bloques de horario (si existe)
-                if ($appointment->address_id && $appointment->doctor_id) {
-                    DB::table('schedule_blocks')
-                        ->where('appointment_id', $appointment->id)
-                        ->delete();
-                }
 
                 Log::warning('ZoomSagaCompensation: Fallo de creación compensado', [
                     'appointment_id' => $appointment->id,
@@ -73,12 +66,11 @@ class ZoomSagaCompensation
             DB::transaction(function () use ($appointment, $errorMessage, $originalData) {
                 // 1. Revertir los datos de la cita al estado anterior si se proporcionan
                 if (!empty($originalData)) {
-                    $appointment->update($originalData);
+                    $appointment->updateQuietly($originalData);
                 }
 
-                // 2. Marcar con estado de error de reagendamiento
-                $appointment->update([
-                    'status' => 'zoom_update_failed',
+                // 2. Dejar constancia en las notas (sin tocar el status de la cita)
+                $appointment->updateQuietly([
                     'notes' => ($appointment->notes ?? '') . "\n[ZOOM RESCHEDULE ERROR] " . $errorMessage . " [" . now()->format('Y-m-d H:i:s') . "]"
                 ]);
 
@@ -118,9 +110,8 @@ class ZoomSagaCompensation
     {
         try {
             DB::transaction(function () use ($appointment, $errorMessage) {
-                // 1. Marcar con estado de error de eliminación
-                $appointment->update([
-                    'status' => 'zoom_delete_failed',
+                // 1. Dejar constancia en las notas (sin tocar el status de la cita)
+                $appointment->updateQuietly([
                     'notes' => ($appointment->notes ?? '') . "\n[ZOOM DELETE ERROR] " . $errorMessage . " [" . now()->format('Y-m-d H:i:s') . "]"
                 ]);
 
@@ -172,7 +163,7 @@ class ZoomSagaCompensation
                 );
 
                 // 2. Agregar nota a la cita
-                $appointment->update([
+                $appointment->updateQuietly([
                     'notes' => ($appointment->notes ?? '') . "\n[ZOOM END ERROR] " . $errorMessage . " [" . now()->format('Y-m-d H:i:s') . "]"
                 ]);
 

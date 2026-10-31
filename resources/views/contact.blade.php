@@ -1,6 +1,6 @@
 <x-guest-layout
-    meta-title="Contáctanos | Soporte y Atención OpenDoctorOnline" 
-    meta-description="¿Tienes dudas sobre nuestra plataforma médica? Ponte en contacto con el equipo de OpenDoctor.online. Estamos aquí para ayudarte a resolver tus consultas rápidamente."
+    meta_title="Contáctanos | Soporte y Atención OpenDoctorOnline" 
+    meta_description="¿Tienes dudas sobre nuestra plataforma médica? Ponte en contacto con el equipo de OpenDoctor.online. Estamos aquí para ayudarte a resolver tus consultas rápidamente."
 >
     <div class="max-w-5xl mx-auto py-16 px-4">
         <!-- Contenedor Principal Premium -->

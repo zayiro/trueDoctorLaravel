@@ -5,7 +5,7 @@ $breadcrumbs = [
         'href' => route('admin.dashboard'),
     ],
     [
-        'name' => 'Paciente',
+        'name' => 'Historia clínica',
     ]
 ];
 
@@ -14,27 +14,33 @@ switch ($patient->gender) {
     case 'female': $gender = 'Femenino'; break;
     default: $gender = 'No especificado';
 }
+
+// Cargar historiales con relación a cita y servicio
+$histories = $patient->histories()->with(['appointment.service'])->orderBy('created_at', 'desc')->get();
+
+// Agrupar notas por appointment_id para visualización por consulta
+$notesByAppointment = $histories->groupBy('appointment_id');
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-    <!-- Alerta de Éxito -->
+    {{-- Alerta de Éxito --}}
     @if (session('success'))
         <div id="alert-success" class="flex items-center p-4 mb-4 text-green-800 rounded-2xl bg-green-50 border border-green-100 shadow-sm" role="alert">
-            <svg class="flex-shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://w3.org" fill="currentColor" viewBox="0 0 20 20">
+            <svg class="flex-shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L8 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
             </svg>
             <div class="ms-3 text-sm font-medium">
                 {{ session('success') }}
             </div>
             <button type="button" class="ms-auto -mx-1.5 -my-1.5 bg-green-50 text-green-500 rounded-lg p-1.5 hover:bg-green-200 inline-flex items-center justify-center h-8 w-8" onclick="document.getElementById('alert-success').remove()">
-                <svg class="w-3 h-3" aria-hidden="true" xmlns="http://w3.org" fill="none" viewBox="0 0 14 14">
+                <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
                 </svg>
             </button>
         </div>
     @endif
 
-    <!-- Alerta de Error -->
+    {{-- Alerta de Error --}}
     @if (session('error'))
         <div class="flex items-center p-4 mb-4 text-red-800 rounded-2xl bg-red-50 border border-red-100 shadow-sm" role="alert">
             <div class="text-sm font-medium">{{ session('error') }}</div>
@@ -42,13 +48,13 @@ switch ($patient->gender) {
     @endif
 
     <div>
-        <!-- Botón Volver -->
+        {{-- Botón Volver --}}
         <a href="{{ route('partner.appointments.index') }}" class="text-sm text-gray-500 hover:text-blue-600 flex items-center gap-2 mb-6">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
             Volver a la agenda
         </a>
 
-        <!-- Header del Paciente -->
+        {{-- Header del Paciente --}}
         <div class="bg-white rounded-3xl p-8 shadow-xl border border-gray-100 mb-8">
             <div class="flex flex-col md:flex-row gap-6 items-center">
                 <div class="h-24 w-24 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-3xl font-black shrink-0">
@@ -81,7 +87,6 @@ switch ($patient->gender) {
                         @endif
                     </div>
                 </div>
-
                 @if($plan->can_export_history)
                 <a href="{{ route('patient.pdf.clinical-history', $patient) }}"
                     class="inline-flex items-center gap-2 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 px-4 py-2.5 text-sm font-bold text-gray-700 transition shrink-0">
@@ -92,12 +97,10 @@ switch ($patient->gender) {
             </div>
         </div>
 
-        <!-- Cuerpo del Perfil -->
+        {{-- Cuerpo del Perfil --}}
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-
-            <!-- Información Básica -->
+            {{-- Información Básica --}}
             <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-6">
-
                 <div>
                     <h3 class="font-bold text-gray-800 mb-3 border-b pb-2 text-sm uppercase tracking-wide">Identificación</h3>
                     <ul class="space-y-2.5 text-sm">
@@ -109,7 +112,6 @@ switch ($patient->gender) {
                         <li class="flex justify-between gap-3"><span class="text-gray-400">Zona de residencia</span> <span class="font-bold text-gray-700">{{ $patient->residence_zone ?? 'No especificado' }}</span></li>
                     </ul>
                 </div>
-
                 <div>
                     <h3 class="font-bold text-gray-800 mb-3 border-b pb-2 text-sm uppercase tracking-wide">Datos clínicos básicos</h3>
                     <ul class="space-y-2.5 text-sm">
@@ -118,7 +120,6 @@ switch ($patient->gender) {
                         <li class="flex justify-between gap-3"><span class="text-gray-400">IMC</span> <span class="font-bold text-gray-700">{{ $patient->getImcAttribute() ? $patient->getImcAttribute() . ' ' . $patient->getImcStatusAttribute() : 'No especificado' }}</span></li>
                     </ul>
                 </div>
-
                 <div>
                     <h3 class="font-bold text-gray-800 mb-3 border-b pb-2 text-sm uppercase tracking-wide">Afiliación</h3>
                     <ul class="space-y-2.5 text-sm">
@@ -128,7 +129,6 @@ switch ($patient->gender) {
                         <li class="flex justify-between gap-3"><span class="text-gray-400">Nivel de SISBEN</span> <span class="font-bold text-gray-700">{{ $patient->sisben_level ?? 'No especificado' }}</span></li>
                     </ul>
                 </div>
-
                 <div>
                     <h3 class="font-bold text-gray-800 mb-3 border-b pb-2 text-sm uppercase tracking-wide">Contacto de emergencia</h3>
                     <ul class="space-y-2.5 text-sm">
@@ -140,12 +140,8 @@ switch ($patient->gender) {
             </div>
 
             <div class="md:col-span-2 bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-8">
-
-                <!-- Condiciones permanentes -->
-                <!-- Envolvemos la sección con x-data para manejar el estado del formulario -->
+                {{-- Condiciones permanentes --}}
                 <div x-data="{ open: false, nuevoDato: '{{ $patient->permanent_conditions }}', enviando: false, mensaje: '' }">
-                    
-                    <!-- Encabezado con título a la izquierda y botón a la derecha -->
                     <div class="border-b pb-2 mb-3 flex items-center justify-between">
                         <h3 class="text-gray-900 font-bold flex items-center gap-2">
                             <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -153,8 +149,6 @@ switch ($patient->gender) {
                             </svg>
                             Condiciones permanentes
                         </h3>
-
-                        <!-- Botón de agregar estilizado y compacto -->
                         <button @click="open = !open" 
                                 class="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -163,13 +157,10 @@ switch ($patient->gender) {
                             <span>Editar</span>
                         </button>
                     </div>
-
-                    <!-- Div desplegable con el formulario AJAX -->
                     <div x-show="open" 
                         x-transition
                         x-cloak 
                         class="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                        
                         <form @submit.prevent="
                             enviando = true;
                             fetch('{{ route('partner.patients.update-condition', $patient) }}', {
@@ -190,14 +181,13 @@ switch ($patient->gender) {
                                     mensaje = 'Error al guardar';
                                 }
                             })
-                            .catch(() => { enviar = false; mensaje = 'Error de conexión'; })
+                            .catch(() => { enviando = false; mensaje = 'Error de conexión'; })
                         ">
                             <div class="flex gap-2">
                                 <input type="text" 
                                     x-model="nuevoDato" 
                                     placeholder="Ej. Hipertensión, Diabetes..." 
                                     class="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                
                                 <button type="submit" 
                                         :disabled="enviando"
                                         class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition disabled:opacity-50">
@@ -207,39 +197,30 @@ switch ($patient->gender) {
                             <p x-show="mensaje" x-text="mensaje" class="text-xs mt-1.5 font-medium text-emerald-600" x-cloak></p>
                         </form>
                     </div>
-
-                    <!-- Texto descriptivo que se actualiza en tiempo real gracias a x-text -->
                     <div class="text-sm text-gray-400 italic" 
                         x-text="nuevoDato.trim() ? nuevoDato : 'No hay condiciones permanentes registradas.'">
                         {{ $patient->permanent_conditions ?: 'No hay condiciones permanentes registradas.' }}
                     </div>
                 </div>
 
-                <!-- Alergias -->
+                {{-- Alergias --}}
                 <div x-data="{ 
                     open: false, 
                     enviando: false, 
                     mensaje: '',
-                    // Formulario reactivo
                     form: { name: '', type: 'other', severity: 'mild', reaction: '' },
-                    // Listado inicial cargado desde el servidor en formato JSON
                     allergies: {{ json_encode($patient->allergies) }},
-                    
                     resetForm() {
                         this.form = { name: '', type: 'other', severity: 'mild', reaction: '' };
                     }
                 }" class="mt-6">
-
-                    <!-- Encabezado con título y Botón -->
                     <div class="border-b pb-2 mb-3 flex items-center justify-between">
                         <h3 class="text-gray-900 font-bold flex items-center gap-2">
-                            <!-- Icono de Alergia/Escudo/Advertencia -->
                             <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                             </svg>
                             Alergias registradas
                         </h3>
-
                         <button @click="open = !open; if(!open) resetForm()" 
                                 class="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -248,8 +229,6 @@ switch ($patient->gender) {
                             <span x-text="open ? 'Cancelar' : 'Agregar'"></span>
                         </button>
                     </div>
-
-                    <!-- Formulario Desplegable para nueva Alergia -->
                     <div x-show="open" x-transition x-cloak class="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-xl shadow-inner">
                         <form @submit.prevent="
                             enviando = true;
@@ -263,7 +242,7 @@ switch ($patient->gender) {
                             .then(data => {
                                 enviando = false;
                                 if(data.success) {
-                                    allergies.push(data.allergy); // Se inserta dinámicamente en el listado visual
+                                    allergies.push(data.allergy);
                                     resetForm();
                                     open = false;
                                 } else {
@@ -272,16 +251,12 @@ switch ($patient->gender) {
                             })
                             .catch(() => { enviando = false; mensaje = 'Error en el servidor.'; })
                         " class="space-y-3">
-                            
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <!-- Nombre -->
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1">ALERGIA / SUSTANCIA</label>
                                     <input type="text" x-model="form.name" required placeholder="Ej. Penicilina" 
                                         class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none">
                                 </div>
-
-                                <!-- Tipo (Enum) -->
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1">TIPO</label>
                                     <select x-model="form.type" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none">
@@ -291,8 +266,6 @@ switch ($patient->gender) {
                                         <option value="other">Otro</option>
                                     </select>
                                 </div>
-
-                                <!-- Severidad (Enum) -->
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1">SEVERIDAD</label>
                                     <select x-model="form.severity" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none">
@@ -302,14 +275,11 @@ switch ($patient->gender) {
                                     </select>
                                 </div>
                             </div>
-
-                            <!-- Reacción (Texto opcional) -->
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 mb-1">REACCIÓN (OPCIONAL)</label>
                                 <input type="text" x-model="form.reaction" placeholder="Ej. Erupción cutánea, Anafilaxia" 
                                     class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none">
                             </div>
-
                             <div class="flex items-center justify-between pt-1">
                                 <p x-show="mensaje" x-text="mensaje" class="text-xs text-red-600 font-medium" x-cloak></p>
                                 <button type="submit" :disabled="enviando"
@@ -319,15 +289,10 @@ switch ($patient->gender) {
                             </div>
                         </form>
                     </div>
-
-                    <!-- Listado Reactivo de Alergias -->
                     <div class="space-y-2">
-                        <!-- Mensaje de lista vacía en tiempo real -->
                         <template x-if="allergies.length === 0">
                             <div class="text-sm text-gray-400 italic">No hay alergias registradas.</div>
                         </template>
-
-                        <!-- Bucle para iterar las alergias añadidas -->
                         <template x-for="allergy in allergies" :key="allergy.id">
                             <div class="flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-lg shadow-sm text-sm">
                                 <div>
@@ -348,8 +313,7 @@ switch ($patient->gender) {
                     </div>
                 </div>
 
-
-                <!-- Medicamentos -->
+                {{-- Medicamentos --}}
                 <div>
                     <h3 class="text-gray-900 font-bold border-b pb-2 mb-3 flex items-center gap-2">
                         <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
@@ -377,28 +341,24 @@ switch ($patient->gender) {
                     </div>
                 </div>
 
+                {{-- Antecedentes Quirúrgicos --}}
                 <div x-data="{ 
                     open: false, 
                     enviando: false, 
                     mensaje: '',
                     form: { name: '', year: '', observations: '', anesthesia_complications: 0, anesthesia_details: '' },
                     surgeries: {{ json_encode($patient->surgeries) }},
-                    
                     resetForm() {
                         this.form = { name: '', year: '', observations: '', anesthesia_complications: 0, anesthesia_details: '' };
                     }
                 }" class="mt-6">
-
-                    <!-- Encabezado con título y Botón -->
                     <div class="border-b pb-2 mb-3 flex items-center justify-between">
                         <h3 class="text-gray-900 font-bold flex items-center gap-2">
-                            <!-- Icono de Bisturí/Cirugías -->
                             <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m14.4 14.4-4.2 4.2H6v-4.2l4.2-4.2m4.2 4.2 6.1-6.1a2.1 2.1 0 0 0-3-3l-6.1 6.1m3 3-3-3"/>
                             </svg>
                             Antecedentes Quirúrgicos
                         </h3>
-
                         <button @click="open = !open; if(!open) resetForm()" 
                                 class="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-md transition">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -407,8 +367,6 @@ switch ($patient->gender) {
                             <span x-text="open ? 'Cancelar' : 'Agregar'"></span>
                         </button>
                     </div>
-
-                    <!-- Formulario Desplegable -->
                     <div x-show="open" x-transition x-cloak class="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-xl shadow-inner">
                         <form @submit.prevent="
                             enviando = true;
@@ -431,31 +389,23 @@ switch ($patient->gender) {
                             })
                             .catch(() => { enviando = false; mensaje = 'Error en el servidor.'; })
                         " class="space-y-3">
-                            
                             <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-                                <!-- Nombre de la cirugía -->
                                 <div class="md:col-span-3">
                                     <label class="block text-xs font-bold text-gray-500 mb-1">NOMBRE DE LA CIRUGÍA</label>
                                     <input type="text" x-model="form.name" required placeholder="Ej. Colecistectopía" 
                                         class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:outline-none">
                                 </div>
-
-                                <!-- Año -->
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1">AÑO</label>
                                     <input type="number" x-model="form.year" placeholder="Ej. 2021" min="1900" max="{{ date('Y') }}"
                                         class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:outline-none">
                                 </div>
                             </div>
-
-                            <!-- Observaciones -->
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 mb-1">OBSERVACIONES / DETALLES</label>
                                 <input type="text" x-model="form.observations" placeholder="Ej. Sin hallazgos adicionales, recuperación normal" 
                                     class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:outline-none">
                             </div>
-
-                            <!-- Complicaciones de Anestesia (Switch/Select) -->
                             <div class="bg-white p-3 border border-gray-200 rounded-lg">
                                 <div class="flex items-center justify-between">
                                     <label class="text-xs font-bold text-gray-600">¿PRESENTÓ COMPLICACIONES CON LA ANESTESIA?</label>
@@ -465,15 +415,12 @@ switch ($patient->gender) {
                                         <option value="1">Sí</option>
                                     </select>
                                 </div>
-
-                                <!-- Detalles de Complicación (Aparece dinámicamente si elige 'Sí') -->
                                 <div x-show="form.anesthesia_complications === 1" x-transition class="mt-2.5" x-cloak>
                                     <label class="block text-xs font-bold text-red-500 mb-1">DETALLES DE LA COMPLICACIÓN</label>
                                     <textarea x-model="form.anesthesia_details" :required="form.anesthesia_complications === 1" rows="2" placeholder="Describa qué ocurrió..."
                                             class="w-full px-3 py-1.5 text-sm border border-red-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none"></textarea>
                                 </div>
                             </div>
-
                             <div class="flex items-center justify-between pt-1">
                                 <p x-show="mensaje" x-text="mensaje" class="text-xs text-red-600 font-medium" x-cloak></p>
                                 <button type="submit" :disabled="enviando"
@@ -483,23 +430,17 @@ switch ($patient->gender) {
                             </div>
                         </form>
                     </div>
-
-                    <!-- Listado Reactivo -->
                     <div class="space-y-2">
                         <template x-if="surgeries.length === 0">
                             <div class="text-sm text-gray-400 italic">No hay cirugías registradas.</div>
                         </template>
-
                         <template x-for="surgery in surgeries" :key="surgery.id">
                             <div class="p-3 bg-white border border-gray-100 rounded-lg shadow-sm text-sm space-y-1">
                                 <div class="flex items-center justify-between">
                                     <span class="font-semibold text-gray-800" x-text="surgery.name"></span>
                                     <span class="text-xs text-gray-400 font-medium" x-text="surgery.year ? 'Año ' + surgery.year : 'Año: N/R'"></span>
                                 </div>
-                                
                                 <p x-show="surgery.observations" x-text="surgery.observations" class="text-xs text-gray-500"></p>
-                                
-                                <!-- Alerta visual si tuvo problemas de anestesia -->
                                 <div x-show="surgery.anesthesia_complications" class="mt-1 p-1.5 bg-red-50 border border-red-100 rounded text-xs text-red-700" x-cloak>
                                     <strong>Complicación anestesia:</strong> <span x-text="surgery.anesthesia_details"></span>
                                 </div>
@@ -508,29 +449,24 @@ switch ($patient->gender) {
                     </div>
                 </div>
 
-                <!-- Antecedentes familiares -->
+                {{-- Antecedentes familiares --}}
                 <div x-data="{ 
                     open: false, 
                     enviando: false, 
                     mensaje: '',
                     form: { condition: '', relationship: '', notes: '' },
                     familyHistories: {{ json_encode($patient->familyHistories) }},
-                    
                     resetForm() {
                         this.form = { condition: '', relationship: '', notes: '' };
                     }
                 }" class="mt-6">
-
-                    <!-- Encabezado con título y Botón -->
                     <div class="border-b pb-2 mb-3 flex items-center justify-between">
                         <h3 class="text-gray-900 font-bold flex items-center gap-2">
-                            <!-- Icono de Árbol Genealógico / Usuarios -->
                             <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
                             </svg>
                             Antecedentes Familiares
                         </h3>
-
                         <button @click="open = !open; if(!open) resetForm()" 
                                 class="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-md transition">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -539,8 +475,6 @@ switch ($patient->gender) {
                             <span x-text="open ? 'Cancelar' : 'Agregar'"></span>
                         </button>
                     </div>
-
-                    <!-- Formulario Desplegable -->
                     <div x-show="open" x-transition x-cloak class="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-xl shadow-inner">
                         <form @submit.prevent="
                             enviando = true;
@@ -563,16 +497,12 @@ switch ($patient->gender) {
                             })
                             .catch(() => { enviando = false; mensaje = 'Error en el servidor.'; })
                         " class="space-y-3">
-                            
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <!-- Condición Médica -->
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1">CONDICIÓN / ENFERMEDAD</label>
                                     <input type="text" x-model="form.condition" required placeholder="Ej. Diabetes Mellitus Tipo 2, Infarto" 
                                         class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:outline-none">
                                 </div>
-
-                                <!-- Parentesco / Relación -->
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1">PARENTESCO</label>
                                     <select x-model="form.relationship" required
@@ -590,14 +520,11 @@ switch ($patient->gender) {
                                     </select>
                                 </div>
                             </div>
-
-                            <!-- Notas Adicionales -->
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 mb-1">NOTAS / OBSERVACIONES (OPCIONAL)</label>
                                 <input type="text" x-model="form.notes" placeholder="Ej. Diagnosticado a los 50 años, controlado con tratamiento" 
                                     class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:outline-none">
                             </div>
-
                             <div class="flex items-center justify-between pt-1">
                                 <p x-show="mensaje" x-text="mensaje" class="text-xs text-red-600 font-medium" x-cloak></p>
                                 <button type="submit" :disabled="enviando"
@@ -607,56 +534,123 @@ switch ($patient->gender) {
                             </div>
                         </form>
                     </div>
-
-                    <!-- Listado Reactivo -->
                     <div class="space-y-2">
                         <template x-if="familyHistories.length === 0">
                             <div class="text-sm text-gray-400 italic">No hay antecedentes familiares registrados.</div>
                         </template>
-
                         <template x-for="history in familyHistories" :key="history.id">
                             <div class="p-3 bg-white border border-gray-100 rounded-lg shadow-sm text-sm space-y-1">
                                 <div class="flex items-center justify-between">
                                     <span class="font-semibold text-gray-800" x-text="history.condition"></span>
                                     <span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium" x-text="history.relationship"></span>
                                 </div>
-                                
                                 <p x-show="history.notes" x-text="history.notes" class="text-xs text-gray-500 mt-1"></p>
                             </div>
                         </template>
                     </div>
                 </div>
-
             </div>
         </div>
 
-        <!-- Últimas consultas -->
+        {{-- Historial Clínico Agrupado por Consulta --}}
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 mt-8">
+            <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Historial Clínico por Consulta</h3>
+
+            <div class="space-y-6">
+                @forelse($notesByAppointment as $appointmentId => $notes)
+                    {{-- Encabezado de la Cita --}}
+                    @if ($appointmentId)
+                        @php $appointment = $notes->first()->appointment; @endphp
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="font-bold text-blue-800 text-sm">
+                                        📅 Cita: {{ $appointment->service->name ?? 'Servicio no disponible' }}
+                                    </p>
+                                    <p class="text-xs text-blue-600">
+                                        {{ \Carbon\Carbon::parse($appointment->date)->translatedFormat('d \d\e F, Y') }} a las {{ $appointment->start_time }}
+                                    </p>
+                                </div>
+                                <span class="text-xs px-2 py-1 rounded-full bg-blue-200 text-blue-800 font-bold">
+                                    {{ ucfirst($appointment->status->value) }}
+                                </span>
+                            </div>
+                        </div>
+                    @else
+                        {{-- Notas Generales (Sin cita vinculada) --}}
+                        <div class="bg-gray-50 border-l-4 border-gray-400 p-4 rounded-r-lg">
+                            <p class="font-bold text-gray-700 text-sm">📝 Nota General / Seguimiento</p>
+                        </div>
+                    @endif
+
+                    {{-- Lista de Notas de esa Cita --}}
+                    <div class="space-y-3 pl-2">
+                        @foreach($notes as $note)
+                            <div class="p-4 border border-gray-200 rounded-xl bg-white shadow-sm">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="text-xs font-bold text-gray-500 uppercase">
+                                        {{ $note->entry_type === 'consultation' ? 'Consulta' : ucfirst($note->entry_type) }}
+                                    </span>
+                                    <span class="text-xs text-gray-400">
+                                        {{ $note->created_at->format('d/m/Y H:i') }}
+                                    </span>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <p class="font-semibold text-gray-700 text-xs mb-1">Motivo:</p>
+                                        <p class="text-gray-600">{{ $note->reason_for_consultation }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold text-gray-700 text-xs mb-1">Diagnóstico:</p>
+                                        <p class="text-gray-600">{{ $note->diagnosis }}</p>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <p class="font-semibold text-gray-700 text-xs mb-1">Síntomas / Subjetivo-Objetivo:</p>
+                                        <p class="text-gray-600">{{ $note->symptoms }}</p>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <p class="font-semibold text-gray-700 text-xs mb-1">Plan / Tratamiento:</p>
+                                        <p class="text-gray-600">{{ $note->treatment_plan }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @empty
+                    <p class="text-sm text-gray-400 italic text-center py-4">No hay notas clínicas registradas.</p>
+                @endforelse
+            </div>
+        </div>
+
+        {{-- Últimas consultas --}}
         <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 mt-8">
             <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Últimas 3 consultas</h3>
             <div class="space-y-2">
-                @forelse($patient->appointments->take(3) as $history)
+                @forelse($patient->appointments->take(3) as $appointment)
                 @php
-                $status = match($history->status_label ?? $history->status->value) {
+                $status = match($appointment->status_label ?? $appointment->status->value) {
                     'confirmed' => 'Confirmada',
                     'pending' => 'Pendiente',
                     'cancelled' => 'Cancelada',
                     'completed' => 'Completada',
-                    default => ucfirst($history->status->value),
+                    default => ucfirst($appointment->status->value),
                 };
                 @endphp
                 <div class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition">
                     <div>
-                        <p class="font-bold text-gray-800 text-sm">{{ $history->service->name }}</p>
-                        @if($history->notes)
-                        <p class="text-sm text-gray-400">{{ $history->notes }}</p>
+                        <p class="font-bold text-indigo-700 text-sm">{{ $appointment->reference }}</p>
+                        <p class="font-bold text-gray-800 text-sm">{{ $appointment->service->name }}</p>
+                        @if($appointment->notes)
+                        <p class="text-sm text-gray-400">{{ $appointment->notes }}</p>
                         @endif
-                        <p class="text-sm text-gray-500">{{ \Carbon\Carbon::parse($history->date)->translatedFormat('d \d\e F, Y') }} a las {{ $history->start_time }}</p>
+                        <p class="text-sm text-gray-500">{{ \Carbon\Carbon::parse($appointment->date)->translatedFormat('d \d\e F, Y') }} a las {{ $appointment->start_time }}</p>
                     </div>
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                        {{ $history->status === 'confirmed' ? 'bg-green-100 text-green-800' : '' }}
-                        {{ $history->status === 'pending' ? 'bg-yellow-100 text-yellow-800' : '' }}
-                        {{ $history->status === 'cancelled' ? 'bg-red-100 text-red-800' : '' }}
-                        {{ $history->status === 'completed' ? 'bg-blue-100 text-blue-800' : '' }}">
+                        {{ $appointment->status === 'confirmed' ? 'bg-green-100 text-green-800' : '' }}
+                        {{ $appointment->status === 'pending' ? 'bg-yellow-100 text-yellow-800' : '' }}
+                        {{ $appointment->status === 'cancelled' ? 'bg-red-100 text-red-800' : '' }}
+                        {{ $appointment->status === 'completed' ? 'bg-blue-100 text-blue-800' : '' }}">
                         {{ $status }}
                     </span>
                 </div>
@@ -666,433 +660,75 @@ switch ($patient->gender) {
             </div>
         </div>
 
-        <!-- ============================================= -->
-        <!-- Asistente de Consulta (AI Scribe) -->
-        <!-- ============================================= -->
-        @if ($allowed)
+        {{-- Nota de Evolución Actual (SOAP con Alpine/AJAX) --}}
         <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 mt-8"
-            x-data="consultationScribe({
-                patientId: {{ $patient->id }},
-                appointmentId: {{ $appointmentId ?? 'null' }},
-                uploadUrl: '{{ route('partner.patients.consultation-audio.upload', $patient->id) }}',
-                statusUrlBase: '{{ url('partner/consultation-audio') }}',
-                notifyPendingUrl: '{{ route('partner.patients.consultation-audio.notify-pending', $patient->id) }}',
-                recordingId: 'rec_{{ $patient->id }}_{{ $appointmentId ?? 'none' }}',
-            })">
-            <div class="flex items-center justify-between border-b pb-3 mb-4">
-                <h3 class="font-bold text-gray-800 flex items-center gap-2">
-                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-14 0m7 7v3m-3.5 0h7M12 14a3 3 0 003-3V5a3 3 0 10-6 0v6a3 3 0 003 3z"/></svg>
-                    Asistente de consulta (IA)
-                </h3>
-                <span class="text-xs text-gray-400 font-medium">OpenDoctorOnline</span>
+             x-data="{ enviando: false, mensaje: '', tipo: '' }">
+            
+            <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Nota de evolución actual</h3>
+
+            {{-- Alertas dinámicas de éxito/error --}}
+            <div x-show="mensaje" x-cloak x-transition
+                 :class="tipo === 'success' ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200'"
+                 class="p-4 mb-4 rounded-xl border flex items-center justify-between shadow-sm">
+                <div class="flex items-center gap-2">
+                    <svg x-show="tipo === 'success'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <svg x-show="tipo === 'error'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    <span class="text-sm font-medium" x-text="mensaje"></span>
+                </div>
+                <button @click="mensaje = ''" class="text-current opacity-60 hover:opacity-100 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
             </div>
 
-            <template x-if="state === 'idle'">
-                <div class="flex items-center justify-between">
-                    <p class="text-sm text-gray-500">Graba la consulta y deja que la IA prellene la nota de evolución.</p>
-                    <button type="button" @click="startRecording()"
-                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm py-2.5 px-5 rounded-xl transition inline-flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>
-                        Iniciar grabación
-                    </button>
-                </div>
-            </template>
-
-            <template x-if="state === 'recording'">
-                <div class="flex items-center justify-between">
-                    <p class="text-sm text-gray-700 flex items-center gap-2">
-                        <span class="relative flex h-3 w-3">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                        </span>
-                        Grabando consulta — <span x-text="elapsedLabel"></span>
-                    </p>
-                    <button type="button" @click="stopRecording()"
-                        class="bg-gray-800 hover:bg-gray-900 text-white font-bold text-sm py-2.5 px-5 rounded-xl transition">
-                        Detener y generar nota
-                    </button>
-                </div>
-            </template>
-
-            <template x-if="state === 'uploading' || state === 'transcribing' || state === 'structuring'">
-                <div class="flex items-center gap-3 text-sm text-gray-600">
-                    <svg class="animate-spin h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                    </svg>
-                    <span x-text="statusLabel"></span>
-                </div>
-            </template>
-
-            <template x-if="state === 'ready'">
-                <div class="rounded-xl bg-green-50 border border-green-200 p-4 flex items-center justify-between">
-                    <p class="text-sm text-green-800 font-medium">
-                        ✓ Nota generada — revisa y ajusta los campos antes de guardar.
-                    </p>
-                    <button type="button" @click="reset()" class="text-xs text-green-700 underline">Grabar otra vez</button>
-                </div>
-            </template>
-
-            <template x-if="state === 'upload_failed'">
-                <div class="rounded-xl bg-amber-50 border border-amber-200 p-4 flex items-center justify-between gap-4">
-                    <p class="text-sm text-amber-800" x-text="errorMessage"></p>
-                    <button type="button" @click="retryUpload()"
-                        class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs py-2 px-4 rounded-lg transition shrink-0 whitespace-nowrap">
-                        Reintentar subida
-                    </button>
-                </div>
-            </template>
-
-            <template x-if="state === 'error'">
-                <div class="rounded-xl bg-red-50 border border-red-200 p-4 flex items-center justify-between">
-                    <p class="text-sm text-red-700" x-text="errorMessage"></p>
-                    <button type="button" @click="reset()" class="text-xs text-red-700 underline">Reintentar</button>
-                </div>
-            </template>
-        </div>
-        
-        <!-- Nota de Evolución Actual -->
-        <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 mt-6">
-            <h3 class="font-bold text-gray-800 mb-4 border-b pb-2">Nota de evolución actual</h3>
-            <form id="evolution-note-form" action="{{ route('partner.patients.store-history', $patient->id) }}" method="POST">
+            <form id="evolution-note-form"
+                  @submit.prevent="
+                    enviando = true;
+                    mensaje = '';
+                    const formData = new FormData($el);
+                    
+                    fetch('{{ route('partner.patients.store-history', $patient->id) }}', {
+                        method: 'POST',
+                        headers: { 
+                            'Accept': 'application/json', 
+                            'X-Requested-With': 'XMLHttpRequest' 
+                        },
+                        body: formData
+                    })
+                    .then(res => {
+                        if (!res.ok) throw new Error('Error en el servidor');
+                        return res.json();
+                    })
+                    .then(data => {
+                        enviando = false;
+                        tipo = data.success ? 'success' : 'error';
+                        mensaje = data.message || (data.success ? 'Nota guardada exitosamente.' : 'No se pudo guardar la nota.');
+                        if (data.success) {
+                            setTimeout(() => { mensaje = ''; }, 5000);
+                        }
+                    })
+                    .catch(err => {
+                        enviando = false;
+                        tipo = 'error';
+                        mensaje = 'Error de conexión o validación. Revisa los campos.';
+                        console.error('Error al guardar nota:', err);
+                    })
+                  " 
+                  class="space-y-4">
                 @csrf
-
                 @include('partner.patients.partials.history-form')
 
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-5 rounded-xl mt-4 transition">
-                    Guardar nota
-                </button>
+                <div class="flex justify-end pt-2">
+                    <button type="submit"
+                            :disabled="enviando"
+                            class="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-bold py-2.5 px-6 rounded-xl transition flex items-center gap-2 shadow-md">
+                        <svg x-show="enviando" x-cloak class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span x-text="enviando ? 'Guardando...' : 'Guardar nota'"></span>
+                    </button>
+                </div>
             </form>
         </div>
-        @else        
-        <div class="bg-teal-100 border-t-4 border-teal-500 rounded-b text-teal-900 px-4 py-3 shadow-md mb-4" role="alert">
-            <div class="flex">
-                <div class="py-1"><svg class="fill-current h-6 w-6 text-teal-500 mr-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M2.93 17.07A10 10 0 1 1 17.07 2.93 10 10 0 0 1 2.93 17.07zm12.73-1.41A8 8 0 1 0 4.34 4.34a8 8 0 0 0 11.32 11.32zM9 11V9h2v6H9v-4zm0-6h2v2H9V5z"/></svg></div>
-                <div>
-                <p class="font-bold">Política de Privacidad</p>
-                <p class="text-sm">Para generar las <span class="font-bold">Notas de Evolución Actual</span>, el proceso general requiere que accedas directamente desde tu agenda médica</p>
-                <p class="text-sm">Las notas solo pueden registrarse el mismo día de la consulta o dentro de las primeras 48 horas.</p>
-                </div>
-            </div>
-        </div>
-        @endif
     </div>
-  
-    <script>
-        // Helper de IndexedDB para el AI Scribe.
-        // Guarda grabaciones de audio pendientes de subir, identificadas por patientId +
-        // appointmentId + uploadUrl, para que sobrevivan recargas de página o cierres
-        // accidentales de pestaña mientras no haya conexión.
-        const AIScribeStorage = (() => {
-            const DB_NAME = 'opendoctor_ai_scribe';
-            const STORE_NAME = 'pending_recordings';
-            const DB_VERSION = 1;
-
-            function openDb() {
-                return new Promise((resolve, reject) => {
-                    const req = indexedDB.open(DB_NAME, DB_VERSION);
-
-                    req.onupgradeneeded = (event) => {
-                        const db = event.target.result;
-                        if (!db.objectStoreNames.contains(STORE_NAME)) {
-                            const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-                            store.createIndex('patientId', 'patientId', { unique: false });
-                        }
-                    };
-
-                    req.onsuccess = () => resolve(req.result);
-                    req.onerror = () => reject(req.error);
-                });
-            }
-
-            async function save(record) {
-                const db = await openDb();
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction(STORE_NAME, 'readwrite');
-                    tx.objectStore(STORE_NAME).put(record);
-                    tx.oncomplete = () => resolve(record);
-                    tx.onerror = () => reject(tx.error);
-                });
-            }
-
-            async function remove(id) {
-                const db = await openDb();
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction(STORE_NAME, 'readwrite');
-                    tx.objectStore(STORE_NAME).delete(id);
-                    tx.oncomplete = () => resolve();
-                    tx.onerror = () => reject(tx.error);
-                });
-            }
-
-            async function getAll() {
-                const db = await openDb();
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction(STORE_NAME, 'readonly');
-                    const req = tx.objectStore(STORE_NAME).getAll();
-                    req.onsuccess = () => resolve(req.result || []);
-                    req.onerror = () => reject(req.error);
-                });
-            }
-
-            async function get(id) {
-                const db = await openDb();
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction(STORE_NAME, 'readonly');
-                    const req = tx.objectStore(STORE_NAME).get(id);
-                    req.onsuccess = () => resolve(req.result || null);
-                    req.onerror = () => reject(req.error);
-                });
-            }
-
-            return { save, remove, getAll, get };
-        })();
-        
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('consultationScribe', ({ patientId, appointmentId, uploadUrl, statusUrlBase, notifyPendingUrl, recordingId }) => ({
-                state: 'idle', // idle | recording | uploading | transcribing | structuring | ready | error | upload_failed
-                mediaRecorder: null,
-                chunks: [],
-                startedAt: null,
-                elapsedLabel: '00:00',
-                timerInterval: null,
-                pollInterval: null,
-                errorMessage: '',
-                uploadAttempts: 0,
-                maxAutoRetries: 3,
-                recordingId: recordingId,
-
-                get statusLabel() {
-                    return {
-                        uploading: 'Subiendo audio...',
-                        transcribing: 'Transcribiendo la consulta...',
-                        structuring: 'Redactando la nota...',
-                    }[this.state] || 'Procesando...';
-                },
-
-                async init() {
-                    const pending = await AIScribeStorage.get(this.recordingId);
-                    if (pending && pending.status === 'pending_upload') {
-                        // Reconstruimos los Blob a partir de los ArrayBuffers guardados.
-                        this.chunks = (pending.chunkBuffers || []).map(
-                            buf => new Blob([buf], { type: 'audio/webm' })
-                        );
-                        this.uploadAttempts = pending.attempts || 0;
-                        this.state = 'upload_failed';
-                        this.errorMessage = 'Hay una grabación de una consulta anterior que no se pudo subir. Haz clic en reintentar.';
-                    }
-                },
-
-                async startRecording() {
-                    try {
-                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                        this.chunks = [];
-                        this.uploadAttempts = 0;
-                        this.mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-
-                        this.mediaRecorder.ondataavailable = (e) => {
-                            if (e.data.size > 0) this.chunks.push(e.data);
-                        };
-
-                        this.mediaRecorder.onstop = () => {
-                            stream.getTracks().forEach(track => track.stop());
-                            this.uploadAudio();
-                        };
-
-                        this.mediaRecorder.start(30000);
-                        this.startedAt = Date.now();
-                        this.state = 'recording';
-                        this.timerInterval = setInterval(() => this.updateElapsed(), 1000);
-                    } catch (err) {
-                        this.errorMessage = 'No se pudo acceder al micrófono. Revisa los permisos del navegador.';
-                        this.state = 'error';
-                    }
-                },
-
-                stopRecording() {
-                    clearInterval(this.timerInterval);
-                    this.state = 'uploading';
-                    this.mediaRecorder.stop();
-                },
-
-                updateElapsed() {
-                    const seconds = Math.floor((Date.now() - this.startedAt) / 1000);
-                    const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
-                    const ss = String(seconds % 60).padStart(2, '0');
-                    this.elapsedLabel = `${mm}:${ss}`;
-                },
-
-                async uploadAudio() {
-                    this.state = 'uploading';
-                    this.uploadAttempts++;
-
-                    const blob = new Blob(this.chunks, { type: 'audio/webm' });
-                    const formData = new FormData();
-                    formData.append('audio', blob, 'consultation.webm');
-
-                    try {
-                        const res = await fetch(uploadUrl, {
-                            method: 'POST',
-                            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
-                            body: formData,
-                        });
-
-                        if (!res.ok) {
-                            const data = await res.json().catch(() => ({}));
-                            throw new Error(data.message || 'No se pudo subir el audio.');
-                        }
-
-                        const data = await res.json();
-                        await AIScribeStorage.remove(this.recordingId);
-
-                        this.state = 'transcribing';
-                        this.pollStatus(data.job_token);
-
-                    } catch (err) {
-                        await this.handleUploadFailure();
-                    }
-                },
-
-                async handleUploadFailure() {
-                    // Los Blob no siempre son clonables de forma confiable por IndexedDB
-                    // justo después de generarse desde MediaRecorder. Los convertimos a
-                    // ArrayBuffer (sí 100% clonable) antes de persistir.
-                    const buffers = await Promise.all(
-                        this.chunks.map(chunk => chunk.arrayBuffer())
-                    );
-
-                    await AIScribeStorage.save({
-                        id: this.recordingId,
-                        patientId,
-                        appointmentId,
-                        uploadUrl,
-                        notifyPendingUrl,
-                        chunkBuffers: buffers, // ArrayBuffers, no Blobs
-                        attempts: this.uploadAttempts,
-                        status: 'pending_upload',
-                        savedAt: Date.now(),
-                    });
-
-                    if (this.uploadAttempts < this.maxAutoRetries) {
-                        this.state = 'uploading';
-                        setTimeout(() => this.uploadAudio(), 20000);
-                    } else {
-                        this.state = 'upload_failed';
-                        this.errorMessage = 'No se pudo subir el audio por un problema de red. Tu grabación quedó guardada en este dispositivo — haz clic en reintentar cuando tengas conexión.';
-                        this.notifyPendingIfOnline();
-                    }
-                },
-
-                async notifyPendingIfOnline() {
-                    if (!navigator.onLine) return;
-                    try {
-                        await fetch(notifyPendingUrl, {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ appointment_id: appointmentId }),
-                        });
-                    } catch (e) {}
-                },
-
-                retryUpload() {
-                    this.uploadAttempts = 0;
-                    this.uploadAudio();
-                },
-
-                pollStatus(jobToken) {
-                    this.pollInterval = setInterval(async () => {
-                        try {
-                            const res = await fetch(`${statusUrlBase}/${jobToken}/status`);
-                            const data = await res.json();
-
-                            if (data.status === 'transcribing' || data.status === 'structuring' || data.status === 'queued') {
-                                this.state = data.status === 'queued' ? 'transcribing' : data.status;
-                                return;
-                            }
-
-                            if (data.status === 'ready') {
-                                clearInterval(this.pollInterval);
-                                this.fillForm(data);  // ← pasa el objeto completo
-                                this.state = 'ready';
-                                return;
-                            }
-
-                            if (data.status === 'failed' || data.status === 'not_found') {
-                                clearInterval(this.pollInterval);
-                                this.errorMessage = data.error || 'No se pudo generar la nota.';
-                                this.state = 'error';
-                            }
-                        } catch (err) {
-                            clearInterval(this.pollInterval);
-                            this.errorMessage = 'Se perdió la conexión mientras se procesaba la nota.';
-                            this.state = 'error';
-                        }
-                    }, 3000);
-                },
-
-                fillForm(data) {
-                    const form = document.getElementById('evolution-note-form');
-                    if (!form) return;
-
-                    const set = (name, value) => {
-                        const field = form.querySelector(`[name="${name}"]`);
-                        if (field && value) field.value = value;
-                    };
-
-                    // ── Metadatos (no encriptados) ───────────────────────────────
-                    set('entry_type',  data.soap?.entry_type ?? 'consultation');
-                    set('cie10_code',  data.soap?.cie10_code ?? '');
-
-                    // ── Campos SOAP (se encriptarán en el modelo) ────────────────
-                    set('soap_subjective', data.soap?.subjective  ?? '');
-                    set('soap_objective',  data.soap?.objective   ?? '');
-                    set('soap_assessment', data.soap?.assessment  ?? '');
-                    set('soap_plan',       data.soap?.plan        ?? '');
-
-                    // ── Medicamento sugerido (si la IA detectó uno) ──────────────
-                    const med = data.medication_suggestion;
-                    if (med?.name) {
-                        set('medication_name',      med.name);
-                        set('medication_dosage',    med.dosage);
-                        set('medication_frequency', med.frequency);
-                        set('medication_notes',     med.notes);
-
-                        // Activar el checkbox de Alpine para mostrar los campos
-                        const checkbox = form.querySelector('[x-model="addMedication"]');
-                        if (checkbox) checkbox.dispatchEvent(new Event('click'));
-                    }
-                },
-
-                reset() {
-                    this.state = 'idle';
-                    this.chunks = [];
-                    this.errorMessage = '';
-                    this.uploadAttempts = 0;
-                },
-            }));
-        });
-
-        window.addEventListener('online', async () => {
-            try {
-                const pending = await AIScribeStorage.getAll();
-                for (const rec of pending) {
-                    if (rec.status !== 'pending_upload') continue;
-                    try {
-                        await fetch(rec.notifyPendingUrl, {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ appointment_id: rec.appointmentId }),
-                        });
-                    } catch (e) {}
-                }
-            } catch (e) {}
-        });
-    
-    </script>    
 </x-admin-layout>

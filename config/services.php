@@ -41,6 +41,8 @@ return [
         'client_secret'        => env('ZOOM_CLIENT_SECRET'),
         'host_email'           => env('ZOOM_HOST_EMAIL'),
         'webhook_secret_token' => env('ZOOM_WEBHOOK_SECRET_TOKEN'),
+        'sdk_client_id'        => env('ZOOM_SDK_CLIENT_ID'),
+        'sdk_client_secret'    => env('ZOOM_SDK_CLIENT_SECRET'),
     ],
 
     /*

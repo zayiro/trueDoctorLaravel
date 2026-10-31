@@ -181,12 +181,7 @@ class AppointmentController extends Controller
                 $zoomMeeting = $this->zoomService->createMeeting("Telemedicina_Ref: {$service->name}", $startDateTime, (int) $pivotDuration);
 
                 if ($zoomMeeting) {
-                    $appointment->update([
-                        'zoom_meeting_id' => $zoomMeeting['id'],
-                        'zoom_start_url'  => $zoomMeeting['start_url'],
-                        'zoom_join_url'   => $zoomMeeting['join_url'],
-                        'meeting_link'    => $zoomMeeting['join_url'],
-                    ]);
+                    $this->persistZoomMeeting($appointment, $zoomMeeting);
                 }
             } catch (\Exception $e) {
                 // ✅ AHORA SÍ tenemos el $appointment->id para registrar el fallo de forma segura
@@ -561,17 +556,27 @@ class AppointmentController extends Controller
 
         try {
             $user = auth()->user();
-            $meetingId = $appointment->zoom_meeting_id;
-            
-            $isDoctor = $user->id === $appointment->doctor_id || auth()->user()->hasRole('doctor');
-            $role = $isDoctor ? 1 : 0;
+            $meetingId = (string) $appointment->zoom_meeting_id;
 
-            try {
-                $password = Crypt::decryptString($appointment->meeting_link_password ?? '');
-            } catch (\Illuminate\Contracts\Encryption\DecryptException $e) {
-                $password = $appointment->meeting_link_password ?? ''; 
+            // Host (role 1) solo para el doctor dueño de la cita.
+            // appointments.doctor_id referencia doctors.id (NO users.id).
+            $isHost = ($user->role === 'doctor' || $user->hasRole('doctor'))
+                && $user->doctor
+                && (int) $user->doctor->id === (int) $appointment->doctor_id;
+            $role = $isHost ? 1 : 0;
+
+            $password = $this->resolveMeetingPassword($appointment, $zoomService);
+
+            // El ZAK solo se entrega al anfitrión: es lo que permite INICIAR la reunión desde el SDK.
+            $zak = null;
+            if ($isHost) {
+                $zak = $zoomService->getHostZak();
+
+                if (!$zak) {
+                    Log::error("joinRoom: no se pudo obtener el ZAK del host (Cita ID {$appointment->id}). Revisa el scope user:read:token:admin de la app Server-to-Server.");
+                }
             }
-            
+
             $signature = $zoomService->generateSdkSignature($meetingId, $role);
 
             return view('appointments.room', [
@@ -579,7 +584,8 @@ class AppointmentController extends Controller
                 'meetingId'   => $meetingId,
                 'password'    => $password,
                 'signature'   => $signature,
-                'sdkKey'      => config('services.zoom.client_id'),
+                'sdkKey'      => $zoomService->getSdkClientId(),
+                'zak'         => $zak,
                 'userRole'    => $role,
                 'zoomStarted' => $appointment->zoom_started,
             ]);
@@ -588,6 +594,46 @@ class AppointmentController extends Controller
             Log::error("Error en joinRoom (Cita ID {$appointment->id}): " . $e->getMessage());
             return redirect()->route('admin.dashboard')->with('error', 'No se pudieron recuperar las llaves de acceso.');
         }
+    }
+
+    /**
+     * Devuelve la password de la reunión de Zoom (el modelo Appointment la descifra al leerla).
+     * Si la cita es anterior al guardado de la password (columna NULL), la recupera desde Zoom y la persiste.
+     */
+    private function resolveMeetingPassword(Appointment $appointment, ZoomService $zoomService): string
+    {
+        $stored = $appointment->meeting_link_password;
+
+        if (!empty($stored)) {
+            return (string) $stored;
+        }
+
+        $meeting  = $zoomService->getMeeting($appointment->zoom_meeting_id);
+        $password = (string) ($meeting['password'] ?? '');
+
+        if ($password !== '') {
+            // Quietly: es una reparación al leer, no debe disparar el AppointmentObserver
+            $appointment->updateQuietly(['meeting_link_password' => $password]);
+        } else {
+            Log::warning("Cita ID {$appointment->id}: la reunión de Zoom no devolvió password (se unirá con password vacía).");
+        }
+
+        return $password;
+    }
+
+    /**
+     * Guarda en la cita los datos de la reunión creada por ZoomService::createMeeting().
+     * Claves del servicio: meeting_id, password, url_partner (start_url), url_patient (join_url).
+     * El modelo Appointment cifra meeting_link, zoom_start_url y meeting_link_password.
+     */
+    private function persistZoomMeeting(Appointment $appointment, array $zoomMeeting): void
+    {
+        $appointment->update([
+            'zoom_meeting_id'       => $zoomMeeting['meeting_id'],
+            'meeting_link'          => $zoomMeeting['url_patient'],
+            'zoom_start_url'        => $zoomMeeting['url_partner'],
+            'meeting_link_password' => ($zoomMeeting['password'] ?? '') ?: null,
+        ]);
     }
 
     public function startZoom(Appointment $appointment)
@@ -639,42 +685,40 @@ class AppointmentController extends Controller
     
     public function endZoomMeeting(Appointment $appointment, ZoomService $zoomService): JsonResponse
     {
-        // 1. Validar que exista una reunión de Zoom vinculada
-        if (!$appointment->zoom_meeting_id) {
-            // Si no hay zoom, igual podemos marcarla como completada localmente
-            $appointment->update(['status' => AppointmentStatus::COMPLETED->value]);
+        // 1. Ya completada → idempotente
+        if ($appointment->status === AppointmentStatus::COMPLETED) {
             return response()->json([
-                'success' => true, 
-                'message' => 'La consulta ha sido marcada como finalizada.'
+                'success' => true,
+                'message' => 'La consulta ya estaba finalizada.'
             ]);
         }
 
-        // 2. Intentar cerrar la reunión en Zoom
-        $closedInZoom = $zoomService->endMeeting($appointment->zoom_meeting_id);
-
-        if ($closedInZoom) {
-            // 3. Éxito: Zoom cerró la reunión, actualizamos nuestra BD
-            $appointment->update(['status' => AppointmentStatus::COMPLETED->value]);
-            
-            return response()->json([
-                'success' => true, 
-                'message' => 'La videollamada fue finalizada con éxito.'
-            ]);
+        // 2. Intentar cerrar Zoom si existe (best-effort, no bloqueante)
+        if ($appointment->zoom_meeting_id) {
+            try {
+                $zoomService->endMeeting($appointment->zoom_meeting_id);
+            } catch (\Throwable $e) {
+                Log::warning('Zoom falló al cerrar, pero continuamos', [
+                    'appointment_id' => $appointment->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
-        // 4. FALLBACK DE RESILIENCIA: Si Zoom falla (ej: error 4711 de scopes), 
-        // igual marcamos la cita como completada en NUESTRA base de datos para no bloquear al usuario.
-        Log::warning('Zoom falló al cerrar la reunión, pero se marcó como completada localmente', [
-            'appointment_id' => $appointment->id,
-            'zoom_meeting_id' => $appointment->zoom_meeting_id,
+        // 3. SIEMPRE marcar como completada (la verdad está en nuestra DB)
+        $appointment->update([
+            'status'       => AppointmentStatus::COMPLETED->value,
+            'completed_at' => now(),
         ]);
 
-        $appointment->update(['status' => AppointmentStatus::COMPLETED->value]);
+        // 4. Invalidar caché del motor nuevo (importante para Fase 3)
+        app(\App\Services\Availability\AvailabilityRepository::class)
+            ?->invalidateAvailabilityCache($appointment->doctor_id);
 
         return response()->json([
-            'success' => true, // Devolvemos true al frontend para que el usuario pueda salir
-            'message' => 'La consulta ha sido finalizada en el sistema (Nota: Ocurrió un problema de sincronización con Zoom).'
-        ], 200);
+            'success' => true,
+            'message' => 'Consulta finalizada correctamente.'
+        ]);
     }
 
     public function paymentResult(Request $request)
@@ -746,11 +790,7 @@ class AppointmentController extends Controller
                     $zoomMeeting = $this->zoomService->createMeeting("Telemedicina_Ref: {$fresh->reference}", $startDateTime, (int) $fresh->duration);
 
                     if ($zoomMeeting) {
-                        $fresh->update([
-                            'zoom_meeting_id' => $zoomMeeting['meeting_id'] ?? $zoomMeeting['id'],
-                            'meeting_link'    => $zoomMeeting['url_patient'] ?? $zoomMeeting['join_url'],
-                            'zoom_start_url'  => $zoomMeeting['url_partner'] ?? $zoomMeeting['start_url'],
-                        ]);
+                        $this->persistZoomMeeting($fresh, $zoomMeeting);
                         DB::table('zoom_creation_failures')->where('appointment_id', $fresh->id)->delete();
                     }
                 });
@@ -791,7 +831,7 @@ class AppointmentController extends Controller
                     "appointment_{$appointment->reference}_confirmation"
                 );
 
-                $reminderMessage = "Recordatorio: Tu cita {$appointment->reference} comienza en 20 min.";
+                $reminderMessage = "Recordatorio: Tu cita medica {$appointment->reference} inicia en 20 min.";
                 $this->scheduleReminderBeforeEvent(
                     $appointment->patient?->phone,
                     $reminderMessage,

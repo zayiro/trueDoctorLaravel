@@ -87,7 +87,7 @@ class PartnerPatientController extends Controller
     }
 
     /**
-     * Registra una nota de evolución o historial clínico.
+     * Registra una nota de evolución o historial clínico (Formato SOAP).
      */
     public function storeHistory(Request $request, int $patientId)
     {
@@ -96,32 +96,41 @@ class PartnerPatientController extends Controller
         
         $this->ensurePatientRelation($patient, $doctor->id);
 
+        // 1. Validación alineada con la nueva estructura de la tabla patient_histories
         $validated = $request->validate([
-            'entry_type'              => ['required', Rule::in(['consultation', 'follow_up', 'emergency', 'note'])],
-            'reason_for_consultation' => ['required', 'string', 'max:255'],
-            'symptoms'                => ['nullable', 'string'],
-            'diagnosis'               => ['required', 'string'],
-            'treatment_plan'          => ['nullable', 'string'],
-            'appointment_id'          => ['nullable', 'exists:appointments,id'],
-            'medication_name'         => ['nullable', 'required_with:medication_dosage,medication_frequency', 'string', 'max:255'],
-            'medication_dosage'       => ['nullable', 'string', 'max:100'],
-            'medication_frequency'    => ['nullable', 'string', 'max:100'],
-            'medication_notes'        => ['nullable', 'string'],
+            'entry_type'      => ['required', Rule::in(['consultation', 'follow_up', 'emergency', 'note'])],
+            'appointment_id'  => ['nullable', 'exists:appointments,id'],
+            'cie10_code'      => ['nullable', 'string', 'max:20'],
+            'soap_subjective' => ['nullable', 'string'],
+            'soap_objective'  => ['nullable', 'string'],
+            'soap_assessment' => ['required', 'string'], // El diagnóstico/evaluación es obligatorio
+            'soap_plan'       => ['nullable', 'string'],
+            
+            // Mantenemos validación de medicamentos por compatibilidad con el partial history-form
+            'medication_name'      => ['nullable', 'required_with:medication_dosage,medication_frequency', 'string', 'max:255'],
+            'medication_dosage'    => ['nullable', 'string', 'max:100'],
+            'medication_frequency' => ['nullable', 'string', 'max:100'],
+            'medication_notes'     => ['nullable', 'string'],
         ]);
 
         try {
             DB::transaction(function () use ($validated, $patient, $doctor) {
+                // 2. Crear la nota clínica con la estructura SOAP estandarizada
                 PatientHistory::create([
-                    'patient_id'              => $patient->id,
-                    'doctor_id'               => $doctor->id,
-                    'appointment_id'          => $validated['appointment_id'] ?? null,
-                    'entry_type'              => $validated['entry_type'],
-                    'reason_for_consultation' => $validated['reason_for_consultation'],
-                    'symptoms'                => $validated['symptoms'] ?? null,
-                    'diagnosis'               => $validated['diagnosis'],
-                    'treatment_plan'          => $validated['treatment_plan'] ?? null,
+                    'patient_id'      => $patient->id,
+                    'doctor_id'       => $doctor->id,
+                    'appointment_id'  => $validated['appointment_id'] ?? null,
+                    'entry_type'      => $validated['entry_type'],
+                    'status'          => 'signed', // Por defecto, al guardar desde el formulario se considera firmada
+                    'cie10_code'      => $validated['cie10_code'] ?? null,
+                    'ai_assisted'     => false,    // Por defecto es manual (la IA lo cambiaría a true en el futuro)
+                    'soap_subjective' => $validated['soap_subjective'] ?? null,
+                    'soap_objective'  => $validated['soap_objective'] ?? null,
+                    'soap_assessment' => $validated['soap_assessment'],
+                    'soap_plan'       => $validated['soap_plan'] ?? null,
                 ]);
 
+                // 3. Registrar medicamentos si se proporcionaron
                 if (!empty($validated['medication_name'])) {
                     PatientMedication::create([
                         'patient_id' => $patient->id,
@@ -134,11 +143,33 @@ class PartnerPatientController extends Controller
                 }
             });
 
+            // 4. Respuesta dual: AJAX (para Alpine.js) o Redirección tradicional
+            if ($request->expectsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Nota de evolución guardada correctamente.',
+                ]);
+            }
+
             return redirect()->route('partner.patients.show', $patient->id)
                 ->with('success', 'Nota de evolución guardada correctamente.');
+                
         } catch (Throwable $e) {
-            Log::error("Error al guardar historial para paciente {$patient->id}", ['error' => $e->getMessage()]);
-            return redirect()->back()->with('error', 'Ocurrió un error al guardar la nota. Por favor, intenta de nuevo.');
+            Log::error("Error al guardar historial para paciente {$patient->id}", [
+                'error' => $e->getMessage(),
+                'doctor_id' => $doctor->id,
+            ]);
+            
+            // Respuesta de error dual
+            if ($request->expectsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ocurrió un error al guardar la nota. Por favor, intenta de nuevo.',
+                ], 500);
+            }
+            
+            return redirect()->back()->with('error', 'Ocurrió un error al guardar la nota. Por favor, intenta de nuevo.')
+                                ->withInput(); // Preservar input en caso de error tradicional
         }
     }
 

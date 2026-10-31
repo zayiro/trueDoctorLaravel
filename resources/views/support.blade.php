@@ -1,6 +1,6 @@
 <x-guest-layout
-    meta-title="Centro de Soporte Técnico y Ayuda | OpenDoctorOnline"
-    meta-description="¡Estamos para ayudarte! Resuelve tus dudas sobre agendamiento, telemedicina o IA, y contacta con nuestro equipo de asistencia técnica en OpenDoctorOnline."
+    meta_title="Centro de Soporte Técnico y Ayuda | OpenDoctorOnline"
+    meta_description="¡Estamos para ayudarte! Resuelve tus dudas sobre agendamiento, telemedicina o IA, y contacta con nuestro equipo de asistencia técnica en OpenDoctorOnline."
 >
     <div class="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 mt-8" x-data="{ activeTab: 'pacientes' }">
         <div class="max-w-7xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">

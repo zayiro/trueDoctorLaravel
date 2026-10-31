@@ -1,6 +1,6 @@
 <x-guest-layout
-    meta-title="Quiénes Somos, Nuestra Misión y Visión | OpenDoctorOnline"
-    meta-description="Conoce OpenDoctorOnline. Somos la plataforma médica global que transforma el acceso a la salud combinando Inteligencia Artificial, telemedicina y agendamiento en minutos."
+    meta_title="Quiénes Somos, Nuestra Misión y Visión | OpenDoctorOnline"
+    meta_description="Conoce OpenDoctorOnline. Somos la plataforma médica global que transforma el acceso a la salud combinando Inteligencia Artificial, telemedicina y agendamiento en minutos."
 >
     <div class="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 mt-8">
         <div class="max-w-7xl mx-auto space-y-12">
