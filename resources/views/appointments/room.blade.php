@@ -1,4 +1,5 @@
 @php
+use App\Enums\AppointmentStatus;
 
 $user = auth()->user();
 $isProfessional = in_array($user->role, ['doctor', 'clinic'], true);
@@ -97,7 +98,7 @@ $cfg = [
                 Finalizar Consulta
             </button>
         @else
-            <a href="{{ route('admin.dashboard') }}"
+            <a href="{{ route('patient.appointments.index') }}"
                class="px-3 md:px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 text-xs md:text-sm font-medium rounded-lg transition">
                 Salir de la sala
             </a>

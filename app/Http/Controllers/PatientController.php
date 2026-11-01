@@ -328,8 +328,22 @@ class PatientController extends Controller
             ->where('patient_id', $patient->id)
             ->firstOrFail();
 
+        // Solo se pueden cancelar citas activas (evita doble cancelación y notificaciones repetidas)
+        $currentStatus = $appointment->status instanceof \BackedEnum
+            ? $appointment->status->value
+            : (string) $appointment->status;
+
+        if (!in_array($currentStatus, ['pending', 'confirmed'], true)) {
+            return redirect()->back()->with('error', 'Esta consulta ya no se puede cancelar.');
+        }
+
         $now = Carbon::now('America/Bogota');
-        $appointmentDateTime = Carbon::parse($appointment->date . ' ' . $appointment->start_time, 'America/Bogota');
+
+        // `date` tiene cast a Carbon: hay que formatearla antes de unirla con la hora
+        $appointmentDateTime = Carbon::parse(
+            $appointment->date->format('Y-m-d') . ' ' . $appointment->start_time,
+            'America/Bogota'
+        );
 
         if ($now->greaterThanOrEqualTo($appointmentDateTime)) {
             return redirect()->back()->with('error', 'No es posible cancelar una consulta médica que ya se encuentra en desarrollo o que pertenece al pasado.');
@@ -538,6 +552,11 @@ class PatientController extends Controller
         $patient = Auth::user()->patient;
         if (!$patient || $appointment->patient_id !== $patient->id) {
             abort(403, 'No autorizado.');
+        }
+
+        // Una cita virtual sin pagar no se reprograma: primero debe pagarse (o cancelarse)
+        if ($appointment->isAwaitingPayment()) {
+            return back()->with('error', 'Debes completar el pago de esta cita virtual antes de poder reprogramarla.');
         }
 
         $rescheduleCount = $appointment->reschedule_count ?? 0;

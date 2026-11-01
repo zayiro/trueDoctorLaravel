@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Observers;
 
+use App\Enums\AppointmentStatus;
 use App\Models\Appointment;
 use App\Models\ClinicSetting;
 use App\Models\DoctorSetting;
@@ -11,6 +12,7 @@ use App\Jobs\SyncZoomMeetingJob;
 use App\Jobs\CancelZoomMeetingJob;
 use App\Events\AppointmentRescheduled;
 use App\Repositories\AvailabilityRepository;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Throwable;
@@ -64,7 +66,8 @@ class AppointmentObserver
             }
 
             // FLUJO B: CANCELACIÓN DE CITAS VIRTUALES
-            if ($appointment->isDirty('status') && $appointment->status === 'cancelled' && $appointment->service?->type === 'virtual') {
+            // status tiene cast a enum: comparar con el string 'cancelled' con === nunca era verdadero y este flujo no se ejecutaba
+            if ($appointment->isDirty('status') && $appointment->status === AppointmentStatus::CANCELLED && $appointment->service?->type === 'virtual') {
                 if ($appointment->zoom_meeting_id) {
                     // 🔒 CORRECCIÓN: afterCommit() para evitar cancelar Zoom si la transacción falla
                     dispatch(new CancelZoomMeetingJob($appointment->zoom_meeting_id))->afterCommit();
@@ -114,7 +117,8 @@ class AppointmentObserver
                 $previousDateTime = Carbon::parse("{$dateStr} {$timeStr}")->format('d/m/Y H:i');
                 
                 // 🔒 CORRECCIÓN: afterCommit() para que el email se envíe DESPUÉS del commit
-                event(new AppointmentRescheduled($appointment, $previousDateTime))->afterCommit();
+                // event() devuelve un array (no el evento): ->afterCommit() lanzaba un Error. Se difiere con DB::afterCommit.
+                DB::afterCommit(fn () => event(new AppointmentRescheduled($appointment, $previousDateTime)));
                 
                 // 🔒 CORRECCIÓN: Usar update() explícito en lugar de saveQuietly()
                 // Esto evita el riesgo de loop infinito si las condiciones cambian

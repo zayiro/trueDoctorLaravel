@@ -41,6 +41,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 use Carbon\Carbon;
 use Throwable;
@@ -550,12 +551,20 @@ class AppointmentController extends Controller
     
     public function joinRoom(Appointment $appointment, ZoomService $zoomService)
     {
+        $user = auth()->user();
+        $this->authorizeRoomAccess($appointment, $user);
+
+        // Sin reunión de Zoom: intentamos crearla al vuelo (si la cita lo permite) en vez de expulsar al usuario
         if (!$appointment->zoom_meeting_id) {
-            return redirect()->route('admin.dashboard')->with('error', 'Esta cita no tiene una videollamada activa.');
+            $reason = $this->tryRecoverZoomMeeting($appointment);
+            $appointment->refresh();
+
+            if (!$appointment->zoom_meeting_id) {
+                return $this->roomUnavailableView($appointment, $reason);
+            }
         }
 
         try {
-            $user = auth()->user();
             $meetingId = (string) $appointment->zoom_meeting_id;
 
             // Host (role 1) solo para el doctor dueño de la cita.
@@ -592,8 +601,141 @@ class AppointmentController extends Controller
 
         } catch (\Exception $e) {
             Log::error("Error en joinRoom (Cita ID {$appointment->id}): " . $e->getMessage());
-            return redirect()->route('admin.dashboard')->with('error', 'No se pudieron recuperar las llaves de acceso.');
+            return $this->roomUnavailableView($appointment, 'config');
         }
+    }
+
+    /**
+     * Solo participan en la sala: el paciente dueño, el doctor de la cita, la clínica de la cita y los administradores.
+     */
+    private function authorizeRoomAccess(Appointment $appointment, $user): void
+    {
+        $isAdmin = $user->role === 'admin' || (method_exists($user, 'hasRole') && $user->hasRole('admin'));
+
+        $allowed = $isAdmin
+            || ($user->role === 'patient' && (int) $appointment->patient?->user_id === (int) $user->id)
+            || ($user->role === 'doctor' && $user->doctor && (int) $appointment->doctor_id === (int) $user->doctor->id)
+            || ($user->role === 'clinic' && $user->clinic && (int) $appointment->clinic_id === (int) $user->clinic->id);
+
+        abort_unless($allowed, 403, 'No tienes acceso a esta sala.');
+    }
+
+    /**
+     * Intenta crear la reunión de Zoom de una cita que llegó a la sala sin ella.
+     * Devuelve un código de motivo: recovered | unpaid | cancelled | completed | expired | not_virtual | throttled | failed
+     */
+    private function tryRecoverZoomMeeting(Appointment $appointment): string
+    {
+        $enumValue = fn ($v) => $v instanceof \BackedEnum ? $v->value : (string) $v;
+
+        $status = $enumValue($appointment->status);
+        if ($status === AppointmentStatus::CANCELLED->value) return 'cancelled';
+        if ($status === AppointmentStatus::COMPLETED->value) return 'completed';
+
+        $appointment->loadMissing(['service', 'address']);
+        $isVirtual = ($appointment->service?->type === 'virtual') || ($appointment->address?->type === 'virtual');
+        if (!$isVirtual) return 'not_virtual';
+
+        if ($enumValue($appointment->payment_status) !== PaymentStatus::PAID->value) return 'unpaid';
+
+        $tz       = config('app.timezone', 'America/Bogota');
+        $startsAt = Carbon::parse($appointment->date->format('Y-m-d') . ' ' . $appointment->start_time, $tz);
+        $endsAt   = $startsAt->copy()->addMinutes((int) $appointment->duration);
+        if (now($tz)->greaterThan($endsAt)) return 'expired';
+
+        // Enfriamiento: si falló hace menos de 60 s, no volvemos a golpear la API de Zoom
+        $cooldownKey = "zoom_recover_cooldown_{$appointment->id}";
+        if (Cache::has($cooldownKey)) return 'throttled';
+
+        try {
+            $created = DB::transaction(function () use ($appointment, $startsAt, $tz) {
+                $fresh = $appointment->newQuery()->lockForUpdate()->find($appointment->id);
+
+                // Otra petición (doctor/paciente) pudo crearla mientras tanto
+                if ($fresh->zoom_meeting_id) return true;
+
+                // Si el horario ya empezó, Zoom necesita un start_time vigente
+                $start = $startsAt->isPast() ? now($tz)->addMinute() : $startsAt;
+
+                $zoomMeeting = $this->zoomService->createMeeting(
+                    "Telemedicina_Ref: {$fresh->reference}",
+                    $start->toIso8601String(),
+                    (int) $fresh->duration
+                );
+
+                if (!$zoomMeeting) return false;
+
+                $this->persistZoomMeeting($fresh, $zoomMeeting);
+                DB::table('zoom_creation_failures')->where('appointment_id', $fresh->id)->delete();
+
+                return true;
+            });
+
+            if ($created) {
+                Log::info("joinRoom: reunión de Zoom recuperada al vuelo (Cita ID {$appointment->id}).");
+                return 'recovered';
+            }
+
+            $this->registerRecoveryFailure($appointment, 'ZoomService no devolvió datos de la reunión.');
+        } catch (Throwable $e) {
+            Log::error("joinRoom: no se pudo recuperar la reunión de Zoom (Cita ID {$appointment->id}): " . $e->getMessage());
+            $this->registerRecoveryFailure($appointment, $e->getMessage());
+        }
+
+        Cache::put($cooldownKey, true, 60);
+
+        return 'failed';
+    }
+
+    /**
+     * Deja constancia en la tabla de contingencia para el seguimiento manual / dashboards.
+     */
+    private function registerRecoveryFailure(Appointment $appointment, string $message): void
+    {
+        try {
+            $row = DB::table('zoom_creation_failures')->where('appointment_id', $appointment->id);
+
+            if ($row->exists()) {
+                $row->update([
+                    'attempts'   => DB::raw('COALESCE(attempts, 0) + 1'),
+                    'status'     => 'failed',
+                    'last_error' => substr($message, 0, 500),
+                    'updated_at' => now(),
+                ]);
+            } else {
+                DB::table('zoom_creation_failures')->insert([
+                    'appointment_id' => $appointment->id,
+                    'attempts'       => 1,
+                    'status'         => 'failed',
+                    'last_error'     => substr($message, 0, 500),
+                    'created_at'     => now(),
+                    'updated_at'     => now(),
+                ]);
+            }
+        } catch (Throwable $e) {
+            Log::error('No se pudo registrar el fallo de recuperación de Zoom: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Mantiene al usuario en la URL de la sala con un mensaje claro en lugar de redirigirlo al dashboard.
+     */
+    private function roomUnavailableView(Appointment $appointment, string $reason)
+    {
+        $appointment->loadMissing(['patient.user']);
+        $user = auth()->user();
+
+        $isProfessional = in_array($user->role, ['doctor', 'clinic', 'admin'], true)
+            || (method_exists($user, 'hasRole') && $user->hasRole('admin'));
+
+        return response()->view('appointments.room-unavailable', [
+            'appointment'    => $appointment,
+            'reason'         => $reason,
+            'isProfessional' => $isProfessional,
+            'exitUrl'        => $isProfessional ? route('admin.dashboard') : route('patient.appointments.index'),
+            'autoRetry'      => in_array($reason, ['throttled', 'failed'], true),
+            'supportUrl'     => config('services.support.url'),
+        ]);
     }
 
     /**

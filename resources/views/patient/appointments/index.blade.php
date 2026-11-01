@@ -6,7 +6,7 @@ $breadcrumbs = [
         'href' => route('admin.dashboard'),
     ],
     [
-        'name' => 'Mis Citas',
+        'name' => 'Agenda Médica',
     ]
 ];
 
@@ -53,7 +53,7 @@ $hasStatusFilter = filled(request('status'));
         <!-- Encabezado de la Sección y Filtro por Estados -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
             <div>
-                <h2 class="text-2xl font-black text-gray-800">Mis Citas</h2>
+                <h2 class="text-2xl font-black text-gray-800">Agenda Médica</h2>
                 <p class="text-gray-500 text-sm font-medium">Listado cronológico de tus consultas médicas</p>
             </div>
             
@@ -92,8 +92,15 @@ $hasStatusFilter = filled(request('status'));
                         
                         // ✅ MEJORA: Determinar si la cita está EN CURSO
                         $now = now('America/Bogota');
-                        $isAppointmentActive = $now->between($start, $end) && $appointment->status === 'confirmed';
-                        $isAppointmentPending = $now->isBefore($start) && $appointment->status === 'confirmed';
+                        $isAppointmentActive = $now->between($start, $end) && $appointment->status->value === 'confirmed';
+                        $isAppointmentPending = $now->isBefore($start) && $appointment->status->value === 'confirmed';
+
+                        // 💻 Acción de telemedicina (pago pendiente / entrar a la sala / sala aún no disponible)
+                        $roomAction = $appointment->roomAction();
+                        $awaitingPayment = $roomAction && $roomAction['type'] === 'pay';
+                        if ($awaitingPayment) {
+                            $statusText = 'Pago pendiente';
+                        }
 
                         $settings = $appointment->doctor->settings;
                         $allowPatientCancellation = $settings->allow_patient_cancellation ?? true;
@@ -130,7 +137,7 @@ $hasStatusFilter = filled(request('status'));
                                     <div class="flex items-center flex-wrap gap-2">
                                         <div class="flex flex-col">
                                             <!-- Referencia Única de la Cita -->
-                                            <span class="text-[9px] font-black text-indigo-500 uppercase tracking-wider font-mono bg-indigo-50 px-1.5 py-0.5 rounded-md w-fit mb-1">
+                                            <span class="text-md font-black text-indigo-500 uppercase tracking-wider font-mono bg-indigo-50 px-1.5 py-0.5 rounded-md w-fit mb-1">
                                                 Ref: {{ $appointment->reference ?? 'REF-PENDIENTE' }}
                                             </span>
                                             <h4 class="text-base font-black text-gray-900">
@@ -155,7 +162,7 @@ $hasStatusFilter = filled(request('status'));
                                     </div>
                                     <div class="mt-2 text-sm text-gray-600 space-y-1.5">
                                         <!-- 🟢 BOTÓN DE WHATSAPP: Solo visible para citas confirmadas -->
-                                        @if($appointment->status_label === 'confirmed' && $appointment->doctor->phone)
+                                        @if($appointment->status->value === 'confirmed' && $appointment->doctor->phone && !$awaitingPayment)
                                             @php
                                                 $cleanDoctorPhone = preg_replace('/[^0-9]/', '', $appointment->doctor->phone);
                                                 $whatsappMessage = "Hola Dr(a). " . $appointment->doctor->user->name . ", le saluda el paciente " . auth()->user()->name . ". Le contacto respecto a mi consulta de " . $appointment->service->name . " programada para el día " . \Carbon\Carbon::parse($appointment->date)->format('d/m/Y') . " (Ref: " . $appointment->reference . ").";
@@ -203,26 +210,43 @@ $hasStatusFilter = filled(request('status'));
                                      }">
                                     
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black border uppercase tracking-wider
-                                        @if($appointment->status_label === 'confirmed') bg-green-50 text-green-700 border-green-200
+                                        @if($appointment->status->value === 'confirmed' && !$awaitingPayment) bg-green-50 text-green-700 border-green-200
                                         @else bg-amber-50 text-amber-700 border-amber-200 @endif">
                                         {{ $statusText }}
                                     </span>
 
                                     <div class="flex flex-col sm:flex-col gap-2 w-full">
                                         
-                                        <!-- ✅ MEJORA: BOTÓN DE TELEMEDICINA - Solo EN CURSO -->
-                                        <a href="{{ route('appointments.room', ['appointment' => $appointment->id]) }}" 
-                                        target="_blank" 
-                                        class="inline-flex justify-center items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black uppercase tracking-wider text-center w-full shadow-md transition-all transform hover:-translate-y-0.5 animate-pulse">
-                                            🟢 Entrar a Consulta Ahora
-                                        </a>
-                                        <div class="flex items-center text-xs font-medium text-gray-500">Empieza a las {{ $appointment->start_time }}</div>
+                                        <!-- 💻 TELEMEDICINA: pago pendiente / entrar a la sala / sala aún no disponible -->
+                                        @if ($roomAction)
+                                            @if ($roomAction['type'] === 'enter')
+                                                <a href="{{ $roomAction['url'] }}"
+                                                   target="_blank"
+                                                   class="inline-flex justify-center items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black uppercase tracking-wider text-center w-full shadow-md transition-all transform hover:-translate-y-0.5 {{ $roomAction['live'] ? 'animate-pulse' : '' }}">
+                                                    {{ $roomAction['live'] ? '🟢 Entrar a Consulta Ahora' : '🟢 Entrar a la sala' }}
+                                                </a>
+                                            @elseif ($roomAction['type'] === 'pay')
+                                                <a href="{{ $roomAction['url'] }}"
+                                                   class="inline-flex justify-center items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-wider text-center w-full shadow-md transition-all transform hover:-translate-y-0.5">
+                                                    💳 Completar pago
+                                                </a>
+                                                <span class="flex items-center text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 p-1.5 rounded-lg text-center w-full">
+                                                    Tu consulta virtual se confirma al completar el pago.
+                                                </span>
+                                            @else
+                                                <span class="flex items-center text-[11px] font-bold text-slate-500 bg-slate-50 border border-slate-200 p-1.5 rounded-lg text-center w-full">
+                                                    {{ $roomAction['label'] }}
+                                                </span>
+                                            @endif
+                                        @endif
 
                                         <!-- 🔄 BOTÓN AGREGADO: REAGENDAR CITA -->
+                                        {{-- Con pago pendiente no se reagenda: cancelar sí sigue disponible --}}
+                                        @unless ($awaitingPayment)
                                         @if ($appointment->reschedule_count >= $maxReschedules)
                                             <span class="flex items-center text-[11px] font-bold text-gray-500 bg-gray-50 p-1.5 rounded-lg text-center w-full">Límite de reagendamientos alcanzado</span>                                            
                                         @else
-                                            @if(in_array($appointment->status_label, ['pending', 'confirmed']) && ($remainingHours >= $cancellationNoticeHours))
+                                            @if(in_array($appointment->status->value, ['pending', 'confirmed']) && ($remainingHours >= $cancellationNoticeHours))
                                                 <button @click="openReschedule = true" 
                                                         type="button" 
                                                         class="inline-flex justify-center items-center gap-1.5 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-xs font-black uppercase tracking-wider text-center w-full border border-indigo-100 transition-colors">
@@ -233,6 +257,7 @@ $hasStatusFilter = filled(request('status'));
                                                 </button>
                                             @endif
                                         @endif
+                                        @endunless
 
                                         <!-- ❌ BOTÓN DE CANCELACIÓN EXISTENTE -->
                                         @if($canCancelVisually)
@@ -415,7 +440,7 @@ $hasStatusFilter = filled(request('status'));
                                     <div class="flex items-center flex-wrap gap-2">
                                         <div class="flex flex-col">
                                             <!-- Referencia Histórica -->
-                                            <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider font-mono bg-slate-100 px-1.5 py-0.5 rounded-md w-fit mb-1">
+                                            <span class="text-md font-black text-slate-400 uppercase tracking-wider font-mono bg-slate-100 px-1.5 py-0.5 rounded-md w-fit mb-1">
                                                 Ref: {{ $appointment->reference ?? 'REF-CERRADA' }}
                                             </span>
                                             <h4 class="text-base font-bold text-slate-700 line-through">
@@ -434,7 +459,7 @@ $hasStatusFilter = filled(request('status'));
                                 <!-- Lado Derecho: Estado Histórico -->
                                 <div class="flex flex-col items-start sm:items-end justify-center min-w-[150px]">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black border uppercase tracking-wider
-                                        @if($appointment->status === 'completed') bg-blue-50 text-blue-700 border-blue-200
+                                        @if($appointment->status->value === 'completed') bg-blue-50 text-blue-700 border-blue-200
                                         @else bg-red-50 text-red-700 border-red-200 @endif">
                                         {{ $statusText }}
                                     </span>

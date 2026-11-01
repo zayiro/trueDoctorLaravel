@@ -93,6 +93,74 @@ class Appointment extends Model
     }
 
     /**
+     * Minutos antes del inicio en que se habilita "Entrar a la sala" para el paciente.
+     */
+    public const ROOM_OPENS_MINUTES_BEFORE = 15;
+
+    /**
+     * Acción de telemedicina que corresponde mostrar al paciente en su agenda.
+     * Requiere service y address cargados (eager loading) para no generar consultas extra.
+     *
+     *   pay   → cita virtual con pago pendiente
+     *   enter → virtual, pagada y dentro de la ventana horaria (live = la cita ya empezó)
+     *   wait  → virtual, pagada, pero la sala aún no abre
+     *   null  → sin acción (presencial, cancelada/completada o ya terminó)
+     *
+     * @return array{type: string, label: string, url?: string, live?: bool}|null
+     */
+    public function roomAction(): ?array
+    {
+        $status = $this->status instanceof \BackedEnum ? $this->status->value : (string) $this->status;
+
+        if (!in_array($status, [\App\Enums\AppointmentStatus::PENDING->value, \App\Enums\AppointmentStatus::CONFIRMED->value], true)) {
+            return null;
+        }
+
+        $isVirtual = ($this->service?->type === 'virtual') || ($this->address?->type === 'virtual');
+        if (!$isVirtual) {
+            return null;
+        }
+
+        $payment = $this->payment_status instanceof \BackedEnum ? $this->payment_status->value : (string) $this->payment_status;
+
+        if ($payment !== \App\Enums\PaymentStatus::PAID->value) {
+            return [
+                'type'  => 'pay',
+                'label' => 'Completar pago',
+                'url'   => route('appointments.preview', ['id' => $this->id]),
+            ];
+        }
+
+        if ($status !== \App\Enums\AppointmentStatus::CONFIRMED->value) {
+            return null;
+        }
+
+        $tz     = config('app.timezone', 'America/Bogota');
+        $start  = Carbon::parse(Carbon::parse($this->date)->format('Y-m-d') . ' ' . $this->start_time, $tz);
+        $end    = $start->copy()->addMinutes((int) $this->duration);
+        $opens  = $start->copy()->subMinutes(self::ROOM_OPENS_MINUTES_BEFORE);
+        $now    = Carbon::now($tz);
+
+        if ($now->greaterThanOrEqualTo($end)) {
+            return null;
+        }
+
+        if ($now->lessThan($opens)) {
+            return [
+                'type'  => 'wait',
+                'label' => 'Sala disponible desde las ' . $opens->format('g:i A'),
+            ];
+        }
+
+        return [
+            'type'  => 'enter',
+            'label' => 'Entrar a la sala',
+            'url'   => route('appointments.room', ['appointment' => $this->id]),
+            'live'  => $now->greaterThanOrEqualTo($start),
+        ];
+    }
+
+    /**
      * 🔒 MUTADOR: Encripta el enlace de inicio del doctor antes de guardarlo
      */
     public function setZoomStartUrlAttribute($value)
@@ -167,6 +235,36 @@ class Appointment extends Model
         } catch (DecryptException $e) {
             return $value; // Fallback seguro si el dato es texto plano
         }
+    }
+
+    /**
+     * Fecha y hora de INICIO como Carbon, ya combinadas y en la zona horaria de la app.
+     *
+     * Úsalo en vez de concatenar strings: `date` tiene cast a Carbon, así que
+     * `$appointment->date . ' ' . $appointment->start_time` produce "2026-11-03 00:00:00 07:00:00" (inválido).
+     */
+    protected function startsAt(): Attribute
+    {
+        return Attribute::get(fn () => Carbon::parse(
+            Carbon::parse($this->date)->format('Y-m-d') . ' ' . $this->start_time,
+            config('app.timezone', 'America/Bogota')
+        ));
+    }
+
+    /**
+     * Fecha y hora de FIN como Carbon (usa end_time; si no existe, start + duration).
+     */
+    protected function endsAt(): Attribute
+    {
+        return Attribute::get(function () {
+            $tz = config('app.timezone', 'America/Bogota');
+
+            if ($this->end_time) {
+                return Carbon::parse(Carbon::parse($this->date)->format('Y-m-d') . ' ' . $this->end_time, $tz);
+            }
+
+            return $this->starts_at->copy()->addMinutes((int) $this->duration);
+        });
     }
 
     /**
