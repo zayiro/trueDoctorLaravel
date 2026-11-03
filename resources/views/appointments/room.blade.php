@@ -1,5 +1,4 @@
 @php
-use App\Enums\AppointmentStatus;
 
 $user = auth()->user();
 $isProfessional = in_array($user->role, ['doctor', 'clinic'], true);
@@ -719,13 +718,18 @@ $cfg = [
 
                 // Parámetros de client.join() según Component View
                 const joinParams = {
-                    sdkKey: z.sdkKey, // opcional/deprecado desde 4.0.0, requerido en 3.x; inofensivo en 4.x y 6.x
                     signature: z.signature, // debe llevar appKey (Client ID)
                     meetingNumber: String(z.meetingNumber).replace(/\s+/g, ''),
                     password: z.password || '',
                     userName: z.userName,
                     userEmail: z.userEmail || '',
                 };
+                // sdkKey fue eliminado de JoinOptions desde la v4.0.0 (la firma ya identifica la app); solo se envía en 3.x
+                const sdkMajor = parseInt(String(ZoomMtgEmbedded.VERSION || '0').split('.')[0], 10);
+                if (sdkMajor && sdkMajor < 4) {
+                    joinParams.sdkKey = z.sdkKey;
+                }
+
                 if (config.isProfessional) {
                     if (z.zak) {
                         joinParams.zak = z.zak; // necesario para INICIAR la reunión como host
@@ -837,9 +841,9 @@ $cfg = [
                     ].filter(Boolean).join(' · ');
 
                     // 3008 (reunión no iniciada) en un paciente NO es un fallo: el doctor aún no la inicia.
-                    // Se recrea el cliente y se reintenta el join cada 8 s hasta que el host la inicie.
+                    // Se recrea el cliente y se reintenta el join cada 5 s hasta que el host la inicie.
                     if (code === 3008 && !config.isProfessional && !this.finished) {
-                        console.log('⏳ La reunión aún no ha sido iniciada por el doctor. Reintentando en 8 s...');
+                        console.log('⏳ La reunión aún no ha sido iniciada por el doctor. Reintentando en 5 s...');
                         this.waitingForHost = true;
                         this.zoomJoining = false;
                         this.zoomError = null;
@@ -848,7 +852,7 @@ $cfg = [
                             try { ZoomMtgEmbedded.destroyClient(); } catch (e) { console.warn('destroyClient falló:', e); }
                             this.waitingForHost = false;
                             this.initZoomSDK();
-                        }, 8000);
+                        }, 5000);
                         return;
                     }
 
@@ -943,6 +947,14 @@ $cfg = [
                     fetch(config.statusUrl)
                         .then(res => res.json())
                         .then(data => {
+                            // La página cargó en "esperando al doctor": en cuanto el doctor inicia la sala,
+                            // se recarga para que se monte el SDK de Zoom (antes había que refrescar a mano).
+                            if (!config.zoomStarted && data.zoom_started) {
+                                clearInterval(checkStatusInterval);
+                                window.location.reload();
+                                return;
+                            }
+
                             if (data.status === 'completed' || data.status === 'cancelled') {
                                 clearInterval(checkStatusInterval);
                                 this.finished = true;
@@ -952,7 +964,7 @@ $cfg = [
                             }
                         })
                         .catch(err => console.error('Error al verificar estado:', err));
-                }, 5000);
+                }, config.zoomStarted ? 5000 : 3000);
             },
 
             startConsultation() {

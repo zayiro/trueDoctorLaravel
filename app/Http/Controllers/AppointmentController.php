@@ -815,6 +815,7 @@ class AppointmentController extends Controller
     {
         return response()->json([
             'status' => $appointment->status->value,
+            'zoom_started' => (bool) $appointment->zoom_started,
             'completed_at' => $appointment->updated_at
         ]);
     }

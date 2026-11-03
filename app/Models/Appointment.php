@@ -93,22 +93,27 @@ class Appointment extends Model
     }
 
     /**
-     * Minutos antes del inicio en que se habilita "Entrar a la sala" para el paciente.
+     * Minutos antes del inicio en que se habilita "Entrar a la sala".
+     * El profesional (doctor/clínica) entra antes que el paciente para poder iniciar la reunión.
      */
     public const ROOM_OPENS_MINUTES_BEFORE = 15;
+    public const PARTNER_ROOM_OPENS_MINUTES_BEFORE = 30;
 
     /**
-     * Acción de telemedicina que corresponde mostrar al paciente en su agenda.
+     * Acción de telemedicina que corresponde mostrar en la agenda.
      * Requiere service y address cargados (eager loading) para no generar consultas extra.
      *
-     *   pay   → cita virtual con pago pendiente
-     *   enter → virtual, pagada y dentro de la ventana horaria (live = la cita ya empezó)
-     *   wait  → virtual, pagada, pero la sala aún no abre
-     *   null  → sin acción (presencial, cancelada/completada o ya terminó)
+     * @param string $audience 'patient' (por defecto) o 'partner' (doctor / clínica)
+     *
+     *   pay    → (patient) cita virtual con pago pendiente; incluye url de pago
+     *   unpaid → (partner) cita virtual cuyo pago el paciente aún no completa; sin acción posible
+     *   enter  → virtual, pagada y dentro de la ventana horaria (live = la cita ya empezó)
+     *   wait   → virtual, pagada, pero la sala aún no abre
+     *   null   → sin acción (presencial, cancelada/completada o ya terminó)
      *
      * @return array{type: string, label: string, url?: string, live?: bool}|null
      */
-    public function roomAction(): ?array
+    public function roomAction(string $audience = 'patient'): ?array
     {
         $status = $this->status instanceof \BackedEnum ? $this->status->value : (string) $this->status;
 
@@ -124,6 +129,13 @@ class Appointment extends Model
         $payment = $this->payment_status instanceof \BackedEnum ? $this->payment_status->value : (string) $this->payment_status;
 
         if ($payment !== \App\Enums\PaymentStatus::PAID->value) {
+            if ($audience === 'partner') {
+                return [
+                    'type'  => 'unpaid',
+                    'label' => 'Pago pendiente del paciente',
+                ];
+            }
+
             return [
                 'type'  => 'pay',
                 'label' => 'Completar pago',
@@ -135,10 +147,14 @@ class Appointment extends Model
             return null;
         }
 
+        $opensBefore = $audience === 'partner'
+            ? self::PARTNER_ROOM_OPENS_MINUTES_BEFORE
+            : self::ROOM_OPENS_MINUTES_BEFORE;
+
         $tz     = config('app.timezone', 'America/Bogota');
         $start  = Carbon::parse(Carbon::parse($this->date)->format('Y-m-d') . ' ' . $this->start_time, $tz);
         $end    = $start->copy()->addMinutes((int) $this->duration);
-        $opens  = $start->copy()->subMinutes(self::ROOM_OPENS_MINUTES_BEFORE);
+        $opens  = $start->copy()->subMinutes($opensBefore);
         $now    = Carbon::now($tz);
 
         if ($now->greaterThanOrEqualTo($end)) {
@@ -158,6 +174,44 @@ class Appointment extends Model
             'url'   => route('appointments.room', ['appointment' => $this->id]),
             'live'  => $now->greaterThanOrEqualTo($start),
         ];
+    }
+
+    /**
+     * Cita virtual activa (pendiente/confirmada) cuyo pago aún no está confirmado.
+     * No depende de la hora: solo del tipo de cita, su estado y el pago.
+     */
+    public function isAwaitingPayment(): bool
+    {
+        return ($this->roomAction('patient')['type'] ?? null) === 'pay';
+    }
+
+    /**
+     * Cita activa: pendiente o confirmada.
+     */
+    public function isActive(): bool
+    {
+        $status = $this->status instanceof \BackedEnum ? $this->status->value : (string) $this->status;
+
+        return in_array($status, [\App\Enums\AppointmentStatus::PENDING->value, \App\Enums\AppointmentStatus::CONFIRMED->value], true);
+    }
+
+    /**
+     * ¿Puede el profesional marcarla como completada?
+     * Activa, ya comenzó y, si es virtual, con el pago confirmado.
+     */
+    public function canBeCompleted(): bool
+    {
+        return $this->isActive()
+            && !$this->isAwaitingPayment()
+            && Carbon::now(config('app.timezone', 'America/Bogota'))->greaterThanOrEqualTo($this->starts_at);
+    }
+
+    /**
+     * ¿Puede reprogramarse? Activa y, si es virtual, con el pago confirmado.
+     */
+    public function canBeRescheduled(): bool
+    {
+        return $this->isActive() && !$this->isAwaitingPayment();
     }
 
     /**

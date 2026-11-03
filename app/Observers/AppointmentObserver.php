@@ -70,7 +70,7 @@ class AppointmentObserver
             if ($appointment->isDirty('status') && $appointment->status === AppointmentStatus::CANCELLED && $appointment->service?->type === 'virtual') {
                 if ($appointment->zoom_meeting_id) {
                     // 🔒 CORRECCIÓN: afterCommit() para evitar cancelar Zoom si la transacción falla
-                    dispatch(new CancelZoomMeetingJob($appointment->zoom_meeting_id))->afterCommit();
+                    dispatch(new CancelZoomMeetingJob($appointment->zoom_meeting_id, $appointment->id))->afterCommit();
                     
                     // Limpiar columnas de Zoom (se guardarán en el update)
                     $appointment->zoom_meeting_id = null;

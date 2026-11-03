@@ -10,7 +10,7 @@ class AppointmentCancelledNotification extends Notification
     use Queueable;
 
     protected $appointment;
-    protected $actor; // Quién canceló la cita ('médico' o 'paciente')
+    protected $actor; // Quién canceló la cita: 'patient' (paciente) o 'doctor' (médico/clínica)
 
     /**
      * Crear una nueva instancia de la notificación.
@@ -35,17 +35,23 @@ class AppointmentCancelledNotification extends Notification
     public function toArray(object $notifiable): array
     {
         // Aseguramos el formateo de la fecha si viene como string o Carbon
-        $dateFormatted = is_string($this->appointment->date) 
-            ? date('d/m/Y', strtotime($this->appointment->date)) 
+        $dateFormatted = is_string($this->appointment->date)
+            ? date('d/m/Y', strtotime($this->appointment->date))
             : $this->appointment->date->format('d/m/Y');
 
-        if ($this->actor === 'patient') {
-            $message = "El paciente ha reagendado la cita {$this->appointment->reference} para el día {$dateFormatted} a las {$this->appointment->start_time}.";
+        $timeFormatted = \Carbon\Carbon::parse($this->appointment->start_time)->format('g:i A');
+        $reference     = $this->appointment->reference;
+
+        // El destinatario es siempre la contraparte de quien canceló
+        if (in_array($this->actor, ['patient', 'paciente'], true)) {
+            // Cancela el paciente → se avisa al médico/clínica
+            $message    = "El paciente ha cancelado la cita {$reference} que estaba programada para el día {$dateFormatted} a las {$timeFormatted}.";
             $dir_action = "/partner/appointments";
         } else {
-            $message = "El médico ha reagendado la cita {$this->appointment->reference} para el día {$dateFormatted} a las {$this->appointment->start_time}.";
+            // Cancela el médico/clínica → se avisa al paciente
+            $message    = "El médico ha cancelado la cita {$reference} que estaba programada para el día {$dateFormatted} a las {$timeFormatted}. Puedes agendar una nueva consulta cuando lo desees.";
             $dir_action = "/patient/appointments";
-        }    
+        }
 
         return [
             'appointment_id' => $this->appointment->id,

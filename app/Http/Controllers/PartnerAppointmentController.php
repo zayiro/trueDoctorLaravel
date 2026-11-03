@@ -17,6 +17,9 @@ use App\Services\Availability\AvailabilityResolver;
 use App\Services\Availability\SlotPresenter;
 use Illuminate\Support\Facades\Log;
 use App\Services\Scheduling\SlotOverlapChecker;
+use App\Services\AppointmentStateManager;
+use App\Notifications\AppointmentCancelledNotification;
+use Throwable;
 
 class PartnerAppointmentController extends Controller
 {
@@ -32,6 +35,18 @@ class PartnerAppointmentController extends Controller
         }
 
         $appointmentsQuery = Appointment::forCurrentContext();
+
+        // forCurrentContext() devuelve TODAS las citas si no hay contexto en sesión.
+        // Sin contexto, se acota por el dueño según el rol (nunca se listan citas de otros tenants).
+        if (!session('doctor_context')) {
+            if ($user->role === 'clinic' && $user->clinic) {
+                $appointmentsQuery->where('clinic_id', $user->clinic->id);
+            } elseif ($user->role === 'doctor' && $user->doctor) {
+                $appointmentsQuery->where('doctor_id', $user->doctor->id);
+            } elseif (!$this->isAdmin($user)) {
+                $appointmentsQuery->whereRaw('1 = 0');
+            }
+        }
 
         if ($user->role === 'clinic' && $request->filled('doctor_id')) {
             $appointmentsQuery->where('doctor_id', $request->doctor_id);
@@ -189,10 +204,35 @@ class PartnerAppointmentController extends Controller
         return response()->json($services);
     }
 
+    private function tz(): string
+    {
+        return config('app.timezone', 'America/Bogota');
+    }
+
+    private function isAdmin($user): bool
+    {
+        return $user->role === 'admin' || (method_exists($user, 'hasRole') && $user->hasRole('admin'));
+    }
+
+    /**
+     * Valor string del estado (status tiene cast a enum AppointmentStatus).
+     */
+    private function statusOf(Appointment $appointment): string
+    {
+        return $appointment->status instanceof \BackedEnum ? $appointment->status->value : (string) $appointment->status;
+    }
+
     private function validateAppointmentAccess(Appointment $appointment)
     {
-        $user = auth()->user();
         $context = session('doctor_context');
+
+        // Sin contexto de sesión no hay nada que validar aquí: la propiedad de la cita
+        // se comprueba por rol en authorizeAppointmentAction().
+        if (!$context) {
+            return;
+        }
+
+        $user = auth()->user();
 
         if ($context['type'] === 'particular') {
             if ($appointment->doctor_id !== $user->doctor->id || $appointment->clinic_id !== null) {
@@ -204,13 +244,13 @@ class PartnerAppointmentController extends Controller
             }
         }
     }
-        
+
     private function authorizeAppointmentAction(Appointment $appointment)
     {
         $user = Auth::user();
 
         if ($user->role === 'clinic') {
-            if ($appointment->clinic_id !== $user->clinic->id) {
+            if ($appointment->clinic_id !== $user->clinic?->id) {
                 abort(403, 'No tienes permiso para gestionar esta cita institucional.');
             }
         } else if ($user->role === 'doctor') {
@@ -220,51 +260,126 @@ class PartnerAppointmentController extends Controller
                     abort(403, 'No tienes permiso para gestionar esta cita institucional.');
                 }
             } else {
-                if ($appointment->doctor_id !== $user->doctor->id) {
+                if ($appointment->doctor_id !== $user->doctor?->id) {
                     abort(403, 'No tienes permiso para gestionar esta cita privada.');
                 }
             }
         }
     }
 
-    public function complete(Appointment $appointment)
-    {        
+    /**
+     * Punto único de autorización para gestionar una cita desde el panel de partners.
+     * Solo admin, doctor y clínica; y el doctor/clínica solo sobre sus propias citas.
+     */
+    private function authorizeManage(Appointment $appointment): void
+    {
+        $user = Auth::user();
+
+        if ($this->isAdmin($user)) {
+            return;
+        }
+
+        abort_unless(in_array($user->role, ['doctor', 'clinic'], true), 403, 'No tienes permiso para gestionar citas.');
+
         $this->validateAppointmentAccess($appointment);
         $this->authorizeAppointmentAction($appointment);
-        
-        $appointment->update(['status' => 'completed']);
+    }
+
+    /**
+     * Notificación en base de datos para el paciente cuando el profesional cancela.
+     * Los correos los envía el listener SendCancellationEmail (AppointmentCancelled, que dispara el gestor de estados).
+     * Un fallo aquí NO debe romper la cancelación (la cita ya quedó cancelada).
+     */
+    private function notifyPatientOfCancellation(Appointment $appointment): void
+    {
+        try {
+            $patientUser = $appointment->patient?->user;
+
+            if ($patientUser) {
+                $patientUser->notify(new AppointmentCancelledNotification($appointment, 'doctor'));
+            }
+        } catch (Throwable $e) {
+            Log::warning("No se pudo notificar la cancelación al paciente (cita {$appointment->id}): " . $e->getMessage());
+        }
+    }
+
+    public function complete(Appointment $appointment)
+    {
+        $this->authorizeManage($appointment);
+
+        try {
+            // El gestor valida (estado, pago, hora de inicio) y dispara AppointmentCompleted;
+            // el listener EndZoomMeetingOnAppointmentCompleted cierra la reunión de Zoom.
+            app(AppointmentStateManager::class)->transitionTo(
+                $appointment,
+                'completed',
+                'Marcada como completada por el profesional desde la agenda médica',
+                [],
+                'doctor'
+            );
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
         return back()->with('success', 'La cita ha sido marcada como completada.');
     }
 
-    public function cancel(Appointment $appointment)
-    {        
-        $this->validateAppointmentAccess($appointment);
-        $this->authorizeAppointmentAction($appointment);
-     
-        $appointment->update(['status' => 'cancelled']);
+    public function cancel(Request $request, Appointment $appointment)
+    {
+        $this->authorizeManage($appointment);
+
+        $request->validate(['cancellation_reason' => 'nullable|string|max:255']);
+
+        $reason = $request->filled('cancellation_reason')
+            ? 'Cancelado por el profesional. Motivo: ' . trim($request->cancellation_reason)
+            : 'Cancelado por el profesional desde la agenda médica.';
+
+        try {
+            // La reunión de Zoom la elimina AppointmentObserver (CancelZoomMeetingJob) al detectar el cambio de estado;
+            // los correos, el listener SendCancellationEmail (AppointmentCancelled).
+            app(AppointmentStateManager::class)->transitionTo(
+                $appointment,
+                'cancelled',
+                $reason,
+                ['notes' => ($appointment->notes ? $appointment->notes . "\n" : '') . "[Auditoría: {$reason}]"],
+                'doctor'
+            );
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        $this->notifyPatientOfCancellation($appointment);
+
         return back()->with('success', 'La cita ha sido marcada como cancelada.');
     }
 
     public function destroy(Appointment $appointment)
     {
-        $this->validateAppointmentAccess($appointment);
-        $this->authorizeAppointmentAction($appointment);
+        $this->authorizeManage($appointment);
+
+        if (!in_array($this->statusOf($appointment), ['completed', 'cancelled'], true)) {
+            return back()->with('error', 'Solo se pueden eliminar del historial las citas completadas o canceladas. Cancela la cita primero.');
+        }
+
         $appointment->delete();
         return back()->with('success', 'La cita ha sido eliminada exitosamente del historial.');
     }
 
     public function rescheduleProcess(Request $request, Appointment $appointment)
     {
-        $this->validateAppointmentAccess($appointment);
         $user = auth()->user();
 
+        abort_unless(in_array($user->role, ['doctor', 'clinic'], true), 403, 'No autorizado.');
+
+        $this->validateAppointmentAccess($appointment);
+
         if ($user->role === 'clinic') {
-            if ($appointment->clinic_id !== $user->clinic->id) {
+            if ($appointment->clinic_id !== $user->clinic?->id) {
                 abort(403, 'No autorizado. Esta cita no pertenece a tu centro clínico.');
             }
             $settings = ClinicSetting::where('clinic_id', $user->clinic->id)->first();
         } else {
-            if ($appointment->doctor_id !== $user->doctor->id) {
+            if ($appointment->doctor_id !== $user->doctor?->id) {
                 abort(403, 'No autorizado. Esta cita pertenece a otra agenda médica.');
             }
             $settings = DoctorSetting::where('doctor_id', $user->doctor->id)->first();
@@ -274,6 +389,16 @@ class PartnerAppointmentController extends Controller
             return back()->with('error', 'La configuración de la agenda no está disponible.');
         }
 
+        // Solo se reprograman citas activas (antes se podía "reabrir" una cita cancelada o completada como confirmada)
+        if (!in_array($this->statusOf($appointment), ['pending', 'confirmed'], true)) {
+            return back()->with('error', 'Solo se pueden reprogramar citas pendientes o confirmadas.');
+        }
+
+        // Misma regla que en el panel del paciente: una cita virtual sin pagar no se reprograma
+        if ($appointment->isAwaitingPayment()) {
+            return back()->with('error', 'El paciente aún no ha pagado esta cita virtual; no se puede reprogramar hasta que se confirme el pago.');
+        }
+
         $validated = $request->validate([
             'new_date'       => 'required|date|after_or_equal:today',
             'new_start_time' => 'required|date_format:H:i:s',
@@ -281,6 +406,12 @@ class PartnerAppointmentController extends Controller
 
         $newDate      = $validated['new_date'];
         $newStartTime = $validated['new_start_time'];
+
+        // La fecha del día de hoy pasa la validación "after_or_equal:today" aunque la hora ya haya pasado
+        if (Carbon::parse("{$newDate} {$newStartTime}", $this->tz())->isPast()) {
+            return back()->with('error', 'La nueva fecha y hora ya pasaron. Selecciona un horario futuro.');
+        }
+
         $newEndTime   = Carbon::parse($newStartTime)->addMinutes($appointment->duration)->format('H:i:s');
         $endTimeWithBuffer = Carbon::parse($newEndTime)->addMinutes($settings->buffer_time_minutes ?? 0)->format('H:i:s');
 
@@ -310,7 +441,7 @@ class PartnerAppointmentController extends Controller
             return back()->with('error', 'No se puede reagendar: el doctor tiene su agenda bloqueada en este horario (vacaciones, congresos o bloqueos administrativos).');
         }
 
-        // 3. PERSISTENCIA ATÓMICA
+        // 3. PERSISTENCIA ATÓMICA (la reunión de Zoom se sincroniza vía AppointmentObserver → SyncZoomMeetingJob)
         DB::transaction(function () use ($appointment, $newDate, $newStartTime, $newEndTime) {
             $appointment->update([
                 'date'       => $newDate,
@@ -323,8 +454,8 @@ class PartnerAppointmentController extends Controller
 
         // Invalidar caché relevante
         app(\App\Repositories\AvailabilityRepository::class)->invalidateAvailabilityCache(
-            $appointment->clinic_id, 
-            [$appointment->doctor_id], 
+            $appointment->clinic_id,
+            [$appointment->doctor_id],
             $appointment->address_id
         );
 
@@ -333,21 +464,35 @@ class PartnerAppointmentController extends Controller
 
     public function updateStatus(Request $request, Appointment $appointment)
     {
+        // Antes este endpoint no verificaba quién llamaba ni sobre qué cita
+        $this->authorizeManage($appointment);
+
         $validated = $request->validate([
             'status' => 'required|in:confirmed,pending,completed,cancelled'
         ]);
 
-        $appointment->update([
-            'status' => $validated['status'],
-            'email_sent' => false
-        ]);
+        try {
+            app(AppointmentStateManager::class)->transitionTo(
+                $appointment,
+                $validated['status'],
+                'Cambio de estado desde la agenda médica',
+                ['email_sent' => false],
+                'doctor'
+            );
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        if ($validated['status'] === 'cancelled') {
+            $this->notifyPatientOfCancellation($appointment);
+        }
 
         app(\App\Repositories\AvailabilityRepository::class)->invalidateAvailabilityCache(
-            $appointment->clinic_id, 
-            [$appointment->doctor_id], 
+            $appointment->clinic_id,
+            [$appointment->doctor_id],
             $appointment->address_id
         );
 
         return back()->with('success', 'El estado de la consulta ha sido actualizado correctamente.');
-    }    
+    }
 }

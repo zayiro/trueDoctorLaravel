@@ -365,12 +365,19 @@ class PatientController extends Controller
             ? 'Cancelado por el paciente. Motivo: ' . trim($request->cancellation_reason)
             : 'Cancelado de forma autónoma por el paciente desde la plataforma web.';
 
-        $appointment->update([
-            'status' => 'cancelled',
-            'notes'  => ($appointment->notes ? $appointment->notes . "\n" : '') . "[Auditoría: {$reason}]"
-        ]);
-
-        event(new AppointmentCancelled($appointment));
+        try {
+            // El gestor valida la transición y dispara AppointmentCancelled (correos) después del commit.
+            // La reunión de Zoom la elimina AppointmentObserver (CancelZoomMeetingJob).
+            app(AppointmentStateManager::class)->transitionTo(
+                $appointment,
+                'cancelled',
+                $reason,
+                ['notes' => ($appointment->notes ? $appointment->notes . "\n" : '') . "[Auditoría: {$reason}]"],
+                'patient'
+            );
+        } catch (\InvalidArgumentException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
 
         $doctor = Doctor::findOrFail($appointment->doctor_id);
         $userToNotify = User::find($doctor->user_id);

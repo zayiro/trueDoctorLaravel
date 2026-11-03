@@ -262,10 +262,10 @@ class ZoomService
 
         $header = json_encode(['alg' => 'HS256', 'typ' => 'JWT']);
 
-        // appKey (requerido en la doc actual) + sdkKey (compatibilidad Web); mismo valor = Client ID
+        // appKey = Client ID de la app General (requerido desde el SDK 5.0.0).
+        // 'sdkKey' en la firma quedó deprecado desde la v5.0.0; si algún día vuelves a un SDK < 5.0, agrégalo de nuevo.
         $payload = json_encode([
             'appKey'   => $sdkKey,
-            'sdkKey'   => $sdkKey,
             'mn'       => (string) preg_replace('/\D/', '', (string) $meetingNumber),
             'role'     => (int) $role,
             'iat'      => $iat,
@@ -411,6 +411,22 @@ class ZoomService
             $url = "{$this->apiBaseUrl}/meetings/{$meetingId}";
 
             $response = Http::withToken($token)->delete($url);
+
+            // Token vencido: se renueva una vez y se reintenta
+            if ($response->status() === 401) {
+                Cache::forget('zoom_s2s_access_token');
+                $token = $this->getAccessToken();
+
+                if ($token) {
+                    $response = Http::withToken($token)->delete($url);
+                }
+            }
+
+            // La reunión ya no existe en Zoom (404): el objetivo del borrado ya está cumplido, no hay que reintentar
+            if ($response->status() === 404) {
+                Log::info('ZoomService: la reunión ya no existe en Zoom; se considera eliminada.', ['meeting_id' => $meetingId]);
+                return true;
+            }
 
             if ($response->failed()) {
                 $errorMsg = "No se pudo eliminar la reunión. Status: {$response->status()}";

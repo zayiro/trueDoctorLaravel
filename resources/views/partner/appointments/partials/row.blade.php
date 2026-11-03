@@ -1,3 +1,28 @@
+@php
+    // status tiene cast a enum. NO usar $app->status_label: devuelve "Confirmed" (ucfirst) y nunca coincide con 'confirmed'.
+    $statusValue     = $app->status instanceof \BackedEnum ? $app->status->value : (string) $app->status;
+    $roomAction      = $app->roomAction('partner');   // enter | wait | unpaid | null
+    $isVirtual       = ($app->service?->type === 'virtual') || ($app->address?->type === 'virtual');
+    $awaitingPayment = ($roomAction['type'] ?? null) === 'unpaid';
+    $isActive        = $app->isActive();
+    $canComplete     = $app->canBeCompleted();
+    $canReschedule   = $app->canBeRescheduled();
+    $isClinicTheme   = auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic';
+
+    $badgeClass = $awaitingPayment ? 'bg-amber-50 text-amber-700 border-amber-200' : match ($statusValue) {
+        'confirmed' => 'bg-green-50 text-green-700 border-green-200',
+        'pending'   => 'bg-amber-50 text-amber-700 border-amber-200',
+        'completed' => 'bg-blue-50 text-blue-700 border-blue-200',
+        default     => 'bg-rose-50 text-rose-700 border-rose-200',
+    };
+    $badgeText = $awaitingPayment ? 'Pago pendiente' : match ($statusValue) {
+        'confirmed' => 'Confirmada',
+        'pending'   => 'Pendiente',
+        'completed' => 'Atendida',
+        'cancelled' => 'Cancelada',
+        default     => ucfirst($statusValue),
+    };
+@endphp
 <tr x-data="{ 
         openReschedule: false, 
         selectedDate: '', 
@@ -43,6 +68,11 @@
     <td class="px-6 py-4 whitespace-nowrap">
         <div class="flex flex-col">
             <div class="text-sm font-black text-slate-900">{{ $app->patient->user->name ?? 'Paciente' }}</div>            
+            @if ($awaitingPayment)
+                <p class="mt-2 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 w-max">
+                    Contacto y datos del paciente disponibles cuando se confirme el pago.
+                </p>
+            @else
             <div class="mt-2">
                 @php
                     $cleanPatientPhone = preg_replace('/[^0-9]/', '', $app->patient->phone);
@@ -123,6 +153,8 @@
                 </div>
             </div>
             
+            @endif
+
             <!-- ⚡ INDICADOR STAFF: Visible si la clínica audita la nómina -->
             @if(auth()->user()->role === 'clinic')
                 <span class="inline-flex items-center gap-1 text-[10px] font-black text-indigo-600 uppercase tracking-wider mt-1.5 bg-indigo-50 px-2 py-0.5 rounded-lg w-max border border-indigo-100/60">
@@ -145,23 +177,13 @@
     </td>
     <!-- Columna 4: Estado de la Cita -->
     <td class="px-6 py-4 whitespace-nowrap">
-        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border uppercase tracking-wider
-            @if($app->status_label === 'confirmed') bg-green-50 text-green-700 border-green-200
-            @elseif($app->status_label === 'pending') bg-amber-50 text-amber-700 border-amber-200
-            @elseif($app->status_label === 'completed') bg-blue-50 text-blue-700 border-blue-200
-            @else bg-rose-50 text-rose-700 border-rose-200 @endif">
-            @switch($app->status_label)
-                @case('confirmed') Confirmada @break
-                @case('pending') Pendiente @break
-                @case('completed') Atendida @break
-                @case('cancelled') Cancelada @break
-                @default {{ $app->status_label }}
-            @endswitch
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border uppercase tracking-wider {{ $badgeClass }}">
+            {{ $badgeText }}
         </span>
         <div>
-            <!-- Ver Notas -->
+            <!-- Ver Notas (la directiva js de Blade escapa saltos de línea y comillas; addslashes rompía el JS con las notas de auditoría) -->
             @if($app->notes)
-                <button type="button" @click="openNoteModal('{{ addslashes($app->notes) }}'); actionsOpen = false" 
+                <button type="button" @click="openNoteModal(@js($app->notes))"
                         class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-amber-600 hover:bg-amber-50 rounded-lg transition w-full text-left">
                     👁️ Ver Notas
                 </button>
@@ -209,58 +231,49 @@
                     <!-- Contenido -->
                     <div class="p-6 space-y-3">
                        <div class="p-1">
-                            @php
-                                $statusValue = $app->status instanceof \BackedEnum 
-                                    ? $app->status->value 
-                                    : (string) $app->status;
-                            @endphp
-
+                            {{-- Acción principal según estado, tipo de cita y pago --}}
                             @if ($statusValue === 'completed')
-                                {{-- ✅ CITA COMPLETADA: Mostrar enlace correcto a Historia Clínica --}}
-                                <a href="{{ route('partner.patients.show', [$app->patient_id, $app->reference]) }}" target="_blank" 
+                                <a href="{{ route('partner.patients.show', [$app->patient_id, $app->reference]) }}" target="_blank"
                                 class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition w-full text-left">
                                     📋 Ver Historia Clínica
                                 </a>
 
                             @elseif ($statusValue === 'cancelled')
-                                {{-- 🚫 CITA CANCELADA: Mostrar mensaje (sin enlace) --}}
                                 <span class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-400 bg-gray-50 rounded-lg w-full text-left cursor-not-allowed">
                                     Consulta cancelada
                                 </span>
 
-                            @elseif ($statusValue === 'confirmed')
-                                {{-- ✅ CITA CONFIRMADA: Mostrar acción según tipo --}}
-                                @if($app->address && $app->address->type === 'virtual' && $app->zoom_start_url)
-                                    {{-- Virtual: Iniciar Teleconsulta --}}
-                                    <a href="{{ route('appointments.room', ['appointment' => $app->id]) }}" target="_blank" 
-                                    class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition w-full text-left">
-                                        💻 Iniciar Teleconsulta
-                                    </a>
-                                @else
-                                    {{-- Presencial: Iniciar Consulta --}}
-                                    <a href="{{ route('partner.patients.show', [$app->patient_id, $app->reference]) }}" target="_blank" 
-                                    class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition w-full text-left">
-                                        📋 Iniciar Consulta
-                                    </a>
-                                @endif
+                            @elseif ($roomAction && $roomAction['type'] === 'enter')
+                                <a href="{{ $roomAction['url'] }}" target="_blank"
+                                class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition w-full text-left">
+                                    {{ $roomAction['live'] ? '💻 Entrar a la Teleconsulta' : '💻 Iniciar Teleconsulta' }}
+                                </a>
+
+                            @elseif ($roomAction && $roomAction['type'] === 'wait')
+                                <span class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-500 bg-slate-50 rounded-lg w-full text-left cursor-not-allowed">
+                                    ⏳ {{ $roomAction['label'] }}
+                                </span>
+
+                            @elseif ($awaitingPayment)
+                                <span class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-amber-700 bg-amber-50 rounded-lg w-full text-left cursor-not-allowed">
+                                    💳 {{ $roomAction['label'] }}
+                                </span>
+
+                            @elseif ($statusValue === 'confirmed' && !$isVirtual)
+                                <a href="{{ route('partner.patients.show', [$app->patient_id, $app->reference]) }}" target="_blank"
+                                class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition w-full text-left">
+                                    📋 Iniciar Consulta
+                                </a>
 
                             @else
-                                {{-- ⏳ OTROS ESTADOS (Pending, etc.): Mostrar según tipo --}}
-                                @if($app->address && $app->address->type === 'virtual' && $app->zoom_start_url)
-                                    <a href="{{ route('appointments.room', ['appointment' => $app->id]) }}" target="_blank" 
-                                    class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition w-full text-left">
-                                        💻 Ir a Teleconsulta
-                                    </a>
-                                @else
-                                    <a href="{{ route('partner.patients.show', [$app->patient_id, $app->reference]) }}" target="_blank" 
-                                    class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition w-full text-left">
-                                        📋 Ver Consulta
-                                    </a>
-                                @endif
+                                <a href="{{ route('partner.patients.show', [$app->patient_id, $app->reference]) }}" target="_blank"
+                                class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition w-full text-left">
+                                    📋 Ver Consulta
+                                </a>
                             @endif
-                            
-                            <!-- Completar -->
-                            @if(in_array($app->status_label, ['pending', 'confirmed']))
+
+                            <!-- Completar: activa, ya comenzó y (si es virtual) pagada -->
+                            @if($canComplete)
                                 <form action="{{ route('partner.appointments.complete', $app->id) }}" method="POST" class="w-full">
                                     @csrf
                                     @method('PATCH')
@@ -270,18 +283,18 @@
                                 </form>
                             @endif
 
-                            <!-- Reagendar -->
-                            @if(in_array($app->status_label, ['pending', 'confirmed']))
-                                <button type="button" @click="openReschedule = true; actionsOpen = false" 
+                            <!-- Reagendar: activa y (si es virtual) pagada -->
+                            @if($canReschedule)
+                                <button type="button" @click="openReschedule = true; open = false"
                                         class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-indigo-600 hover:bg-indigo-50 rounded-lg transition w-full text-left">
                                     🔄 Reagendar
                                 </button>
                             @endif
 
-                            <!-- Cancelar -->
-                            @if(in_array($app->status_label, ['pending', 'confirmed']))
-                                <form action="{{ route('partner.appointments.cancel', $app->id) }}" method="POST" 
-                                    onsubmit="return confirm('¿Estás seguro de que deseas cancelar esta consulta médica de forma definitiva? Se notificará al paciente.');" 
+                            <!-- Cancelar: toda cita activa (incluida la virtual sin pagar, para liberar el horario) -->
+                            @if($isActive)
+                                <form action="{{ route('partner.appointments.cancel', $app->id) }}" method="POST"
+                                    onsubmit="return confirm('¿Estás seguro de que deseas cancelar esta consulta médica de forma definitiva? Se notificará al paciente.');"
                                     class="w-full">
                                     @csrf
                                     @method('PATCH')
@@ -290,7 +303,7 @@
                                     </button>
                                 </form>
                             @endif
-                        </div>                          
+                        </div>
                     </div>
 
                     <!-- Botones de Acción -->

@@ -88,7 +88,7 @@
                             <p class="text-sm font-bold text-slate-700 capitalize">                                                                
                                 {{ ucfirst(\Carbon\Carbon::parse($appointmentDate)->translatedFormat('l, d \d\e F \d\e Y')) }}
                             </p>
-                            <p class="text-base font-black text-slate-800 mt-0.5">
+                            <p class="text-sm font-bold text-slate-700 mt-0.5">
                                 {{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }}
                             </p>
                             

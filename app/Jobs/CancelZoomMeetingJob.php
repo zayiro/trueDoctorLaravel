@@ -3,45 +3,76 @@
 namespace App\Jobs;
 
 use App\Services\ZoomService;
+use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Exception;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
+/**
+ * Elimina de Zoom la reunión de una cita cancelada.
+ *
+ * Lo despacha AppointmentObserver (con afterCommit) cuando la cita pasa a "cancelled". El observer limpia
+ * las columnas de Zoom de la cita, por eso el job recibe el ID de la reunión (y el ID de la cita solo para logs).
+ */
 class CancelZoomMeetingJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    // Intentos máximos automáticos si la API de Zoom está lenta o caída temporalmente
+    // Intentos máximos si la API de Zoom está lenta o caída temporalmente
     public $tries = 3;
 
-    protected $zoomMeetingId;
+    // Segundos máximos por intento (la API de Zoom no debe bloquear el worker)
+    public $timeout = 30;
+
+    // Espera entre reintentos: 10 s tras el primer fallo y 60 s tras el segundo
+    public $backoff = [10, 60];
+
+    protected string $zoomMeetingId;
+
+    protected ?int $appointmentId = null;
 
     /**
-     * Crea una nueva instancia del Job con el ID de la sala externa.
+     * @param string|int $zoomMeetingId ID de la reunión en Zoom (la columna puede llegar como int o string)
+     * @param int|null   $appointmentId Solo para trazabilidad en los logs
      */
-    public function __construct(string $zoomMeetingId)
+    public function __construct(string|int $zoomMeetingId, ?int $appointmentId = null)
     {
-        $this->zoomMeetingId = $zoomMeetingId;
+        $this->zoomMeetingId = (string) $zoomMeetingId;
+        $this->appointmentId = $appointmentId;
     }
 
     /**
-     * Ejecuta el trabajo de borrado de forma asíncrona.
+     * Ejecuta el borrado de forma asíncrona.
      */
-    public function handle(ZoomService $zoomService)
+    public function handle(ZoomService $zoomService): void
     {
-        if (!$this->zoomMeetingId) {
+        if ($this->zoomMeetingId === '') {
             return;
         }
 
-        // 🔄 Consumimos directamente el método deleteMeeting de tu clase ZoomService
-        $success = $zoomService->deleteMeeting($this->zoomMeetingId);
-
-        if (!$success) {
-            // Si tu servicio reportó un fallo y guardó el Log, lanzamos la excepción para el reintento de la cola
-            throw new Exception("Fallo asíncrono al intentar eliminar la reunión ID: {$this->zoomMeetingId} en Zoom.");
+        // deleteMeeting() considera éxito una reunión que ya no existe (404), así que el borrado es idempotente
+        // y los reintentos solo ocurren con fallos reales (token, red, Zoom caído).
+        if (!$zoomService->deleteMeeting($this->zoomMeetingId)) {
+            throw new Exception("Fallo al intentar eliminar la reunión de Zoom {$this->zoomMeetingId} (cita {$this->appointmentId}).");
         }
+
+        Log::info("CancelZoomMeetingJob: reunión de Zoom {$this->zoomMeetingId} eliminada (cita {$this->appointmentId}).");
+    }
+
+    /**
+     * Se ejecuta cuando se agotaron los reintentos. La cita ya no guarda el ID de la reunión,
+     * así que este log es el único rastro para eliminarla a mano en Zoom.
+     */
+    public function failed(Throwable $exception): void
+    {
+        Log::error('CancelZoomMeetingJob: no se pudo eliminar la reunión de Zoom tras todos los reintentos. Elimínala manualmente.', [
+            'zoom_meeting_id' => $this->zoomMeetingId,
+            'appointment_id'  => $this->appointmentId,
+            'error'           => $exception->getMessage(),
+        ]);
     }
 }

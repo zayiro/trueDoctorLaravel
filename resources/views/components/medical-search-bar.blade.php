@@ -223,7 +223,7 @@
                     :placeholder="placeholders[currentIndex]" 
                     required 
                     minlength="3" 
-                    class="w-full border-0 focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 pl-11 pr-10 text-sm shadow-inner transition-all">
+                    class="w-full border-0 focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 bg-slate-50 rounded-2xl py-3 pl-11 pr-3 text-sm shadow-inner transition-all">
                     
                     <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.604 10.604z" /></svg>
