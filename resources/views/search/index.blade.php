@@ -1,4 +1,7 @@
-<x-guest-layout>
+<x-guest-layout
+    meta_title="Médicos Especialistas en {{ ucwords(str_replace('-', ' ', request('specialty'))) }} | OpenDoctor"
+    meta_description="Encuentra y agenda tu cita en línea con los mejores profesionales en {{ ucwords(str_replace('-', ' ', request('specialty'))) }}. Compara disponibilidad en tiempo real para telemedicina o consulta presencial."
+>
     <div class="max-w-7xl mx-auto px-4 py-8 mt-5">
 
         @if($showingSuggestions)
@@ -79,7 +82,7 @@
                         <h2 class="text-lg font-black text-slate-800 tracking-tight leading-none">                    
                             @if($results->total() === 1)
                                 <p class="text-md text-gray-600 font-bold">
-                                    <span class="font-semibold text-indigo-600">1</span> médico o especialista habilitado.
+                                    Un médico o especialista habilitado.
                                 </p>
                             @elseif($results->total() > 1)
                                 <p class="text-md text-gray-600 font-bold">

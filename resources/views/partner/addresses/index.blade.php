@@ -5,7 +5,7 @@ $breadcrumbs = [
         'href' => route('admin.dashboard'),
     ],
     [
-        'name' => 'Sedes fisicas (Consultorios)',
+        'name' => 'Sede virtual y fisicas (Consultorios)',
     ]
 ];
 @endphp
@@ -92,6 +92,20 @@ $breadcrumbs = [
                             {{ $address->name }}
                             @if($address->type === 'virtual')
                                 <span class="text-xs font-semibold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Telemedicina</span>
+                            @endif
+                            @if($address->type !== 'virtual')
+                                @php $isClinicManaged = auth()->user()->role === 'doctor' && ($currentContext['type'] ?? 'particular') === 'clinic'; @endphp
+                                @if($address->latitude !== null && $address->longitude !== null)
+                                    <a href="https://www.google.com/maps?q={{ $address->latitude }},{{ $address->longitude }}" target="_blank" rel="noopener"
+                                       title="Ver la sede en Google Maps"
+                                       class="text-xs font-semibold bg-green-100 text-green-700 hover:bg-green-200 px-2 py-0.5 rounded-full transition">📍 Ubicada</a>
+                                @elseif($isClinicManaged)
+                                    <span class="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full" title="La clínica aún no ha agregado la ubicación de esta sede">Sin ubicación</span>
+                                @else
+                                    <a href="{{ route('partner.addresses.edit', $address->id) }}"
+                                       title="Agrega la latitud y longitud para aparecer en las búsquedas de doctores cerca de mí"
+                                       class="text-xs font-semibold bg-amber-100 text-amber-700 hover:bg-amber-200 px-2 py-0.5 rounded-full transition">Sin ubicación</a>
+                                @endif
                             @endif
                         </h3>
                         <p class="text-gray-500 text-sm">

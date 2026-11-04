@@ -39,6 +39,44 @@ class AddressController extends Controller
     }
 
     /**
+     * Reglas de la georreferencia: ambas coordenadas o ninguna, dentro de los rangos válidos.
+     */
+    private function coordinateRules(): array
+    {
+        return [
+            'latitude'  => ['nullable', 'required_with:longitude', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'required_with:latitude', 'numeric', 'between:-180,180'],
+        ];
+    }
+
+    private function coordinateMessages(): array
+    {
+        return [
+            'latitude.required_with'  => 'Si ingresas la longitud, también debes ingresar la latitud.',
+            'longitude.required_with' => 'Si ingresas la latitud, también debes ingresar la longitud.',
+            'latitude.numeric'        => 'La latitud debe ser un número (Ej: 4.7109886).',
+            'longitude.numeric'       => 'La longitud debe ser un número (Ej: -74.0721012).',
+            'latitude.between'        => 'La latitud debe estar entre -90 y 90.',
+            'longitude.between'       => 'La longitud debe estar entre -180 y 180.',
+        ];
+    }
+
+    /**
+     * Redondea las coordenadas a 7 decimales (la precisión de la columna DECIMAL(10,7)).
+     * Google Maps y los GPS suelen entregar más decimales de los que se almacenan.
+     */
+    private function normalizeCoordinates(array $validated): array
+    {
+        foreach (['latitude', 'longitude'] as $field) {
+            if (isset($validated[$field])) {
+                $validated[$field] = round((float) $validated[$field], 7);
+            }
+        }
+
+        return $validated;
+    }
+
+    /**
      * Muestra la lista de sedes del propietario o del contexto institucional activo.
      */
     public function index()
@@ -171,10 +209,12 @@ class AddressController extends Controller
             ],
             'phone' => 'nullable|string|max:20',
             'city_id' => 'required|exists:cities,id',
-        ], [
+        ] + $this->coordinateRules(), [
             'name.unique' => 'Ya tienes una sede registrada con este nombre.',
             'address.unique' => 'Ya tienes una sede registrada en esta misma dirección.',
-        ]);
+        ] + $this->coordinateMessages());
+
+        $validated = $this->normalizeCoordinates($validated);
 
         if ($user->role === 'clinic') {
             $validated['clinic_id'] = $owner->id;
@@ -249,9 +289,9 @@ class AddressController extends Controller
             ],
             'phone' => 'nullable|string|max:20',
             'city_id' => 'required|exists:cities,id',
-        ]);
+        ] + $this->coordinateRules(), $this->coordinateMessages());
 
-        $address->update($validated);
+        $address->update($this->normalizeCoordinates($validated));
 
         // 🔥 INVALIDAR CACHÉ al actualizar sede (por consistencia)
         $doctorIds = Schedule::where('address_id', $address->id)

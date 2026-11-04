@@ -26,6 +26,8 @@ class Address extends Model
         'city_id',
         'status',
         'type',
+        'latitude',
+        'longitude',
     ];
 
     /**
@@ -34,6 +36,8 @@ class Address extends Model
     protected $casts = [
         'status'     => 'boolean',
         'deleted_at' => 'datetime',
+        'latitude'   => 'float',
+        'longitude'  => 'float',
     ];
 
     /**

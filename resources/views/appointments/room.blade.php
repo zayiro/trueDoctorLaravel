@@ -26,6 +26,8 @@ $cfg = [
     'endUrl'              => "/api/appointments/{$appointment->id}/end-zoom",
     'statusUrl'           => "/api/appointments/{$appointment->id}/status",
     'csrf'                => csrf_token(),
+    'heartbeatUrl'        => "/api/appointments/{$appointment->id}/room-heartbeat",
+    'roomSessionToken'    => $roomSessionToken ?? null,
     'zoomStarted'         => $appointment->zoom_started,
     'consultationEnded'   => $consultationEnded,
     'isProfessional'      => $isProfessional,
@@ -76,6 +78,27 @@ $cfg = [
      x-data="telemedicineRoom(@js($cfg))"
      x-init="initRoom()">
 
+    {{-- Sesión duplicada: esta consulta se abrió en otra pestaña o dispositivo --}}
+    <div x-show="sessionSuperseded" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 px-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 text-center">
+            <h2 class="text-lg font-bold text-gray-800">Esta consulta se abrió en otra pestaña o dispositivo</h2>
+            <p class="mt-2 text-sm text-gray-600">
+                Solo puede haber una sesión activa por persona. Esta sesión se cerró para evitar audio y video duplicados.
+            </p>
+            <div class="mt-5 flex flex-col sm:flex-row gap-2 justify-center">
+                <button type="button" @click="window.location.reload()"
+                        class="px-4 py-2 text-sm font-medium rounded-lg text-white" style="background:#2563eb;">
+                    Usar esta pestaña
+                </button>
+                <a href="{{ $exitUrl }}"
+                   class="px-4 py-2 text-sm font-medium rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200">
+                    Salir
+                </a>
+            </div>
+        </div>
+    </div>
+
     {{-- HEADER --}}
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-3 md:p-4 rounded-lg shadow-sm border border-gray-100 mb-4 md:mb-6 gap-3">
         <div class="flex-1 min-w-0">
@@ -97,7 +120,7 @@ $cfg = [
                 Finalizar Consulta
             </button>
         @else
-            <a href="{{ route('patient.appointments.index') }}"
+            <a href="{{ route('admin.dashboard') }}"
                class="px-3 md:px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 text-xs md:text-sm font-medium rounded-lg transition">
                 Salir de la sala
             </a>
@@ -623,6 +646,8 @@ $cfg = [
             zoomError: null,
             zoomErrorDetail: null,
             waitingForHost: false,
+            sessionSuperseded: false,
+            roomBeat: null,
             showTimeWarning: false,
             warningDismissed: false,
             warningAutoHideTimer: null,
@@ -641,6 +666,7 @@ $cfg = [
                 
                 this.startCountdown();
                 this.listenToMeetingEnd();
+                this.startRoomSessionGuard();
                 
                 // ✅ INICIALIZAR ZOOM CON ESPERA INTELIGENTE
                 if (config.zoomStarted && !config.consultationEnded) {
@@ -696,7 +722,7 @@ $cfg = [
             },
 
             initZoomSDK() {
-                if (this.zoomInitialized || this.zoomJoining) return;
+                if (this.zoomInitialized || this.zoomJoining || this.sessionSuperseded) return;
 
                 if (typeof ZoomMtgEmbedded === 'undefined') {
                     this.setZoomError('SDK de Zoom no disponible', 'ZoomMtgEmbedded no está definido.');
@@ -842,7 +868,7 @@ $cfg = [
 
                     // 3008 (reunión no iniciada) en un paciente NO es un fallo: el doctor aún no la inicia.
                     // Se recrea el cliente y se reintenta el join cada 5 s hasta que el host la inicie.
-                    if (code === 3008 && !config.isProfessional && !this.finished) {
+                    if (code === 3008 && !config.isProfessional && !this.finished && !this.sessionSuperseded) {
                         console.log('⏳ La reunión aún no ha sido iniciada por el doctor. Reintentando en 5 s...');
                         this.waitingForHost = true;
                         this.zoomJoining = false;
@@ -942,6 +968,67 @@ $cfg = [
                 });
             },
 
+            // ── Sesión única por persona y cita ──────────────────────────────────────────
+            startRoomSessionGuard() {
+                if (!config.roomSessionToken || !config.heartbeatUrl || this.finished) return;
+
+                // Mismo navegador: aviso inmediato entre pestañas (el objeto va en window para que Alpine no lo envuelva en un Proxy)
+                if ('BroadcastChannel' in window) {
+                    window.__roomChannel = new BroadcastChannel('opendoctor-room-' + config.appointmentId);
+                    window.__roomChannel.onmessage = (event) => {
+                        if (event.data && event.data.type === 'claim' && event.data.token !== config.roomSessionToken) {
+                            this.supersedeRoomSession('otra pestaña');
+                        }
+                    };
+                    window.__roomChannel.postMessage({ type: 'claim', token: config.roomSessionToken });
+                }
+
+                // Otros navegadores o dispositivos: el servidor decide cuál es la sesión vigente
+                const beat = () => {
+                    if (this.sessionSuperseded) return;
+
+                    fetch(config.heartbeatUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': config.csrf
+                        },
+                        body: JSON.stringify({ token: config.roomSessionToken }),
+                    })
+                    .then(res => (res.ok ? res.json() : null))
+                    .then(data => {
+                        if (data && data.active === false) {
+                            this.supersedeRoomSession('otro dispositivo');
+                        }
+                    })
+                    .catch(() => { /* un fallo de red no expulsa a nadie */ });
+                };
+
+                this.roomBeat = setInterval(beat, 5000);
+            },
+
+            supersedeRoomSession(origin) {
+                if (this.sessionSuperseded) return;
+
+                console.warn('⚠️ Sesión reemplazada desde ' + origin + ': se cierra esta.');
+                this.sessionSuperseded = true;
+                clearInterval(this.roomBeat);
+                this.waitingForHost = false;
+                this.zoomJoining = false;
+
+                // Salir de la reunión de Zoom y destruir el cliente para liberar cámara y micrófono
+                try {
+                    if (window.__zoomClient) {
+                        Promise.resolve(window.__zoomClient.leaveMeeting())
+                            .catch(() => {})
+                            .finally(() => {
+                                try { ZoomMtgEmbedded.destroyClient(); } catch (e) {}
+                            });
+                    }
+                } catch (e) {}
+            },
+
             listenToMeetingEnd() {
                 const checkStatusInterval = setInterval(() => {
                     fetch(config.statusUrl)
@@ -949,7 +1036,7 @@ $cfg = [
                         .then(data => {
                             // La página cargó en "esperando al doctor": en cuanto el doctor inicia la sala,
                             // se recarga para que se monte el SDK de Zoom (antes había que refrescar a mano).
-                            if (!config.zoomStarted && data.zoom_started) {
+                            if (!config.zoomStarted && data.zoom_started && !this.sessionSuperseded) {
                                 clearInterval(checkStatusInterval);
                                 window.location.reload();
                                 return;

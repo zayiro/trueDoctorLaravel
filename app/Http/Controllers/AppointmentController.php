@@ -42,6 +42,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Cache;
+use App\Services\RoomSessionGuard;
 use Illuminate\Support\Facades\Notification;
 use Carbon\Carbon;
 use Throwable;
@@ -549,7 +550,7 @@ class AppointmentController extends Controller
         return redirect()->route('search')->with('info', 'Proceso de reserva cancelado con éxito. El horario de atención ha sido liberado.');
     }
     
-    public function joinRoom(Appointment $appointment, ZoomService $zoomService)
+    public function joinRoom(Appointment $appointment, ZoomService $zoomService, RoomSessionGuard $roomSessions)
     {
         $user = auth()->user();
         $this->authorizeRoomAccess($appointment, $user);
@@ -597,6 +598,8 @@ class AppointmentController extends Controller
                 'zak'         => $zak,
                 'userRole'    => $role,
                 'zoomStarted' => $appointment->zoom_started,
+                // Sesión única: este token reemplaza al de cualquier otra pestaña o dispositivo de esta persona
+                'roomSessionToken' => $roomSessions->claim($appointment->id, $user->id),
             ]);
 
         } catch (\Exception $e) {
@@ -809,6 +812,22 @@ class AppointmentController extends Controller
             Log::error("Error forzando cierre de Zoom para cita {$appointment->id}: " . $e->getMessage());
             return response()->json(['status' => 'error', 'message' => 'Ocurrió un fallo en el servidor.'], 500);
         }
+    }
+
+    /**
+     * Latido de la sala: confirma que esta pestaña sigue siendo la sesión vigente de la persona en la cita.
+     * Responde {"active": false} si otra pestaña o dispositivo abrió la sala después.
+     */
+    public function roomHeartbeat(Request $request, Appointment $appointment, RoomSessionGuard $roomSessions): JsonResponse
+    {
+        $user = auth()->user();
+        $this->authorizeRoomAccess($appointment, $user);
+
+        $token = (string) $request->input('token', '');
+
+        return response()->json([
+            'active' => $token !== '' && $roomSessions->touch($appointment->id, $user->id, $token),
+        ]);
     }
 
     public function getStatus(Appointment $appointment): JsonResponse

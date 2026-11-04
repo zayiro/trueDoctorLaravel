@@ -1,7 +1,8 @@
 <x-guest-layout
-    meta_title="Guía de Orientación Médica por Síntomas - OpenDoctorOnline"
-    meta_description="Selecciona tus síntomas para evaluar el nivel de urgencia sugerido por nuestra Inteligencia Artificial. Conecta y agenda una cita inmediata con especialistas verificados."
->    
+    meta_title="{{ ucwords(str_replace('-', ' ', $symptom->search_query)) }}: Causas y Cuándo Consultar | OpenDoctor"
+    meta_description="¿Sufres de {{ $recommendation }}? Conoce las posibles causas como la conjuntivitis, qué medidas tomar en casa y cuándo consultar con un médico especialista en OpenDoctor."
+>
+  
     <div class="bg-gradient-to-b from-slate-50 to-white min-h-screen">
         <div class="max-w-6xl mx-auto px-4 py-8 sm:py-12">
             

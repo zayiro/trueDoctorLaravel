@@ -26,6 +26,8 @@ return new class extends Migration
             $table->string('phone')->nullable();
             $table->string('country_code', 2)->nullable();
             $table->string('city_id', 9)->nullable();
+            $table->decimal('latitude', 10, 7)->nullable()->after('city_id');
+            $table->decimal('longitude', 10, 7)->nullable()->after('latitude');
             $table->boolean('status')->default(true);
             $table->softDeletes();
             $table->timestamps();
@@ -33,6 +35,7 @@ return new class extends Migration
             // 🔒 CONSTRAINT: Al menos uno de doctor_id o clinic_id debe estar presente
             // Nota: MySQL 8.0.16+ soporta CHECK constraints
             $table->rawIndex('(CASE WHEN doctor_id IS NOT NULL OR clinic_id IS NOT NULL THEN 1 ELSE NULL END)', 'addresses_owner_check');
+            $table->index(['latitude', 'longitude'], 'addresses_coordinates_index');
         });
     }
 

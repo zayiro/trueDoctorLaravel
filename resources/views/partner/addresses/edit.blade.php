@@ -11,6 +11,10 @@ $breadcrumbs = [
     loading: false, 
     departmentId: '{{ old('department_id', $address->city?->department_id) }}', 
     selectedCityId: '{{ old('city_id', $address->city_id) }}',
+    latitude: '{{ old('latitude', $address->latitude) }}',
+    longitude: '{{ old('longitude', $address->longitude) }}',
+    geoLoading: false,
+    geoError: '',
     cities: [],
     citiesLoading: false,
     citiesError: null,
@@ -18,6 +22,26 @@ $breadcrumbs = [
         if (this.departmentId) {
             this.fetchCities();
         }
+    },
+    useMyLocation() {
+        if (!navigator.geolocation) {
+            this.geoError = 'Tu navegador no permite obtener la ubicación.';
+            return;
+        }
+        this.geoLoading = true;
+        this.geoError = '';
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                this.latitude = pos.coords.latitude.toFixed(7);
+                this.longitude = pos.coords.longitude.toFixed(7);
+                this.geoLoading = false;
+            },
+            () => {
+                this.geoError = 'No pudimos obtener tu ubicación. Revisa el permiso del navegador o ingresa las coordenadas a mano.';
+                this.geoLoading = false;
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
     },
     async fetchCities() {
         if (!this.departmentId) { 
@@ -49,7 +73,7 @@ $breadcrumbs = [
         </span>
         <h2 class="text-2xl font-black text-slate-800">Editar Consultorio</h2>
         <p class="text-sm text-slate-500 mt-1">
-            Modifica los datos de localización o contacto de esta sede física dentro de la red de OpenDoctor.
+            Modifica los datos de localización o contacto de esta sede física dentro de la red de OpenDoctorOnline.
         </p>
     </div>
 
@@ -139,6 +163,74 @@ $breadcrumbs = [
                     @error('city_id')
                         <p class="text-xs text-red-600 mt-1 font-semibold">{{ $message }}</p>
                     @enderror
+                </div>
+            </div>
+
+            <!-- Fila 3: Georreferencia (opcional) -->
+            <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 md:p-5">
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                    <div>
+                        <h3 class="text-sm font-black text-slate-700">Ubicación en el mapa <span class="font-semibold text-slate-400">(opcional, recomendado)</span></h3>
+                        <p class="text-xs text-slate-500 mt-1 max-w-xl">
+                            Con las coordenadas, los pacientes podrán encontrarte en las búsquedas de &quot;doctores cerca de mí&quot;.
+                            Para copiarlas: en Google Maps haz clic derecho sobre tu consultorio y toca el primer número que aparece.
+                        </p>
+                    </div>
+                    <button type="button"
+                            @click="useMyLocation()"
+                            :disabled="geoLoading"
+                            :class="geoLoading ? 'opacity-70 cursor-not-allowed' : ''"
+                            class="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-indigo-200 bg-white text-indigo-700 hover:bg-indigo-50 text-xs font-bold uppercase tracking-wider transition">
+                        <x-heroicon-o-map-pin class="w-4 h-4" />
+                        <span x-text="geoLoading ? 'Buscando...' : 'Usar mi ubicación actual'"></span>
+                    </button>
+                </div>
+
+                <p x-show="geoError" x-cloak x-text="geoError" class="text-xs text-red-600 font-semibold mb-2"></p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div class="flex flex-col">
+                        <x-label for="latitude" value="Latitud" class="mb-1 text-slate-500 font-bold text-xs" />
+                        <input type="number"
+                               name="latitude"
+                               id="latitude"
+                               x-model="latitude"
+                               step="any"
+                               min="-90"
+                               max="90"
+                               inputmode="decimal"
+                               placeholder="Ej: 4.7109886"
+                               class="w-full rounded-2xl border-slate-200 py-4 px-5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-inner @error('latitude') border-red-400 @enderror">
+                        @error('latitude')
+                            <p class="text-xs text-red-600 mt-1 font-semibold">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div class="flex flex-col">
+                        <x-label for="longitude" value="Longitud" class="mb-1 text-slate-500 font-bold text-xs" />
+                        <input type="number"
+                               name="longitude"
+                               id="longitude"
+                               x-model="longitude"
+                               step="any"
+                               min="-180"
+                               max="180"
+                               inputmode="decimal"
+                               placeholder="Ej: -74.0721012"
+                               class="w-full rounded-2xl border-slate-200 py-4 px-5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-inner @error('longitude') border-red-400 @enderror">
+                        @error('longitude')
+                            <p class="text-xs text-red-600 mt-1 font-semibold">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+
+                <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <p class="text-[10px] text-slate-400">En Colombia la latitud es positiva o cercana a 0 (Ej: 4.71) y la longitud es negativa (Ej: -74.07). Si las inviertes, la sede quedaría mal ubicada.</p>
+                    <a x-show="latitude !== '' && longitude !== ''" x-cloak
+                       :href="'https://www.google.com/maps?q=' + latitude + ',' + longitude"
+                       target="_blank" rel="noopener"
+                       class="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline">
+                        Verificar en Google Maps
+                    </a>
                 </div>
             </div>
 

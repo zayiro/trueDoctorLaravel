@@ -374,6 +374,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('/appointments/{appointment}/start-zoom', [AppointmentController::class, 'startZoom'])->name('appointments.start-zoom');
 
+    Route::post('/api/appointments/{appointment}/room-heartbeat', [AppointmentController::class, 'roomHeartbeat'])
+    ->middleware('throttle:60,1')
+    ->name('appointments.room-heartbeat'); 
+
     // Ruta para forzar el cierre desde el reloj de la interfaz
     Route::post('/api/appointments/{appointment}/end-zoom', [AppointmentController::class, 'forceEndMeeting']);
 

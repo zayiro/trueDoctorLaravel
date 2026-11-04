@@ -14,7 +14,31 @@ $breadcrumbs = [
 ];
 @endphp
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-<div class="max-w-7xl mx-auto py-10 px-4" x-data="{ loading: false }">
+<div class="max-w-7xl mx-auto py-10 px-4" x-data="{
+         loading: false,
+         geoLoading: false,
+         geoError: '',
+         useMyLocation() {
+             if (!navigator.geolocation) {
+                 this.geoError = 'Tu navegador no permite obtener la ubicación.';
+                 return;
+             }
+             this.geoLoading = true;
+             this.geoError = '';
+             navigator.geolocation.getCurrentPosition(
+                 (pos) => {
+                     this.$refs.latitude.value = pos.coords.latitude.toFixed(7);
+                     this.$refs.longitude.value = pos.coords.longitude.toFixed(7);
+                     this.geoLoading = false;
+                 },
+                 () => {
+                     this.geoError = 'No pudimos obtener tu ubicación. Revisa el permiso del navegador o ingresa las coordenadas a mano.';
+                     this.geoLoading = false;
+                 },
+                 { enableHighAccuracy: true, timeout: 10000 }
+             );
+         }
+     }">
     <!-- ENCABEZADO ESTILIZADO DE NIVEL SAAS -->
     <div class="mb-8 border-b border-slate-100 pb-5">
         <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-indigo-700 bg-indigo-50 rounded-full mb-3 tracking-wide uppercase">
@@ -23,7 +47,7 @@ $breadcrumbs = [
         </span>
         <h2 class="text-2xl font-black text-slate-800">Registrar Nueva Sede</h2>
         <p class="text-sm text-slate-500 mt-1">
-            Añade un consultorio físico o sucursal médica a la red del ecosistema institucional de OpenDoctor.
+            Añade un consultorio físico o sucursal médica a la red del ecosistema institucional de OpenDoctorOnline.
         </p>
     </div>
 
@@ -123,6 +147,67 @@ $breadcrumbs = [
                             <p class="text-xs text-red-600 mt-1 font-semibold">{{ $message }}</p>
                         @enderror
                     </div>                        
+                </div>
+
+                <!-- Fila 3: Georreferencia (opcional) -->
+                <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 md:p-5">
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                        <div>
+                            <h3 class="text-md font-black text-slate-700">Ubicación en el mapa <span class="font-semibold text-slate-400">(opcional, recomendado)</span></h3>
+                            <p class="text-sm text-slate-500 mt-1 max-w-xl">
+                                Con las coordenadas, los pacientes podrán encontrarte en las búsquedas de &quot;doctores cerca de mí&quot;.
+                                Para copiarlas: en Google Maps haz clic derecho sobre tu consultorio y toca el primer número que aparece.
+                            </p>
+                        </div>
+                        <button type="button"
+                                @click="useMyLocation()"
+                                :disabled="geoLoading"
+                                :class="geoLoading ? 'opacity-70 cursor-not-allowed' : ''"
+                                class="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-indigo-200 bg-white text-indigo-700 hover:bg-indigo-50 text-xs font-bold uppercase tracking-wider transition">
+                            <x-heroicon-o-map-pin class="w-4 h-4" />
+                            <span x-text="geoLoading ? 'Buscando...' : 'Usar mi ubicación actual'"></span>
+                        </button>
+                    </div>
+
+                    <p x-show="geoError" x-cloak x-text="geoError" class="text-xs text-red-600 font-semibold mb-2"></p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div class="flex flex-col">
+                            <x-label for="latitude" value="Latitud" class="mb-1 text-slate-500 font-bold text-xs" />
+                            <input type="number"
+                                   name="latitude"
+                                   id="latitude"
+                                   x-ref="latitude"
+                                   step="any"
+                                   min="-90"
+                                   max="90"
+                                   inputmode="decimal"
+                                   placeholder="Ej: 4.7109886"
+                                   class="w-full rounded-2xl border-slate-200 py-4 px-5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-inner @error('latitude') border-red-400 @enderror"
+                                   value="{{ old('latitude') }}">
+                            @error('latitude')
+                                <p class="text-xs text-red-600 mt-1 font-semibold">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div class="flex flex-col">
+                            <x-label for="longitude" value="Longitud" class="mb-1 text-slate-500 font-bold text-xs" />
+                            <input type="number"
+                                   name="longitude"
+                                   id="longitude"
+                                   x-ref="longitude"
+                                   step="any"
+                                   min="-180"
+                                   max="180"
+                                   inputmode="decimal"
+                                   placeholder="Ej: -74.0721012"
+                                   class="w-full rounded-2xl border-slate-200 py-4 px-5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-inner @error('longitude') border-red-400 @enderror"
+                                   value="{{ old('longitude') }}">
+                            @error('longitude')
+                                <p class="text-xs text-red-600 mt-1 font-semibold">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+                    <p class="text-sm text-slate-400 mt-2">En Colombia la latitud es positiva o cercana a 0 (Ej: 4.71) y la longitud es negativa (Ej: -74.07). Si las inviertes, la sede quedaría mal ubicada.</p>
                 </div>
 
                 <!-- BOTONERA DE ACCIÓN CON CONTROL DE CARGA ALPINE -->

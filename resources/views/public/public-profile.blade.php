@@ -1,4 +1,7 @@
-<x-guest-layout>
+<x-guest-layout
+    meta_title="Agenda médica de {{ $profileType === 'clinic' ? $partner->name : ucfirst($partner->user->name) }} | OpenDoctor"
+    meta_description="Reserva tu cita médica en línea con {{ $profileType === 'clinic' ? $partner->name : ucfirst($partner->user->name) }} en OpenDoctor. Consulta horarios disponibles, telemedicina o atención presencial, y gestiona tu salud de forma rápida y segura."
+>
 
    <style>
         /* 📅 REDUCCIÓN TIPOGRÁFICA Y ESCALA PREMIUM RESPONSIVA DE FLATPICKR */
