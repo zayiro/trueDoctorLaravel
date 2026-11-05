@@ -984,7 +984,7 @@ class AppointmentController extends Controller
                 
                 $name = $appointment->patient?->user?->name ?? 'Paciente';
                 $date = $appointmentDateTime->format('d/m/Y');
-                $time = $appointmentDateTime->format('H:i');                
+                $time = $appointmentDateTime->format('h:i A');                
                 $confirmationMessage = "Hola {$name}, tu cita fue confirmada para el {$date} a las {$time}";
 
                 SendSmsReminder::dispatch(

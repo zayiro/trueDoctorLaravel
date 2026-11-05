@@ -27,7 +27,7 @@ $breadcrumbs = [
         </div>
     @endif
 
-    <div class="max-w-6xl mx-auto py-10 px-4">
+    <div class="py-10 px-4">
 
         <!-- 🔒 CONTROL DE PERMISOS COMERCIALES SEGÚN EL ÁMBITO ACTIVO -->
         @if(auth()->user()->role === 'doctor' && ($currentContext['type'] ?? 'particular') === 'clinic')

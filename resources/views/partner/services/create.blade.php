@@ -5,7 +5,7 @@ $breadcrumbs = [
 ];
 @endphp
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-<div class="max-w-6xl mx-auto py-10 px-4">
+<div class="py-10 px-4">
     <div class="mb-6 flex items-center justify-between">
         <a href="{{ route('partner.services.index') }}" class="text-blue-600 hover:underline text-sm flex items-center gap-1">
             <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

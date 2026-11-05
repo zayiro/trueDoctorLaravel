@@ -2,12 +2,12 @@
 $breadcrumbs = [
     ['name' => 'Dashboard', 'href' => route('admin.dashboard')],
     ['name' => 'Consultorios', 'href' => route('partner.addresses.index')],
-    ['name' => 'Editar Consultorio']
+    ['name' => 'Editar Sede virtual y fisicas (Consultorios)']
 ];
 @endphp
 <x-admin-layout :breadcrumbs="$breadcrumbs">
 
-<div class="max-w-7xl mx-auto py-10 px-4" x-data="{ 
+<div class="py-10 px-4" x-data="{ 
     loading: false, 
     departmentId: '{{ old('department_id', $address->city?->department_id) }}', 
     selectedCityId: '{{ old('city_id', $address->city_id) }}',

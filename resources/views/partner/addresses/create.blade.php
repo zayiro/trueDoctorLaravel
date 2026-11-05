@@ -9,12 +9,12 @@ $breadcrumbs = [
         'href' => route('partner.addresses.index'),
     ],
     [
-        'name' => 'Sedes fisicas (Consultorios)',
+        'name' => 'Sede virtual y fisicas (Consultorios)',
     ]
 ];
 @endphp
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-<div class="max-w-7xl mx-auto py-10 px-4" x-data="{
+<div class="py-10 px-4" x-data="{
          loading: false,
          geoLoading: false,
          geoError: '',

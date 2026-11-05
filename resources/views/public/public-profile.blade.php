@@ -307,17 +307,15 @@
                                             @keydown.escape.window="open = false"
                                             @keydown.arrow-right.window="if(open) next()"
                                             @keydown.arrow-left.window="if(open) prev()"
-                                            class="fixed inset-0 z-[99999] flex flex-col items-center justify-between bg-slate-950/90 backdrop-blur-md p-4 md:p-6"
-                                            style="display: none;">
+                                            class="fixed inset-0 flex flex-col items-center justify-between bg-slate-950/90 backdrop-blur-md p-4 md:p-6"
+                                            style="display: none; z-index: 111;">
                                             
                                             <!-- Encabezado del Modal (Botón Cerrar aislado del contenido) -->
                                             <div class="w-full flex justify-end items-center z-50 h-12">
                                                 <button @click="open = false" 
-                                                        class="text-white/80 hover:text-white p-2.5 rounded-full hover:bg-white/10 transition focus:outline-none focus:ring-2 focus:ring-white"
+                                                        class="text-blue-600/100 dark:text-sky-400/100 hover:text-black p-2.5 rounded-full hover:bg-white/10 transition focus:outline-none focus:ring-2 focus:ring-white"
                                                         aria-label="Cerrar galería">
-                                                    <svg xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-7">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                                    </svg>
+                                                     X
                                                 </button>
                                             </div>
 
@@ -700,7 +698,7 @@
                         <!-- Inicializador de la Instancia en el DOM de Laravel 11 -->                         
                          <div 
                             x-data="{ isOpen: false }" 
-                            class="relative z-10"
+                            class="relative z-1"
                          >
                             <!-- 🌫️ CAPA DE OFUSCACIÓN PREMIUM (Backdrop Overlay) -->
                             <div 

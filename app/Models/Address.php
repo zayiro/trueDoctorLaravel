@@ -35,9 +35,9 @@ class Address extends Model
      */
     protected $casts = [
         'status'     => 'boolean',
-        'deleted_at' => 'datetime',
         'latitude'   => 'float',
         'longitude'  => 'float',
+        'deleted_at' => 'datetime',
     ];
 
     /**
@@ -85,6 +85,53 @@ class Address extends Model
     public function scopeBookable(Builder $query): Builder
     {
         return $query->where($query->getModel()->qualifyColumn('status'), true);
+    }
+
+    /**
+     * ¿La sede tiene georreferencia (latitud y longitud)?
+     * Las sedes virtuales y las anteriores a la georreferencia no la tienen.
+     */
+    public function hasCoordinates(): bool
+    {
+        return $this->latitude !== null && $this->longitude !== null;
+    }
+
+    /**
+     * 🔒 SCOPE: sedes dentro de un radio (km) de un punto, con la distancia en la columna `distance_km`.
+     *
+     * Primero acota por "caja" (usa el índice latitude/longitude) y luego calcula la distancia exacta
+     * con la ley esférica de los cosenos (portable a MariaDB y MySQL). Solo incluye sedes con coordenadas.
+     * Ordena de la más cercana a la más lejana.
+     *
+     * Ejemplo (sedes físicas reservables a ≤ 10 km):
+     *   Address::bookable()->where('type', 'physical')->near($lat, $lng, 10)->get();
+     *
+     * Límite conocido: la caja no contempla el cruce del meridiano 180° (irrelevante en Latinoamérica).
+     */
+    public function scopeNear(Builder $query, float $latitude, float $longitude, float $radiusKm = 10): Builder
+    {
+        $model = $query->getModel();
+        $lat   = $model->qualifyColumn('latitude');
+        $lng   = $model->qualifyColumn('longitude');
+
+        $kmPerDegree = 111.045;
+        $latDelta    = $radiusKm / $kmPerDegree;
+        $lngDelta    = $radiusKm / ($kmPerDegree * max(cos(deg2rad($latitude)), 0.0001));
+
+        $distance = "(6371 * ACOS(LEAST(1, COS(RADIANS(?)) * COS(RADIANS({$lat})) * COS(RADIANS({$lng}) - RADIANS(?)) + SIN(RADIANS(?)) * SIN(RADIANS({$lat})))))";
+
+        if (empty($query->getQuery()->columns)) {
+            $query->select($model->qualifyColumn('*'));
+        }
+
+        return $query
+            ->whereNotNull($lat)
+            ->whereNotNull($lng)
+            ->whereBetween($lat, [$latitude - $latDelta, $latitude + $latDelta])
+            ->whereBetween($lng, [$longitude - $lngDelta, $longitude + $lngDelta])
+            ->whereRaw("{$distance} <= ?", [$latitude, $longitude, $latitude, $radiusKm])
+            ->selectRaw("{$distance} AS distance_km", [$latitude, $longitude, $latitude])
+            ->orderBy('distance_km');
     }
 
     /**

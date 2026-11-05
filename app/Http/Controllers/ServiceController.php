@@ -14,6 +14,7 @@ use App\Traits\ValidatesMultiTenantOwnership;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ServiceController extends Controller
 {
@@ -199,9 +200,17 @@ class ServiceController extends Controller
 
     /**
      * Valida el request de creación/actualización de servicio.
+     *
+     * En edición ($service != null) el tipo NO es editable: se toma del servicio guardado y se ignora lo que
+     * envíe el formulario. Antes se exigía en el request, pero el formulario de edición no lo envía
+     * (los campos disabled no viajan) y fallaba con "El campo tipo es obligatorio".
      */
-    private function validateServiceRequest(Request $request, $owner, $user): array
+    private function validateServiceRequest(Request $request, $owner, $user, ?Service $service = null): array
     {
+        if ($service) {
+            $request->merge(['type' => $service->type]);
+        }
+
         $rules = [
             'name'          => ['required', 'string', 'max:100'],
             'type'          => ['required', 'in:physical,virtual'],
@@ -235,7 +244,7 @@ class ServiceController extends Controller
         if ($validated['type'] === 'physical' && !empty($validated['address_ids'])) {
             foreach ($validated['address_ids'] as $addressId) {
                 if (!isset($validated['prices'][$addressId]) || $validated['prices'][$addressId] === '') {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
+                    throw ValidationException::withMessages([
                         "prices.{$addressId}" => 'Debes asignar un precio a todas las sedes seleccionadas.',
                     ]);
                 }
@@ -278,20 +287,52 @@ class ServiceController extends Controller
     }
 
     /**
-     * Sincroniza todas las relaciones del servicio (especialidades + sedes con precios).
+     * Sincroniza las relaciones del servicio (especialidades + sedes con precios) SOLO del propietario actual.
+     *
+     * El servicio es un registro global (catálogo compartido): varios profesionales pueden vincularse al mismo.
+     * sync() sin restricción borraría los vínculos de TODOS los demás (precios, sedes y especialidades ajenas).
+     * Por eso cada sync se limita a las filas pivote de este usuario / de las sedes de este propietario.
      */
     private function syncServiceRelations(Service $service, array $validated, $owner, $user): void
     {
-        // 1. Sincronizar especialidades con aislamiento por user_id
+        // 1. Especialidades: solo las filas de ESTE usuario (service_specialty.user_id)
         $specialtySyncData = collect($validated['specialties'])
             ->mapWithKeys(fn ($id) => [$id => ['user_id' => $user->id]])
             ->all();
 
-        $service->specialties()->sync($specialtySyncData);
+        $service->specialties()->wherePivot('user_id', $user->id)->sync($specialtySyncData);
 
-        // 2. Sincronizar sedes con precios y duraciones
+        // 2. Sedes: solo las sedes de ESTE propietario (incluidas las eliminadas lógicamente y las recién creadas)
         $syncData = $this->buildAddressSyncData($validated, $owner, $service->type);
-        $service->addresses()->sync($syncData);
+
+        $ownerAddressIds = array_values(array_unique(array_merge(
+            $owner->addresses()->withTrashed()->pluck('addresses.id')->all(),
+            array_keys($syncData)
+        )));
+
+        $service->addresses()->wherePivotIn('address_id', $ownerAddressIds)->sync($syncData);
+    }
+
+    /**
+     * ¿Otros propietarios usan este servicio? (vínculos de especialidad de otro usuario o sedes que no son del propietario)
+     */
+    private function isServiceSharedWithOthers(Service $service, $owner, $user): bool
+    {
+        $usedByOtherUser = DB::table('service_specialty')
+            ->where('service_id', $service->id)
+            ->where('user_id', '!=', $user->id)
+            ->exists();
+
+        if ($usedByOtherUser) {
+            return true;
+        }
+
+        $ownerAddressIds = $owner->addresses()->withTrashed()->pluck('addresses.id')->all();
+
+        return DB::table('address_service')
+            ->where('service_id', $service->id)
+            ->whereNotIn('address_id', $ownerAddressIds)
+            ->exists();
     }
 
     /**
@@ -350,7 +391,7 @@ class ServiceController extends Controller
      */
     private function invalidateServiceCache(AvailabilityRepository $cacheRepo, $owner, Service $service): void
     {
-        $addressIds = $service->addresses()->pluck('id')->all();
+        $addressIds = $service->addresses()->pluck('addresses.id')->all();
 
         if (empty($addressIds)) {
             return;
@@ -422,11 +463,36 @@ class ServiceController extends Controller
 
         $this->validateServiceOwnership($service, $user);
 
-        $validated = $this->validateServiceRequest($request, $owner, $user);
+        $validated = $this->validateServiceRequest($request, $owner, $user, $service);
+
+        // El servicio es un registro global: renombrarlo cambiaría el nombre para todos los profesionales que lo usan
+        $newName       = $this->normalizeServiceName($validated['name']);
+        $renameService = $newName !== $service->name;
+
+        if ($renameService) {
+            if ($this->isServiceSharedWithOthers($service, $owner, $user)) {
+                throw ValidationException::withMessages([
+                    'name' => 'Este servicio también lo usan otros profesionales y no se puede renombrar. Crea un servicio nuevo con ese nombre.',
+                ]);
+            }
+
+            $nameTaken = Service::where('name', $newName)
+                ->where('type', $service->type)
+                ->where('id', '!=', $service->id)
+                ->exists();
+
+            if ($nameTaken) {
+                throw ValidationException::withMessages([
+                    'name' => 'Ya existe un servicio con ese nombre en el catálogo.',
+                ]);
+            }
+        }
 
         try {
-            DB::transaction(function () use ($validated, $service, $owner, $user, $cacheRepo) {
-                $service->update(['name' => $this->normalizeServiceName($validated['name'])]);
+            DB::transaction(function () use ($validated, $service, $owner, $user, $cacheRepo, $renameService, $newName) {
+                if ($renameService) {
+                    $service->update(['name' => $newName]);
+                }
 
                 $this->syncServiceRelations($service, $validated, $owner, $user);
 

@@ -7,7 +7,7 @@ $breadcrumbs = [
 @endphp
 <x-admin-layout :breadcrumbs="$breadcrumbs">
 
-<div class="max-w-6xl mx-auto py-10 px-4" x-data="{ 
+<div class="py-10 px-4" x-data="{ 
     type: '{{ $service->type }}',
     loading: false 
 }">

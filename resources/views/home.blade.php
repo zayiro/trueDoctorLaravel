@@ -1,4 +1,8 @@
-<x-guest-layout>
+<x-guest-layout 
+    meta_title="OpenDoctor | Agenda tu Cita Médica Virtual o Presencial con los mejores especialistas de tu ciudad." 
+    meta_description="Encuentra y agenda citas virtuales o presenciales con los mejores médicos en OpenDoctor. Ofrecemos software de gestión médica, historias clínicas electrónicas y telemedicina para profesionales de la salud." 
+>
+    <!---hacer que la descripcion sea un array y cambiarlo aleatoriamente--->
     @auth
         @php
             // Buscamos si el paciente tiene alguna cita virtual abandonada hoy
