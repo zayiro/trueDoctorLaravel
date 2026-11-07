@@ -62,6 +62,7 @@ use App\Http\Controllers\MedicalAnalysisController;
 use App\Http\Controllers\CityController;
 
 use App\Http\Controllers\AppointmentBookingController;
+use App\Http\Controllers\NearbyDoctorsController;
 
 use Spatie\Honeypot\ProtectAgainstSpam; 
 use Illuminate\Cache\RateLimiting\Limit;
@@ -625,3 +626,10 @@ Route::get('{partner_slug}/{campaign_slug}.html', PublicLanding::class)
 
 Route::get('/cities/search', [CityController::class, 'search'])->name('cities.search');
 Route::get('/cities/nearby', [CityController::class, 'searchByCoordinates'])->name('cities.nearby');
+
+// Ruta dedicada para la vista del mapa de doctores cercanos
+Route::get('/doctors/nearby', [NearbyDoctorsController::class, 'index'])
+    ->name('doctors.nearby');
+
+Route::get('/api/doctors/nearby', [NearbyDoctorsController::class, 'fetchNearby'])
+    ->name('api.doctors.nearby');    

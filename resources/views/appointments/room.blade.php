@@ -548,9 +548,20 @@ $cfg = [
 
                 {{-- Vista del paciente --}}
                 <div class="bg-white rounded-xl shadow-md border border-gray-100 p-4 md:p-5">
-                    <div class="p-3 bg-green-50 text-green-800 rounded-lg text-xs border border-green-200">
-                        <p class="font-semibold mb-1">Sala de Espera Virtual</p>
-                        <p class="text-gray-600">Por seguridad de datos médicos, permanecerás aquí hasta que el doctor autorice tu ingreso a la videollamada.</p>
+                    <div class="p-4 bg-green-50 text-green-800 rounded-lg text-xs border border-green-200 flex flex-col sm:flex-row items-center gap-4">
+                        
+                        {{-- Imagen Redondeada de Espera Virtual --}}
+                        <img src="{{ asset('images/logoAuth.jpg') }}" 
+                            alt="Sala de espera virtual truedoctor" 
+                            class="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border-2 border-white shadow-sm flex-shrink-0"
+                            loading="lazy">
+
+                        {{-- Texto Informativo --}}
+                        <div>
+                            <p class="font-semibold text-sm mb-1 text-green-900">Sala de Espera Virtual</p>
+                            <p class="text-gray-600 leading-relaxed">Por seguridad de datos médicos, permanecerás aquí hasta que el doctor autorice tu ingreso a la videollamada.</p>
+                        </div>
+
                     </div>
                 </div>
 

@@ -2,20 +2,27 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Un servicio pertenece a UNA sola sede (y por tanto a un solo profesional o clínica): es independiente de los
+ * servicios de los demás profesionales y de los de sus otras sedes. El precio y la duración viven en el pivote
+ * address_service (una fila por servicio). Eliminarlo es lógico (SoftDeletes) para conservar el historial de citas.
+ */
 class Service extends Model
 {
+    use SoftDeletes;
+
     protected $touches = ['addresses'];
 
     /**
-     * 🔒 CORRECCIÓN: 'price' y 'duration' NO existen en la tabla services.
-     * Viven en la tabla pivote 'address_service' (relación addresses()).
+     * 'price' y 'duration' NO existen en la tabla services: viven en el pivote 'address_service'.
      */
     protected $fillable = [
         'name',
@@ -26,6 +33,25 @@ class Service extends Model
     protected $casts = [
         'active' => 'boolean',
     ];
+
+    /**
+     * 🔒 SCOPE: servicios del propietario (doctor o clínica), a través de sus sedes.
+     * Es el filtro de aislamiento entre profesionales: ningún otro propietario puede verlos ni modificarlos.
+     */
+    public function scopeOwnedBy(Builder $query, Doctor|Clinic $owner): Builder
+    {
+        $field = $owner instanceof Clinic ? 'clinic_id' : 'doctor_id';
+
+        return $query->whereHas('addresses', fn (Builder $address) => $address->where('addresses.' . $field, $owner->id));
+    }
+
+    /**
+     * La sede a la que pertenece el servicio (hay exactamente una).
+     */
+    public function primaryAddress(): ?Address
+    {
+        return $this->relationLoaded('addresses') ? $this->addresses->first() : $this->addresses()->first();
+    }
 
     /**
      * 🔒 SCOPE: Filtra los servicios habilitados comercialmente según el espacio de trabajo activo.

@@ -59,12 +59,14 @@ $breadcrumbs = [
                     <label for="duration" class="block text-sm font-bold text-gray-700 mb-2">Duración de la Cita</label>
                     @php
                         $currentDuration = old('duration', $service->addresses->first()?->pivot?->duration ?? 20);
+                        // Si la duración guardada no está en la lista fija, se agrega: antes el select mostraba 15 y la cambiaba al guardar
+                        $durationOptions = collect([15, 20, 30, 45, 60, (int) $currentDuration])->unique()->sort()->values();
                     @endphp
                     <select id="duration"
                             name="duration" 
                             class="w-full rounded-2xl border-gray-300 py-3 focus:ring-indigo-500 @error('duration') border-red-400 @enderror" 
                             required>
-                        @foreach([15, 20, 30, 45, 60] as $time)
+                        @foreach($durationOptions as $time)
                             <option value="{{ $time }}" {{ $currentDuration == $time ? 'selected' : '' }}>{{ $time }} min</option>
                         @endforeach
                     </select>

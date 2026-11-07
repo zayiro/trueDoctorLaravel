@@ -438,9 +438,16 @@ class ServiceController extends Controller
             ->pluck('specialty_id')
             ->toArray();
 
-        $attachedAddressIds = $service->addresses()
-            ->where('addresses.type', 'physical')
-            ->pluck('addresses.id')
+        // El servicio es un registro global (lo comparten varios profesionales). Solo se cargan las sedes del
+        // propietario actual: sin esto la vista mostraba el precio y la duración de OTRO profesional
+        // (firstWhere('type', 'virtual') tomaba la primera sede virtual de cualquiera).
+        $ownerAddressIds = $owner->addresses()->pluck('addresses.id')->all();
+
+        $service->load(['addresses' => fn ($query) => $query->whereIn('addresses.id', $ownerAddressIds)]);
+
+        $attachedAddressIds = $service->addresses
+            ->where('type', 'physical')
+            ->pluck('id')
             ->toArray();
 
         return view('partner.services.edit', compact(

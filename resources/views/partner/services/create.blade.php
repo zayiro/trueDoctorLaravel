@@ -59,8 +59,10 @@ $breadcrumbs = [
     @endif
 
     <!-- Contenedor Base con Alpine.js -->
-    <div x-data="{ type: '{{ old('type', $hasAddresses ? 'physical' : 'virtual') }}' }" class="bg-white shadow-xl rounded-3xl overflow-hidden border border-gray-100">
-        <form action="{{ route('partner.services.store') }}" method="POST" class="p-8 space-y-6">
+    <div x-data="{ type: '{{ old('type', $hasAddresses ? 'physical' : 'virtual') }}', loading: false }"
+     @pageshow.window="loading = false"
+     class="bg-white shadow-xl rounded-3xl overflow-hidden border border-gray-100">
+        <form action="{{ route('partner.services.store') }}" method="POST" @submit="loading = true" class="p-8 space-y-6">
             @csrf
 
             <!-- Mensajes de Error Globales -->
@@ -69,13 +71,14 @@ $breadcrumbs = [
             <!-- Nombre del Servicio -->
             <div class="grid grid-cols-1 gap-6">
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">Nombre del Servicio Clínico</label>
-                    <input type="text" 
-                           name="name" 
-                           value="{{ old('name') }}" 
-                           placeholder="Ej: Consulta de Especialista, Examen de Diagnóstico" 
-                           autocomplete="organization"
-                           class="w-full rounded-2xl border-gray-300 py-3 focus:ring-indigo-500 focus:border-indigo-500 @error('name') border-red-400 @enderror" 
+                    <label for="name" class="block text-sm font-bold text-gray-700 mb-2">Nombre del Servicio Clínico</label>
+                    <input type="text"
+                           id="name"
+                           name="name"
+                           value="{{ old('name') }}"
+                           placeholder="Ej: Consulta de Especialista, Examen de Diagnóstico"
+                           autocomplete="off"
+                           class="w-full rounded-2xl border-gray-300 py-3 focus:ring-indigo-500 focus:border-indigo-500 @error('name') border-red-400 @enderror"
                            required>
                     @error('name')
                         <p class="mt-2 text-xs text-red-600 font-bold">{{ $message }}</p>
@@ -86,9 +89,9 @@ $breadcrumbs = [
             <!-- Duración y Modalidad -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">Duración de la Cita</label>
-                    <select name="duration" 
-                            class="w-full rounded-2xl border-gray-300 py-3 focus:ring-indigo-500 @error('duration') border-red-400 @enderror" 
+                    <label for="duration" class="block text-sm font-bold text-gray-700 mb-2">Duración de la Cita</label>
+                    <select id="duration" name="duration"
+                            class="w-full rounded-2xl border-gray-300 py-3 focus:ring-indigo-500 @error('duration') border-red-400 @enderror"
                             required>
                         @foreach([15, 20, 30, 45, 60] as $time)
                             <option value="{{ $time }}" {{ old('duration', 20) == $time ? 'selected' : '' }}>{{ $time }} min</option>
@@ -99,10 +102,10 @@ $breadcrumbs = [
                     @enderror
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">Modalidad de Atención</label>
-                    <select name="type" 
-                            x-model="type" 
-                            class="w-full rounded-2xl border-gray-300 py-3 focus:ring-indigo-500 @error('type') border-red-400 @enderror" 
+                    <label for="type" class="block text-sm font-bold text-gray-700 mb-2">Modalidad de Atención</label>
+                    <select id="type" name="type"
+                            x-model="type"
+                            class="w-full rounded-2xl border-gray-300 py-3 focus:ring-indigo-500 @error('type') border-red-400 @enderror"
                             required>
                         @if($hasAddresses)
                             <option value="physical">Presencial (En Sede Física)</option>
@@ -124,13 +127,13 @@ $breadcrumbs = [
             <div class="p-6 bg-gray-50 rounded-3xl border border-gray-200 space-y-3 mt-6">
                 <label class="block text-sm font-bold text-gray-800 mb-2">Asociar a Especialidad(es) Médica(s)</label>
                 <p class="text-xs text-gray-500 mb-4">Selecciona las especialidades de tu perfil que atienden o son afines a este servicio clínico.</p>
-                
+
                 @if($hasSpecialties)
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         @foreach($specialties as $specialty)
                             <label class="flex items-center p-3 bg-white rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50 transition">
-                                <input type="checkbox" 
-                                       name="specialties[]" 
+                                <input type="checkbox"
+                                       name="specialties[]"
                                        value="{{ $specialty->id }}"
                                        class="rounded text-indigo-600 focus:ring-indigo-500"
                                        {{ in_array($specialty->id, old('specialties', [])) ? 'checked' : '' }}>
@@ -143,7 +146,7 @@ $breadcrumbs = [
                         ⚠️ No tienes especialidades configuradas. <a href="{{ route('partner.profile.edit') }}" class="underline font-bold">Agrega una especialidad aquí</a> antes de crear servicios.
                     </p>
                 @endif
-                
+
                 @error('specialties')
                     <p class="mt-2 text-xs text-red-600 font-bold">{{ $message }}</p>
                 @enderror
@@ -152,11 +155,14 @@ $breadcrumbs = [
             <!-- Input Exclusivo para Precio Virtual -->
             <div x-show="type === 'virtual'" x-transition class="p-6 bg-purple-50 rounded-3xl border border-purple-100 space-y-4 mt-6">
                 <div>
-                    <label class="block text-sm font-bold text-purple-900 mb-2">Valor del Servicio Virtual / Videoconsulta ($)</label>
-                    <input type="number" 
-                           name="price_virtual" 
-                           step="0.01" 
-                           min="0" 
+                    <label for="price_virtual" class="block text-sm font-bold text-purple-900 mb-2">Valor del Servicio Virtual / Videoconsulta ($)</label>
+                    <input type="number"
+                           id="price_virtual"
+                           name="price_virtual"
+                           x-bind:required="type === 'virtual'"
+                           x-bind:disabled="type !== 'virtual'"
+                           step="0.01"
+                           min="0"
                            value="{{ old('price_virtual', '') }}"
                            placeholder="0.00"
                            class="w-full md:w-1/2 rounded-2xl border-purple-300 py-3 focus:ring-purple-500 focus:border-purple-400 @error('price_virtual') border-red-400 @enderror">
@@ -175,10 +181,11 @@ $breadcrumbs = [
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-xl border border-blue-200 gap-4"
                                  x-data="{ checked: {{ in_array($address->id, old('address_ids', [])) ? 'true' : 'false' }} }">
                                 <label class="flex items-center cursor-pointer flex-1">
-                                    <input type="checkbox" 
-                                           name="address_ids[]" 
-                                           value="{{ $address->id }}" 
+                                    <input type="checkbox"
+                                           name="address_ids[]"
+                                           value="{{ $address->id }}"
                                            x-model="checked"
+                                           x-bind:disabled="type !== 'physical'"
                                            class="rounded text-blue-600 focus:ring-blue-500"
                                            {{ in_array($address->id, old('address_ids', [])) ? 'checked' : '' }}>
                                     <div class="ml-3">
@@ -188,13 +195,14 @@ $breadcrumbs = [
                                 </label>
                                 <div class="flex items-center gap-2">
                                     <span class="text-xs font-bold text-gray-500">Precio Sede ($)</span>
-                                    <input type="number" 
-                                           name="prices[{{ $address->id }}]" 
-                                           step="0.01" 
-                                           min="0" 
+                                    <input type="number"
+                                           name="prices[{{ $address->id }}]"
+                                           step="0.01"
+                                           min="0"
                                            value="{{ old('prices.' . $address->id, '') }}"
-                                           x-bind:disabled="!checked"
-                                           class="w-32 rounded-xl border-gray-300 py-2 text-sm focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400 @error('prices.' . $address->id) border-red-400 @enderror" 
+                                           x-bind:required="type === 'physical' && checked"
+                                           x-bind:disabled="type !== 'physical' || !checked"
+                                           class="w-32 rounded-xl border-gray-300 py-2 text-sm focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-400 @error('prices.' . $address->id) border-red-400 @enderror"
                                            placeholder="0.00">
                                 </div>
                                 @error('prices.' . $address->id)
@@ -210,7 +218,7 @@ $breadcrumbs = [
             @endif
 
             <!-- Mensaje informativo para modalidad virtual -->
-            <div x-show="type === 'virtual'" 
+            <div x-show="type === 'virtual'"
                  x-transition
                  class="p-4 bg-purple-50 rounded-2xl border border-purple-100 flex items-start gap-3 mt-6">
                 <svg class="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -223,11 +231,17 @@ $breadcrumbs = [
 
             <!-- Botones de Acción -->
             <div class="pt-4 flex gap-4 mt-6">
-                <button type="submit" 
-                        class="flex-1 bg-blue-600 text-white font-black py-4 rounded-2xl shadow-lg hover:bg-blue-700 transition tracking-wide uppercase text-sm">
-                    Crear y Configurar Servicio
+                <button type="submit"
+                        :disabled="loading"
+                        :class="loading ? 'opacity-70 cursor-not-allowed' : ''"
+                        class="flex-1 bg-blue-600 text-white font-black py-4 rounded-2xl shadow-lg hover:bg-blue-700 transition tracking-wide uppercase text-sm flex items-center justify-center gap-2">
+                    <svg x-show="loading" x-cloak class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span x-text="loading ? 'Creando servicio...' : 'Crear y Configurar Servicio'"></span>
                 </button>
-                <a href="{{ route('partner.services.index') }}" 
+                <a href="{{ route('partner.services.index') }}"
                    onclick="return confirm('¿Seguro que deseas cancelar? Se perderán los datos no guardados.')"
                    class="px-8 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition text-sm flex items-center justify-center">
                     Cancelar

@@ -82,6 +82,12 @@
         </div>
     </section>    
 
+    <section class="relative z-40 bg-white">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <x-nearby-doctors-trigger :radius="50" />
+        </div>
+    </section>
+
     <!-- Teleconsulta Hero Section -->
     <section class="relative bg-white md:py-10 overflow-hidden">
         <!-- Destellos orgánicos sutiles de fondo -->

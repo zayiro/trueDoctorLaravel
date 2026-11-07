@@ -237,4 +237,17 @@ class Doctor extends Model
         
         return $countries[strtolower($this->country_code)] ?? 'Desconocido';
     }
+
+    // Si el doctor independiente tiene su propia dirección
+    public function address()
+    {
+        return $this->morphOne(Address::class, 'addressable'); 
+        // O: return $this->belongsTo(Address::class);
+    }
+
+    // Relación con la clínica (si es staff)
+    public function clinic()
+    {
+        return $this->belongsTo(Clinic::class);
+    }
 }
