@@ -19,7 +19,7 @@
             });
         })();
     </script>
-    <div class="max-w-5xl mx-auto py-12 px-4 mt-6">
+    <div class="max-w-7xl mx-auto py-12 px-4 mt-6">
         @if(session('error'))
             <div class="flex items-center p-4 mb-4 text-red-800 rounded-2xl bg-red-50 border border-red-100 shadow-sm" role="alert">
                 <svg class="flex-shrink-0 w-4 h-4" fill="currentColor" viewBox="0 0 20 20">

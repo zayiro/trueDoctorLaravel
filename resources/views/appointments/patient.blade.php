@@ -1,5 +1,5 @@
 <x-guest-layout>
-    <div class="max-w-5xl mx-auto py-12 px-4 mt-6">
+    <div class="max-w-7xl mx-auto py-12 px-4 mt-6">
         
         <!-- ALERTAS DE ERROR GENERALES -->
         @if(session('error'))

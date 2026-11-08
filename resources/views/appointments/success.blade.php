@@ -7,7 +7,7 @@
 @endphp
 
 <x-guest-layout>    
-    <div class="max-w-5xl mx-auto py-12 px-4 text-center">
+    <div class="max-w-7xl mx-auto py-12 px-4 text-center">
         
         <!-- 1. ICONO, TITULO Y SUBTITULO CONDICIONALES POR ESTADO -->
         <div class="mt-6 mb-8">

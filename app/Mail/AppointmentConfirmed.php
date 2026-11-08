@@ -10,6 +10,9 @@ use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Spatie\IcalendarGenerator\Components\Calendar;
+use Spatie\IcalendarGenerator\Components\Event;
+use Carbon\Carbon;
 
 class AppointmentConfirmed extends Mailable
 {
@@ -54,6 +57,32 @@ class AppointmentConfirmed extends Mailable
      */
     public function attachments(): array
     {
-        return [];
+        // 1. Fusionamos el objeto Date de Eloquent con los strings de horas
+        // Como 'date' ya viene casteado como objeto Carbon, usamos format('Y-m-d')
+        $fechaBase = $this->appointment->date->format('Y-m-d');
+        
+        $inicio = Carbon::parse("{$fechaBase} {$this->appointment->start_time}");
+        $fin    = Carbon::parse("{$fechaBase} {$this->appointment->end_time}");
+
+        $isVirtual = ($this->appointment->service?->type === 'virtual') || ($this->appointment->address?->type === 'virtual');
+        $addressText = $isVirtual ? 'Consultorio Médico Virtual' : 'Consultorio Médico Presencial';
+
+        // 2. Construcción del evento iCalendar con Spatie
+        $icsContent = Calendar::create('Calendario de Citas en OpenDoctorOnline')
+            ->event(
+                Event::create('Cita Médica - Ref: ' . $this->appointment->reference)
+                    ->startsAt($inicio)
+                    ->endsAt($fin)
+                    ->description("Estado de la cita: {$this->appointment->status->value}.\nPor favor, asista 10 minutos antes.")
+                    // Ajusta el nombre de la relación según tengas configurado tu modelo (ej. $this->appointment->doctor->office_address)
+                    ->address($addressText) 
+            )
+            ->get();
+
+        // 3. Adjunto en memoria con los headers correctos para clientes de correo
+        return [
+            Attachment::fromData(fn () => $icsContent, 'cita-medica.ics')
+                ->withMime('text/calendar; charset=UTF-8; method=REQUEST'),
+        ];
     }
 }

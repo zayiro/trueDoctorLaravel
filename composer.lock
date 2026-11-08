@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "63f408e1f6a30fe4a29d8bba351bf46a",
+    "content-hash": "66c3b57367b5e1a665605ea485d2a892",
     "packages": [
         {
             "name": "anthropic-ai/sdk",
@@ -7785,6 +7785,66 @@
                 }
             ],
             "time": "2026-05-04T11:43:33+00:00"
+        },
+        {
+            "name": "spatie/icalendar-generator",
+            "version": "3.3.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/spatie/icalendar-generator.git",
+                "reference": "e51d223689907c7b5d85b560d6446d07cac27ad2"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/spatie/icalendar-generator/zipball/e51d223689907c7b5d85b560d6446d07cac27ad2",
+                "reference": "e51d223689907c7b5d85b560d6446d07cac27ad2",
+                "shasum": ""
+            },
+            "require": {
+                "ext-mbstring": "*",
+                "php": "^8.4"
+            },
+            "require-dev": {
+                "ext-json": "*",
+                "friendsofphp/php-cs-fixer": "^3.95",
+                "larapack/dd": "^1.1",
+                "nesbot/carbon": "^3.5",
+                "pestphp/pest": "^5.0",
+                "phpstan/phpstan": "^2.0",
+                "spatie/pest-plugin-snapshots": "^2.4"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Spatie\\IcalendarGenerator\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Ruben Van Assche",
+                    "email": "ruben@spatie.be",
+                    "homepage": "https://spatie.be",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Build calendars in the iCalendar format",
+            "homepage": "https://github.com/spatie/icalendar-generator",
+            "keywords": [
+                "calendar",
+                "iCalendar",
+                "ical",
+                "ics",
+                "spatie"
+            ],
+            "support": {
+                "issues": "https://github.com/spatie/icalendar-generator/issues",
+                "source": "https://github.com/spatie/icalendar-generator/tree/3.3.2"
+            },
+            "time": "2026-11-06T10:55:43+00:00"
         },
         {
             "name": "spatie/laravel-analytics",
