@@ -334,7 +334,8 @@ class Appointment extends Model
      */
     public function service(): BelongsTo
     {
-        return $this->belongsTo(Service::class, 'service_id');
+        // withTrashed: un servicio eliminado (SoftDeletes) debe seguir visible en el historial de citas
+        return $this->belongsTo(Service::class, 'service_id')->withTrashed();
     }
 
     /**

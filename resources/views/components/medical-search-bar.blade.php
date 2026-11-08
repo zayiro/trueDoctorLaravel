@@ -201,6 +201,8 @@
             </div>
 
         </form>
+
+        <div class=""><x-nearby-doctors-trigger :radius="50" /></div>
     </div>
 
     <!-- TAB 2: BÚSQUEDA DE SÍNTOMAS -->

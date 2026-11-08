@@ -155,7 +155,7 @@ $breadcrumbs = [
                         <div>
                             <h3 class="text-md font-black text-slate-700">Ubicación en el mapa <span class="font-semibold text-slate-400">(opcional, recomendado)</span></h3>
                             <p class="text-sm text-slate-500 mt-1 max-w-xl">
-                                Con las coordenadas, los pacientes podrán encontrarte en las búsquedas de &quot;doctores cerca de mí&quot;.
+                                Con las coordenadas, los pacientes podrán encontrarte en las búsquedas de <strong>doctores cerca de mí</strong>.
                                 Para copiarlas: en Google Maps haz clic derecho sobre tu consultorio y toca el primer número que aparece.
                             </p>
                         </div>

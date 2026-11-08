@@ -2,7 +2,7 @@
     @vite('resources/js/nearby-doctors.js')
 @endonce
 
-<div x-data="nearbyDoctorsMap({ radius: {{ $radius }}, endpoint: @js($endpoint) })">
+<div x-data="nearbyDoctorsMap({ radius: {{ $radius }}, endpoint: @js($endpoint) })" class="mt-6">
     {{-- Botón disparador --}}
     <button
         type="button"
@@ -22,10 +22,13 @@
     <dialog
         x-ref="dialog"
         @close="closeAndCleanup"
-        class="w-full max-w-4xl p-0 rounded-2xl shadow-2xl border border-gray-200 backdrop:bg-gray-900/60 backdrop:backdrop-blur-sm overflow-hidden"
+        aria-labelledby="nearby-doctors-title"
+        {{-- w-[calc(100%-10px)] = 5px a cada lado en móvil; max-h con dvh respeta la barra del navegador móvil;
+             open:flex evita que display:flex deje visible el diálogo cerrado --}}
+        class="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-4xl max-h-[calc(100dvh-2rem)] p-0 rounded-2xl shadow-2xl border border-gray-200 backdrop:bg-gray-900/60 backdrop:backdrop-blur-sm overflow-hidden open:flex open:flex-col"
     >
         {{-- Cabecera --}}
-        <header class="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white">
+        <header class="shrink-0 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 bg-white">
             <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -33,8 +36,8 @@
                     </svg>
                 </div>
                 <div>
-                    <h2 class="text-base font-bold text-gray-900">Especialistas cerca de ti</h2>
-                    <p class="text-xs text-gray-500" x-text="statusMessage"></p>
+                    <h2 id="nearby-doctors-title" class="text-base font-bold text-gray-900">Especialistas cerca de ti</h2>
+                    <p class="text-md text-gray-500" x-text="statusMessage"></p>
                 </div>
             </div>
 
@@ -51,9 +54,9 @@
         </header>
 
         {{-- Contenedor Principal --}}
-        <div class="relative bg-gray-100 h-[520px]">
+        <div class="relative bg-gray-100 flex-1 min-h-0 overflow-y-auto overscroll-contain">
             {{-- Estado: Cargando --}}
-            <div x-show="state === 'loading'" x-cloak class="h-full flex flex-col items-center justify-center p-6 bg-white">
+            <div x-show="state === 'loading'" x-cloak class="min-h-[320px] flex flex-col items-center justify-center p-6 bg-white">
                 <svg class="animate-spin w-10 h-10 text-blue-600 mb-3" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -62,7 +65,7 @@
             </div>
 
             {{-- Estado: Error --}}
-            <div x-show="state === 'error'" x-cloak class="h-full flex flex-col items-center justify-center bg-red-50 p-6 text-center">
+            <div x-show="state === 'error'" x-cloak class="min-h-[320px] flex flex-col items-center justify-center bg-red-50 p-6 text-center">
                 <svg class="w-12 h-12 text-red-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
@@ -73,7 +76,7 @@
             </div>
 
             {{-- Estado: Sin Resultados --}}
-            <div x-show="state === 'empty'" x-cloak class="h-full flex flex-col items-center justify-center bg-white p-6 text-center">
+            <div x-show="state === 'empty'" x-cloak class="min-h-[320px] flex flex-col items-center justify-center bg-white p-4 sm:p-6 text-center">
                 <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-gray-400">
                     <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -81,14 +84,12 @@
                 </div>
                 
 
-                <div class="flex flex-col items-center text-center py-12 px-6 gap-4 bg-white rounded-3xl border border-slate-100 shadow-sm dark:bg-gray-800 dark:border-gray-700">                    
+                <div class="w-full flex flex-col items-center text-center py-6 sm:py-12 px-4 sm:px-6 gap-4 bg-white rounded-3xl border border-slate-100 shadow-sm dark:bg-gray-800 dark:border-gray-700">                    
                     <p class="text-md text-gray-500">
                         No encontramos especialistas disponibles en un radio de <span class="font-semibold text-gray-700" x-text="`${radius} km`"></span>.
                     </p>
-
-                    <p class="text-md font-bold text-blue-900">¡Agenda tu Cita Médica Virtual!</p>
                     <p class="text-md leading-normal">
-                        No necesitas desplazarte. Puedes consultar de forma segura 24/7 con médicos certificados mediante nuestra plataforma integrada de telemedicina.
+                        Estamos listos para atenderte. No te desplaces, agenda una videoconsulta segura 24/7 con médicos certificados en nuestra plataforma.
                     </p>
 
                     <div class="flex flex-wrap justify-center gap-3">
@@ -96,13 +97,13 @@
                             <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25"/>
                             </svg>
-                            <span class="text-xs font-bold text-emerald-700 dark:text-emerald-400">Telemedicina inmediata disponible</span>
+                            <span class="text-md font-bold text-emerald-700 dark:text-emerald-400">Telemedicina inmediata disponible</span>
                         </div>
                         <div class="flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-2.5 dark:bg-indigo-950/30 dark:border-indigo-900">
                             <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
-                            <span class="text-xs font-bold text-indigo-700 dark:text-indigo-400">Médicos generales listos ahora</span>
+                            <span class="text-md font-bold text-indigo-700 dark:text-indigo-400">Médicos generales listos ahora</span>
                         </div>
                     </div>                    
                     
@@ -117,7 +118,7 @@
             </div>
 
             {{-- Estado: Mapa Estilo Google Maps --}}
-            <div x-show="state === 'ready'" x-cloak class="relative w-full h-full">
+            <div x-show="state === 'ready'" x-cloak class="relative w-full h-[60dvh] min-h-[280px] sm:h-[520px]">
                 <div x-ref="mapContainer" class="w-full h-full z-0"></div>
 
                 {{-- Tarjeta flotante superior izquierda (Estilo Google Maps) --}}
@@ -136,4 +137,3 @@
         </div>
     </dialog>
 </div>
-

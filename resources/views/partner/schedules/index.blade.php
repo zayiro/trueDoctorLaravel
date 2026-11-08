@@ -21,7 +21,7 @@ $daysColorMeta = [
 @endphp
 <x-admin-layout :breadcrumbs="$breadcrumbs">
 {{-- Contenedor unificado con Alpine.js reactivo al conmutador regulatorio inyectado por el controlador --}}
-<div class="max-w-7xl mx-auto py-6 px-4" x-data="{ loading: false, showReplicate: false, selectedDoctorId: '', isReadOnly: {{ $isReadOnly ? 'true' : 'false' }} }">
+<div class="py-6 px-4" x-data="{ loading: false, showReplicate: false, selectedDoctorId: '', isReadOnly: {{ $isReadOnly ? 'true' : 'false' }} }">
     <!-- SECCIÓN DE ALERTAS INTELIGENTES CONTROLADAS CON ALPINE.JS -->
     <div class="space-y-4 mb-8">
         <!-- 🌟 BLINDAJE ABSOLUTO CONTRA EL ERROR DE TIPADO "Attempt to read property on array" -->

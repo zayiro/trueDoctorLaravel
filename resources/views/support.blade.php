@@ -14,7 +14,7 @@
                     ¿En qué podemos ayudarte hoy?
                 </h1>
                 <p class="mt-3 max-w-2xl mx-auto text-teal-100 text-sm">
-                    Soporte técnico técnico especializado para Pacientes y Profesionales de la Salud.
+                    Soporte técnico especializado para Pacientes y Profesionales de la Salud.
                 </p>
             </div>
 

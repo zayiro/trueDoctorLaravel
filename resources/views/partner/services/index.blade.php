@@ -8,7 +8,7 @@ $breadcrumbs = [
 
     <!-- ALERTA DE ÉXITO -->
     @if (session('success'))
-        <div x-data="{ show: true }" x-show="show" x-transition id="alert-success" 
+        <div x-data="{ show: true }" x-show="show" x-transition id="alert-success"
              class="flex items-center p-4 mb-4 text-green-800 rounded-2xl bg-green-50 border border-green-100 shadow-sm" role="alert">
             <svg class="flex-shrink-0 w-5 h-5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -17,7 +17,7 @@ $breadcrumbs = [
             <div class="ms-3 text-sm font-bold">
                 {{ session('success') }}
             </div>
-            <button type="button" @click="show = false" 
+            <button type="button" @click="show = false"
                     class="ms-auto -mx-1.5 -my-1.5 bg-green-50 text-green-500 rounded-lg focus:ring-2 focus:ring-green-400 p-1.5 hover:bg-green-200 inline-flex items-center justify-center h-8 w-8">
                 <span class="sr-only">Cerrar</span>
                 <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -37,10 +37,10 @@ $breadcrumbs = [
                     <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 111.063.852l-.708 2.836a.75.75 0 001.063.852l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
                 </svg>
                 <div>
-                    <span class="font-bold">Portafolio Institucional:</span> 
-                    Estás consultando el catálogo de servicios de 
-                    <strong class="text-blue-900">{{ $currentContext['name'] ?? 'Clínica Corporativa' }}</strong>. 
-                    La lista se filtra automáticamente según tus especialidades compartidas. 
+                    <span class="font-bold">Portafolio Institucional:</span>
+                    Estás consultando el catálogo de servicios de
+                    <strong class="text-blue-900">{{ $currentContext['name'] ?? 'Clínica Corporativa' }}</strong>.
+                    La lista se filtra automáticamente según tus especialidades compartidas.
                     Las configuraciones de tarifas corporativas pertenecen exclusivamente a la administración.
                 </div>
             </div>
@@ -48,7 +48,7 @@ $breadcrumbs = [
             <!-- Control de Botón / Límite del Plan SaaS -->
             @if(($owner->canAddMoreServices() ?? false))
                 <div class="flex justify-between items-center mb-8">
-                    <a class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold transition flex items-center gap-2 text-sm shadow-md shadow-indigo-100 uppercase tracking-wider" 
+                    <a class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold transition flex items-center gap-2 text-sm shadow-md shadow-indigo-100 uppercase tracking-wider"
                        href="{{ route('partner.services.create') }}">
                         <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -68,8 +68,8 @@ $breadcrumbs = [
             <!-- Contenedor de métricas de consumo del SaaS -->
             <div class="mb-5 bg-slate-50 p-4 rounded-xl border border-slate-100 inline-block shadow-inner">
                 <p class="text-sm text-slate-600">
-                    <strong>Uso del plan actual:</strong> 
-                    <span class="font-bold text-slate-900">{{ $uniqueServicesCount ?? 0 }}</span> de 
+                    <strong>Uso del plan actual:</strong>
+                    <span class="font-bold text-slate-900">{{ $uniqueServicesCount ?? 0 }}</span> de
                     <span class="font-bold text-slate-900">{{ $owner->plan?->max_services ?? 'Ilimitado' }}</span> servicios creados.
                 </p>
             </div>
@@ -81,9 +81,9 @@ $breadcrumbs = [
                     <thead>
                         <tr class="bg-gray-50 border-b border-gray-100">
                             <th scope="col" class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Servicio</th>
-                            <th scope="col" class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Especialidad</th>                            
+                            <th scope="col" class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Especialidad</th>
                             <th scope="col" class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Precio</th>
-                            <th scope="col" class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Sedes Asignadas</th>                            
+                            <th scope="col" class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Sedes Asignadas</th>
                             <th scope="col" class="px-6 py-4 text-xs font-bold uppercase text-slate-500 tracking-wider">Acciones</th>
                         </tr>
                     </thead>
@@ -166,7 +166,7 @@ $breadcrumbs = [
                                         <div class="flex flex-wrap gap-1 max-w-xs">
                                             @forelse($service->addresses as $address)
                                                 <span class="bg-slate-50 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-slate-200/60">
-                                                    {{ $address->name }} - 
+                                                    {{ $address->name }} -
                                                     <span class="text-indigo-600 font-black">{{ $address->city->name ?? 'N/A' }}</span>
                                                 </span>
                                             @empty
@@ -188,15 +188,33 @@ $breadcrumbs = [
                                         <!-- Controles originales de producción para consultorio propio o clínica pura -->
                                         @if (!$isOverLimit)
                                             <div class="flex items-center">
-                                                <a href="{{ route('partner.services.edit', $service->id) }}" 
+                                                <a href="{{ route('partner.services.edit', $service->id) }}"
                                                    class="text-indigo-600 hover:text-indigo-900 text-xs font-black uppercase tracking-wider transition-colors">
                                                     Editar
                                                 </a>
+                                                <form action="{{ route('partner.services.destroy', $service->id) }}" method="POST" class="inline ml-3"
+                                                  onsubmit="return confirm('¿Eliminar este servicio de esta sede? Solo se elimina aquí: tus otras sedes y el historial de citas no se ven afectados.');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-red-600 hover:text-red-800 text-xs font-black uppercase tracking-wider transition-colors">
+                                                    Eliminar
+                                                </button>
+                                            </form>
                                             </div>
                                         @else
-                                            <span class="text-[10px] text-amber-700 font-black uppercase tracking-wider bg-amber-50 px-2.5 py-1 rounded-full border border-amber-100">
-                                                Excede plan
-                                            </span>
+                                            <div class="flex items-center">
+                                                <span class="text-[10px] text-amber-700 font-black uppercase tracking-wider bg-amber-50 px-2.5 py-1 rounded-full border border-amber-100">
+                                                    Excede plan
+                                                </span>
+                                                <form action="{{ route('partner.services.destroy', $service->id) }}" method="POST" class="inline ml-3"
+                                                  onsubmit="return confirm('¿Eliminar este servicio de esta sede? Solo se elimina aquí: tus otras sedes y el historial de citas no se ven afectados.');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-red-600 hover:text-red-800 text-xs font-black uppercase tracking-wider transition-colors">
+                                                    Eliminar
+                                                </button>
+                                            </form>
+                                            </div>
                                         @endif
                                     @endif
                                 </td>
