@@ -11,7 +11,7 @@ $breadcrumbs = [
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-    <div class="max-w-7xl mx-auto py-8 space-y-6">
+    <div class="px-4 py-8 space-y-6">
         
         <!-- Encabezado de Control -->
         <div class="border-b border-slate-200 pb-5">
@@ -87,7 +87,27 @@ $breadcrumbs = [
                                         ][$item->role] ?? 'bg-slate-50 text-slate-700 border-slate-100';
                                     @endphp
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border {{ $roleBadge }} uppercase tracking-wider">
-                                        {{ $item->role }}
+                                        @switch($item->role)
+                                            @case('patient')
+                                                <span>Paciente</span>
+                                                @break
+
+                                            @case('doctor')
+                                                <span>Doctor</span>
+                                                @break
+
+                                            @case('clinic')
+                                                <span>Centro Médico</span>
+                                                @break
+
+                                            @case('admin')
+                                                <span>Administrador</span>
+                                                @break
+
+                                            @default
+                                                <span>Usuario</span>
+                                        @endswitch
+
                                     </span>
                                 </td>
                                 <!-- Estado Operativo -->

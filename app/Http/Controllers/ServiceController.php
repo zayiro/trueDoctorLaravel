@@ -177,7 +177,9 @@ class ServiceController extends Controller
         $attachedSpecialtyIds = $service->specialties()->pluck('specialties.id')->toArray();
         $pivot                = $service->addresses()->withTrashed()->first()->pivot;
 
-        return view('partner.services.edit', compact('service', 'address', 'pivot', 'specialties', 'attachedSpecialtyIds'));
+        $durations = AppointmentDuration::where('active', true)->orderBy('minutes', 'asc')->get();
+
+        return view('partner.services.edit', compact('service', 'address', 'pivot', 'specialties', 'attachedSpecialtyIds', 'durations'));
     }
 
     /**

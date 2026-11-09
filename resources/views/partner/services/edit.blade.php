@@ -46,12 +46,25 @@ $durationOptions = collect([15, 20, 30, 45, 60, $currentDuration])->unique()->so
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label for="duration" class="block text-sm font-bold text-gray-700 mb-2">Duración de la Cita</label>
-                    <select id="duration" name="duration" required
-                            class="w-full rounded-2xl border-gray-300 py-3 focus:ring-indigo-500 @error('duration') border-red-400 @enderror">
-                        @foreach($durationOptions as $time)
-                            <option value="{{ $time }}" {{ $currentDuration === (int) $time ? 'selected' : '' }}>{{ $time }} min</option>
+                    <select 
+                        id="duration" 
+                        name="duration" 
+                        required
+                        class="w-full rounded-2xl border-gray-300 py-3 focus:ring-indigo-500 @error('duration') border-red-400 @enderror"
+                    >
+                        @foreach($durations as $duration)
+                            <option 
+                                value="{{ $duration->minutes }}" 
+                                {{ old('duration', $currentDuration) == $duration->minutes ? 'selected' : '' }}
+                            >
+                                {{ $duration->minutes }} min 
+                                @if($duration->additional_price > 0)
+                                    (+${{ number_format($duration->additional_price, 0, ',', '.') }})
+                                @endif
+                            </option>
                         @endforeach
                     </select>
+
                     @error('duration')
                         <p class="mt-2 text-xs text-red-600 font-bold">{{ $message }}</p>
                     @enderror

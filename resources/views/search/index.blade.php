@@ -1,6 +1,6 @@
 <x-guest-layout
-    meta_title="Médicos Especialistas en {{ ucwords(str_replace('-', ' ', request('specialty'))) }} | OpenDoctor"
-    meta_description="Encuentra y agenda tu cita en línea con los mejores profesionales en {{ ucwords(str_replace('-', ' ', request('specialty'))) }}. Compara disponibilidad en tiempo real para telemedicina o consulta presencial."
+    meta_title="Médicos especialistas en {{ ucwords(str_replace('-', ' ', request('specialty'))) }} | OpenDoctor"
+    meta_description="Encuentra y agenda tu cita virtual o presencial en línea con los mejores profesionales médicos en {{ ucwords(str_replace('-', ' ', request('specialty'))) }}. Compara disponibilidad en tiempo real para telemedicina o consulta presencial."
 >
     <div class="max-w-7xl mx-auto px-4 py-8 mt-5">
 
@@ -65,11 +65,12 @@
                 <button type="button" @click="show = false" class="text-red-400 hover:text-red-600 font-black text-sm px-2">×</button>
             </div>
         @endif
+        
         <!-- BARRA DE FILTROS NATIVA (INMUNE A LIVEWIRE) -->
-        <x-medical-search-bar :specialties="$specialties" :cities="$cities" :symptoms="$symptoms" />
+        <x-medical-search-bar :specialties="$specialties" :cities="$cities" :showCity="$physicalLocationsFound" :symptoms="$symptoms" />
 
         <!-- ENCABEZADO DE RESULTADOS ESTILIZADO -->
-        <div class="mt-8 mb-8 bg-white border border-slate-150/60 rounded-3xl shadow-sm overflow-hidden animate-fade-in">
+        <div class="mt-12 mb-8 bg-white border border-slate-150/60 rounded-3xl shadow-sm overflow-hidden animate-fade-in">
             <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-50">
                 <div class="flex items-center gap-3">
                     <div class="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl shadow-inner border border-indigo-100/40 flex-shrink-0">
@@ -82,11 +83,11 @@
                         <h2 class="text-lg font-black text-slate-800 tracking-tight leading-none">                    
                             @if($results->total() === 1)
                                 <p class="text-md text-gray-600 font-bold">
-                                    Un médico o especialista habilitado.
+                                    Un médico o especialista habilitado
                                 </p>
                             @elseif($results->total() > 1)
                                 <p class="text-md text-gray-600 font-bold">
-                                    <span class="font-semibold text-indigo-600">{{ $results->total() }}</span> médicos o especialistas habilitados.
+                                    <span class="font-semibold text-indigo-600">{{ $results->total() }}</span> médicos o especialistas habilitados
                                 </p>
                             @else
                                 Búsqueda de especialistas
@@ -102,30 +103,34 @@
                 @if(request()->filled('specialty') || request()->filled('city'))
                     <div class="flex flex-wrap gap-2 items-center md:justify-end">
                         @if(request()->filled('specialty'))
-                            <span class="px-2.5 py-1 bg-emerald-100 text-emerald-600 text-[10px] font-bold rounded-lg border border-slate-200 uppercase tracking-wide">{{ str_replace('-', ' ', request('specialty')) }}</span>
+                            <span class="px-2.5 py-1 bg-emerald-100 text-emerald-600 text-sm font-bold rounded-full border border-slate-200 tracking-wide">{{ ucwords(str_replace('-', ' ', request('specialty'))) }}</span>
                         @endif
                         @if(request()->filled('city_name'))
-                            <span class="px-2.5 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded-lg border border-indigo-100/30 uppercase tracking-wide">{{ str_replace('-', ' ', request('city')) }}</span>
+                            <span class="px-2.5 py-1 bg-indigo-50 text-indigo-600 text-sm font-bold rounded-full border border-indigo-100/30 tracking-wide">{{ ucwords(str_replace('-', ' ', request('city'))) }}</span>
                         @endif
                     </div>
                 @endif
             </div>
 
-            <!-- Fila Inferior Condicional: Aviso de Ubicación Integrado -->
-            @if(request()->missing('city_name') || empty(request('city_name')))
-                <div class="px-5 py-3.5 bg-slate-50/70 border-t border-slate-100 flex items-center gap-3">
-                    <div class="p-1.5 bg-amber-50 text-amber-600 rounded-lg border border-amber-100/40 flex-shrink-0">
-                        <!-- Heroicon: MapPin -->
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://w3.org" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
-                        </svg>
+            @if($physicalLocationsFound)
+                <!-- Fila Inferior Condicional: Aviso de Ubicación Integrado -->
+                @if(request()->missing('city_name') || empty(request('city_name')))
+                    <div class="px-5 py-3.5 bg-slate-50/70 border-t border-slate-100 flex items-center gap-3">
+                        <div class="p-1.5 bg-amber-50 text-amber-600 rounded-lg border border-amber-100/40 flex-shrink-0">
+                            <!-- Heroicon: MapPin -->
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://w3.org" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
+                            </svg>
+                        </div>
+                        
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2">
+                            <span class="text-sm font-black text-slate-700 uppercase tracking-wider">Filtrar por ubicación:</span>
+                            <span class="text-md text-slate-500 font-medium">Elige una ciudad arriba para descubrir consultorios físicos o clínicas más cercanas.</span>
+                        </div>
+                        
                     </div>
-                    <div class="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2">
-                        <span class="text-sm font-black text-slate-700 uppercase tracking-wider">Filtrar por ubicación:</span>
-                        <span class="text-md text-slate-500 font-medium">Elige una ciudad arriba para descubrir consultorios físicos o clínicas más cercanas.</span>
-                    </div>
-                </div>
+                @endif
             @endif
         </div>
 

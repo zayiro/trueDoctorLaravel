@@ -9,14 +9,15 @@
 
 @php
     // 1. Corregimos a camelCase (como Laravel procesa los atributos con guion de Blade)
-    $name = !empty($meta_title) ? $meta_title : "OpenDoctor - Plataforma Médica Digital";
+    $name = !empty($meta_title) ? $meta_title : "OpenDoctor | Agendar una Cita Médica en Línea";
 
     // 2. Validación de Descripción con rotación aleatoria
     if (empty($meta_description)) {
         $descriptions = [
             "Plataforma de agendamiento médico en línea. Consulta especialistas, realiza análisis con IA y agenda citas médicas en tiempo real. Telemedicina solicita y recibe tu cita.",
             "Encuentra médicos especialistas en línea. Triage inteligente con IA, citas médicas por telemedicina en tiempo real y análisis digital avanzado.",
-            "Agenda citas médicas en tiempo real y realiza consultas virtuales. Telemedicina avanzada con análisis de exámenes e Inteligencia Artificial."
+            "Agenda citas médicas en tiempo real y realiza consultas virtuales. Telemedicina avanzada con análisis de exámenes e Inteligencia Artificial.",
+            "Agenda tu Cita Médica con los mejores especialistas de tu ciudad. Rápido, seguro y sin filas."
         ];
         $description = $descriptions[array_rand($descriptions)];
     } else {
@@ -24,7 +25,7 @@
         $description = $meta_description;
     }
 
-    $finalKeywords = !empty($keywords) ? $keywords : 'Agenda cita médica online, consulta especialista...';
+    $finalKeywords = !empty($keywords) ? $keywords : 'Citas médicas, Agendar cita médica online, EPS, POS, salud en Colombia, la mejor EPS, comunidades, Medicina Prepagada, decreto 1295, plan complementario';
     $finalRobots = !empty($meta_robots) ? $meta_robots : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
     $finalCanonical = !empty($meta_canonical) ? $meta_canonical : url()->current();
     $finalImage = !empty($meta_image) ? $meta_image : asset('/images/logoAuth.jpg');
@@ -44,6 +45,11 @@
             "Telemedicina y citas médicas virtuales por videoconferencia (Zoom) y presenciales en consultorio",
             "Análisis de piel mediante Inteligencia Artificial para la detección y orientación de afecciones cutáneas",
             "Segunda opinión médica por Inteligencia Artificial para la interpretación y análisis digital de exámenes (Laboratorio, Ecografía, Radiografía, Tomografía, Resonancia, DICOM)"
+        ],
+        'geo' => [
+            '@type' => 'GeoCoordinates',
+            'latitude' => '3.4516',  // Coordenadas de Cali, Colombia como base
+            'longitude' => '-76.5320'
         ],
         "about" => [
             [
@@ -116,6 +122,12 @@
         
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+
+        <!-- Icono para dispositivos Apple (iPhone, iPad) -->
+        <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('images/apple-touch-icon.png') }}">
+        <!-- Iconos PNG de tamaño estándar para navegadores modernos -->
+        <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/favicon-32x32.png') }}">
+        <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('images/favicon-16x16.png') }}">
         
         <title>{{ $name }}</title>
         <meta name="description" content="{{ $description }}">
@@ -123,6 +135,8 @@
         <meta name="robots" content="{{ $finalRobots }}">
         <link rel="canonical" href="{{ $finalCanonical }}">
         
+        <meta name="geo.region" content="CO" />
+        <meta name="geo.placename" content="Colombia" />
         <meta name="author" content="OpenDoctorOnline">
         <meta property="og:type" content="website">
         <meta property="og:site_name" content="OpenDoctorOnline">
@@ -137,6 +151,8 @@
         <meta name="twitter:title" content="{{ $name }}">
         <meta name="twitter:description" content="{{ $description }}">
         <meta name="twitter:image" content="{{ asset('images/og-logo.png') }}">
+
+        <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">

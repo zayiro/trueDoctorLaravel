@@ -476,6 +476,10 @@
                                         @endif
                                     </div>
                                 </div>
+
+                                <a href="{{ route('partner.profile.show', ['slug' => $partner->slug]) }}">
+                                    Ver perfil del especialista
+                                </a>
                             </div>
                         </div>
                     </div>

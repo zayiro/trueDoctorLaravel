@@ -201,8 +201,6 @@
             </div>
 
         </form>
-
-        <div class=""><x-nearby-doctors-trigger :radius="50" /></div>
     </div>
 
     <!-- TAB 2: BÚSQUEDA DE SÍNTOMAS -->
@@ -253,6 +251,9 @@
             </div>
         </form>
     </div>
+    
+    <!-- Muestra el componente de doctores cerca a mi -->
+    <div class=""><x-nearby-doctors-trigger :radius="50" /></div>
 </div>
 <script>
     window.handleSearchSubmit = function(event) {

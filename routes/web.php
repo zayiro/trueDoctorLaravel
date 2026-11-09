@@ -83,6 +83,8 @@ RateLimiter::for('search', function (Request $request) {
                 ->response(fn() => response('Demasiadas búsquedas.', 429));
 });
 
+Route::get('/', [HomeController::class, 'index'])->name('home');
+
 // Rutas Privadas (admin)
 Route::middleware(['auth', 'role:admin'])->group(function () {    
     // Listado de validaciones
@@ -418,8 +420,6 @@ Route::middleware('auth')
 // 🌍 ENDPOINTS PÚBLICOS DE CONSULTA (ACCESO LIBRE PARA LOS USUARIOS)
 // ========================================================
 
-Route::get('/', [HomeController::class, 'index'])->name('home');
-
 Route::get('/contact', [ContactController::class, 'showContact'])->name('contact.show');
 Route::post('/contact', [ContactController::class, 'submit'])->middleware(ProtectAgainstSpam::class)->name('contact.submit');
 Route::post('/availability/notify', [ContactController::class, 'storeAvailabilityNotify'])->name('availability.notify');
@@ -633,3 +633,6 @@ Route::get('/doctors/nearby', [NearbyDoctorsController::class, 'index'])
 
 Route::get('/api/doctors/nearby', [NearbyDoctorsController::class, 'fetchNearby'])
     ->name('api.doctors.nearby');    
+
+// Cambiando a showProfile
+Route::get('/partner-profile/{slug}', [SearchController::class, 'showProfile'])->name('partner.profile.show');
