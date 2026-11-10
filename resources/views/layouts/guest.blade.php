@@ -25,7 +25,7 @@
         $description = $meta_description;
     }
 
-    $finalKeywords = !empty($keywords) ? $keywords : 'Citas médicas, Agendar cita médica online, EPS, POS, salud en Colombia, la mejor EPS, comunidades, Medicina Prepagada, decreto 1295, plan complementario';
+    $finalKeywords = !empty($keywords) ? $keywords : 'Online Doctor, Citas médicas, Agendar cita médica online, EPS, POS, salud en Colombia, la mejor EPS, comunidades, Medicina Prepagada, decreto 1295, plan complementario, Reservar cita médico general, Videollamada con doctor, Consulta médica virtual';
     $finalRobots = !empty($meta_robots) ? $meta_robots : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
     $finalCanonical = !empty($meta_canonical) ? $meta_canonical : url()->current();
     $finalImage = !empty($meta_image) ? $meta_image : asset('/images/logoAuth.jpg');
@@ -34,8 +34,21 @@
         '@context' => 'https://schema.org',
         '@type' => 'WebApplication',
         'name' => $name,
+        "address" => [
+            "@type" => "PostalAddress",
+            "streetAddress" => "Cra 7E # 70 - 134",
+            "addressLocality" => "Santiago de Cali",
+            "addressRegion" => "Valle del Cauca",
+            "postalCode" => "760012",
+            "addressCountry" => "CO"
+        ],
         'url' => config('app.url'),
         "applicationCategory" => "HealthApplication",
+        "aggregateRating" => [
+            "@type" => "AggregateRating",
+            "ratingValue" => 4.6,
+            "ratingCount" => 1739
+        ],
         "operatingSystem" => "All",
         "browserRequirements" => "Requires HTML5 / JavaScript",
         "inLanguage" => "es",        
@@ -73,6 +86,7 @@
             "@type" => "Organization",
             "name" => "OpenDoctorOnline",
             "url" => config('app.url'),
+            'image' => asset(config('app.url') . '/images/logoAuth.jpg'),
             'logo' => asset(config('app.url') . '/images/logoAuth.jpg'),
             "telephone" => "+573026433874",
             "areaServed" => [
