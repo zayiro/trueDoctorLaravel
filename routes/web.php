@@ -446,7 +446,7 @@ Route::post('/clinic/{clinic}/register-doctor', [RegisterDoctorController::class
 Route::get('/register-clinic', [RegisterClinicController::class, 'register'])->name('clinic.register');
 Route::post('/register-clinic', [RegisterClinicController::class, 'store'])->name('clinic.register.store');
 
-Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store')->middleware('auth');
+Route::post('/reviews', [ReviewController::class, 'store'])->middleware(['auth', 'throttle:5,1'])->name('reviews.store');
 
 Route::get('/search', [SearchController::class, 'index'])->middleware('throttle:search')->name('search');
 // Asegúrate de colocarla con método GET para que la paginación funcione correctamente
@@ -635,4 +635,4 @@ Route::get('/api/doctors/nearby', [NearbyDoctorsController::class, 'fetchNearby'
     ->name('api.doctors.nearby');    
 
 // Cambiando a showProfile
-Route::get('/partner-profile/{slug}', [SearchController::class, 'showProfile'])->name('partner.profile.show');
+Route::get('/partner-profile/{slug}', [PublicProfileController::class, 'showProfile'])->name('partner.profile.show');

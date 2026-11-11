@@ -18,7 +18,6 @@ use OpenAI\Laravel\Facades\OpenAI;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Services\AvailabilityService;
 
@@ -612,49 +611,4 @@ class SearchController extends Controller
 
         return response()->json(['success' => true, 'message' => 'Ubicación guardada']);
     }
-
-    /**
-     * Muestra el perfil público premium de un médico especialista a través de su slug.
-     */
-    public function showProfile(string $slug)
-    {
-        $doctor = Doctor::query()
-            ->with([
-                'user',
-                'specialties',
-                'settings',
-                'expertises',
-                'gallery',                                                        // ya filtra active y ordena por "order"
-                'clinics'   => fn ($query) => $query->wherePivot('status', 'approved'),
-                'reviews'   => fn ($query) => $query->latest()->limit(6),
-                // Sedes propias activas (SoftDeletes ya excluye las eliminadas) con sus servicios independientes
-                'addresses' => fn ($query) => $query->bookable()->with(['city', 'services']),
-            ])
-            ->where('slug', $slug)
-            ->where('active', true)
-            ->where('validation_status', 'approved')
-            ->firstOrFail();
- 
-        // Sedes físicas de clínicas aprobadas donde el doctor tiene horarios activos
-        $clinicAddressIds = DB::table('schedules as s')
-            ->join('addresses as a', 'a.id', '=', 's.address_id')
-            ->join('clinic_doctor as cd', function ($join) {
-                $join->on('cd.clinic_id', '=', 'a.clinic_id')->on('cd.doctor_id', '=', 's.doctor_id');
-            })
-            ->where('s.doctor_id', $doctor->id)
-            ->where('s.is_active', 1)
-            ->where('cd.status', 'approved')
-            ->pluck('a.id')
-            ->unique();
- 
-        $clinicAddresses = Address::query()
-            ->bookable()
-            ->where('type', 'physical')
-            ->whereIn('id', $clinicAddressIds)
-            ->with(['city', 'clinic'])
-            ->get();
- 
-        return view('public.partner-profile', compact('doctor', 'clinicAddresses'));
-    }
-
 }

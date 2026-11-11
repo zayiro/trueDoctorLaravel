@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Doctor extends Model
 {
@@ -177,15 +178,7 @@ class Doctor extends Model
 
         return $currentTotal < $limit;
     }
-    public function reviews()
-    {
-        return $this->morphMany(Review::class, 'reviewable');
-    }
-
-    public function getAverageRatingAttribute()
-    {
-        return $this->reviews()->exists() ? round($this->reviews()->avg('rating'), 1) : 0.0;
-    }
+  
 
     public function appointments(): HasMany
     {
@@ -249,5 +242,24 @@ class Doctor extends Model
     public function clinic()
     {
         return $this->belongsTo(Clinic::class);
+    }
+
+    public function reviews(): MorphMany
+    {
+        return $this->morphMany(Review::class, 'reviewable');
+    }
+
+    public function publishedReviews(): MorphMany
+    {
+        return $this->reviews()->published();
+    }
+
+    /**
+     * Promedio calculado solo con reseñas publicadas.
+     * Preferir la columna denormalizada `rating` en listados (evita una consulta por doctor).
+     */
+    public function getAverageRatingAttribute(): float
+    {
+        return round((float) ($this->publishedReviews()->avg('rating') ?? 0), 1);
     }
 }

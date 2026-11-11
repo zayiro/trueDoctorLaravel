@@ -7,6 +7,9 @@ use App\Models\Clinic;
 use App\Models\Address;
 use App\Models\Specialty;
 use App\Models\Appointment;
+use App\Services\ReviewService;
+use Illuminate\Contracts\View\View;
+use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +19,10 @@ use App\Services\Availability\AvailabilityResolver;
 use Illuminate\Support\Facades\Log;
 
 class PublicProfileController extends Controller
-{              
+{        
+    private const REVIEWS_PER_PAGE = 5;
+
+    
     /**
      * Muestra la pantalla del perfil unificado (Clínica o Doctor de opendoctor.online).
      * URL: /medical-partner/{slug}
@@ -472,5 +478,78 @@ class PublicProfileController extends Controller
             'enabledDays'        => $enabledDays ?? [],  // Entrega los índices numéricos para los fondos grises clickeables
             'todayColombia'      => $todayColombia       // Fuerza el minDate estricto contra el ayer real en el frontend
         ]);
+    }
+
+    /**
+     * Muestra el perfil público premium de un médico especialista a través de su slug.
+     */
+    public function showProfile(string $slug, ReviewService $reviewService): View
+    {
+        $doctor          = $this->findPublicDoctor($slug);
+        $clinicAddresses = $this->clinicAddressesFor($doctor);
+
+        // Solo reseñas publicadas, paginadas y con el nombre del autor (sin N+1)
+        $reviews = $doctor->publishedReviews()
+            ->with('user:id,name')
+            ->latest()
+            ->latest('id')
+            ->paginate(self::REVIEWS_PER_PAGE, pageName: 'resenas')
+            ->fragment('resenas');
+
+        return view('public.partner-profile', [
+            'doctor'          => $doctor,
+            'clinicAddresses' => $clinicAddresses,
+            'reviews'         => $reviews,
+            'reviewSummary'   => $reviewService->summary($doctor),
+            'canReview'       => $reviewService->canReview(auth()->user(), $doctor),
+        ]);
+    }
+
+    /**
+     * Doctor visible públicamente: activo y con validación aprobada.
+     */
+    private function findPublicDoctor(string $slug): Doctor
+    {
+        return Doctor::query()
+            ->with([
+                'user',
+                'specialties',
+                'settings',
+                'expertises',
+                'gallery',
+                'clinics'   => fn ($query) => $query->wherePivot('status', 'approved'),
+                // Sedes propias activas (SoftDeletes ya excluye las eliminadas) con sus servicios independientes
+                'addresses' => fn ($query) => $query->bookable()->with(['city', 'services']),
+            ])
+            ->where('slug', $slug)
+            ->where('active', true)
+            ->where('validation_status', 'approved')
+            ->firstOrFail();
+    }
+
+    /**
+     * Sedes físicas de clínicas aprobadas donde el doctor tiene horarios activos.
+     *
+     * @return Collection<int, Address>
+     */
+    private function clinicAddressesFor(Doctor $doctor): Collection
+    {
+        $clinicAddressIds = DB::table('schedules as s')
+            ->join('addresses as a', 'a.id', '=', 's.address_id')
+            ->join('clinic_doctor as cd', function ($join) {
+                $join->on('cd.clinic_id', '=', 'a.clinic_id')->on('cd.doctor_id', '=', 's.doctor_id');
+            })
+            ->where('s.doctor_id', $doctor->id)
+            ->where('s.is_active', 1)
+            ->where('cd.status', 'approved')
+            ->pluck('a.id')
+            ->unique();
+
+        return Address::query()
+            ->bookable()
+            ->where('type', 'physical')
+            ->whereIn('id', $clinicAddressIds)
+            ->with(['city', 'clinic'])
+            ->get();
     }
 }
