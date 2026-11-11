@@ -48,15 +48,34 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
                 </div>
             @endif
 
-            <div class="p-6 flex-1 bg-white">
-                <h3 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Biografía</h3>
-                <div class="text-md text-gray-600 leading-relaxed space-y-3">
-                    <p>{{ $doctor->bio ?? 'Sin descripción profesional disponible en este momento.' }}</p>
-                    @if($doctor->experience_years)
-                        <p class="text-[11px] text-gray-500 italic">Formado con los más altos estándares científicos y éticos en salud.</p>
-                    @endif
+            {{-- Bloque de Perfil --}}
+            <div class="p-6">
+                <h3 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Perfil Profesional</h3>
+                <h2 class="text-base font-bold text-gray-800">Dr. {{ $doctor->user->name }}</h2>
+                <p class="text-xs text-gray-500 mt-0.5 font-medium">{{ $doctor->specialties->first()->name ?? 'Especialista' }}</p>
+                
+                {{-- Credenciales Académicas --}}
+                <div class="mt-3 text-xs text-gray-600 space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-100/80">
+                    <p class="font-bold text-gray-700">Licencia Médica: <span class="font-normal text-gray-600">{{ $doctor->medical_license ?? 'En proceso de verificación' }}</span></p>
+                    <p class="font-bold text-gray-700">Identificación: <span class="font-normal text-gray-600">{{ $doctor->identification }}</span></p>
                 </div>
             </div>
+
+            {{-- Modalidad de consulta: virtual, presencial --}}
+            <div class="px-6 py-1">
+                @php
+                    $activeAddress = $doctor->addresses->first();
+                @endphp
+
+                @if($activeAddress)
+                    <div class="mt-4 pl-4 border-l-2 border-sky-500 py-0.5 space-y-0.5">
+                        <p class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Modalidad de consulta</p>
+                        <p class="text-gray-600 leading-tight">{{ $activeAddress->address }}</p>
+                        <p class="text-md text-gray-400 font-medium">{{ $activeAddress->name }}</p>
+                    </div>
+                @endif
+            </div>
+            
             {{-- Reseñas --}}
             <div id="resenas" class="bg-white p-6 sm:p-8 max-w-4xl mx-auto my-6 font-sans scroll-mt-24">
 
@@ -216,22 +235,46 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
         {{-- COLUMNA DERECHA: Detalles Profesionales y Contacto --}}
         <div class="md:col-span-7 p-6 md:p-8 flex flex-col bg-white space-y-6">
             
-            {{-- Bloque de Perfil --}}
+            {{-- Biografia --}}
             <div>
-                <h3 class="text-xs font-bold text-sky-600 uppercase tracking-wider mb-1">Perfil Profesional</h3>
-                <h2 class="text-base font-bold text-gray-800">Dr. {{ $doctor->user->name }}</h2>
-                <p class="text-xs text-gray-500 mt-0.5 font-medium">{{ $doctor->specialties->first()->name ?? 'Especialista' }}</p>
-                
-                {{-- Credenciales Académicas --}}
-                <div class="mt-3 text-xs text-gray-600 space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-100/80">
-                    <p class="font-bold text-gray-700">Licencia Médica: <span class="font-normal text-gray-600">{{ $doctor->medical_license ?? 'En proceso de verificación' }}</span></p>
-                    <p class="font-bold text-gray-700">Identificación: <span class="font-normal text-gray-600">{{ $doctor->identification }}</span></p>
+                <h3 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Biografía</h3>
+
+                <div class="text-md text-gray-600 leading-relaxed space-y-3"
+                    x-data="{
+                        expanded: false,
+                        overflowing: false,
+                        measure() {
+                            if (this.expanded) return;
+                            const el = this.$refs.bio;
+                            this.overflowing = el.scrollHeight > el.clientHeight + 1;
+                        }
+                    }"
+                    x-init="$nextTick(() => measure())"
+                    @load.window="measure()"
+                    @resize.window.debounce.200ms="measure()">
+
+                    <p x-ref="bio"
+                    class="whitespace-pre-line"
+                    :class="expanded ? '' : 'line-clamp-6'">{{ filled($doctor->bio) ? $doctor->bio : 'Sin descripción profesional disponible en este momento.' }}</p>
+
+                    <button type="button"
+                            x-show="overflowing"
+                            x-cloak
+                            @click="expanded = !expanded; $nextTick(() => measure())"
+                            :aria-expanded="expanded.toString()"
+                            class="text-sm font-semibold text-sky-600 hover:text-sky-700 focus:outline-none focus:underline">
+                        <span x-text="expanded ? 'Ver menos' : 'Ver más'"></span>
+                    </button>
+
+                    @if($doctor->experience_years)
+                        <p class="text-[11px] text-gray-500 italic">Formado con los más altos estándares científicos y éticos en salud.</p>
+                    @endif
                 </div>
             </div>
 
             {{-- Sección: Especialidades --}}
             <div>
-                <h3 class="text-xs font-bold text-sky-600 uppercase tracking-wider mb-2.5">Especialidades</h3>
+                <h3 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Especialidades</h3>
                 <div class="flex flex-wrap gap-2">
                     @forelse($doctor->specialties as $specialty)
                         <span class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-[11px] font-medium rounded-full shadow-xs">
@@ -246,22 +289,23 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
             </div>
 
             {{-- Fila de Datos Rápidos: Experiencia, Idiomas, Tipo --}}
-            <div class="grid grid-cols-3 gap-4 border-t border-b border-gray-100 py-4 text-xs">
+            <div class="grid grid-cols-3 gap-4 border-t border-b border-gray-100 py-4">
                 <div>
-                    <h4 class="font-bold text-sky-600 uppercase tracking-wider text-[11px]">Experiencia</h4>
+                    <h4 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Experiencia</h4>
                     <p class="text-gray-700 mt-0.5 font-medium">{{ $doctor->experience_years ?? '0' }} Años+</p>
                 </div>
                 <div>
-                    <h4 class="font-bold text-sky-600 uppercase tracking-wider text-[11px]">Idiomas</h4>
+                    <h4 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Idiomas</h4>
                     <p class="text-gray-700 mt-0.5 font-medium">
                         {{ is_array($doctor->languages) ? implode(', ', $doctor->languages) : 'Español' }}
                     </p>
                 </div>
                 <div>
-                    <h4 class="font-bold text-sky-600 uppercase tracking-wider text-[11px]">Vinculación</h4>
+                    <h4 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Vinculación</h4>
                     <p class="text-gray-700 mt-0.5 font-medium">{{ $doctor->clinic_id ? 'Staff de Clínica' : 'Médico Autónomo' }}</p>
                 </div>
             </div>
+
             {{-- SECCIÓN DE GALERÍA DE IMÁGENES INTERACTIVA --}}
             @if($doctor->gallery && $doctor->gallery->isNotEmpty())
                 @php
@@ -280,7 +324,7 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
                      @keydown.window.arrow-right="if(isOpen) next()"
                      @keydown.window.arrow-left="if(isOpen) prev()">
                     
-                    <h4 class="font-bold text-sky-600 uppercase tracking-wider text-[11px]">Instalaciones y Consultorio</h4>
+                    <h4 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Instalaciones y Consultorio</h4>
                     
                     <div class="grid grid-cols-3 gap-3">
                         @foreach($doctor->gallery->take(3) as $index => $image)
@@ -343,21 +387,9 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
                     </div>
                 </div>
             @endif
-            {{-- Sección Inferior: Datos de Contacto y Ubicación --}}
-            <div class="text-md text-gray-600">
-                @php
-                    $activeAddress = $doctor->addresses->first();
-                @endphp
 
-                @if($activeAddress)
-                    <div class="mt-4 pl-4 border-l-2 border-sky-500 py-0.5 space-y-0.5">
-                        <p class="font-bold text-sky-600 uppercase tracking-wider text-[11px]">Modalidad de consulta</p>
-                        <p class="text-gray-600 leading-tight">{{ $activeAddress->address }}</p>
-                        <p class="text-md text-gray-400 font-medium">{{ $activeAddress->name }} - Cali, Colombia</p>
-                    </div>
-                @endif
-                
-                {{-- Formulario de Contacto Dinámico con Alpine.js Fetch --}}
+            {{-- Formulario de Contacto Dinámico con Alpine.js Fetch --}}
+            <div class="text-md text-gray-600">                                
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mt-5"
                     x-data="{ 
                         nameText: '',

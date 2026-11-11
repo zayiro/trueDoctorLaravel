@@ -21,7 +21,6 @@ use Illuminate\Support\Facades\Log;
 class PublicProfileController extends Controller
 {        
     private const REVIEWS_PER_PAGE = 5;
-
     
     /**
      * Muestra la pantalla del perfil unificado (Clínica o Doctor de opendoctor.online).
