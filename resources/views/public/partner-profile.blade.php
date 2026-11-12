@@ -408,6 +408,7 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
                                     method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
                                         'X-CSRF-TOKEN': document.querySelector('meta[name=&quot;csrf-token&quot;]').getAttribute('content')
                                     },
                                     body: JSON.stringify({
@@ -418,7 +419,20 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
                                         message_content: this.messageText
                                     })
                                 });
-                                if (!response.ok) throw new Error('Hubo un problema al enviar el mensaje.');
+
+                                const data = await response.json().catch(() => ({}));
+
+                                if (response.status === 422) {
+                                    const firstError = Object.values(data.errors ?? {})[0];
+                                    throw new Error(firstError ? firstError[0] : 'Revisa los datos del formulario.');
+                                }
+                                if (response.status === 429) {
+                                    throw new Error('Demasiados intentos. Espera un momento e inténtalo de nuevo.');
+                                }
+                                if (!response.ok) {
+                                    throw new Error(data.message || 'Hubo un problema al enviar el mensaje.');
+                                }
+
                                 this.isSuccess = true;
                                 this.nameText = '';
                                 this.emailText = '';
@@ -519,7 +533,6 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
                     </div>
                 </div>                    
             </div>
-
         </div>
     </div>
 </div>

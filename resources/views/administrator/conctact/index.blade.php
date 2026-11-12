@@ -11,7 +11,7 @@ $breadcrumbs = [
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-    <div class="max-w-7xl mx-auto py-10 px-4 sm:px-6">
+    <div class="py-10 px-4 sm:px-6">
         
         <!-- Alertas de Sistema -->
         @if (session('success'))
@@ -36,10 +36,10 @@ $breadcrumbs = [
         <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
                 <!-- Contenedor Principal de Alertas -->
-                <div class="bg-white shadow-sm rounded-2xl overflow-hidden border border-gray-200/80">
+                <div class="bg-white shadow-sm rounded-2xl overflow-hidden border border-gray-200/80 p-6">
                     <div class="divide-y divide-gray-100">
                         @forelse ($contactMessages as $contactRecord)
-                           <div class="relative group">                                  
+                           <div class="relative group py-3">                                  
                                     <div class="font-semibold text-slate-900">{{ $contactRecord->name }}</div>
                                     <div class="text-slate-500 text-xs">{{ $contactRecord->email }}</div>
                                     <div class="font-semibold text-slate-900 mt-2">{{ $contactRecord->subject }}</div>

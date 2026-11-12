@@ -7,10 +7,13 @@ use App\Models\Clinic;
 use App\Models\Address;
 use App\Models\Specialty;
 use App\Models\Appointment;
+use App\Models\ContactMessage;
 use App\Services\ReviewService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Services\ColombiaHolidayService;
@@ -550,5 +553,92 @@ class PublicProfileController extends Controller
             ->whereIn('id', $clinicAddressIds)
             ->with(['city', 'clinic'])
             ->get();
+    }
+
+    /**
+     * Guarda el mensaje de contacto del perfil público de un doctor.
+     */
+    public function sendContactMessage(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'doctor_id'       => ['required', 'integer', 'exists:doctors,id'],
+            'client_name'     => ['required', 'string', 'max:100'],
+            'client_email'    => ['required', 'email:rfc', 'max:150'],
+            'client_phone'    => ['nullable', 'string', 'max:30', 'regex:/^[0-9+\s()\-]{7,30}$/'],
+            'message_content' => ['required', 'string', 'min:10', 'max:1000'],
+        ], [
+            'client_name.required'     => 'Escribe tu nombre completo.',
+            'client_email.required'    => 'Escribe tu correo electrónico.',
+            'client_email.email'       => 'El correo electrónico no es válido.',
+            'client_phone.regex'       => 'El teléfono no tiene un formato válido.',
+            'message_content.required' => 'Escribe tu mensaje.',
+            'message_content.min'      => 'El mensaje debe tener al menos 10 caracteres.',
+            'message_content.max'      => 'El mensaje no puede superar los 1000 caracteres.',
+            'doctor_id.exists'         => 'El especialista no existe.',
+        ]);
+
+        $doctor = Doctor::with('user')->findOrFail($validated['doctor_id']);
+
+        // Sanitización
+        $name    = $this->sanitizeText($validated['client_name']);
+        $email   = mb_strtolower(trim($validated['client_email']));
+        $phone   = $this->sanitizeText($validated['client_phone'] ?? '');
+        $content = $this->sanitizeText($validated['message_content'], true);
+
+        $doctorTitle = $doctor->gender === 'female' ? 'Dra.' : 'Dr.';
+        $doctorName  = $this->sanitizeText($doctorTitle . ' ' . ($doctor->user->name ?? ''));
+
+        // Todo el contexto va dentro del campo "message"
+        $message = implode("\n", [
+            '[Contacto desde perfil público]',
+            "Doctor ID: {$doctor->id}",
+            "Doctor: {$doctorName}",
+            "Nombre: {$name}",
+            "Correo: {$email}",
+            'Teléfono: ' . ($phone !== '' ? $phone : 'No indicado'),
+            '',
+            'Mensaje:',
+            $content,
+        ]);
+
+        try {
+            ContactMessage::create([
+                'name'    => $name,
+                'email'   => $email,
+                'subject' => Str::limit("Contacto perfil público - {$doctorName} (ID {$doctor->id})", 190, ''),
+                'message' => $message,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error guardando contact_message del perfil público', [
+                'doctor_id' => $doctor->id,
+                'error'     => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'No pudimos enviar tu mensaje. Inténtalo de nuevo en unos minutos.',
+            ], 500);
+        }
+
+        return response()->json(['message' => 'Mensaje enviado correctamente.'], 201);
+    }
+
+    /**
+     * Limpia texto de usuario: sin HTML, sin caracteres de control, espacios normalizados.
+     * Si $keepNewlines es true, conserva los saltos de línea (para el mensaje).
+     */
+    private function sanitizeText(?string $value, bool $keepNewlines = false): string
+    {
+        $value = strip_tags((string) $value);
+        $value = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $value) ?? '';
+        $value = str_replace("\r\n", "\n", $value);
+
+        if ($keepNewlines) {
+            $value = preg_replace("/[ \t]+/", ' ', $value);
+            $value = preg_replace("/\n{3,}/", "\n\n", $value);
+        } else {
+            $value = preg_replace('/\s+/', ' ', $value);
+        }
+
+        return trim($value ?? '');
     }
 }

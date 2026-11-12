@@ -636,3 +636,7 @@ Route::get('/api/doctors/nearby', [NearbyDoctorsController::class, 'fetchNearby'
 
 // Cambiando a showProfile
 Route::get('/partner-profile/{slug}', [PublicProfileController::class, 'showProfile'])->name('partner.profile.show');
+
+Route::post('/partner-profile/contact', [PublicProfileController::class, 'sendContactMessage'])
+    ->middleware('throttle:5,1') // máx. 5 mensajes por minuto por IP
+    ->name('partner-profile.contact');
