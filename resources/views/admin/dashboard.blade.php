@@ -104,7 +104,7 @@
             <x-appointment-search-form class="mb-6 p-4 bg-white rounded-lg shadow" />
         @endif       
 
-        <div class="max-w-7xl mx-auto py-8 space-y-8">
+        <div class="py-10 space-y-8">
             @if($isPatient)
                 <!-- CABECERA PRINCIPAL DEL PORTAL DE PACIENTES -->
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-[2rem] border border-gray-100 shadow-lg">
@@ -116,6 +116,9 @@
                     <div class="text-xs font-bold text-slate-500 bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-100 uppercase tracking-wider">
                         ID: <span class="text-emerald-600 font-black">#{{ $owner->identification }}</span>
                     </div>
+                </div>
+                <div class="bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100 flex items-center justify-between gap-4">
+                    <span class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-1 block">Perfil de salud</span>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class="bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100 flex items-center justify-between gap-4">

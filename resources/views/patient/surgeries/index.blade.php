@@ -36,7 +36,7 @@ $breadcrumbs = [
         </div>
     @endif
     
-    <div class="max-w-4xl mx-auto py-10 px-4">        
+    <div class="py-10 px-4">        
         <div class="flex justify-between items-center mb-4">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">Antecedentes Quirúrgicos</h1>

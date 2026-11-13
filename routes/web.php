@@ -339,7 +339,10 @@ Route::middleware(['auth', 'role:patient'])->group(function () {
     Route::post('/patient/medications', [PatientController::class, 'storeMedication'])->name('patient.medications.store');
     Route::put('/patient/medications/{medication}', [PatientController::class, 'updateMedication'])->name('patient.medications.update');
     Route::patch('/patient/medications/{medication}/toggle', [PatientController::class, 'toggleStatusMedication'])->name('patient.medications.toggle');
+    
     Route::get('/patient/pdf/clinical-history/{patient}', [PatientController::class, 'downloadClinicalHistory'])->name('patient.pdf.clinical-history');
+    // Vista de solo lectura de la historia clínica oficial del paciente
+    Route::get('/patient/clinical-history', [PatientController::class, 'clinicalHistory'])->name('patient.clinical-history.index');
 
     // Reagendamiento estricto controlado por el paciente (NUEVO CONTROLADOR)
     Route::put('/appointments/{appointment}/reschedule', [PatientController::class, 'reschedule'])->name('patient.appointments.reschedule');

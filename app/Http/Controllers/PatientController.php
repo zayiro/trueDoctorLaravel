@@ -16,6 +16,7 @@ use App\Models\Insurance;
 use App\Models\Department;
 use App\Models\PatientAllergy;
 use App\Models\PatientMedication;
+use App\Models\PatientHistory;
 use App\Services\Scheduling\SlotOverlapChecker;
 use App\Events\AppointmentCancelled;
 use App\Notifications\AppointmentRescheduledNotification;
@@ -26,6 +27,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\View\View;
 use Throwable;
 
 class PatientController extends Controller
@@ -179,9 +181,30 @@ class PatientController extends Controller
         $patient = $request->user()->patient()->with(['attachments', 'histories'])->firstOrFail();
         $this->ensurePatientOwnership($patient);
 
-        $history = $patient->histories()->latest()->paginate(10);
+        return view('patient.history.index', compact('patient'));
+    }
 
-        return view('patient.history.index', compact('patient', 'history'));
+    /**
+     * Muestra el historial clínico oficial del paciente en modo solo lectura.
+     * Solo despliega registros firmados (signed) o con nota aclaratoria (amended).
+     */
+    public function clinicalHistory(): View
+    {
+        // Obtenemos el perfil de paciente del usuario autenticado
+        $patient = Auth::user()->patient;
+
+        // Consultamos únicamente las evoluciones clínicas cerradas/firmadas por los médicos
+        $histories = PatientHistory::with([
+                'doctor.user',       // Datos del médico (nombre, avatar, etc.)
+                'doctor.specialty',  // Especialidad médica (ajusta según tu relación)
+                'appointment'        // Datos de la cita asociada (si aplica)
+            ])
+            ->where('patient_id', $patient->id)
+            ->whereIn('status', ['signed', 'amended']) // Nunca mostrar borradores ('draft') al paciente
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
+        return view('patient.clinical-history', compact('patient', 'histories'));
     }
 
     /**
@@ -409,7 +432,7 @@ class PatientController extends Controller
             $generatedBy = Auth::user()->name . " (" . ucfirst(Auth::user()->role) . ")";
             $generationDate = now()->format('d/m/Y H:i');
 
-            $pdf = Pdf::loadView('dashboard.patients.reports.clinical_history', compact(
+            $pdf = Pdf::loadView('patients.reports.clinical_history', compact(
                 'patient',
                 'generatedBy',
                 'generationDate'
@@ -532,7 +555,26 @@ class PatientController extends Controller
         $this->ensurePatientOwnership($patient);
 
         $familyHistories = $patient->familyHistories()->latest()->get();
-        return view('dashboard.patients.family_histories.index', compact('patient', 'familyHistories'));
+        return view('patient.family-history.index', compact('patient', 'familyHistories'));
+    }
+
+    public function storeFamilyHistory(Request $request)
+    {
+        $validated = $request->validate([
+            'patient_id'   => 'required|exists:patients,id',
+            'condition'    => 'required|string|max:255',
+            'relationship' => 'required|string|max:100',
+            'notes'        => 'nullable|string',
+        ]);
+
+        // Opción A: Usando el modelo directamente
+        FamilyHistory::create($validated);
+
+        // Opción B: Si tienes la relación definida en el modelo Patient
+        // $patient = Patient::findOrFail($validated['patient_id']);
+        // $patient->familyHistories()->create($validated);
+
+        return back()->with('success', 'Antecedente familiar guardado correctamente.');
     }
 
     /**
@@ -547,7 +589,7 @@ class PatientController extends Controller
         $this->ensurePatientOwnership($patient);
 
         $surgeries = $patient->surgeries()->orderBy('year', 'desc')->get();
-        return view('dashboard.patients.surgeries.index', compact('patient', 'surgeries'));
+        return view('patient.surgeries.index', compact('patient', 'surgeries'));
     }
 
     /**

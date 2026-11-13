@@ -5,13 +5,13 @@ $breadcrumbs = [
         'href' => route('admin.dashboard'),
     ],
     [
-        'name' => 'Historia Clinica',
+        'name' => 'Registros Clínicos',
     ]
 ];
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-    <div class="max-w-7xl mx-auto py-10 px-4">
+    <div class="py-10 px-4">
         {{-- Banner de alertas de éxito o error --}}
         @if (session('success'))
             <div class="w-full text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-4 py-3 rounded-xl mb-2">
@@ -31,8 +31,8 @@ $breadcrumbs = [
         @endif
 
         <div class="mb-8">
-            <h1 class="text-3xl font-extrabold text-gray-900">Historial Clínico</h1>
-            <p class="text-gray-500">Consulta tus diagnósticos y planes de tratamiento anteriores.</p>
+            <h1 class="text-3xl font-extrabold text-gray-900">Registros Clínicos</h1>
+            <p class="text-gray-500">Diagnósticos médicos y tratamientos previos.</p>
         </div>
         <div class="mb-4">
             <div x-data="{ openUploadModal: false }">
@@ -42,7 +42,7 @@ $breadcrumbs = [
                     <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l4.5-4.5a3 3 0 114.243 4.243l-4.5 4.5a1.5 1.5 0 11-2.122-2.122l4.5-4.5" />
                     </svg>
-                    <span>Anexar reportes clínicos</span>
+                    <span>Anexar registro clínico</span>
                 </button>
 
                 <!-- 2. Fondo Opaco (Backdrop) y Estructura del Modal -->
@@ -147,175 +147,104 @@ $breadcrumbs = [
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 my-3">
                 <div x-data="{ previewModal: false, previewUrl: '', fileType: '' }" class="mt-6">
     
-                <!-- Listado en Grid de Tarjetas Médicas -->
-                <div class="flex gap-4">
-                    @foreach($patient->attachments as $attachment)
-                        <div class="group relative flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all shadow-sm">
-                
-                <!-- Contenedor Clickable para Previsualizar -->                
-                <div class="cursor-pointer flex flex-col items-center text-center flex-1 w-full"
-                    data-url="{{ route('patient.attachments.view', $attachment) }}"
-                    data-type="{{ $attachment->file_type }}"
-                    @click="previewUrl = $el.getAttribute('data-url'); fileType = $el.getAttribute('data-type'); previewModal = true">
+                    <!-- Listado en Grid de Tarjetas Médicas -->
+                    <div class="flex gap-4">
+                        @foreach($patient->attachments as $attachment)
+                            <div class="group relative flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all shadow-sm">
                     
-                    <!-- Iconografía Emoticon/SVG -->
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-950/30 transition-colors">
-                        @if(str_contains($attachment->file_type, 'pdf'))
-                            <span class="text-xl">📄</span>
-                        @else
-                            <span class="text-xl">🖼️</span>
-                        @endif
-                    </div>
-
-                    <!-- Textos del Documento (Aseguramos el renderizado forzado de Blade) -->
-                    <div class="truncate">
-                        <p class="text-sm font-semibold text-slate-900 dark:text-white truncate group-hover:text-blue-600 transition-colors">
-                            {{ $attachment->name ?? 'Documento sin nombre' }}
-                        </p>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                            {{ number_format($attachment->file_size / 1024 / 1024, 2) }} MB • <span class="text-blue-600 dark:text-blue-400 font-medium">Ver reporte</span>
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Formulario Seguro de Eliminación con Confirmación Alpine.js -->
-                <form action="{{ route('patient.attachments.destroy', $attachment) }}" 
-                    method="POST" 
-                    @submit.prevent="if (confirm('¿Estás seguro de que deseas eliminar este reporte médico? Esta acción no se puede deshacer.')) $el.submit()">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" 
-                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 transition-all dark:hover:bg-red-950/30 dark:hover:text-red-400"
-                            title="Eliminar reporte">
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                    </button>
-                </form>
-
-            </div>
-
-        @endforeach
-    </div>
-
-    <!-- MODAL DE PREVISUALIZACIÓN EXPRESS (Alpine.js) -->
-    <div x-show="previewModal" 
-         class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-hidden"
-         x-keydown.escape.window="previewModal = false"
-         style="display: none;">
-        
-        <!-- Backdrop -->
-        <div x-show="previewModal" 
-             x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-             x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-             class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" 
-             @click="previewModal = false"></div>
-
-        <!-- Contenedor del Visor -->
-        <div x-show="previewModal"
-             x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
-             x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-             class="relative w-full max-w-4xl h-[85vh] transform overflow-hidden rounded-2xl bg-white p-4 shadow-2xl transition-all dark:bg-slate-900 flex flex-col">
-            
-            <!-- Cabecera del Visor -->
-            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-3 shrink-0">
-                <h3 class="text-sm font-bold text-slate-900 dark:text-white">Vista Previa del Documento Médico</h3>
-                <button @click="previewModal = false; previewUrl = ''" type="button" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
-                    ✕
-                </button>
-            </div>
-
-            <!-- Área del Contenido Dinámico -->
-            <div class="flex-1 bg-slate-50 dark:bg-slate-950 rounded-xl overflow-y-auto flex items-center justify-center relative p-2">
-                
-                <!-- Si es un PDF usamos un iframe nativo -->
-                <template x-if="fileType.includes('pdf')">
-                    <iframe :src="previewUrl" class="w-full h-full rounded-lg border-0" allow="autoplay"></iframe>
-                </template>
-
-                <!-- Si es una imagen o radiografía renderizamos la etiqueta img -->
-                <template x-if="!fileType.includes('pdf')">
-                    <img :src="previewUrl" class="max-w-full max-h-full object-contain rounded-lg shadow-sm">
-                </template>
-                
-            </div>
-        </div>
-    </div>
-
-</div>
-
-            </div>
-        </div>
-
-        <div class="space-y-8">
-            @forelse($history as $entry)
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <!-- Cabecera de la Entrada -->
-                    <div class="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                        <div class="flex items-center gap-3">
-                            <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider
-                                {{ $entry->entry_type === 'emergency' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700' }}">
-                                {{ $entry->entry_type }}
-                            </span>
-                            <span class="text-sm text-gray-500 font-medium">
-                                {{ $entry->created_at->format('d/m/Y') }}
-                            </span>
-                        </div>
-                        <span class="text-xs text-gray-400 font-mono">ID-{{ $entry->id }}</span>
-                    </div>
-
-                    <div class="p-6">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <!-- Columna Izquierda: Resumen -->
-                            <div class="space-y-4">
-                                <div>
-                                    <h4 class="text-xs font-bold text-gray-400 uppercase">Motivo</h4>
-                                    <p class="text-gray-900 font-semibold">{{ $entry->reason_for_consultation }}</p>
-                                </div>
-                                <div>
-                                    <h4 class="text-xs font-bold text-gray-400 uppercase">Médico</h4>
-                                    <p class="text-gray-700">Dr. {{ $entry->doctor->name }}</p>
-                                    @if($entry->appointment)
-                                        <p class="text-xs text-blue-600">{{ $entry->appointment->service->name }}</p>
-                                    @endif
-                                </div>
-                            </div>
-
-                            <!-- Columna Central: Diagnóstico -->
-                            <div class="md:col-span-2 space-y-4">
-                                <div>
-                                    <h4 class="text-xs font-bold text-gray-400 uppercase mb-1">Síntomas</h4>
-                                    <p class="text-sm text-gray-600 italic">{{ $entry->symptoms ?? 'No registrados' }}</p>
-                                </div>
-                                
-                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                                    <h4 class="text-sm font-bold text-blue-800 mb-1">Diagnóstico</h4>
-                                    <p class="text-gray-800">{{ $entry->diagnosis }}</p>
-                                </div>
-
-                                @if($entry->treatment_plan)
-                                    <div>
-                                        <h4 class="text-sm font-bold text-gray-800 mb-1">Plan de Tratamiento</h4>
-                                        <p class="text-sm text-gray-600 leading-relaxed">{{ $entry->treatment_plan }}</p>
+                                <!-- Contenedor Clickable para Previsualizar -->                
+                                <div class="cursor-pointer flex flex-col items-center text-center flex-1 w-full"
+                                    data-url="{{ route('patient.attachments.view', $attachment) }}"
+                                    data-type="{{ $attachment->file_type }}"
+                                    @click="previewUrl = $el.getAttribute('data-url'); fileType = $el.getAttribute('data-type'); previewModal = true">
+                                    
+                                    <!-- Iconografía Emoticon/SVG -->
+                                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-950/30 transition-colors">
+                                        @if(str_contains($attachment->file_type, 'pdf'))
+                                            <span class="text-xl">📄</span>
+                                        @else
+                                            <span class="text-xl">🖼️</span>
+                                        @endif
                                     </div>
-                                @endif
+
+                                    <!-- Textos del Documento (Aseguramos el renderizado forzado de Blade) -->
+                                    <div class="truncate">
+                                        <p class="text-sm font-semibold text-slate-900 dark:text-white truncate group-hover:text-blue-600 transition-colors">
+                                            {{ $attachment->name ?? 'Documento sin nombre' }}
+                                        </p>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                            {{ number_format($attachment->file_size / 1024 / 1024, 2) }} MB • <span class="text-blue-600 dark:text-blue-400 font-medium">Ver reporte</span>
+                                        </p>
+                                        <span class="text-sm font-semibold text-slate-900">{{ $attachment->created_at->translatedFormat('d \d\e F \d\e Y') }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Formulario Seguro de Eliminación con Confirmación Alpine.js -->
+                                <form action="{{ route('patient.attachments.destroy', $attachment) }}" 
+                                    method="POST" 
+                                    @submit.prevent="if (confirm('¿Estás seguro de que deseas eliminar este reporte médico? Esta acción no se puede deshacer.')) $el.submit()">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" 
+                                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 transition-all dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                                            title="Eliminar reporte">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </form>
+
+                            </div>
+
+                        @endforeach
+                    </div>
+
+                    <!-- MODAL DE PREVISUALIZACIÓN EXPRESS (Alpine.js) -->
+                    <div x-show="previewModal" 
+                        class="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4"
+                        x-keydown.escape.window="previewModal = false; previewUrl = ''"
+                        style="display: none;">
+
+                        <!-- Backdrop -->
+                        <div x-show="previewModal" 
+                            x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                            x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                            class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" 
+                            @click="previewModal = false; previewUrl = ''"></div>
+
+                        <!-- Contenedor del Visor (Forzamos altura real con style="height: 90vh;") -->
+                        <div x-show="previewModal"
+                            x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                            x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                            style="height: 90vh; max-height: 90vh;"
+                            class="relative z-10 w-full max-w-6xl overflow-hidden rounded-2xl bg-white p-4 shadow-2xl transition-all dark:bg-slate-900 flex flex-col">
+                            
+                            <!-- Cabecera del Visor -->
+                            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-3 shrink-0">
+                                <h3 class="text-sm font-bold text-slate-900 dark:text-white">Vista Previa del Documento Médico</h3>
+                                <button @click="previewModal = false; previewUrl = ''" type="button" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                    ✕
+                                </button>
+                            </div>
+
+                            <!-- Área del Contenido Dinámico -->
+                            <div class="flex-1 w-full bg-slate-50 dark:bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center relative" style="min-height: 0;">
+                                
+                                <!-- Si es un PDF usamos un iframe nativo -->
+                                <template x-if="fileType.includes('pdf')">
+                                    <iframe :src="previewUrl" class="w-full h-full border-0" style="min-height: 100%;" allow="autoplay"></iframe>
+                                </template>
+
+                                <!-- Si es una imagen o radiografía renderizamos la etiqueta img -->
+                                <template x-if="!fileType.includes('pdf')">
+                                    <img :src="previewUrl" class="max-w-full max-h-full object-contain p-2">
+                                </template>
+                                
                             </div>
                         </div>
                     </div>
                 </div>
-            @empty
-                <div class="text-center py-16 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
-                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <h3 class="mt-2 text-sm font-medium text-gray-900">No hay registros médicos</h3>
-                    <p class="mt-1 text-sm text-gray-500">Tu historial aparecerá aquí después de tu primera consulta.</p>
-                </div>
-            @endforelse
-        </div>
-
-        <div class="mt-8">
-            {{ $history->links() }}
+            </div>
         </div>
     </div>
 </x-admin-layout>
