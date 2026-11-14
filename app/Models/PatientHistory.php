@@ -60,4 +60,12 @@ class PatientHistory extends Model
     {
         return $this->hasMany(PatientHistoryAttachment::class);
     }
+
+    /**
+     * Notas extemporáneas o aclaratorias asociadas a esta historia clínica (máximo 3).
+     */
+    public function notes(): HasMany
+    {
+        return $this->hasMany(PatientHistoryNote::class)->orderBy('created_at', 'asc');
+    }
 }

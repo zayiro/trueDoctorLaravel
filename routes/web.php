@@ -63,6 +63,7 @@ use App\Http\Controllers\CityController;
 
 use App\Http\Controllers\AppointmentBookingController;
 use App\Http\Controllers\NearbyDoctorsController;
+use App\Http\Controllers\AppointmentClinicalController;
 
 use Spatie\Honeypot\ProtectAgainstSpam; 
 use Illuminate\Cache\RateLimiting\Limit;
@@ -408,6 +409,19 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/partner/gallery/{image}', [GalleryController::class, 'update'])->name('partner.gallery.update');
     Route::post('/partner/gallery/reorder', [GalleryController::class, 'reorder'])->name('partner.gallery.reorder');
     Route::delete('/partner/gallery/{image}', [GalleryController::class, 'destroy'])->name('partner.gallery.destroy');
+
+    // Endpoint JSON compartido (Fetch) para el popup centrado de notas SOAP + extemporáneas
+    Route::get('/appointments/{appointment}/clinical-notes', [AppointmentClinicalController::class, 'fetchNotes'])
+        ->name('appointments.clinical-notes.fetch');
+
+    // Rutas exclusivas del médico dueño de la cita para gestionar la historia clínica
+    Route::prefix('partner/appointments/{appointment}/clinical-record')
+        ->name('partner.appointments.clinical-record.')
+        ->group(function () {
+            Route::get('/', [AppointmentClinicalController::class, 'show'])->name('show');
+            Route::post('/soap', [AppointmentClinicalController::class, 'storeSoap'])->name('soap.store');
+            Route::post('/notes', [AppointmentClinicalController::class, 'storeExtemporaneousNote'])->name('notes.store');
+        });
 });
 
 Route::middleware('auth')

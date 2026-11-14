@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
@@ -424,5 +425,68 @@ class Appointment extends Model
         }
 
         return $query;
+    }
+
+    /**
+     * Relación 1 a 1 con la historia clínica oficial de esta cita.
+     */
+    public function patientHistory(): HasOne
+    {
+        return $this->hasOne(PatientHistory::class, 'appointment_id');
+    }
+
+    /**
+     * Calcula el límite máximo (3 horas después de starts_at) para diligenciar el SOAP principal.
+     */
+    protected function soapDeadline(): Attribute
+    {
+        return Attribute::get(
+            fn (): Carbon => $this->starts_at->copy()->addHours(3)
+        );
+    }
+
+    /**
+     * Determina si la cita ya inició y no está cancelada (habilita el enlace clínico para el médico).
+     */
+    public function canAccessClinicalRecord(): bool
+    {
+        $status = $this->status instanceof \BackedEnum ? $this->status->value : (string) $this->status;
+
+        if ($status === \App\Enums\AppointmentStatus::CANCELLED->value) {
+            return false;
+        }
+
+        return Carbon::now(config('app.timezone', 'America/Bogota'))->greaterThanOrEqualTo($this->starts_at);
+    }
+
+    /**
+     * Determina si el médico aún está dentro de la ventana de 3 horas para llenar o editar el borrador SOAP.
+     */
+    public function isWithinSoapWindow(): bool
+    {
+        if (!$this->canAccessClinicalRecord()) {
+            return false;
+        }
+
+        $now = Carbon::now(config('app.timezone', 'America/Bogota'));
+        $isNotSigned = $this->patientHistory?->status !== 'signed';
+
+        return $now->lessThanOrEqualTo($this->soap_deadline) && $isNotSigned;
+    }
+
+    /**
+     * Determina si ya pasaron las 3 horas (o la historia ya está firmada),
+     * habilitando únicamente el modo de notas extemporáneas (máximo 3).
+     */
+    public function isExtemporaneousMode(): bool
+    {
+        if (!$this->canAccessClinicalRecord()) {
+            return false;
+        }
+
+        $now = Carbon::now(config('app.timezone', 'America/Bogota'));
+        $isSigned = $this->patientHistory?->status === 'signed';
+
+        return $now->greaterThan($this->soap_deadline) || $isSigned;
     }
 }

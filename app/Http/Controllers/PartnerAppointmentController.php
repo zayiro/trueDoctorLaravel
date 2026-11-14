@@ -58,7 +58,7 @@ class PartnerAppointmentController extends Controller
             $appointmentsQuery->where('date', '>=', now()->toDateString());
         }
 
-        $appointments = $appointmentsQuery->with(['patient.user', 'address', 'service'])
+        $appointments = $appointmentsQuery->with(['patient.user', 'address', 'service', 'patientHistory.notes'])
             ->orderBy('date', 'asc')
             ->orderBy('start_time', 'asc')
             ->get()

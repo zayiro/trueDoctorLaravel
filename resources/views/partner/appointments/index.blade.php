@@ -184,6 +184,7 @@ $breadcrumbs = [
             </div>
         </div>
     </div>
+    <x-clinical-notes-modal />
 </x-admin-layout>
 
 <!-- ======================================================== -->

@@ -168,6 +168,34 @@ class="p-5 bg-white space-y-3 relative">
                     </button>
                 @endif
 
+                {{-- 🩺 GESTIÓN DE HISTORIA CLÍNICA (Solo para el doctor que atendió la cita y desde start_time) --}}
+                @if(auth()->user()->role === 'doctor' && auth()->user()->doctor?->id === $app->doctor_id && $app->canAccessClinicalRecord())
+                    @php
+                        $notesCount = $app->patientHistory?->notes?->count() ?? 0;
+                    @endphp
+                    <a href="{{ route('partner.appointments.clinical-record.show', $app->id) }}"
+                    class="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-sm font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition text-left">
+                        <span>
+                            {{ $app->isWithinSoapWindow() ? '🩺 Diligenciar Historia (SOAP)' : '📝 Notas Extemporáneas' }}
+                        </span>
+                        @if(!$app->isWithinSoapWindow())
+                            <span class="text-[11px] font-black px-2 py-0.5 rounded-full bg-white text-indigo-700 border border-indigo-200">
+                                {{ $notesCount }}/3
+                            </span>
+                        @endif
+                    </a>
+                @endif
+
+                {{-- 📋 POPUP RÁPIDO CON FETCH: Ver notas SOAP y extemporáneas --}}
+                @if($app->patientHistory)
+                    <button type="button"
+                            @click="$dispatch('open-clinical-notes', { appointmentId: {{ $app->id }} }); actionsOpen = false"
+                            class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-100 rounded-lg transition text-left">
+                        📋 Ver notas del doctor
+                    </button>
+                @endif
+
+
                 <!-- Completar: activa, ya comenzó y (si es virtual) pagada -->
                 @if($canComplete)
                     <form action="{{ route('partner.appointments.complete', $app->id) }}" method="POST" class="w-full">

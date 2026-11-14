@@ -231,6 +231,33 @@
                     <!-- Contenido -->
                     <div class="p-6 space-y-3">
                        <div class="p-1">
+                            {{-- 🩺 GESTIÓN DE HISTORIA CLÍNICA (Solo para el doctor que atendió la cita y desde start_time) --}}
+                            @if(auth()->user()->role === 'doctor' && auth()->user()->doctor?->id === $app->doctor_id && $app->canAccessClinicalRecord())
+                                @php
+                                    $notesCount = $app->patientHistory?->notes?->count() ?? 0;
+                                @endphp
+                                <a href="{{ route('partner.appointments.clinical-record.show', $app->id) }}"
+                                class="flex items-center justify-between gap-2 px-3 py-2.5 text-sm font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition w-full text-left mt-1">
+                                    <span>
+                                        {{ $app->isWithinSoapWindow() ? '🩺 Diligenciar Historia (SOAP)' : '📝 Notas Extemporáneas' }}
+                                    </span>
+                                    @if(!$app->isWithinSoapWindow())
+                                        <span class="text-[11px] font-black px-2 py-0.5 rounded-full bg-white text-indigo-700 border border-indigo-200">
+                                            {{ $notesCount }}/3
+                                        </span>
+                                    @endif
+                                </a>
+                            @endif
+
+                            {{-- 📋 POPUP RÁPIDO CON FETCH: Ver notas SOAP y extemporáneas --}}
+                            @if($app->patientHistory)
+                                <button type="button"
+                                        @click="$dispatch('open-clinical-notes', { appointmentId: {{ $app->id }} }); open = false"
+                                        class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-100 rounded-lg transition w-full text-left mt-1">
+                                    📋 Ver notas del doctor
+                                </button>
+                            @endif
+
                             {{-- Acción principal según estado, tipo de cita y pago --}}
                             @if ($statusValue === 'completed')
                                 <a href="{{ route('partner.patients.show', [$app->patient_id, $app->reference]) }}" target="_blank"

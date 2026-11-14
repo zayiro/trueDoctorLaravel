@@ -195,12 +195,13 @@ class PatientController extends Controller
 
         // Consultamos únicamente las evoluciones clínicas cerradas/firmadas por los médicos
         $histories = PatientHistory::with([
-                'doctor.user',       // Datos del médico (nombre, avatar, etc.)
-                'doctor.specialty',  // Especialidad médica (ajusta según tu relación)
-                'appointment'        // Datos de la cita asociada (si aplica)
+                'doctor.user',
+                'doctor.specialty',
+                'appointment',
+                'notes.doctor.user', // <-- Agrega esta línea para cargar las notas extemporáneas
             ])
             ->where('patient_id', $patient->id)
-            ->whereIn('status', ['signed', 'amended']) // Nunca mostrar borradores ('draft') al paciente
+            ->whereIn('status', ['signed', 'amended'])
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
@@ -279,59 +280,84 @@ class PatientController extends Controller
     /**
      * Muestra el listado completo de citas médicas del paciente autenticado.
      */
-    public function appointments()
+    public function appointments(): View
     {
-        $user = auth()->user();
+        $user = Auth::user();
         $patient = $user->patient;
 
         if (!$patient) {
-            return redirect()->route('profile.show')->with('error', 'No se encontró un perfil de paciente asociado a tu cuenta.');
+            return redirect()->route('profile.show')
+                ->with('error', 'No se encontró un perfil de paciente asociado a tu cuenta.');
         }
 
-        $now = Carbon::now('America/Bogota');
-        
-        // ✅ CORRECCIÓN: Usar el helper request() en lugar de $user->input()
+        $now = Carbon::now(config('app.timezone', 'America/Bogota'));
         $statusFilter = request('status');
 
-        // 1. PRÓXIMAS CONSULTAS: Citas futuras o en curso
-        $upcomingAppointments = Appointment::where('patient_id', $patient->id)
-            ->where(function ($query) use ($now) {
-                $query->whereDate('date', '>', $now->toDateString())
-                    ->orWhere(function ($q) use ($now) {
-                        $q->whereDate('date', $now->toDateString())
-                        ->where('end_time', '>', $now->toTimeString());
-                    });
-            })
-            ->whereIn('status', ['confirmed', 'pending'])
-            ->when($statusFilter, function ($query) use ($statusFilter) {
-                return $query->where('status', $statusFilter);
-            })
-            ->with(['doctor.user', 'clinic', 'service', 'address.city'])
-            ->orderBy('date', 'asc')
-            ->orderBy('start_time', 'asc')
-            ->get();
+        // 1. PRÓXIMAS CONSULTAS: Citas futuras o en curso (solo si el filtro permite estados activos)
+        $upcomingAppointments = collect();
+        if (!$statusFilter || in_array($statusFilter, ['pending', 'confirmed'], true)) {
+            $upcomingAppointments = Appointment::where('patient_id', $patient->id)
+                ->where(function ($query) use ($now) {
+                    $query->whereDate('date', '>', $now->toDateString())
+                        ->orWhere(function ($q) use ($now) {
+                            $q->whereDate('date', $now->toDateString())
+                              ->where('end_time', '>', $now->toTimeString());
+                        });
+                })
+                ->when(
+                    $statusFilter,
+                    fn ($query) => $query->where('status', $statusFilter),
+                    fn ($query) => $query->whereIn('status', ['confirmed', 'pending'])
+                )
+                ->with(['doctor.user', 'clinic', 'service', 'address.city'])
+                ->orderBy('date', 'asc')
+                ->orderBy('start_time', 'asc')
+                ->get();
+        }
 
-        // 2. HISTORIAL DE CONSULTAS: Citas pasadas o cerradas
+        // 2. HISTORIAL DE CONSULTAS: Citas pasadas o cerradas (respetando el filtro seleccionado)
         $pastAppointments = Appointment::where('patient_id', $patient->id)
-            ->where(function ($query) use ($now) {
+            ->when($statusFilter, function ($query) use ($statusFilter, $now) {
+                // Si el paciente filtra explícitamente por un estado, mostramos únicamente ese estado
+                $query->where('status', $statusFilter);
+
+                // Si filtró por 'pending' o 'confirmed', en el historial solo van las que ya pasaron de hora
+                if (in_array($statusFilter, ['pending', 'confirmed'], true)) {
+                    $query->where(function ($sub) use ($now) {
+                        $sub->whereDate('date', '<', $now->toDateString())
+                            ->orWhere(function ($q) use ($now) {
+                                $q->whereDate('date', $now->toDateString())
+                                  ->where('end_time', '<=', $now->toTimeString());
+                            });
+                    });
+                }
+            }, function ($query) use ($now) {
+                // Sin filtro activo: muestra las que ya pasaron de fecha/hora o están completadas/canceladas
                 $query->where(function ($sub) use ($now) {
                     $sub->whereDate('date', '<', $now->toDateString())
                         ->orWhere(function ($q) use ($now) {
                             $q->whereDate('date', $now->toDateString())
-                            ->where('end_time', '<=', $now->toTimeString());
+                              ->where('end_time', '<=', $now->toTimeString());
                         });
                 })->orWhereIn('status', ['completed', 'cancelled']);
             })
-            ->with(['doctor.user', 'clinic', 'service', 'address.city'])
+            ->with([
+                'doctor.user',
+                'clinic',
+                'service',
+                'address.city',
+                // Cargamos solo id y status para saber si ya tiene historia firmada sin traer textos pesados
+                'patientHistory:id,appointment_id,status',
+            ])
             ->orderBy('date', 'desc')
             ->orderBy('start_time', 'desc')
             ->paginate(10);
 
-            $maxReschedules = $this->maxReschedules;
-
+        $maxReschedules = $this->maxReschedules;
+        
         return view('patient.appointments.index', compact(
-            'upcomingAppointments', 
-            'pastAppointments', 
+            'upcomingAppointments',
+            'pastAppointments',
             'maxReschedules'
         ));
     }
@@ -412,7 +438,7 @@ class PatientController extends Controller
             ->with('success', 'La consulta médica ha sido cancelada exitosamente y el espacio horario ha sido devuelto a la disponibilidad pública.');
     }
 
-    /**
+        /**
      * Genera y descarga el reporte consolidado de la Historia Clínica en PDF.
      */
     public function downloadClinicalHistory(Patient $patient)
@@ -421,31 +447,39 @@ class PatientController extends Controller
 
         try {
             $patient->load([
+                'user',
                 'allergies',
                 'surgeries',
                 'familyHistories',
                 'medications',
+                // Cargamos únicamente evoluciones firmadas o con nota aclaratoria (nunca borradores)
+                'histories' => function ($query) {
+                    $query->whereIn('status', ['signed', 'amended'])
+                          ->orderBy('created_at', 'desc');
+                },
                 'histories.doctor.user',
-                'attachments'
+                'histories.notes.doctor.user',
+                'attachments',
             ]);
 
-            $generatedBy = Auth::user()->name . " (" . ucfirst(Auth::user()->role) . ")";
-            $generationDate = now()->format('d/m/Y H:i');
+            $generatedBy = Auth::user()->name . ' (' . ucfirst(Auth::user()->role) . ')';
+            $generationDate = now(config('app.timezone', 'America/Bogota'))->format('d/m/Y H:i');
 
-            $pdf = Pdf::loadView('patients.reports.clinical_history', compact(
+            $pdf = Pdf::loadView('patient.pdf.clinical_history', compact(
                 'patient',
                 'generatedBy',
                 'generationDate'
             ))->setPaper('letter', 'portrait');
 
-            $safeName = preg_replace('/[^A-Za-z0-9\-]/', '', str_replace(' ', '_', $patient->name));
-            $fileName = 'HC_' . $safeName . '_' . now()->format('Ymd') . '.pdf';
+            $rawName = $patient->user?->name ?? 'Paciente';
+            $safeName = preg_replace('/[^A-Za-z0-9\-]/', '', str_replace(' ', '_', $rawName));
+            $fileName = 'HC_' . $safeName . '_' . now(config('app.timezone', 'America/Bogota'))->format('Ymd') . '.pdf';
 
             return $pdf->download($fileName);
         } catch (Throwable $e) {
             Log::error("Fallo crítico al generar la Historia Clínica en PDF para el Paciente ID {$patient->id}: " . $e->getMessage(), [
                 'line' => $e->getLine(),
-                'file' => $e->getFile()
+                'file' => $e->getFile(),
             ]);
             return redirect()->back()->with('error', 'Ocurrió un error inesperado al procesar la descarga de la historia clínica.');
         }

@@ -49,7 +49,7 @@ $hasStatusFilter = filled(request('status'));
         </div>
     @endif
 
-    <div class="py-8 px-4 max-w-7xl mx-auto">
+    <div class="py-10 px-4">
         <!-- Encabezado de la Sección y Filtro por Estados -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
             <div>
@@ -397,7 +397,7 @@ $hasStatusFilter = filled(request('status'));
         <!-- ========================================================================= -->
         <!-- SECCIÓN 2: HISTORIAL DE CONSULTAS (PASADAS / TERMINADAS)                  -->
         <!-- ========================================================================= -->
-        @if(!$hasStatusFilter || in_array(request('status'), ['completed', 'cancelled']))
+        @if(!$hasStatusFilter || in_array(request('status'), ['completed', 'cancelled']) || $pastAppointments->total() > 0)
             <div class="mt-6">
                 <h3 class="text-xs font-black text-slate-400 uppercase tracking-wider mb-4 ml-1">Historial de Consultas</h3>
                 
@@ -463,6 +463,14 @@ $hasStatusFilter = filled(request('status'));
                                         @else bg-red-50 text-red-700 border-red-200 @endif">
                                         {{ $statusText }}
                                     </span>
+                                    @if(in_array($appointment->patientHistory?->status, ['signed', 'amended'], true))
+                                        <button type="button"
+                                                @click="openNotesModal({{ $appointment->id }})"
+                                                class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition">
+                                            📋 Ver notas del doctor
+                                        </button>
+                                    @endif
+
                                 </div>
 
                             </div>

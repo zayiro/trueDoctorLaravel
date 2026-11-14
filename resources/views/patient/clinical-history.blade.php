@@ -26,7 +26,7 @@ $breadcrumbs = [
 
             <!-- Botón de descarga PDF general -->
             @if($histories->count() > 0 && Route::has('patient.pdf.clinical-history'))
-                <a href="{{ route('patient.pdf.clinical-history', $patient) }}" 
+                <a href="{{ route('patient.pdf.clinical-history ', $patient) }}" 
                    class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-xl transition shadow-sm">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -41,11 +41,10 @@ $breadcrumbs = [
             <svg class="w-5 h-5 text-blue-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
             </svg>
-            <div class="text-sm text-blue-900">
+            <div class="text-md text-blue-900">
                 <p class="font-semibold">Documento de consulta (Solo lectura)</p>
                 <p class="text-blue-700 mt-0.5">
-                    Por normativa de salud en Colombia, las evoluciones clínicas son redactadas y firmadas exclusivamente por el profesional tratante y no pueden ser editadas. Si deseas actualizar tus alergias o medicamentos actuales, hazlo desde tu 
-                    <a href="{{ Route::has('patient.health-profile.index') ? route('patient.health-profile.index') : '#' }}" class="underline font-semibold hover:text-blue-950">Perfil de Salud</a>.
+                    Por normativa de salud en Colombia, las evoluciones clínicas son redactadas y firmadas exclusivamente por el profesional tratante y no pueden ser editadas. Si deseas actualizar tus alergias o medicamentos actuales, hazlo desde tu Perfil de Salud.
                 </p>
             </div>
         </div>
@@ -59,7 +58,7 @@ $breadcrumbs = [
                     </svg>
                 </div>
                 <h3 class="text-base font-semibold text-slate-900">Aún no tienes registros clínicos firmados</h3>
-                <p class="text-sm text-slate-500 max-w-md mx-auto mt-1">
+                <p class="text-base text-slate-500 max-w-md mx-auto mt-1">
                     Cuando finalices una consulta médica presencial o por videollamada, el especialista cerrará tu evolución y aparecerá aquí automáticamente.
                 </p>
             </div>
@@ -189,6 +188,33 @@ $breadcrumbs = [
                                     </p>
                                 </div>
                             </div>
+
+                                                        <!-- Notas Extemporáneas / Aclaratorias del Médico (si existen) -->
+                            @if($history->notes->isNotEmpty())
+                                <div class="pt-4 border-t border-slate-200/80 space-y-3">
+                                    <h4 class="text-xs font-extrabold uppercase tracking-wider text-amber-800 flex items-center gap-1.5">
+                                        <span>📌</span> Notas Aclaratorias / Extemporáneas del Especialista ({{ $history->notes->count() }})
+                                    </h4>
+
+                                    <div class="space-y-2.5">
+                                        @foreach($history->notes as $idx => $note)
+                                            <div class="p-4 rounded-xl bg-amber-50/80 border border-amber-200/90">
+                                                <div class="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-amber-900 mb-1.5">
+                                                    <span>
+                                                        Nota #{{ $idx + 1 }} • Dr(a). {{ $note->doctor->user->name ?? 'Profesional Médico' }}
+                                                    </span>
+                                                    <span class="text-amber-700 font-semibold">
+                                                        {{ $note->created_at->format('d/m/Y h:i A') }}
+                                                    </span>
+                                                </div>
+                                                <p class="text-sm text-slate-800 whitespace-pre-line leading-relaxed">
+                                                    {{ $note->content }}
+                                                </p>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
 
                             <!-- Pie de tarjeta con trazabilidad legal -->
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-slate-200/70 text-xs text-slate-500">
