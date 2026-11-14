@@ -120,10 +120,10 @@ $cfg = [
                 Finalizar Consulta
             </button>
         @else
-            <a href="{{ route('admin.dashboard') }}"
+            <a href="{{ $exitUrl }}"
                class="px-3 md:px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 text-xs md:text-sm font-medium rounded-lg transition">
                 Salir de la sala
-            </a>
+            </a>       
         @endif
     </div>
 
@@ -228,15 +228,19 @@ $cfg = [
                         <p><span class="text-gray-400">Referencia:</span> <span class="font-medium text-gray-800">{{ $appointment->reference }}</span></p>
                         <p><span class="text-gray-400">Médico:</span> <span class="font-medium text-gray-800">{{ $appointment->doctor->user->name }}</span></p>
                         <p><span class="text-gray-400">Servicio:</span> <span class="text-gray-800">{{ $appointment->service->name }}</span></p>
-                        <p><span class="text-gray-400">Fecha:</span> <span class="text-gray-800">{{ ucfirst(\Carbon\Carbon::parse($appointment->date)->locale('es')->isoFormat('dddd D [de] MMMM')) }}</span></p>
+                        <p><span class="text-gray-400">Fecha:</span> <span class="text-gray-800">{{ ucfirst(\Carbon\Carbon::parse($appointment->date)->locale('es')->isoFormat('dddd D [de] MMMM')) }}</span></p>                        
+                        
+                        @if($appointment->canAccessClinicalRecord())
                         <p class="pt-2">
-                            <a href="{{ route('partner.patients.show', $appointment->patient->id) }}"
-                               target="_blank"
-                               class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium text-xs underline">
+                            <a href="{{ route('partner.appointments.clinical-record.show', $appointment->id) }}"
+                                target="_blank"
+                                class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium text-xs underline">
                                 📋 Abrir Historia Clínica
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                             </a>
                         </p>
+                        @endif
+
                     </div>
                 </div>
 
@@ -365,39 +369,29 @@ $cfg = [
                         </template>
                     </div>
 
-                    {{-- ── 2. FORMULARIO SOAP (con AJAX + detección IA) ── --}}
-                    <div x-data="{ enviando: false, mensaje: '', tipo: '', iaAsistida: false }" class="border-t border-gray-100 pt-4">
+                                        {{-- ── 2. FORMULARIO SOAP (con AJAX + detección IA + Borrador/Firma) ── --}}
+                    @php
+                        $isHistorySigned = in_array($existingHistory?->status, ['signed', 'amended'], true);
+                    @endphp
 
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="font-bold text-gray-700 text-sm uppercase tracking-wider">Nota de Evolución (SOAP)</h3>
-                            {{-- Badge que aparece cuando la IA prellena el formulario --}}
-                            <div id="ai-assisted-badge" x-show="iaAsistida" x-cloak
-                                 class="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                                Asistido por IA
-                            </div>
-                        </div>
+                    <div x-data="{ 
+                            enviando: false, 
+                            mensaje: '', 
+                            tipo: '', 
+                            iaAsistida: {{ ($existingHistory?->ai_assisted ?? false) ? 'true' : 'false' }},
+                            firmada: {{ $isHistorySigned ? 'true' : 'false' }},
+                            submitSoap(actionType) {
+                                if (actionType === 'sign' && !confirm('¿Estás seguro de firmar y cerrar esta historia clínica? Una vez firmada no podrá modificarse.')) {
+                                    return;
+                                }
 
-                        {{-- Alertas dinámicas de éxito/error --}}
-                        <div x-show="mensaje" x-cloak x-transition
-                             :class="tipo === 'success' ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200'"
-                             class="p-2 mb-3 rounded-lg border flex items-center justify-between text-xs">
-                            <span x-text="mensaje"></span>
-                            <button @click="mensaje = ''" class="text-current opacity-60 hover:opacity-100">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                            </button>
-                        </div>
+                                this.enviando = true;
+                                this.mensaje = '';
+                                const form = this.$refs.soapForm;
+                                const formData = new FormData(form);
+                                formData.set('action', actionType);
 
-                        <form id="evolution-note-form"
-                              @submit.prevent="
-                                enviando = true;
-                                mensaje = '';
-                                const formData = new FormData($el);
-
-                                fetch('{{ route('partner.patients.store-history', $appointment->patient->id) }}', {
+                                fetch('{{ route('partner.appointments.clinical-record.soap.store', $appointment->id) }}', {
                                     method: 'POST',
                                     headers: {
                                         'Accept': 'application/json',
@@ -405,58 +399,77 @@ $cfg = [
                                     },
                                     body: formData
                                 })
-                                .then(res => {
-                                    if (!res.ok) throw new Error('Error en el servidor');
-                                    return res.json();
+                                .then(async res => {
+                                    const data = await res.json();
+                                    if (!res.ok) throw new Error(data.message || 'Error en la validación de los campos.');
+                                    return data;
                                 })
                                 .then(data => {
-                                    enviando = false;
-                                    tipo = data.success ? 'success' : 'error';
-                                    mensaje = data.message || (data.success ? 'Nota guardada exitosamente.' : 'No se pudo guardar la nota.');
+                                    this.enviando = false;
+                                    this.tipo = data.success ? 'success' : 'error';
+                                    this.mensaje = data.message;
+                                    if (data.status === 'signed') {
+                                        this.firmada = true;
+                                    }
                                     if (data.success) {
-                                        setTimeout(() => { mensaje = ''; }, 4000);
+                                        setTimeout(() => { this.mensaje = ''; }, 5000);
                                     }
                                 })
                                 .catch(err => {
-                                    enviando = false;
-                                    tipo = 'error';
-                                    mensaje = 'Error de conexión o validación. Revisa los campos.';
-                                    console.error('Error al guardar nota:', err);
-                                })
-                              "
-                              class="space-y-3">
+                                    this.enviando = false;
+                                    this.tipo = 'error';
+                                    this.mensaje = err.message || 'Error de conexión o validación. Revisa los campos.';
+                                });
+                            }
+                         }" 
+                         class="border-t border-gray-100 pt-4">
+
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-bold text-gray-700 text-sm uppercase tracking-wider">Nota de Evolución (SOAP)</h3>
+                            
+                            <div class="flex items-center gap-1.5">
+                                <div id="ai-assisted-badge" x-show="iaAsistida" x-cloak
+                                     class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                    ✓ IA
+                                </div>
+                                <span x-show="firmada" x-cloak
+                                      class="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                                    🔒 Firmada
+                                </span>
+                            </div>
+                        </div>
+
+                        {{-- Alertas dinámicas de éxito/error --}}
+                        <div x-show="mensaje" x-cloak x-transition
+                             :class="tipo === 'success' ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200'"
+                             class="p-2.5 mb-3 rounded-lg border flex items-center justify-between text-xs font-medium">
+                            <span x-text="mensaje"></span>
+                            <button type="button" @click="mensaje = ''" class="text-current opacity-60 hover:opacity-100 ml-2">&times;</button>
+                        </div>
+                        <form x-ref="soapForm" @submit.prevent="submitSoap('draft')" class="space-y-3">
                             @csrf
 
-                            {{-- Campos ocultos de contexto --}}
-                            <input type="hidden" name="appointment_id" value="{{ $appointment->id }}">
                             <input type="hidden" name="ai_assisted" :value="iaAsistida ? '1' : '0'">
-                            <input type="hidden" name="status" value="signed">
 
                             {{-- Tipo de Entrada --}}
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">Tipo de Registro <span class="text-red-600">*</span></label>
-                                <select name="entry_type" required
-                                        class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                                    <option value="consultation" {{ old('entry_type', 'consultation') == 'consultation' ? 'selected' : '' }}>Consulta</option>
-                                    <option value="follow_up" {{ old('entry_type') == 'follow_up' ? 'selected' : '' }}>Seguimiento</option>
-                                    <option value="emergency" {{ old('entry_type') == 'emergency' ? 'selected' : '' }}>Urgencia</option>
-                                    <option value="note" {{ old('entry_type') == 'note' ? 'selected' : '' }}>Nota</option>
+                                <select name="entry_type" :disabled="firmada" required
+                                        class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100">
+                                    <option value="consultation" {{ old('entry_type', $existingHistory?->entry_type ?? 'consultation') == 'consultation' ? 'selected' : '' }}>Consulta</option>
+                                    <option value="follow_up" {{ old('entry_type', $existingHistory?->entry_type) == 'follow_up' ? 'selected' : '' }}>Seguimiento</option>
+                                    <option value="emergency" {{ old('entry_type', $existingHistory?->entry_type) == 'emergency' ? 'selected' : '' }}>Urgencia</option>
+                                    <option value="note" {{ old('entry_type', $existingHistory?->entry_type) == 'note' ? 'selected' : '' }}>Nota</option>
                                 </select>
-                                @error('entry_type')
-                                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                                @enderror
                             </div>
 
                             {{-- Código CIE-10 --}}
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">Código CIE-10</label>
-                                <input type="text" name="cie10_code" id="cie10_code"
-                                       value="{{ old('cie10_code') }}"
+                                <input type="text" name="cie10_code" id="cie10_code" :disabled="firmada"
+                                       value="{{ old('cie10_code', $existingHistory?->cie10_code) }}"
                                        placeholder="Ej: J45.9"
-                                       class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                                @error('cie10_code')
-                                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                                @enderror
+                                       class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100">
                             </div>
 
                             {{-- S: Subjetivo --}}
@@ -465,26 +478,19 @@ $cfg = [
                                     Subjetivo <span class="font-bold text-red-700">(S)</span>
                                     <span class="text-gray-400 font-normal">- Síntomas y motivo</span>
                                 </label>
-                                <textarea id="soap_subjective" name="soap_subjective" rows="2"
+                                <textarea id="soap_subjective" name="soap_subjective" rows="2" :disabled="firmada"
                                           placeholder="Síntomas reportados por el paciente..."
-                                          class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none">{{ old('soap_subjective') }}</textarea>
-                                @error('soap_subjective')
-                                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                                @enderror
+                                          class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none disabled:bg-gray-100">{{ old('soap_subjective', $existingHistory?->soap_subjective) }}</textarea>
                             </div>
-
                             {{-- O: Objetivo --}}
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">
                                     Objetivo <span class="font-bold text-red-700">(O)</span>
                                     <span class="text-gray-400 font-normal">- Hallazgos clínicos</span>
                                 </label>
-                                <textarea id="soap_objective" name="soap_objective" rows="2"
+                                <textarea id="soap_objective" name="soap_objective" rows="2" :disabled="firmada"
                                           placeholder="Signos vitales, examen físico..."
-                                          class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none">{{ old('soap_objective') }}</textarea>
-                                @error('soap_objective')
-                                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                                @enderror
+                                          class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none disabled:bg-gray-100">{{ old('soap_objective', $existingHistory?->soap_objective) }}</textarea>
                             </div>
 
                             {{-- A: Evaluación / Diagnóstico (OBLIGATORIO) --}}
@@ -492,12 +498,9 @@ $cfg = [
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">
                                     Evaluación / Diagnóstico <span class="font-bold text-red-700">(A) *</span>
                                 </label>
-                                <textarea id="soap_assessment" name="soap_assessment" rows="2" required
+                                <textarea id="soap_assessment" name="soap_assessment" rows="2" required :disabled="firmada"
                                           placeholder="Impresión diagnóstica..."
-                                          class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none">{{ old('soap_assessment') }}</textarea>
-                                @error('soap_assessment')
-                                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                                @enderror
+                                          class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none disabled:bg-gray-100">{{ old('soap_assessment', $existingHistory?->soap_assessment) }}</textarea>
                             </div>
 
                             {{-- P: Plan --}}
@@ -506,23 +509,32 @@ $cfg = [
                                     Plan <span class="font-bold text-red-700">(P)</span>
                                     <span class="text-gray-400 font-normal">- Tratamiento y seguimiento</span>
                                 </label>
-                                <textarea id="soap_plan" name="soap_plan" rows="3"
+                                <textarea id="soap_plan" name="soap_plan" rows="3" :disabled="firmada"
                                           placeholder="Tratamiento recomendado y seguimiento..."
-                                          class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none">{{ old('soap_plan') }}</textarea>
-                                @error('soap_plan')
-                                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                                @enderror
+                                          class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none disabled:bg-gray-100">{{ old('soap_plan', $existingHistory?->soap_plan) }}</textarea>
                             </div>
 
-                            <button type="submit"
-                                    :disabled="enviando"
-                                    class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-bold text-sm py-2 px-3 rounded-lg transition shadow-lg flex items-center justify-center gap-2">
-                                <svg x-show="enviando" x-cloak class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                <span x-text="enviando ? 'Guardando...' : 'Guardar Nota'"></span>
-                            </button>
+                            {{-- Botones: Guardar Borrador vs Firmar (o enlace a notas extras si ya está firmada) --}}
+                            <div x-show="!firmada" class="grid grid-cols-2 gap-2 pt-1">
+                                <button type="button"
+                                        @click="submitSoap('draft')"
+                                        :disabled="enviando"
+                                        class="w-full bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-800 font-bold text-xs py-2 px-2.5 rounded-lg transition border border-slate-300">
+                                    <span x-text="enviando ? 'Guardando...' : '💾 Guardar Borrador'"></span>
+                                </button>
+
+                                <button type="button"
+                                        @click="submitSoap('sign')"
+                                        :disabled="enviando"
+                                        class="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs py-2 px-2.5 rounded-lg transition shadow-sm">
+                                    ✍️ Firmar Historia
+                                </button>
+                            </div>
+
+                            <div x-show="firmada" x-cloak class="p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-800 text-center">
+                                Historia firmada. Para agregar notas aclaratorias ve a 
+                                <a href="{{ route('partner.appointments.clinical-record.show', $appointment->id) }}" target="_blank" class="underline font-bold">Historia Clínica de la Cita</a>.
+                            </div>
                         </form>
                     </div>
                 </div>

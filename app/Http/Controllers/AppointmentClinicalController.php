@@ -126,47 +126,61 @@ class AppointmentClinicalController extends Controller
         ));
     }
 
-    /**
+        /**
      * Guarda borrador o firma definitivamente el formulario SOAP dentro de las primeras 3 horas.
+     * Soporta tanto formularios tradicionales como peticiones AJAX (fetch) desde room.blade.php.
      */
-    public function storeSoap(Request $request, Appointment $appointment): RedirectResponse
+    public function storeSoap(Request $request, Appointment $appointment): RedirectResponse|JsonResponse
     {
         $this->authorizeDoctorOwnership($appointment);
 
         if (!$appointment->isWithinSoapWindow()) {
-            return back()->with('error', 'La ventana de 3 horas para editar el formulario SOAP ha finalizado o la historia ya fue firmada. Puedes agregar una nota extemporánea.');
+            $errorMsg = 'La ventana de 3 horas para editar el formulario SOAP ha finalizado o la historia ya fue firmada.';
+            return $request->expectsJson()
+                ? response()->json(['success' => false, 'message' => $errorMsg], 422)
+                : back()->with('error', $errorMsg);
         }
 
         $validated = $request->validate([
             'entry_type'      => ['required', 'in:consultation,follow_up,emergency,note'],
             'cie10_code'      => ['nullable', 'string', 'max:255'],
-            'soap_subjective' => ['required', 'string'],
+            'soap_subjective' => ['nullable', 'string'],
             'soap_objective'  => ['nullable', 'string'],
             'soap_assessment' => ['required', 'string'],
-            'soap_plan'       => ['required', 'string'],
+            'soap_plan'       => ['nullable', 'string'],
+            'ai_assisted'     => ['nullable', 'boolean'],
             'action'          => ['required', 'in:draft,sign'],
         ]);
 
         $newStatus = $validated['action'] === 'sign' ? 'signed' : 'draft';
 
-        PatientHistory::updateOrCreate(
+        $history = PatientHistory::updateOrCreate(
             ['appointment_id' => $appointment->id],
             [
                 'patient_id'      => $appointment->patient_id,
                 'doctor_id'       => $appointment->doctor_id,
                 'entry_type'      => $validated['entry_type'],
-                'cie10_code'      => $validated['cie10_code'],
-                'soap_subjective' => $validated['soap_subjective'],
-                'soap_objective'  => $validated['soap_objective'],
+                'cie10_code'      => $validated['cie10_code'] ?? null,
+                'soap_subjective' => $validated['soap_subjective'] ?? null,
+                'soap_objective'  => $validated['soap_objective'] ?? null,
                 'soap_assessment' => $validated['soap_assessment'],
-                'soap_plan'       => $validated['soap_plan'],
+                'soap_plan'       => $validated['soap_plan'] ?? null,
+                'ai_assisted'     => (bool) ($validated['ai_assisted'] ?? false),
                 'status'          => $newStatus,
             ]
         );
 
         $message = $newStatus === 'signed'
-            ? 'Historia clínica firmada y cerrada oficialmente. Ya no podrá ser modificada.'
-            : 'Borrador de historia clínica guardado correctamente.';
+            ? 'Historia clínica firmada y cerrada oficialmente.'
+            : 'Borrador guardado correctamente. Puedes completarlo hasta 3 horas después de iniciar la cita.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'status'  => $history->status,
+                'message' => $message,
+            ]);
+        }
 
         return back()->with('success', $message);
     }

@@ -13,6 +13,7 @@ use App\Models\Clinic;
 use App\Models\User;
 use App\Models\DoctorPayout;
 use App\Models\PromoCode;
+use App\Models\PatientHistory;
 use App\Services\AppointmentService;
 use App\Services\ZoomService;
 use App\Services\Wompi\WompiService;
@@ -589,16 +590,19 @@ class AppointmentController extends Controller
 
             $signature = $zoomService->generateSdkSignature($meetingId, $role);
 
+            // Cargamos la historia clínica de esta cita si ya existe (ej. iniciada desde Mis Citas)
+            $existingHistory = PatientHistory::where('appointment_id', $appointment->id)->first();
+
             return view('appointments.room', [
-                'appointment' => $appointment,
-                'meetingId'   => $meetingId,
-                'password'    => $password,
-                'signature'   => $signature,
-                'sdkKey'      => $zoomService->getSdkClientId(),
-                'zak'         => $zak,
-                'userRole'    => $role,
-                'zoomStarted' => $appointment->zoom_started,
-                // Sesión única: este token reemplaza al de cualquier otra pestaña o dispositivo de esta persona
+                'appointment'      => $appointment,
+                'existingHistory'  => $existingHistory,
+                'meetingId'        => $meetingId,
+                'password'         => $password,
+                'signature'        => $signature,
+                'sdkKey'           => $zoomService->getSdkClientId(),
+                'zak'              => $zak,
+                'userRole'         => $role,
+                'zoomStarted'      => $appointment->zoom_started,                
                 'roomSessionToken' => $roomSessions->claim($appointment->id, $user->id),
             ]);
 
