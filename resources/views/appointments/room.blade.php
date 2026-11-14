@@ -369,7 +369,7 @@ $cfg = [
                         </template>
                     </div>
 
-                                        {{-- ── 2. FORMULARIO SOAP (con AJAX + detección IA + Borrador/Firma) ── --}}
+                    {{-- ── 2. FORMULARIO SOAP (con AJAX + detección IA + Borrador/Firma) ── --}}
                     @php
                         $isHistorySigned = in_array($existingHistory?->status, ['signed', 'amended'], true);
                     @endphp
@@ -466,10 +466,11 @@ $cfg = [
                             {{-- Código CIE-10 --}}
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 mb-1">Código CIE-10</label>
-                                <input type="text" name="cie10_code" id="cie10_code" :disabled="firmada"
-                                       value="{{ old('cie10_code', $existingHistory?->cie10_code) }}"
-                                       placeholder="Ej: J45.9"
-                                       class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100">
+                                <x-cie10-autocomplete 
+                                    :value="old('cie10_code', $existingHistory?->cie10_code)"
+                                    :disabled-expr="'firmada'"
+                                    placeholder="Ej: J00 o Rinofaringitis..."
+                                    input-class="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
                             </div>
 
                             {{-- S: Subjetivo --}}

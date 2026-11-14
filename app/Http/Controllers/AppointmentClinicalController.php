@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Models\Appointment;
 use App\Models\PatientHistory;
 use App\Models\PatientHistoryNote;
+use App\Models\Cie10Code;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -234,5 +235,36 @@ class AppointmentClinicalController extends Controller
         });
 
         return back()->with('success', 'Nota extra registrada correctamente en la historia clínica de la cita.');
+    }
+
+        /**
+     * Busca códigos y descripciones CIE-10 para el componente autocompletable.
+     */
+    public function searchCie10(Request $request): JsonResponse
+    {
+        $query = trim((string) $request->query('q', ''));
+
+        // Exigimos al menos 2 caracteres para no sobrecargar la base de datos
+        if (mb_strlen($query) < 2) {
+            return response()->json([]);
+        }
+
+        $results = Cie10Code::where('is_active', true)
+            ->where(function ($q) use ($query) {
+                $q->where('code', 'LIKE', "{$query}%")
+                  ->orWhere('description', 'LIKE', "%{$query}%");
+            })
+            ->orderByRaw('CASE WHEN code LIKE ? THEN 0 ELSE 1 END', ["{$query}%"])
+            ->orderBy('code', 'asc')
+            ->limit(15)
+            ->get(['id', 'code', 'description'])
+            ->map(fn ($item) => [
+                'id'          => $item->id,
+                'code'        => $item->code,
+                'description' => $item->description,
+                'full_label'  => "{$item->code} - {$item->description}",
+            ]);
+
+        return response()->json($results);
     }
 }

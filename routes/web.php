@@ -353,6 +353,9 @@ Route::middleware(['auth', 'role:patient'])->group(function () {
 
     // Ruta de la sala de espera para el paciente
     Route::get('/patient/meet/{room_code}', [AppointmentController::class, 'waitingRoom'])->name('patient.appointments.waiting_room');
+
+    // Endpoint de búsqueda autocompletable para diagnósticos CIE-10
+    Route::get('/cie10/search', [AppointmentClinicalController::class, 'searchCie10'])->name('cie10.search');
 });
 
 Route::middleware(['auth'])->group(function () {    

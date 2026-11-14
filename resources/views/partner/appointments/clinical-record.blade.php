@@ -181,10 +181,9 @@ $breadcrumbs = [
 
                             <div>
                                 <label class="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">Diagnóstico Principal (CIE-10)</label>
-                                <input type="text" name="cie10_code" value="{{ old('cie10_code', $history?->cie10_code) }}" 
-                                       placeholder="Ej: J00 - Rinofaringitis aguda"
-                                       class="w-full rounded-xl border-slate-200 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:ring-indigo-500">
+                                <x-cie10-autocomplete :value="old('cie10_code', $history?->cie10_code)" />
                             </div>
+
                         </div>
 
                         <!-- S: Subjetivo -->
