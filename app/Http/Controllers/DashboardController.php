@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
 class DashboardController extends Controller
 {
     public function index()
-    {                
+    {
         $user = Auth::user()->load('doctorSettings');        
         $now = Carbon::now();
 
@@ -73,11 +73,20 @@ class DashboardController extends Controller
             }
         }
 
-        // =========================================================================
+                // =========================================================================
         // FLUJO ESPECÍFICO PARA EL ROL DE PACIENTE (PATIENT)
         // =========================================================================
         if ($user->role === 'patient') {
             
+            // Cargamos únicamente los conteos de las relaciones clínicas (sin traer todos los registros)
+            $owner->loadCount([
+                'allergies',
+                'medications' => fn ($query) => $query->where('active', true), // Solo medicamentos activos
+                'surgeries',
+                'familyHistories',
+                'attachments',
+            ]);
+
             $upcomingAppointments = Appointment::where('patient_id', $owner->id)
                 ->whereDate('date', '>=', $now->toDateString())
                 ->whereIn('status', ['confirmed', 'pending'])
@@ -93,10 +102,15 @@ class DashboardController extends Controller
                 ->get();
 
             $healthMetrics = [
-                'bmi' => $owner->imc,
-                'bmi_status' => $owner->imc_status,
-                'age' => $owner->age,
-                'blood_type' => $owner->blood_type ?? 'No registrada'
+                'bmi'               => $owner->imc,
+                'bmi_status'        => $owner->imc_status,
+                'age'               => $owner->age,
+                'blood_type'        => $owner->blood_type ?? 'No registrada',
+                'allergies_count'   => $owner->allergies_count,
+                'medications_count' => $owner->medications_count,
+                'surgeries_count'   => $owner->surgeries_count,
+                'family_count'      => $owner->family_histories_count,
+                'attachments_count' => $owner->attachments_count,
             ];  
             
             return view('admin.dashboard', compact(

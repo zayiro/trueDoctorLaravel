@@ -117,9 +117,90 @@
                         ID: <span class="text-emerald-600 font-black">#{{ $owner->identification }}</span>
                     </div>
                 </div>
-                <div class="bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100 flex items-center justify-between gap-4">
-                    <span class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-1 block">Perfil de salud</span>
+
+                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white p-6 rounded-[2rem] border border-gray-100 shadow-lg">
+    
+                    <!-- Encabezado izquierdo -->
+                    <div class="space-y-1 shrink-0">
+                        <span class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] block">Perfil de salud</span>
+                        <h3 class="text-xl font-black text-slate-800 tracking-tight">Resumen Clínico</h3>
+                        <a href="{{ route('patient.clinical-history.index') }}" class="inline-block text-[11px] font-black text-indigo-600 hover:underline uppercase tracking-wider mt-1">
+                            Ver historia oficial →
+                        </a>
+                    </div>
+
+                    <!-- Contadores clínicos a la derecha -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3 w-full lg:w-auto flex-1">
+                        
+                        <!-- Alergias -->
+                        <a href="{{ route('patient.allergies.index') }}" class="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-slate-50/80 hover:bg-rose-50/60 border border-slate-100 hover:border-rose-200 transition">
+                            <div class="space-y-0.5">
+                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Alergias</span>
+                                <p class="text-xl font-black text-rose-600 leading-none">{{ $healthMetrics['allergies_count'] ?? 0 }}</p>
+                            </div>
+                            <div class="p-2.5 bg-rose-50 text-rose-600 rounded-xl border border-rose-100/50 shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                                </svg>
+                            </div>
+                        </a>
+
+                        <!-- Medicamentos -->
+                        <a href="{{ route('patient.medications.index') }}" class="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-slate-50/80 hover:bg-blue-50/60 border border-slate-100 hover:border-blue-200 transition">
+                            <div class="space-y-0.5">
+                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Medicamentos</span>
+                                <p class="text-xl font-black text-blue-600 leading-none">{{ $healthMetrics['medications_count'] ?? 0 }}</p>
+                            </div>
+                            <div class="p-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-100/50 shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                                </svg>
+                            </div>
+                        </a>
+
+                        <!-- Cirugías -->
+                        <a href="{{ route('patient.surgeries.index') }}" class="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-slate-50/80 hover:bg-emerald-50/60 border border-slate-100 hover:border-emerald-200 transition">
+                            <div class="space-y-0.5">
+                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Cirugías</span>
+                                <p class="text-xl font-black text-emerald-600 leading-none">{{ $healthMetrics['surgeries_count'] ?? 0 }}</p>
+                            </div>
+                            <div class="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100/50 shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/>
+                                </svg>
+                            </div>
+                        </a>
+
+                        <!-- Antecedentes Familiares -->
+                        <a href="{{ route('patient.family-history.index') }}" class="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-slate-50/80 hover:bg-purple-50/60 border border-slate-100 hover:border-purple-200 transition">
+                            <div class="space-y-0.5">
+                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Familiares</span>
+                                <p class="text-xl font-black text-purple-600 leading-none">{{ $healthMetrics['family_count'] ?? 0 }}</p>
+                            </div>
+                            <div class="p-2.5 bg-purple-50 text-purple-600 rounded-xl border border-purple-100/50 shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"/>
+                                </svg>
+                            </div>
+                        </a>
+
+                        <!-- Archivos Médicos -->
+                        <a href="{{ route('patient.history.index') }}" class="col-span-2 sm:col-span-1 flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-slate-50/80 hover:bg-amber-50/60 border border-slate-100 hover:border-amber-200 transition">
+                            <div class="space-y-0.5">
+                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Archivos</span>
+                                <p class="text-xl font-black text-amber-600 leading-none">{{ $healthMetrics['attachments_count'] ?? 0 }}</p>
+                            </div>
+                            <div class="p-2.5 bg-amber-50 text-amber-600 rounded-xl border border-amber-100/50 shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+                                </svg>
+                            </div>
+                        </a>
+
+                    </div>
                 </div>
+
+                
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class="bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100 flex items-center justify-between gap-4">
                         <div class="space-y-1">
