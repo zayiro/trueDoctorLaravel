@@ -6,6 +6,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\EnsureDoctorContext;
 use App\Http\Middleware\TenantMiddleware;
 use App\Http\Middleware\BlockSqlInjection;
+use App\Http\Middleware\ForceCanonicalDomain;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -37,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'webhooks/wompi',
         ]);
         $middleware->web(append: [
+            ForceCanonicalDomain::class,
             EnsureDoctorContext::class,
             TenantMiddleware::class,
             BlockSqlInjection::class,

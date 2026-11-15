@@ -5,34 +5,49 @@ Allow: /
 Allow: /sintomas/
 Allow: /search
 Allow: /search-symptom
-Allow: /doctor/
-Allow: /medical-analysis/
-Allow: /skin-analysis/
+Allow: /medical-partner/
+Allow: /clinic/
+Allow: /medical-analysis
+Allow: /skin-analysis
 Allow: /contact
 Allow: /about
 Allow: /terms
 Allow: /privacy
 Allow: /support
 Allow: /plans/show
-Allow: /search?specialty=medicina-general
-Allow: /medical-partner/institucional-opendoctoronline?specialty=medicina-general
 
 # 2. BLOQUEAR zonas privadas, paneles e infraestructura de Laravel
 Disallow: /api/
 Disallow: /admin/
-Disallow: /dashboard/
+Disallow: /administrator/
+Disallow: /dashboard
+Disallow: /partner/
+Disallow: /patient/
+Disallow: /clinic/partner/
 Disallow: /livewire/
 Disallow: /password/
 Disallow: /oauth/
+Disallow: /login
+Disallow: /register
+Disallow: /notifications
+Disallow: /chat
 Disallow: /medical-analysis/before-preview
 Disallow: /medical-analysis/process-documents
+Disallow: /medical-analysis/upload
+Disallow: /skin-analysis/before-preview
+Disallow: /skin-analysis/process-documents
+Disallow: /skin-analysis/upload
 Disallow: /appointments/step-two
+Disallow: /appointments/patient
+Disallow: /appointments/preview/
+Disallow: /appointments/confirm/
 Disallow: /api/session/location
 
 # 3. BLOQUEAR parámetros de búsqueda interna (Evita bucles de contenido duplicado)
 Disallow: /*?*search=
 Disallow: /*?*query=
 Disallow: /*?*filter=
+Disallow: /*?*page=
 
 # 4. ENLACE AL SITEMAP (Indispensable para que Google descubra los síntomas rápido)
 Sitemap: https://opendoctor.online/sitemap.xml

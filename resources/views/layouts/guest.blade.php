@@ -25,9 +25,15 @@
         $description = $meta_description;
     }
 
-    $finalKeywords = !empty($keywords) ? $keywords : 'Online Doctor, Citas médicas, Agendar cita médica online, EPS, POS, salud en Colombia, la mejor EPS, comunidades, Medicina Prepagada, decreto 1295, plan complementario, Reservar cita médico general, Videollamada con doctor, Consulta médica virtual';
-    $finalRobots = !empty($meta_robots) ? $meta_robots : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
-    $finalCanonical = !empty($meta_canonical) ? $meta_canonical : url()->current();
+    $finalKeywords = !empty($keywords) ? $keywords : 'citas médicas en línea, citas médicas, agendar cita médica, consulta médica virtual, telemedicina, médicos especialistas, directorio médico, atención médica online, salud digital';
+    $finalRobots = !empty($meta_robots) ? $meta_robots : 'index, follow';
+    
+    // Forzar canonical sin www y sin query strings innecesarios
+    $currentUrl = url()->current();
+    $parsedUrl = parse_url($currentUrl);
+    $cleanPath = $parsedUrl['path'] ?? '/';
+    $finalCanonical = !empty($meta_canonical) ? $meta_canonical : 'https://opendoctor.online' . $cleanPath;
+    
     $finalImage = !empty($meta_image) ? $meta_image : asset('/images/logoAuth.jpg');
     
     $schemaJson = json_encode([
@@ -42,7 +48,7 @@
             "postalCode" => "760012",
             "addressCountry" => "CO"
         ],
-        'url' => config('app.url'),
+        'url' => 'https://opendoctor.online',
         "applicationCategory" => "HealthApplication",
         "aggregateRating" => [
             "@type" => "AggregateRating",
@@ -52,7 +58,7 @@
         "operatingSystem" => "All",
         "browserRequirements" => "Requires HTML5 / JavaScript",
         "inLanguage" => "es",        
-        "image" => asset(config('app.url') . "/images/logoAuth.jpg"),        
+        "image" => "https://opendoctor.online/images/logoAuth.jpg",        
         "description" => $description,
         "featureList" => [
             "Telemedicina y citas médicas virtuales por videoconferencia (Zoom) y presenciales en consultorio",
@@ -85,9 +91,9 @@
         "author" => [
             "@type" => "Organization",
             "name" => "OpenDoctorOnline",
-            "url" => config('app.url'),
-            'image' => asset(config('app.url') . '/images/logoAuth.jpg'),
-            'logo' => asset(config('app.url') . '/images/logoAuth.jpg'),
+            "url" => "https://opendoctor.online",
+            'image' => "https://opendoctor.online/images/logoAuth.jpg",
+            'logo' => "https://opendoctor.online/images/logoAuth.jpg",
             "telephone" => "+573026433874",
             "areaServed" => [
                 "@type" => "AdministrativeArea",
