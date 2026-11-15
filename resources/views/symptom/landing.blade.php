@@ -1,9 +1,10 @@
 <x-guest-layout
     meta_title="{{ ucwords(str_replace('-', ' ', $symptom->search_query)) }}: Causas y Cuándo Consultar | OpenDoctor"
-    meta_description="¿Sufres de {{ $recommendation }}? Conoce las posibles causas como la conjuntivitis, qué medidas tomar en casa y cuándo consultar con un médico especialista en OpenDoctor."
+    meta_description="¿Sufres de {{ $symptom->search_query }}? Conoce las causas, tratamiento y cuándo consultar. Agenda citas médicas en línea con especialistas verificados."
+    keywords="citas médicas en línea, citas médicas, {{ $symptom->search_query }}, síntomas médicos, {{ $specialtyData->name ?? 'especialista médico' }}, telemedicina"
 >
   
-    <div class="bg-gradient-to-b from-slate-50 to-white min-h-screen">
+    <main class="bg-gradient-to-b from-slate-50 to-white min-h-screen">
         <div class="max-w-6xl mx-auto px-4 py-8 sm:py-12">
             
             <!-- 🗺️ BREADCRUMBS -->
@@ -95,7 +96,7 @@
                 
                 <!-- 1️⃣ QUÉ ES -->
                 <section class="mb-8">
-                    <h2 class="text-2xl font-black text-slate-900 mb-4 flex items-center gap-2">
+                    <h2 class="text-xl font-black text-slate-900 mb-4 flex items-center gap-2">
                         <span class="inline-block w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-black">1</span>
                         ¿Qué es {{ $symptom->search_query }}?
                     </h2>
@@ -107,7 +108,7 @@
                 <!-- 2️⃣ CAUSAS COMUNES -->
                 @isset($commonCauses)
                 <section class="mb-8">
-                    <h2 class="text-2xl font-black text-slate-900 mb-4 flex items-center gap-2">
+                    <h2 class="text-xl font-black text-slate-900 mb-4 flex items-center gap-2">
                         <span class="inline-block w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-sm font-black">2</span>
                         Causas Comunes
                     </h2>
@@ -120,7 +121,7 @@
                 <!-- 3️⃣ SIGNOS DE ALARMA -->
                 @isset($alarmSigns)
                 <section class="mb-8 bg-red-50 border-l-4 border-red-500 p-6 rounded-r-xl">
-                    <h2 class="text-2xl font-black text-red-900 mb-4 flex items-center gap-2">
+                    <h2 class="text-xl font-black text-red-900 mb-4 flex items-center gap-2">
                         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                             <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 2.36a6.002 6.002 0 018.367 8.529.75.75 0 11-1.06 1.06h-.002a4.5 4.5 0 10.576 2.405.75.75 0 11-1.418-.248zM6.75 12.75a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd"/>
                         </svg>
@@ -135,7 +136,7 @@
                 <!-- 4️⃣ FACTORES DE RIESGO -->
                 @isset($riskFactors)
                 <section class="mb-8">
-                    <h2 class="text-2xl font-black text-slate-900 mb-4 flex items-center gap-2">
+                    <h2 class="text-xl font-black text-slate-900 mb-4 flex items-center gap-2">
                         <span class="inline-block w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-sm font-black">4</span>
                         Factores de Riesgo
                     </h2>
@@ -148,7 +149,7 @@
                 <!-- 5️⃣ RECOMENDACIONES DE AUTOCUIDADO -->
                 @isset($selfCareAdvice)
                 <section class="mb-8 bg-emerald-50 border-l-4 border-emerald-500 p-6 rounded-r-xl">
-                    <h2 class="text-2xl font-black text-emerald-900 mb-4 flex items-center gap-2">
+                    <h2 class="text-xl font-black text-emerald-900 mb-4 flex items-center gap-2">
                         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                             <path fill-rule="evenodd" d="M3.72 7.04a.75.75 0 001.06 0l10.94-10.94a.75.75 0 00-1.06-1.06L3.72 5.98a.75.75 0 000 1.06zm10.94 2.88l-2.12-2.12a.75.75 0 00-1.06 1.06l2.12 2.12-2.12 2.12a.75.75 0 101.06 1.06l2.12-2.12 2.12 2.12a.75.75 0 001.06-1.06l-2.12-2.12 2.12-2.12a.75.75 0 10-1.06-1.06l-2.12 2.12z" clip-rule="evenodd"/>
                         </svg>
@@ -162,7 +163,7 @@
 
                 <!-- 6️⃣ CUÁNDO CONSULTAR -->
                 <section class="mb-8">
-                    <h2 class="text-2xl font-black text-slate-900 mb-4 flex items-center gap-2">
+                    <h2 class="text-xl font-black text-slate-900 mb-4 flex items-center gap-2">
                         <span class="inline-block w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-black">6</span>
                         ¿Cuándo Consultar a un Médico?
                     </h2>
@@ -188,7 +189,7 @@
                  FAQs EXPANDIBLES CON ALPINE
                  =================================== -->
             <section class="mb-12">
-                <h2 class="text-2xl sm:text-3xl font-black text-slate-900 mb-6">
+                <h2 class="text-xl sm:text-2xl font-black text-slate-900 mb-6">
                     Preguntas Frecuentes
                 </h2>
                 
@@ -266,7 +267,7 @@
                  =================================== -->
             <section class="mb-12">
                 <div class="bg-indigo-600 rounded-2xl p-8 sm:p-12 text-white text-center shadow-lg">
-                    <h2 class="text-2xl sm:text-3xl font-black mb-3">
+                    <h2 class="text-xl sm:text-2xl font-black mb-3">
                         ¿Necesitas Consultar Ahora?
                     </h2>
                     <p class="text-blue-100 mb-6 text-lg">
@@ -291,7 +292,7 @@
                  =================================== -->
             @if($doctors->isNotEmpty())
             <section aria-label="Especialistas recomendados" class="mb-12">
-                <h2 class="text-2xl sm:text-3xl font-black text-slate-900 mb-6">
+                <h2 class="text-xl sm:text-2xl font-black text-slate-900 mb-6">
                     Médicos Disponibles Ahora
                 </h2>
                 
@@ -383,5 +384,5 @@
             </div>
 
         </div>
-    </div>
+    </main>
 </x-guest-layout>

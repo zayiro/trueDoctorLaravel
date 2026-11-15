@@ -1,6 +1,7 @@
 <x-guest-layout
     meta_title="Agenda médica de {{ $profileType === 'clinic' ? $partner->name : ucfirst($partner->user->name) }} | OpenDoctor"
-    meta_description="Reserva tu cita médica en línea con {{ $profileType === 'clinic' ? $partner->name : ucfirst($partner->user->name) }} en OpenDoctor. Consulta horarios disponibles, telemedicina o atención presencial, y gestiona tu salud de forma rápida y segura."
+    meta_description="Reserva tu cita médica en línea con {{ $profileType === 'clinic' ? $partner->name : ucfirst($partner->user->name) }}. Citas médicas presenciales y telemedicina disponibles."
+    keywords="citas médicas en línea, citas médicas, {{ $profileType === 'clinic' ? $partner->name : ucfirst($partner->user->name) }}, telemedicina, consulta médica, agenda médica"
 >
 
    <style>
@@ -160,13 +161,16 @@
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
                             </button>
 
-                            <img src="{{ $partner->user->profile_photo_url ?? asset('images/default-clinic.png') }}" class="w-32 h-32 rounded-full mx-auto border-4 border-indigo-50 shadow-sm object-cover">
+                            <img src="{{ $partner->user->profile_photo_url ?? asset('images/default-clinic.png') }}" 
+                                 alt="Foto de perfil de {{ $profileType === 'clinic' ? $partner->name : ucfirst($partner->user->name) }}" 
+                                 class="w-32 h-32 rounded-full mx-auto border-4 border-indigo-50 shadow-sm object-cover"
+                                 loading="lazy">
                             
                             <div class="font-black text-xs text-indigo-600 uppercase tracking-widest mt-4 dark:text-indigo-400">
                                 @if($profileType === 'clinic') Centro Médico @else {{ $partner->gender === 'female' ? 'Doctora' : 'Doctor' }} @endif
                             </div>
                             <h1 class="text-2xl font-black text-slate-800 mt-0.5 tracking-tight dark:text-white">
-                                @if($profileType === 'clinic') {{ $partner->name }} @else {{ ucfirst($partner->user->name) }} @endif
+                                @if($profileType === 'clinic') {{ $partner->name }} @else Dr(a). {{ ucfirst($partner->user->name) }} @endif
                             </h1>
                             <p class="text-slate-500 font-semibold text-sm mt-0.5 dark:text-gray-400">
                                 {{ $currentSpecialty->name ?? 'Atención Médica' }}
@@ -413,18 +417,18 @@
                                 <div class="grid grid-cols-2 gap-4 border-t border-slate-200/50 pt-3 dark:border-gray-700">
                                     @if($profileType === 'doctor')
                                         <div class="space-y-0.5">
-                                            <h3 class="text-lg font-black text-slate-800">Licencia Médica</h3>
+                                            <h3 class="text-base font-black text-slate-800">Licencia Médica</h3>
                                             <div class="text-sm text-slate-400 dark:text-gray-500">{{ $partner->medical_license ?? 'N/A' }}</div>
                                         </div>
                                     @else
                                         <div class="space-y-0.5">
-                                            <h3 class="text-lg font-black text-slate-800">Código REPS</h3>
+                                            <h3 class="text-base font-black text-slate-800">Código REPS</h3>
                                             <div class="text-sm text-slate-400 dark:text-gray-500">{{ $partner->reps_code ?? 'N/A' }}</div>
                                         </div>
                                     @endif
                                     
                                     <div class="space-y-0.5">
-                                        <h3 class="text-lg font-black text-slate-800">Trayectoria</h3>
+                                        <h3 class="text-base font-black text-slate-800">Trayectoria</h3>
                                         <div class="text-sm text-slate-400 dark:text-gray-500">{{ $partner->experience_years ? $partner->experience_years . ' años' : 'N/A' }}</div>
                                     </div>
                                 </div>
@@ -432,7 +436,7 @@
                                 <!-- Idiomas de Atención (Exclusivo Doctores) -->
                                 @if($profileType === 'doctor')
                                     <div class="space-y-1 border-t border-slate-200/50 pt-3 dark:border-gray-700">
-                                        <h3 class="text-lg font-black text-slate-800">Idiomas de atención</h3>
+                                        <h2 class="text-lg font-black text-slate-800">Idiomas de atención</h2>
                                         <div class="text-sm text-slate-400 dark:text-gray-500">    
                                            @php
                                                 $langNames = ['es' => 'Español', 'en' => 'Inglés', 'pt' => 'Portugués', 'fr' => 'Francés', 'de' => 'Alemán'];
@@ -461,7 +465,7 @@
 
                                 <!-- Experiencias y Tratamientos -->
                                 <div class="space-y-1 border-t border-slate-200/50 pt-3 dark:border-gray-700">
-                                    <h3 class="text-lg font-black text-slate-800">Es experto en</h3>
+                                    <h2 class="text-lg font-black text-slate-800">Es experto en</h2>
                                     <div class="text-sm text-slate-400 dark:text-gray-500">
                                         @if($profileType === 'doctor' && isset($partner->expertises))
                                             @forelse($partner->expertises as $expertise)
@@ -496,7 +500,7 @@
                     <!-- ======================================================== -->
                     <!-- 🏢 1. SELECTOR DE SEDES DE ATENCIÓN (FÍSICA O VIRTUAL)    -->
                     <!-- ======================================================== -->
-                    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-4 dark:bg-gray-800 dark:border-gray-700">
+                    <section class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-4 dark:bg-gray-800 dark:border-gray-700">
                         <div class="border-b border-slate-100 dark:border-gray-700 pb-3 p-4 bg-blue-100">
                             <h2 class="text-lg font-black text-slate-800 dark:text-white tracking-tight">1. Elige la Sede de Atención</h2>
                             <p class="text-sm text-slate-400 dark:text-gray-400">Selecciona el consultorio presencial o la opción de telemedicina.</p>
@@ -590,7 +594,7 @@
                                 </div>
                             @endforelse
                         </div>
-                    </div>
+                    </section>
 
 
 
@@ -691,7 +695,7 @@
                                     aún no ha cargado los servicios de salud ni las tarifas correspondientes para esta sede. Por favor, selecciona otra ubicación de la lista de arriba.
                             </p>
                         </div>
-                    </div>
+                    </section>
 
                     <!-- ========================================================================= -->
                     <!-- 🗓️ 3. CALENDARIO CON DÍAS DISPONIBLES EN VERDE (Flatpickr + Alpine.js)       -->
@@ -764,7 +768,7 @@
                                 No hay turnos de atención disponibles para la fecha seleccionada. Por favor, elige otro día resaltado.
                             </div>
                         </div>
-                    </div>
+                    </section>
 
                 </div> <!-- Cierre .lg:col-span-2 -->
             </div> <!-- Cierre .grid -->

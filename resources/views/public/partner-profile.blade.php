@@ -26,11 +26,12 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
 @endphp
 
 <x-guest-layout
-    meta_title="Perfil de Doctor o Centro Médico | OpenDoctor"
-    meta_description="Perfil Médico especializado"
+    meta_title="Perfil de {{ $name }} - {{ $primary }} | OpenDoctor"
+    meta_description="Conoce el perfil profesional de {{ $name }}, especialista en {{ $primary }}. Agenda citas médicas en línea con telemedicina o atención presencial."
+    keywords="citas médicas en línea, citas médicas, {{ $name }}, {{ $primary }}, telemedicina, consulta médica"
 >
 
-<div class="max-w-7xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 font-sans my-6">
+<main class="max-w-7xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 font-sans my-6">
     <div class="grid grid-cols-1 md:grid-cols-12 w-full">
         
         {{-- COLUMNA IZQUIERDA: Imagen y Biografía --}}
@@ -38,8 +39,9 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
             @if ($photo)
                 <img 
                     src="{{ \Storage::url($photo) }}" 
-                    alt="{{ $doctor->user->name }}" 
+                    alt="Foto de perfil de {{ $doctor->user->name }}" 
                     class="w-full h-auto max-h-[32rem] object-cover"
+                    loading="lazy"
                     decoding="async"
                 >
             @else
@@ -50,8 +52,8 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
 
             {{-- Bloque de Perfil --}}
             <div class="p-6">
-                <h3 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Perfil Profesional</h3>
-                <h2 class="text-base font-bold text-gray-800">Dr. {{ $doctor->user->name }}</h2>
+                <h2 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Perfil Profesional</h2>
+                <h1 class="text-base font-bold text-gray-800">Dr. {{ $doctor->user->name }}</h1>
                 <p class="text-xs text-gray-500 mt-0.5 font-medium">{{ $doctor->specialties->first()->name ?? 'Especialista' }}</p>
                 
                 {{-- Credenciales Académicas --}}
@@ -77,11 +79,11 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
             </div>
             
             {{-- Reseñas --}}
-            <div id="resenas" class="bg-white p-6 sm:p-8 max-w-4xl mx-auto my-6 font-sans scroll-mt-24">
+            <section id="resenas" class="bg-white p-6 sm:p-8 max-w-4xl mx-auto my-6 font-sans scroll-mt-24">
 
                 {{-- Encabezado: promedio + total --}}
                 <div class="flex items-center gap-2 mb-6">
-                    <h3 class="text-lg font-bold text-slate-900 tracking-tight">Reseñas de pacientes</h3>
+                    <h2 class="text-lg font-bold text-slate-900 tracking-tight">Reseñas de pacientes</h2>
                     <div class="flex items-center gap-1.5 text-sm font-medium text-slate-500">
                         <svg class="w-4 h-4 text-amber-400 fill-current" viewBox="0 0 20 20" aria-hidden="true">
                             <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
@@ -229,7 +231,7 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
                 @if ($reviews->hasPages())
                     <div class="mt-6">{{ $reviews->links() }}</div>
                 @endif
-            </div>
+            </section>
 
         </div>
         {{-- COLUMNA DERECHA: Detalles Profesionales y Contacto --}}
@@ -237,7 +239,7 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
             
             {{-- Biografia --}}
             <div>
-                <h3 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Biografía</h3>
+                <h2 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Biografía</h2>
 
                 <div class="text-md text-gray-600 leading-relaxed space-y-3"
                     x-data="{
@@ -274,7 +276,7 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
 
             {{-- Sección: Especialidades --}}
             <div>
-                <h3 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Especialidades</h3>
+                <h2 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Especialidades</h2>
                 <div class="flex flex-wrap gap-2">
                     @forelse($doctor->specialties as $specialty)
                         <span class="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-[11px] font-medium rounded-full shadow-xs">
@@ -291,17 +293,17 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
             {{-- Fila de Datos Rápidos: Experiencia, Idiomas, Tipo --}}
             <div class="grid grid-cols-3 gap-4 border-t border-b border-gray-100 py-4">
                 <div>
-                    <h4 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Experiencia</h4>
+                    <h3 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Experiencia</h3>
                     <p class="text-gray-700 mt-0.5 font-medium">{{ $doctor->experience_years ?? '0' }} Años+</p>
                 </div>
                 <div>
-                    <h4 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Idiomas</h4>
+                    <h3 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Idiomas</h3>
                     <p class="text-gray-700 mt-0.5 font-medium">
                         {{ is_array($doctor->languages) ? implode(', ', $doctor->languages) : 'Español' }}
                     </p>
                 </div>
                 <div>
-                    <h4 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Vinculación</h4>
+                    <h3 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Vinculación</h3>
                     <p class="text-gray-700 mt-0.5 font-medium">{{ $doctor->clinic_id ? 'Staff de Clínica' : 'Médico Autónomo' }}</p>
                 </div>
             </div>
@@ -324,15 +326,16 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
                      @keydown.window.arrow-right="if(isOpen) next()"
                      @keydown.window.arrow-left="if(isOpen) prev()">
                     
-                    <h4 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Instalaciones y Consultorio</h4>
+                    <h2 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Instalaciones y Consultorio</h2>
                     
                     <div class="grid grid-cols-3 gap-3">
                         @foreach($doctor->gallery->take(3) as $index => $image)
                             <div class="relative aspect-video rounded-xl overflow-hidden border border-slate-200/60 bg-slate-100 cursor-pointer group shadow-xs hover:border-sky-500 transition-all duration-200"
                                  @click="isOpen = true; currentIndex = {{ $index }}">
                                 <img src="{{ \Storage::url($image->path) }}" 
-                                     alt="Instalación {{ $index + 1 }}" 
-                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                                     alt="Instalación {{ $index + 1 }} de {{ $doctor->user->name }}" 
+                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                     loading="lazy">
                                 
                                 @if($index === 2 && $doctor->gallery->count() > 3)
                                     <div class="absolute inset-0 bg-slate-900/60 flex items-center justify-center text-white text-xs font-bold font-mono tracking-wide backdrop-blur-xs">
@@ -371,7 +374,8 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
 
                             <img :src="images[currentIndex]" 
                                  class="max-w-full max-h-[80vh] rounded-2xl object-contain shadow-2xl select-none"
-                                 alt="Galería ampliada">
+                                 alt="Galería de instalaciones ampliada"
+                                 loading="lazy">
 
                             <button type="button" @click="next()" x-show="images.length > 1"
                                     class="absolute right-4 bg-white/10 hover:bg-white/20 text-white p-3 rounded-xl transition-all focus:outline-none z-40 select-none">
@@ -464,9 +468,9 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
                     <!-- CUERPO DEL FORMULARIO -->
                     <div x-show="!isSuccess">
                         <div class="mb-6">
-                            <h3 class="text-lg font-bold text-slate-900 leading-tight">
+                            <h2 class="text-lg font-bold text-slate-900 leading-tight">
                                 Contactar con {{ $doctor->gender === 'female' ? 'Dra. ' : 'Dr. ' }}{{ $doctor->user->name }}
-                            </h3>
+                            </h2>
                             <p class="text-sm text-slate-500 mt-1">Déjale un mensaje y se pondrá en contacto contigo.</p>
                         </div>
 
@@ -535,6 +539,6 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
             </div>
         </div>
     </div>
-</div>
+</main>
 
 </x-guest-layout>

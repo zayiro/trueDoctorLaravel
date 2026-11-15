@@ -1,8 +1,9 @@
 <x-guest-layout
-    meta_title="Guía de Orientación Médica por Síntomas - OpenDoctorOnline"
-    meta_description="Selecciona tus síntomas para evaluar el nivel de urgencia sugerido por nuestra Inteligencia Artificial. Conecta y agenda una cita inmediata con especialistas verificados."
+    meta_title="Guía de Orientación Médica por Síntomas | OpenDoctorOnline"
+    meta_description="Selecciona tus síntomas para evaluar el nivel de urgencia con IA médica. Agenda citas médicas en línea con especialistas verificados en Colombia."
+    keywords="síntomas médicos, orientación médica, citas médicas en línea, citas médicas, telemedicina, especialistas médicos, urgencia médica"
 >
-    <div class="max-w-7xl mx-auto px-4 py-8 mt-5">
+    <main class="max-w-7xl mx-auto px-4 py-8 mt-5">
         <div class="w-full mt-6">
             
             <!-- Encabezado Principal de la Guía Médica -->
@@ -52,11 +53,11 @@
                                     </div>
 
                                     <!-- Nombre del Síntoma / Enfermedad -->
-                                    <h2 class="text-slate-900 font-extrabold text-base mb-4 leading-snug hover:text-blue-600 transition dark:text-white">
+                                    <h3 class="text-slate-900 font-extrabold text-base mb-4 leading-snug hover:text-blue-600 transition dark:text-white">
                                         <a href="{{ route('symptom.landing', ['slug' => $item->slug]) }}">
                                             "{{ $item->search_query }}"
                                         </a>
-                                    </h2>
+                                    </h3>
                                 </div>
 
                                 <!-- Botón de Acción Directo -->
@@ -78,5 +79,5 @@
             </section>
 
         </div>
-    </div>
+    </main>
 </x-guest-layout>

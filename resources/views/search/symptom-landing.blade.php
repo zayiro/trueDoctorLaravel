@@ -1,9 +1,10 @@
 <x-guest-layout
-    meta_title="Guía de Orientación Médica por Síntomas OpenDoctorOnline"
-    meta_description="Selecciona tus síntomas para evaluar el nivel de urgencia sugerido por nuestra Inteligencia Artificial. Conecta y agenda una cita inmediata con especialistas verificados."
+    meta_title="Orientación Médica por Síntomas | OpenDoctorOnline"
+    meta_description="Evalúa tus síntomas con IA médica y agenda citas médicas en línea con especialistas verificados. Telemedicina y atención presencial disponible."
+    keywords="síntomas médicos, citas médicas en línea, citas médicas, orientación médica, telemedicina, especialistas médicos"
 >
     
-    <div class="max-w-7xl mx-auto px-4 py-8 mt-5 symptom-content">
+    <main class="max-w-7xl mx-auto px-4 py-8 mt-5 symptom-content">
         <div class="w-full">
             
             <!-- Migas de pan (Breadcrumbs) optimizadas con marcado accesible aria -->
@@ -100,7 +101,7 @@
                         <!-- Estado de respaldo si no hay médicos en esa área todavía -->
                         <div class="text-center p-8 sm:p-12 border border-dashed border-slate-200 bg-white rounded-2xl flex flex-col items-center">
                             <div class="text-4xl mb-3" aria-hidden="true">🔍</div>
-                            <h4 class="font-bold text-slate-900 text-lg mb-1">No hay médicos directos asignados en este momento</h4>
+                            <h2 class="font-bold text-slate-900 text-lg mb-1">No hay médicos directos asignados en este momento</h2>
                             <p class="text-slate-500 text-sm max-w-md mb-5">Contamos con médicos generales e institucionales listos para evaluar tu caso de forma inicial.</p>
                             <a href="{{ route('search') }}" class="inline-flex items-center bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 text-xs font-bold px-5 py-2.5 rounded-full transition shadow-sm">
                                 Explorar directorio completo
@@ -118,5 +119,5 @@
             </section>
 
         </div>
-    </div>
+    </main>
 </x-guest-layout>

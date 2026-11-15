@@ -179,7 +179,7 @@
                                                 </div>
 
                                                 <!-- Nombre -->
-                                                <h5 class="text-sm font-bold text-slate-800 mb-2"
+                                                <h3 class="text-sm font-bold text-slate-800 mb-2"
                                                     x-text="result.result_type === 'doctor'
                                                         ? (result.gender === 'female' ? 'Dra. ' : 'Dr. ') + result.user.name
                                                         : result.user.name">
@@ -327,7 +327,7 @@
                                     <div class="bg-gradient-to-br from-blue-50 to-slate-50 border border-blue-100 rounded-2xl p-5">
                                         <div class="flex items-center gap-2 mb-2">
                                             <span class="text-xl">🔔</span>
-                                            <h4 class="text-sm font-black text-slate-800">Avísame cuando haya disponibilidad</h4>
+                                            <h3 class="text-sm font-black text-slate-800">Avísame cuando haya disponibilidad</h3>
                                         </div>
                                         <p class="text-xs text-slate-500 leading-relaxed mb-3">
                                             Déjanos tu correo y te notificamos en cuanto un especialista en
@@ -406,7 +406,7 @@
                                     <div class="bg-gradient-to-br from-emerald-50 to-slate-50 border border-emerald-100 rounded-2xl p-5">
                                         <div class="flex items-center gap-2 mb-2">
                                             <span class="text-xl">🩺</span>
-                                            <h4 class="text-sm font-black text-slate-800">Habla con un médico general</h4>
+                                            <h3 class="text-sm font-black text-slate-800">Habla con un médico general</h3>
                                         </div>
                                         <p class="text-xs text-slate-500 leading-relaxed mb-3">
                                             Mientras conseguimos al especialista ideal, un médico general puede orientarte y darte tranquilidad hoy mismo.
@@ -438,5 +438,5 @@
                 </div>
             </div> 
         </div>       
-    </div>
+    </main>
 </x-guest-layout>

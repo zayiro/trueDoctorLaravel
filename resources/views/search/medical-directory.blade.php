@@ -2,6 +2,7 @@
     <x-slot:seo>
         <title>{{ $seoTitle }}</title>
         <meta name="description" content="{{ $seoDescription }}">
+        <meta name="keywords" content="citas médicas en línea, citas médicas, directorio médico, especialistas médicos, telemedicina, consulta médica">
         <meta name="robots" content="index, follow">
         <link rel="canonical" href="{{ url()->current() }}">
         <style>
@@ -15,7 +16,7 @@
         </style>
     </x-slot:seo>
 
-    <div class="container max-w-7xl mx-auto px-4 py-5 mt-5">
+    <main class="container max-w-7xl mx-auto px-4 py-5 mt-5">
         <div class="text-center max-w-2xl mx-auto mb-5">
             <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2 fw-semibold mb-2 small text-uppercase tracking-wider">Red de Salud</span>
             <h1 class="fw-black text-dark display-6 mb-2 tracking-tight">Directorio Médico Oficial</h1>
@@ -59,7 +60,7 @@
             @forelse($doctors as $doctor)
                 @php $planSlug = $doctor->settings?->plan?->slug ?? 'free'; @endphp
                 <div class="col-md-6 col-lg-4 mb-4">
-                    <div class="card h-100 doctor-card border-0 shadow-sm rounded-4 bg-white @if($planSlug === 'gold') border-top border-4 border-warning @elseif($planSlug === 'premium') border-top border-4 border-info @endif">
+                    <article class="card h-100 doctor-card border-0 shadow-sm rounded-4 bg-white @if($planSlug === 'gold') border-top border-4 border-warning @elseif($planSlug === 'premium') border-top border-4 border-info @endif">
                         <div class="card-body p-4 d-flex flex-column justify-content-between">
                             <div>
                                 <div class="d-flex align-items-center justify-content-between mb-4">
@@ -77,12 +78,15 @@
 
                                 <div class="d-flex align-items-center gap-3 mb-3">
                                     @if($doctor->user?->profile_photo_path)
-                                        <img src="/storage/{{ $doctor->user->profile_photo_path }}" class="size-10 rounded-full object-cover">
+                                        <img src="/storage/{{ $doctor->user->profile_photo_path }}" 
+                                             alt="Foto de perfil de Dr(a). {{ $doctor->user?->name }}" 
+                                             class="size-10 rounded-full object-cover"
+                                             loading="lazy">
                                     @else
                                         <div class="rounded-circle bg-primary bg-opacity-10 text-primary fw-bold d-flex align-items-center justify-content-center border" style="min-width: 56px; min-height: 56px; max-width: 56px; max-height: 56px; font-size: 1.1rem;">{{ Str::upper(Str::substr($doctor->user?->name, 0, 2)) }}</div>
                                     @endif
                                     <div>
-                                        <h5 class="card-title fw-black text-dark mb-0 fs-5">Dr(a). {{ $doctor->user?->name }}</h5>
+                                        <h2 class="card-title fw-black text-dark mb-0 fs-5">Dr(a). {{ $doctor->user?->name }}</h2>
                                         <span class="text-muted small d-block mt-0.5">📍 {{ $doctor->addresses->first()->city?->name ?? 'Consulta Virtual' }}</span>
                                     </div>
                                 </div>
@@ -102,11 +106,11 @@
                                 <a href="{{ route('partner.public.profile', ['partner' => $doctor->slug]) }}" class="btn btn-pill-primary w-100 rounded-pill fw-bold btn-sm py-2.5 text-uppercase tracking-wider small">Reservar Cita</a>
                             </div>
                         </div>
-                    </div>
+                    </article>
                 </div>
             @empty
                 <div class="col-12 text-center py-5">
-                    <h5 class="fw-bold text-dark fs-5">No encontramos especialistas</h5>
+                    <h2 class="fw-bold text-dark fs-5">No encontramos especialistas</h2>
                     <p class="small text-muted">Prueba restableciendo los buscadores superiores.</p>
                 </div>
             @endforelse
@@ -115,5 +119,5 @@
         <div class="d-flex justify-content-center mt-5">
             {{ $doctors->links() }}
         </div>
-    </div>
+    </main>
 </x-guest-layout>

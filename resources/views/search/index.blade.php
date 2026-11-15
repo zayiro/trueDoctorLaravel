@@ -1,8 +1,9 @@
 <x-guest-layout
     meta_title="Médicos especialistas en {{ ucwords(str_replace('-', ' ', request('specialty'))) }} | OpenDoctor"
-    meta_description="Encuentra y agenda tu cita virtual o presencial en línea con los mejores profesionales médicos en {{ ucwords(str_replace('-', ' ', request('specialty'))) }}. Compara disponibilidad en tiempo real para telemedicina o consulta presencial."
+    meta_description="Agenda citas médicas en línea con especialistas en {{ ucwords(str_replace('-', ' ', request('specialty'))) }}. Telemedicina y consulta presencial disponible."
+    keywords="citas médicas en línea, citas médicas, {{ ucwords(str_replace('-', ' ', request('specialty'))) }}, telemedicina, especialistas médicos, consulta médica"
 >
-    <div class="max-w-7xl mx-auto px-4 py-8 mt-5">
+    <main class="max-w-7xl mx-auto px-4 py-8 mt-5">
 
         @if($showingSuggestions)
             <!-- 🚨 BANNER DE ALTO CONTRASTE CON CIERRE REACTIVO LOCAL EN ALPINE.JS -->
@@ -92,7 +93,7 @@
                             @else
                                 Búsqueda de especialistas
                             @endif
-                        </h2>
+                        </h1>
                         <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1.5 flex items-center gap-1">
                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-ping"></span>
                             Disponibilidad en tiempo real
@@ -137,11 +138,14 @@
         <!-- CONTENEDOR GRID DE TARJETAS -->
         <div x-data="{ redirecting: false }" class="space-y-6">
             @forelse($results as $result)
-                <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 flex flex-col md:flex-row gap-6 hover:shadow-md transition duration-200">
+                <article class="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 flex flex-col md:flex-row gap-6 hover:shadow-md transition duration-200">
                     <!-- Foto / Icono Lateral Izquierdo -->
                     <div class="flex-shrink-0 text-center">
                         @if($result['user'] && $result['user']->profile_photo_path)
-                            <img src="{{ \Storage::url($result['user']->profile_photo_path) }}" class="w-24 h-24 rounded-2xl mx-auto mb-3 object-cover border-2 border-indigo-50 shadow-inner">
+                            <img src="{{ \Storage::url($result['user']->profile_photo_path) }}" 
+                                 alt="Foto de perfil de {{ $result['title'] }}" 
+                                 class="w-24 h-24 rounded-2xl mx-auto mb-3 object-cover border-2 border-indigo-50 shadow-inner"
+                                 loading="lazy">
                         @else
                            <div class="w-24 h-24 flex items-center justify-center bg-slate-50 border border-slate-100 rounded-2xl mx-auto mb-3">
                                 @if($result['type'] === 'clinic')
@@ -166,11 +170,11 @@
                     <div class="flex-1">                       
                         @if($result['type'] === 'clinic')
                             <!-- 🏛️ CARD DE CLÍNICA -->
-                            <h3 class="text-xl font-black text-slate-900 tracking-tight">{{ $result['title'] }}</h3>
+                            <h2 class="text-xl font-black text-slate-900 tracking-tight">{{ $result['title'] }}</h2>
                             <p class="text-sm font-bold text-indigo-600 mt-1 uppercase tracking-wide">{{ $result['badge_text'] }}</p>
                         @else
                             <!-- 🩺 CARD DE DOCTOR -->
-                            <h3 class="text-xl font-black text-slate-900 tracking-tight">{{ $result['title'] }}</h3>
+                            <h2 class="text-xl font-black text-slate-900 tracking-tight">{{ $result['title'] }}</h2>
                             <div class="flex items-center gap-1.5 flex-wrap">
                                 <span class="text-[12px] font-black uppercase">
                                     @foreach($result['languages'] as $lang)
@@ -426,7 +430,7 @@
                             <p class="text-[9px] text-center text-slate-400 font-bold uppercase tracking-wider">Reserva directa garantizada</p>
                         </div>
                     </div>
-                </div>
+                </article>
            @empty
             <div class="flex flex-col items-center text-center py-12 px-6 gap-6 bg-white rounded-3xl border border-slate-100 shadow-sm dark:bg-gray-800 dark:border-gray-700">
                 
@@ -437,7 +441,7 @@
                 </div>
 
                 <div class="max-w-lg space-y-2">
-                    <h4 class="text-lg font-black text-slate-800 dark:text-white tracking-tight">
+                    <h2 class="text-lg font-black text-slate-800 dark:text-white tracking-tight">
                         Especialista no disponible aún en <span class="text-lg font-black text-slate-900 tracking-tight">
                     Open<span class="text-indigo-600">Doctor</span><span class="text-emerald-500">Online</span></span>
                     </h4>
@@ -507,6 +511,5 @@
             {{ $results->links() }}
         </div>
 
-    </div> <!-- Cierra el contenedor interno principal (.max-w-7xl.mx-auto) -->
-</div> <!-- Cierra el div del min-h-screen de resultados -->
+    </main> <!-- Cierra el contenedor interno principal (.max-w-7xl.mx-auto) -->
 </x-guest-layout>
