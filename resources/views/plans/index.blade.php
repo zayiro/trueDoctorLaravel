@@ -1,11 +1,12 @@
 <x-guest-layout
-    meta-title-medical-analysis="Planes y Tarifas desde $0 | OpenDoctor Online" 
-    meta-description-medical-analysis="Encuentra el plan ideal para tu práctica médica o clínica. Desde nuestro Plan Esencial gratuito hasta el Plan Gold por $950.000/año con citas ilimitadas, agenda en tiempo real e historias clínicas con IA."
+    meta_title="Planes y Tarifas desde $0 | Citas Médicas en Línea | OpenDoctor Online" 
+    meta_description="Encuentra el plan ideal para tu práctica médica o clínica. Desde nuestro Plan Esencial gratuito hasta el Plan Gold por $950.000/año con citas médicas ilimitadas, agenda en tiempo real e historias clínicas con IA."
+    keywords="planes médicos, tarifas consultorios, software médico, agenda médica, citas médicas en línea, telemedicina, historias clínicas digitales"
 >
     <div class="bg-white py-12 px-4">
         <div class="max-w-7xl mx-auto text-center mb-12 mt-5">
-            <h2 class="text-4xl font-black text-gray-900 mb-2">Planes que crecen contigo</h2>            
-            <p class="text-lg text-gray-600">Potencia tu visibilidad en la web y gestiona tus citas de forma profesional.</p>
+            <h1 class="text-4xl font-black text-gray-900 mb-2">Planes que crecen contigo</h1>            
+            <p class="text-lg text-gray-600">Potencia tu visibilidad en la web y gestiona tus citas médicas de forma profesional.</p>
         </div>
 
         <div x-data="{ tab: 'especialistas' }" class="w-full max-w-7xl mx-auto mt-6">
@@ -32,6 +33,7 @@
                     {{-- Planes para Especialistas (Doctores) --}}
                     <div class="max-w-6xl mx-auto my-8">
                         <div class="text-center mb-10">
+                            <h2 class="text-2xl font-bold text-gray-900 mb-3">Planes para Doctores</h2>
                             <p class="text-lg text-gray-600">Valido para los <strong class="text-emerald-500">primeros 50 doctores</strong></p>    
                             <p class="text-lg text-gray-600">Planes diseñados para profesionales de la salud independientes</p>    
                         </div>
@@ -139,7 +141,7 @@
                     {{-- Planes para Clínicas --}}
                     <div class="max-w-6xl mx-auto">
                         <div class="text-center mb-10">
-                            <h3 class="text-3xl font-bold text-gray-900 mb-2">Para Clínicas</h3>
+                            <h2 class="text-2xl font-bold text-gray-900 mb-2">Para Clínicas</h2>
                             <p class="text-lg text-gray-600">Planes optimizados para centros médicos y clínicas con múltiples especialistas</p>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">

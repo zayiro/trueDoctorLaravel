@@ -16,10 +16,10 @@
                             Sobre nosotros
                         </div>
                         <h1 class="text-4xl md:text-5xl font-black text-slate-900 leading-tight">
-                            La telesalud que empodera tu cuidado médico
+                            La telesalud que empodera tus citas médicas en línea
                         </h1>
                         <p class="text-lg text-slate-600 leading-relaxed">
-                            OpenDoctor es la plataforma latinoamericana que conecta pacientes con profesionales de la salud calificados. Transformamos la forma en que accedes a atención médica, haciéndola más rápida, segura y accesible.
+                            OpenDoctor es la plataforma latinoamericana que conecta pacientes con profesionales de la salud calificados. Transformamos la forma en que accedes a citas médicas en línea, haciéndola más rápida, segura y accesible.
                         </p>
                         <div class="flex flex-wrap gap-4 pt-4">
                             <div class="flex items-center gap-2 text-sm text-slate-700">
@@ -78,7 +78,7 @@
                 <!-- Misión -->
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 space-y-4 hover:shadow-md transition">
                     <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 text-2xl">🎯</div>
-                    <h2 class="text-2xl font-black text-slate-900">Nuestra Misión</h2>
+                    <h2 class="text-xl font-black text-slate-900">Nuestra Misión</h2>
                     <p class="text-slate-600 leading-relaxed">
                         Democratizar el acceso a atención médica de calidad en Latinoamérica, eliminando barreras geográficas, económicas y burocráticas mediante tecnología inteligente, segura y centrada en el paciente.
                     </p>
@@ -87,7 +87,7 @@
                 <!-- Visión -->
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 space-y-4 hover:shadow-md transition">
                     <div class="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 text-2xl">🌟</div>
-                    <h2 class="text-2xl font-black text-slate-900">Nuestra Visión</h2>
+                    <h2 class="text-xl font-black text-slate-900">Nuestra Visión</h2>
                     <p class="text-slate-600 leading-relaxed">
                         Ser la plataforma de telesalud número 1 de Latinoamérica, donde cada persona tenga acceso instantáneo a diagnósticos precisos, especialistas verificados y cuidado médico humanizado, sin importar su ubicación.
                     </p>
@@ -98,7 +98,7 @@
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mt-5">
                 <div class="p-8 md:p-12 space-y-8">
                     <div class="text-center space-y-2 max-w-2xl mx-auto">
-                        <h2 class="text-3xl md:text-4xl font-black text-slate-900">Características que nos distinguen</h2>
+                        <h2 class="text-2xl md:text-3xl font-black text-slate-900">Características que nos distinguen</h2>
                         <p class="text-slate-600">Tecnología avanzada al servicio del bienestar médico</p>
                     </div>
 
@@ -152,29 +152,29 @@
             <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl shadow-lg overflow-hidden mt-5">
                 <div class="p-8 md:p-12 text-white space-y-8">
                     <div class="space-y-2">
-                        <h2 class="text-3xl md:text-4xl font-black">Nuestros Valores</h2>
+                        <h2 class="text-2xl md:text-3xl font-black">Nuestros Valores</h2>
                         <p class="text-blue-100">Principios que guían cada decisión en OpenDoctor</p>
                     </div>
 
                     <div class="grid md:grid-cols-4 gap-6">
                         <div class="space-y-2">
                             <div class="text-2xl">❤️</div>
-                            <h3 class="font-bold text-lg">Humanidad</h3>
+                            <h3 class="font-bold text-base">Humanidad</h3>
                             <p class="text-sm text-blue-100">La tecnología sirve al paciente, nunca lo reemplaza. Cada interacción es empática y personalizada.</p>
                         </div>
                         <div class="space-y-2">
                             <div class="text-2xl">🔐</div>
-                            <h3 class="font-bold text-lg">Privacidad</h3>
+                            <h3 class="font-bold text-base">Privacidad</h3>
                             <p class="text-sm text-blue-100">Tu información es sagrada. Protección de datos de nivel bancario en cada transacción.</p>
                         </div>
                         <div class="space-y-2">
                             <div class="text-2xl">⚡</div>
-                            <h3 class="font-bold text-lg">Velocidad</h3>
+                            <h3 class="font-bold text-base">Velocidad</h3>
                             <p class="text-sm text-blue-100">Desde búsqueda hasta cita confirmada en minutos, no días. La urgencia médica no espera.</p>
                         </div>
                         <div class="space-y-2">
                             <div class="text-2xl">🎯</div>
-                            <h3 class="font-bold text-lg">Excelencia</h3>
+                            <h3 class="font-bold text-base">Excelencia</h3>
                             <p class="text-sm text-blue-100">Especialistas verificados, procesos optimizados, y mejora continua basada en datos.</p>
                         </div>
                     </div>
@@ -184,7 +184,7 @@
             <!-- ALIANZAS -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 md:p-12 space-y-8 mt-5">
                 <div class="text-center space-y-2">
-                    <h2 class="text-3xl md:text-4xl font-black text-slate-900">Alianzas Estratégicas</h2>
+                    <h2 class="text-2xl md:text-3xl font-black text-slate-900">Alianzas Estratégicas</h2>
                     <p class="text-slate-600">Trabajamos con líderes de la industria para ofrecerte lo mejor</p>
                 </div>
 
@@ -212,9 +212,9 @@
             <!-- CTA FINAL -->
             <div class="bg-slate-900 rounded-2xl shadow-xl overflow-hidden mt-5">
                 <div class="p-8 md:p-12 text-center text-white space-y-6">
-                    <h2 class="text-3xl md:text-4xl font-black">¿Listo para transformar tu cuidado médico?</h2>
+                    <h2 class="text-2xl md:text-3xl font-black">¿Listo para transformar tus citas médicas?</h2>
                     <p class="text-lg text-slate-300 max-w-2xl mx-auto">
-                        Únete a miles de pacientes que confían en OpenDoctor para acceder a atención médica de calidad, rápida y segura.
+                        Únete a miles de pacientes que confían en OpenDoctor para acceder a citas médicas en línea de calidad, rápidas y seguras.
                     </p>
                     <div class="flex flex-col sm:flex-row gap-4 justify-center pt-4">
                         <a href="{{ route('search') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-8 rounded-xl transition inline-flex items-center justify-center gap-2">

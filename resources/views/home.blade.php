@@ -131,7 +131,7 @@
 
                         <!-- Módulo Informativo Integrado en la estructura -->
                         <div class="space-y-3 pt-6">
-                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">¿Cómo funciona la teleconsulta?</h4>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">¿Cómo funciona la teleconsulta?</h3>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div class="flex items-start gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
                                     <svg class="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
@@ -158,7 +158,8 @@
                             <!-- Efecto sutil de brillo perimetral en la imagen al hacer hover -->
                             <div class="absolute inset-0 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
                             <img src="{{ asset('images/telemedicina.png') }}" 
-                                alt="Plataforma de Telemedicina Avanzada" 
+                                alt="Doctora realizando consulta médica virtual por videollamada en plataforma OpenDoctor" 
+                                loading="lazy"
                                 class="w-full h-auto rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.03)] border border-slate-200/60 object-cover transform group-hover:scale-[1.01] transition-all duration-300">
                         </div>
                     </div>
@@ -196,7 +197,7 @@
                         </p>
                         <!-- Grid de Estudios Soportados (UI Limpia) -->
                         <div class="space-y-4 pt-5 border-t border-slate-100">
-                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Estudios Soportados</p>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Estudios Soportados</h3>
                             
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <!-- 1. Laboratorio -->
@@ -273,7 +274,7 @@
                         <div class="w-full bg-white rounded-2xl border border-slate-200/60 p-6 md:p-8 text-center space-y-6">
                             <div class="space-y-1">
                                 <p class="text-xs uppercase tracking-wider font-bold text-slate-400">Procesador Inteligente</p>
-                                <h4 class="text-slate-800 font-extrabold text-lg">¿Listo para comenzar?</h4>
+                                <h3 class="text-slate-800 font-extrabold text-lg">¿Listo para comenzar?</h3>
                             </div>
 
                             <!-- Botón Principal Clínico -->
@@ -335,10 +336,10 @@
                     <span class="inline-flex items-center gap-1.5 px-3 py-2 pt-2.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-700/10 mb-5 tracking-wide uppercase">
                         Tecnología Inteligente
                     </span>
-                    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight max-w-3xl mx-auto leading-tight">
+                    <h2 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight max-w-3xl mx-auto leading-tight">
                         Analiza tu Piel 
                         <span class="text-blue-600 block sm:inline">al Instante</span>
-                    </h1>
+                    </h2>
                     <p class="mt-4 text-base md:text-lg text-slate-600 max-w-xl mx-auto leading-relaxed">
                         3 pasos simples para detectar cambios de piel potencialmente graves con el respaldo de nuestra Inteligencia Artificial.
                     </p>
@@ -357,7 +358,7 @@
                                 <img src="{{ asset('images/skin-analysis/mancha-piel.jpg') }}" alt="Toma una foto clara de tu piel" class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 ease-out">
                             </div>
                             <div class="p-4 pt-5">
-                                <h4 class="text-lg font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors duration-200">Toma una Foto</h4>
+                                <h3 class="text-lg font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors duration-200">Toma una Foto</h3>
                                 <p class="text-slate-600 text-sm leading-relaxed">Sube una foto clara y bien iluminada del área de piel que te preocupa.</p>
                             </div>
                         </div>
@@ -375,7 +376,7 @@
                                 <img src="{{ asset('images/skin-analysis/step-2.webp') }}" alt="Análisis automatizado por IA" class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 ease-out">
                             </div>
                             <div class="p-4 pt-5">
-                                <h4 class="text-lg font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors duration-200">IA Analiza</h4>
+                                <h3 class="text-lg font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors duration-200">IA Analiza</h3>
                                 <p class="text-slate-600 text-sm leading-relaxed">Nuestra IA procesa los patrones visuales buscando signos dermatológicos tempranos.</p>
                             </div>
                         </div>
@@ -393,7 +394,7 @@
                                 <img src="{{ asset('images/skin-analysis/2.webp') }}" alt="Informe clínico inmediato" class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 ease-out">
                             </div>
                             <div class="p-4 pt-5">
-                                <h4 class="text-lg font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors duration-200">Recibe Resultado</h4>
+                                <h3 class="text-lg font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors duration-200">Recibe Resultado</h3>
                                 <p class="text-slate-600 text-sm leading-relaxed">Obtén un análisis detallado, nivel de riesgo estimado y próximos pasos sugeridos.</p>
                             </div>
                         </div>
@@ -448,7 +449,7 @@
                         </svg>
                         </div>
                         <div>
-                        <h3 class="font-semibold text-slate-900">Mayor visibilidad local</h3>
+                        <h3 class="font-semibold text-slate-900 text-base">Mayor visibilidad local</h3>
                         <p class="text-sm text-slate-600">Posiciona tu consultorio frente a pacientes que buscan activamente tu especialidad en tu ciudad.</p>
                         </div>
                     </div>
@@ -462,7 +463,7 @@
                         </svg>
                         </div>
                         <div>
-                        <h3 class="font-semibold text-slate-900">Gestión de citas inteligente</h3>
+                        <h3 class="font-semibold text-slate-900 text-base">Gestión de citas inteligente</h3>
                         <p class="text-sm text-slate-600">Herramientas automatizadas de agenda para reducir el ausentismo y organizar tus horarios sin esfuerzo.</p>
                         </div>
                     </div>
@@ -476,7 +477,7 @@
                         </svg>
                         </div>
                         <div>
-                        <h3 class="font-semibold text-slate-900">Perfil médico verificado</h3>
+                        <h3 class="font-semibold text-slate-900 text-base">Perfil médico verificado</h3>
                         <p class="text-sm text-slate-600">Construye confianza digital mostrando tus certificaciones, opiniones reales de pacientes y logros.</p>
                         </div>
                     </div>
@@ -506,7 +507,7 @@
                 <div class="relative overflow-hidden transform lg:rotate-1 hover:rotate-0 transition duration-300">
                 <img 
                     src="{{ asset('images/professional-directory-register-medical.png') }}" 
-                    alt="Médico especialista usando plataforma OpenDoctor" 
+                    alt="Médico especialista registrándose en plataforma OpenDoctor para gestionar citas médicas en línea" 
                     class="h-[350px] w-full object-cover sm:h-[450px] md:w-[500px]"
                     style="mask-image: linear-gradient(to bottom, black 75%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 75%, transparent 100%);"
                     loading="lazy"
@@ -522,9 +523,9 @@
     <section class="py-10 px-4 bg-gray-50">
         <div class="max-w-5xl mx-auto pb-5">            
             <div class="text-center mb-6">
-                <h1 class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
+                <h2 class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
                     Agende su cita médica <span class="text-blue-600">en línea</span>
-                </h1>
+                </h2>
             </div>
             <div class="space-y-6">                               
             <!-- Beneficios finales -->
@@ -571,7 +572,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                     </div>
-                    <h3 class="text-xl font-black mb-2">Ahorra Tiempo</h3>
+                    <h3 class="text-lg font-black mb-2">Ahorra Tiempo</h3>
                     <p class="text-gray-600">Consulta desde casa, sin desplazamientos ni filas de espera</p>
                 </div>
                 
@@ -582,7 +583,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                     </div>
-                    <h3 class="text-xl font-black mb-2">100% Seguro</h3>
+                    <h3 class="text-lg font-black mb-2">100% Seguro</h3>
                     <p class="text-gray-600">Encriptado y confidencial según normativas colombianas</p>
                 </div>
                 
@@ -593,7 +594,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                     </div>
-                    <h3 class="text-xl font-black mb-2">Precios Justos</h3>
+                    <h3 class="text-lg font-black mb-2">Precios Justos</h3>
                     <p class="text-gray-600">Tarifas accesibles sin intermediarios</p>
                 </div>
             </div>
@@ -751,10 +752,10 @@
     <!-- Comentarios de los pacientes -->
     <section class="py-10 px-4 bg-gray-50">
         <div class="max-w-6xl mx-auto pb-5">
-            <h1 class="text-5xl lg:text-7xl text-center font-black text-slate-900 tracking-tight mb-10">
+            <h2 class="text-5xl lg:text-7xl text-center font-black text-slate-900 tracking-tight mb-10">
                 Lo que dicen nuestros
                 <span class="text-blue-600">pacientes</span>
-            </h1>
+            </h2>
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <!-- Testimonio 1 -->
@@ -804,10 +805,10 @@
 
     <!-- Texto de Privacidad de los datos del paciente medico -->
     <section class="py-16 px-4 bg-white">
-        <h1 class="text-5xl lg:text-7xl text-center font-black text-slate-900 tracking-tight mb-10">
+        <h2 class="text-5xl lg:text-7xl text-center font-black text-slate-900 tracking-tight mb-10">
             Tu privacidad es nuestra
             <span class="text-blue-600">prioridad</span>
-        </h1>
+        </h2>
         <div class="max-w-4xl mx-auto">                        
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div class="flex gap-4">
@@ -856,10 +857,10 @@
     <!-- Preguntas frecuentes -->
     <section class="py-16 px-4 bg-gray-50">
         <div class="max-w-4xl mx-auto">
-            <h1 class="text-5xl lg:text-7xl text-center font-black text-slate-900 tracking-tight mb-10">
+            <h2 class="text-5xl lg:text-7xl text-center font-black text-slate-900 tracking-tight mb-10">
                 Preguntas
                 <span class="text-blue-600">Frecuentes</span>
-            </h1>
+            </h2>
             <div class="space-y-4">
                 <details class="bg-white p-6 rounded-xl cursor-pointer group">
                     <summary class="flex justify-between items-center font-black text-gray-900">
@@ -907,17 +908,17 @@
     <!-- Medios de pago seguros para pagar tu reservacion medica -->
     <section class="py-16 px-4 bg-white">
         <div class="max-w-5xl mx-auto">
-            <h1 class="text-5xl lg:text-7xl text-center font-black text-slate-900 tracking-tight mb-10">
+            <h2 class="text-5xl lg:text-7xl text-center font-black text-slate-900 tracking-tight mb-10">
                 Medios de Pago
                 <span class="text-blue-600">Seguros</span>
-            </h1>
+            </h2>
             <p class="text-center text-gray-600 mb-12">Múltiples opciones de pago con la máxima seguridad</p>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 
                 <!-- Columna Izquierda: Métodos de Pago -->
                 <div>
-                    <h3 class="text-2xl font-black text-gray-900 mb-8">Formas de Pago</h3>
+                    <h3 class="text-xl font-black text-gray-900 mb-8">Formas de Pago</h3>
                     
                     <div class="space-y-4">
                         <!-- Tarjeta de Crédito -->
@@ -963,7 +964,7 @@
                 
                 <!-- Columna Derecha: Seguridad -->
                 <div>
-                    <h3 class="text-2xl font-black text-gray-900 mb-8">Seguridad Garantizada</h3>
+                    <h3 class="text-xl font-black text-gray-900 mb-8">Seguridad Garantizada</h3>
                     
                     <div class="space-y-4">
                         <!-- Encriptación -->
@@ -1005,7 +1006,8 @@
                             <div class="flex items-center gap-2">
                                 <div class="max-w-xs mx-auto">
                                     <img src="{{ asset('images/wompi.jpg') }}" 
-                                        alt="Paga tu consulta por Telemedicina con wompi de Bancolombia" 
+                                        alt="Logo de Wompi - Pasarela de pagos segura para citas médicas en línea" 
+                                        loading="lazy"
                                         class="w-full h-auto rounded-2xl">
                                 </div>
                                 <p class="font-black text-gray-900">Wompi</p>

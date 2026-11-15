@@ -1,6 +1,7 @@
 <x-guest-layout
-    meta_title="Contáctanos | Soporte y Atención OpenDoctorOnline" 
-    meta_description="¿Tienes dudas sobre nuestra plataforma médica? Ponte en contacto con el equipo de OpenDoctor.online. Estamos aquí para ayudarte a resolver tus consultas rápidamente."
+    meta_title="Contáctanos | Soporte Citas Médicas en Línea | OpenDoctorOnline" 
+    meta_description="¿Tienes dudas sobre citas médicas en línea o nuestra plataforma? Ponte en contacto con el equipo de OpenDoctor.online. Estamos aquí para ayudarte a resolver tus consultas rápidamente."
+    keywords="contacto médico, soporte telemedicina, ayuda citas médicas, atención al paciente, citas médicas en línea"
 >
     <div class="max-w-5xl mx-auto py-16 px-4">
         <!-- Contenedor Principal Premium -->
@@ -8,8 +9,8 @@
             
             <!-- Cabecera de la Vista -->
             <div class="mb-8">
-                <h2 class="text-3xl font-black text-gray-900 dark:text-white tracking-tight mb-2">Contáctanos</h2>
-                <p class="text-sm text-gray-500 dark:text-gray-400">¿Tienes dudas o necesitas soporte técnico? Escríbenos y te responderemos lo antes posible.</p>
+                <h1 class="text-3xl font-black text-gray-900 dark:text-white tracking-tight mb-2">Contáctanos</h1>
+                <p class="text-sm text-gray-500 dark:text-gray-400">¿Tienes dudas sobre citas médicas en línea o necesitas soporte técnico? Escríbenos y te responderemos lo antes posible.</p>
             </div>
 
             <!-- Alerta de Éxito (Estilo Flowbite) -->

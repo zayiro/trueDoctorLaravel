@@ -42,20 +42,20 @@
                     
                     <!-- PESTAÑA: PACIENTES -->
                     <div x-show="activeTab === 'pacientes'" x-transition>
-                        <h2 class="text-2xl font-bold text-slate-900 mb-2">Ayuda para Pacientes</h2>
+                        <h2 class="text-xl font-bold text-slate-900 mb-2">Ayuda para Pacientes</h2>
                         <p class="text-slate-500 mb-6 small">Encuentra respuestas rápidas para gestionar tus citas y consultas virtuales.</p>
                         
                         <div class="space-y-4">
                             <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-                                <h4 class="font-semibold text-slate-800 text-base">¿Cómo ingreso a mi videocita de telemedicina?</h4>
+                                <h3 class="font-semibold text-slate-800 text-base">¿Cómo ingreso a mi videocita de telemedicina?</h3>
                                 <p class="text-slate-600 text-sm mt-1">Dirígete a tu panel de usuario en la sección 'Mis Citas'. 10 minutos antes de la hora programada se habilitará un botón verde que dice 'Ingresar a la videollamada'. No necesitas instalar software adicional.</p>
                             </div>
                             <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-                                <h4 class="font-semibold text-slate-800 text-base">¿Puedo cancelar o reprogramar una cita?</h4>
+                                <h3 class="font-semibold text-slate-800 text-base">¿Puedo cancelar o reprogramar una cita?</h3>
                                 <p class="text-slate-600 text-sm mt-1">Sí, puedes hacerlo desde tu panel de control con un mínimo de 24 horas de anticipación. Pasado ese tiempo, el sistema congelará la agenda y deberás comunicarte directamente con el consultorio del médico.</p>
                             </div>
                             <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-                                <h4 class="font-semibold text-slate-800 text-base">¿Dónde descargo mi receta médica o historia clínica?</h4>
+                                <h3 class="font-semibold text-slate-800 text-base">¿Dónde descargo mi receta médica o historia clínica?</h3>
                                 <p class="text-slate-600 text-sm mt-1">Una vez que el médico finalice y cierre tu consulta, recibirás un correo electrónico de notificación. Podrás descargar los archivos en formato PDF ingresando a tu sección de 'Historial Clínico'.</p>
                             </div>
                         </div>
@@ -63,20 +63,20 @@
 
                     <!-- PESTAÑA: DOCTORES -->
                     <div x-show="activeTab === 'doctores'" x-transition>
-                        <h2 class="text-2xl font-bold text-slate-900 mb-2">Ayuda para Profesionales Médicos</h2>
+                        <h2 class="text-xl font-bold text-slate-900 mb-2">Ayuda para Profesionales Médicos</h2>
                         <p class="text-slate-500 mb-6 small">Optimiza la gestión de tu consultorio virtual y resuelve dudas de configuración.</p>
                         
                         <div class="space-y-4">
                             <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-                                <h4 class="font-semibold text-slate-800 text-base">¿Cómo configuro u oculto mis horarios de atención?</h4>
+                                <h3 class="font-semibold text-slate-800 text-base">¿Cómo configuro u oculto mis horarios de atención?</h3>
                                 <p class="text-slate-600 text-sm mt-1">Ingresa a tu 'Panel Médico' > 'Configuración de Agenda'. Allí podrás marcar los días de la semana disponibles, las horas de inicio y fin, y bloquear días específicos por vacaciones o emergencias.</p>
                             </div>
                             <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-                                <h4 class="font-semibold text-slate-800 text-base">¿Por qué mi perfil aparece en estado 'Pendiente de Validación'?</h4>
+                                <h3 class="font-semibold text-slate-800 text-base">¿Por qué mi perfil aparece en estado 'Pendiente de Validación'?</h3>
                                 <p class="text-slate-600 text-sm mt-1">Para garantizar la seguridad de la plataforma, nuestro equipo legal valida manualmente tu licencia y tarjeta profesional. Este proceso toma entre 12 y 24 horas hábiles. Recibirás un correo cuando seas aprobado.</p>
                             </div>
                             <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-                                <h4 class="font-semibold text-slate-800 text-base">¿Cómo se procesan los pagos de las videocitas virtuales?</h4>
+                                <h3 class="font-semibold text-slate-800 text-base">¿Cómo se procesan los pagos de las videocitas virtuales?</h3>
                                 <p class="text-slate-600 text-sm mt-1">El dinero pagado por el paciente se retiene de forma segura en la pasarela de pagos del SaaS y se dispersa automáticamente a tu cuenta bancaria registrada todos los viernes hábiles, descontando la comisión de la plataforma.</p>
                             </div>
                         </div>
@@ -84,7 +84,7 @@
 
                     <!-- PESTAÑA: FORMULARIO DE CONTACTO / TICKET -->
                     <div x-show="activeTab === 'ticket'" x-transition>
-                        <h2 class="text-2xl font-bold text-slate-900 mb-2">Enviar una Solicitud de Soporte</h2>
+                        <h2 class="text-xl font-bold text-slate-900 mb-2">Enviar una Solicitud de Soporte</h2>
                         <p class="text-slate-500 mb-6 small">¿No encontraste la respuesta? Nuestro equipo técnico te responderá en menos de 4 horas.</p>
                         
                         <!-- Reutilizamos de forma inteligente la lógica del formulario de contacto que ya tienes creado -->
