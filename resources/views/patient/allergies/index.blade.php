@@ -110,11 +110,11 @@ $breadcrumbs = [
                 }
 
                 switch ($allergy->severity) {
-                    case 'severe': $severity = 'Leve';
+                    case 'mild': $severity = 'Leve';
                     break;
                     case 'moderate': $severity = 'Moderada';
                     break;
-                    case 'mild': $severity = 'Severa';
+                    case 'severe': $severity = 'Severa';
                     break;
                 }
                 @endphp

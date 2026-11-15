@@ -21,7 +21,7 @@ $breadcrumbs = [
                 {{-- Header bandeja --}}
                 <div class="p-4 border-b border-slate-100">
                     <h2 class="text-lg font-black text-slate-800">Mensajes</h2>
-                    <p class="text-xs text-slate-400 mt-0.5">Chat con pacientes y especialistas</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Pacientes / Especialistas</p>
                 </div>
 
                 {{-- Tabs de estado --}}

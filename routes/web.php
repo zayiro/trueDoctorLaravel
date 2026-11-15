@@ -332,7 +332,7 @@ Route::middleware(['auth', 'role:patient'])->group(function () {
     Route::delete('/patient/allergies/{allergy}', [PatientController::class, 'destroyAllergy'])->name('patient.allergies.destroy');
     Route::get('/patient/family-history', [PatientController::class, 'indexFamilyHistory'])->name('patient.family-history.index');
     Route::post('/patient/family-history', [PatientController::class, 'storeFamilyHistory'])->name('patient.family-history.store');
-    Route::delete('/patient/allergies/{id}', [PatientController::class, 'destroyFamilyHistory'])->name('patient.family-history.destroy');
+    Route::delete('/patient/family-history/{id}', [PatientController::class, 'destroyFamilyHistory'])->name('patient.family-history.destroy');
 
     Route::get('/patient/medications', [PatientController::class, 'indexMedication'])->name('patient.medications.index');
     Route::delete('/patient/medications/{medication}', [PatientController::class, 'destroyMedication'])->name('patient.medications.destroy');
@@ -356,6 +356,9 @@ Route::middleware(['auth', 'role:patient'])->group(function () {
 
     // Endpoint de búsqueda autocompletable para diagnósticos CIE-10
     Route::get('/cie10/search', [AppointmentClinicalController::class, 'searchCie10'])->name('cie10.search');
+
+    Route::get('/payments', [PatientController::class, 'payments'])->name('patient.payments.index');
+    Route::get('/payments/{appointment}/receipt', [PatientController::class, 'downloadReceipt'])->name('patient.payments.receipt');
 });
 
 Route::middleware(['auth'])->group(function () {    

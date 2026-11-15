@@ -47,11 +47,8 @@ $links = [
     [
         'name' => 'Pagos y Facturación',
         'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z"/></svg>',
-        'href' => route('partner.appointments.index'),
-        'active' => request()->routeIs('partner.appointments.index'),
-    ],
-    [
-        'header' => 'Antecedentes Médicos',        
+        'href' => route('patient.payments.index'),
+        'active' => request()->routeIs('patient.payments.index'),
     ],
     [
         'name' => 'Historia Clínica',
@@ -64,6 +61,9 @@ $links = [
         'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm-1.214 6.33a3.75 3.75 0 0 0-5.072 0 3.75 3.75 0 0 0 5.072 0Z"/></svg>',
         'href' => route('patient.patient-identification.index'),
         'active' => request()->routeIs('patient.patient-identification.index'),
+    ],
+    [
+        'header' => 'Perfil de Salud',        
     ],
     [
         'name' => 'Registros Clínicos',

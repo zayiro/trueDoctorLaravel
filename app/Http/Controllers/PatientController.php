@@ -18,6 +18,7 @@ use App\Models\PatientAllergy;
 use App\Models\PatientMedication;
 use App\Models\PatientHistory;
 use App\Models\PatientSurgery;
+use App\Models\PatientFamilyHistory;
 use App\Services\Scheduling\SlotOverlapChecker;
 use App\Events\AppointmentCancelled;
 use App\Notifications\AppointmentRescheduledNotification;
@@ -603,7 +604,7 @@ class PatientController extends Controller
         ]);
 
         // Opción A: Usando el modelo directamente
-        FamilyHistory::create($validated);
+        PatientFamilyHistory::create($validated);
 
         // Opción B: Si tienes la relación definida en el modelo Patient
         // $patient = Patient::findOrFail($validated['patient_id']);
@@ -611,6 +612,24 @@ class PatientController extends Controller
 
         return back()->with('success', 'Antecedente familiar guardado correctamente.');
     }
+
+    public function destroyFamilyHistory($id)
+    {
+        $history = PatientFamilyHistory::findOrFail($id);
+
+        // Verifica que pertenezca al paciente autenticado
+        $patient = auth()->user()->patient;
+        $ownerId = $patient ? $patient->id : auth()->id();
+
+        if ($history->patient_id != $ownerId) {
+            abort(403, 'No tienes permiso para eliminar este registro.');
+        }
+
+        $history->delete();
+
+        return back()->with('success', 'Antecedente familiar eliminado correctamente.');
+    }
+
 
     /**
      * Muestra el historial de cirugías del paciente.
@@ -844,6 +863,56 @@ class PatientController extends Controller
         // Cambia 'patient.surgeries.index' por el nombre exacto de tu ruta principal de cirugías
         return redirect()->route('patient.surgeries.index')
             ->with('success', 'Cirugía actualizada correctamente.');
+    }
+
+    public function payments(Request $request)
+    {
+        $user = auth()->user();
+        $patientId = $user->patient ? $user->patient->id : $user->id;
+
+        // Consulta todas las citas del paciente que tienen un valor asociado
+        $query = Appointment::with(['doctor', 'service', 'clinic'])
+            ->where('patient_id', $patientId)
+            ->where('price', '>', 0)
+            ->orderByDesc('created_at');
+
+        // Filtro por payment_status ('pending', 'paid', 'cancelled', 'failed')
+        if ($request->filled('payment_status')) {
+            $query->where('payment_status', $request->payment_status);
+        }
+
+        $appointments = $query->paginate(10);
+
+        // Total pagado real (precio menos descuento en citas con payment_status = 'paid')
+        $totalPaid = Appointment::where('patient_id', $patientId)
+            ->where('payment_status', 'paid')
+            ->selectRaw('SUM(price - discount_amount) as total')
+            ->value('total') ?? 0;
+
+        // Cantidad de pagos pendientes
+        $pendingCount = Appointment::where('patient_id', $patientId)
+            ->where('payment_status', 'pending')
+            ->where('price', '>', 0)
+            ->count();   
+
+        return view('patient.payments.index', compact('appointments', 'totalPaid', 'pendingCount'));
+    }
+
+    public function downloadReceipt($id)
+    {
+        $user = auth()->user();
+        $patientId = $user->patient ? $user->patient->id : $user->id;
+
+        $appointment = Appointment::with(['doctor', 'service', 'patient', 'clinic'])
+            ->where('patient_id', $patientId)
+            ->where('payment_status', 'paid')
+            ->findOrFail($id);
+
+        // Si tienes barryvdh/laravel-dompdf instalado, descomenta estas 2 líneas:
+        // $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('patient.payments.receipt', compact('appointment'));
+        // return $pdf->download("Comprobante-{$appointment->reference}.pdf");
+
+        return view('patient.payments.receipt', compact('appointment'));
     }
 
 }
