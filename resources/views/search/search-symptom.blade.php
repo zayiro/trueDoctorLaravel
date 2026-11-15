@@ -1,8 +1,9 @@
 <x-guest-layout
-    meta_title="Guía de Orientación Médica por Síntomas OpenDoctorOnline"
-    meta_description="Selecciona tus síntomas para evaluar el nivel de urgencia sugerido por nuestra Inteligencia Artificial. Conecta y agenda una cita inmediata con especialistas verificados."
+    meta_title="Asistente de Orientación Médica | OpenDoctorOnline"
+    meta_description="Describe tus síntomas y encuentra especialistas médicos. Agenda citas médicas en línea con telemedicina o atención presencial en Colombia."
+    keywords="síntomas médicos, citas médicas en línea, citas médicas, asistente médico, telemedicina, especialistas médicos"
 >
-    <div class="relative bg-white py-10 overflow-hidden">      
+    <main class="relative bg-white py-10 overflow-hidden">      
         <div class="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
             <div x-data="{
                 lastSearch: '',

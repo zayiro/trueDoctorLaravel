@@ -81,7 +81,7 @@
                         </svg>
                     </div>
                     <div>
-                        <h2 class="text-lg font-black text-slate-800 tracking-tight leading-none">                    
+                        <h1 class="text-lg font-black text-slate-800 tracking-tight leading-none">                    
                             @if($results->total() === 1)
                                 <p class="text-md text-gray-600 font-bold">
                                     Un médico o especialista habilitado
@@ -444,7 +444,7 @@
                     <h2 class="text-lg font-black text-slate-800 dark:text-white tracking-tight">
                         Especialista no disponible aún en <span class="text-lg font-black text-slate-900 tracking-tight">
                     Open<span class="text-indigo-600">Doctor</span><span class="text-emerald-500">Online</span></span>
-                    </h4>
+                    </h2>
                     <p class="text-md text-slate-500 leading-relaxed dark:text-gray-400">
                         Estamos en pleno lanzamiento. El especialista que buscas aún está configurando su agenda, pero puedes agendar con un médico general disponible ahora mismo.
                     </p>
