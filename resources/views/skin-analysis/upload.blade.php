@@ -79,11 +79,11 @@
                         <!-- Email e Idioma -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <h2 class="block text-sm font-bold text-slate-800 mb-1.5">¿A qué correo electrónico enviamos tu resultado?</h2>
+                                <h3 class="block text-sm font-bold text-slate-800 mb-1.5">¿A qué correo electrónico enviamos tu resultado?</h3>
                                 <input type="email" name="email" id="email" placeholder="nombre@correo.com" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition text-sm text-slate-800" required>
                             </div>
                             <div>
-                                <h2 class="block text-sm font-bold text-slate-800 mb-1.5">¿En qué idioma quieres ver el resultado?</h2>
+                                <h3 class="block text-sm font-bold text-slate-800 mb-1.5">¿En qué idioma quieres ver el resultado?</h3>
                                 <select name="language" id="language" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition text-sm text-slate-800">
                                     <option value="es" selected>Español (Spanish)</option>
                                     <option value="en">Inglés (English)</option>

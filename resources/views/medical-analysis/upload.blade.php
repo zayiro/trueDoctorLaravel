@@ -169,8 +169,8 @@
                     <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-emerald-500 text-white h-full w-0 transition-all duration-300"></div>
                 </div>
             </div>          
-        </div>
-    </div>
+        </section>
+    </main>
 
     <div class="border-t border-white/5 py-4 text-center text-[12px] text-slate-600 mb-5">
         <p>openDoctorOnline AI. Procesamiento asíncrono seguro y cifrado de punta a punta.</p>

@@ -139,7 +139,7 @@
                             <h3 class="font-bold text-slate-900">{{ $exam['title'] }}</h3>
                             <p class="mt-1 text-sm text-slate-500">{{ $exam['text'] }}</p>
                         </div>
-                    </div>
+                    </article>
                 @endforeach
             </div>
         </div>
