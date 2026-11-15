@@ -387,7 +387,7 @@
 
                                 <!-- Especialidades Habilitadas -->
                                 <div class="space-y-1 border-t border-slate-200/50 pt-3 dark:border-gray-700">
-                                    <h3 class="text-lg font-black text-slate-800">Especialista en</h3> 
+                                    <h2 class="text-lg font-black text-slate-800">Especialista en</h2> 
                                     <div class="text-sm text-slate-400 dark:text-gray-500">    
                                         @php
                                             $partnerSpecialties = $partner->specialties->isNotEmpty() ? $partner->specialties->pluck('name')->toArray() : [];
@@ -700,7 +700,7 @@
                     <!-- ========================================================================= -->
                     <!-- 🗓️ 3. CALENDARIO CON DÍAS DISPONIBLES EN VERDE (Flatpickr + Alpine.js)       -->
                     <!-- ========================================================================= -->
-                    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-4 dark:bg-gray-800 dark:border-gray-700" 
+                    <section class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-4 dark:bg-gray-800 dark:border-gray-700" 
                         x-show="selectedService !== null" 
                         x-transition>
                         
