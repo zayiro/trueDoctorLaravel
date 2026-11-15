@@ -375,7 +375,7 @@
                             <div class="bg-slate-50 rounded-2xl p-2 border border-slate-100/70 space-y-4 dark:bg-gray-700/50 dark:border-gray-600">    
                                 <!-- Perfil Médico / Reseña Corta -->
                                 <div class="space-y-1">
-                                    <h3 class="text-lg font-black text-slate-800">Sobre el especialista</h3>                                    
+                                    <h2 class="text-lg font-black text-slate-800">Sobre el especialista</h2>                                    
                                     <div class="text-sm text-slate-600 leading-relaxed dark:text-gray-300">                                    
                                         @if($partner->bio)
                                             <span>{{ str(strip_tags($partner->bio))->limit(120, '...') }}</span>
@@ -601,7 +601,7 @@
                     <!-- ========================================================================= -->
                     <!-- 🩺 2. SELECTOR DE SERVICIOS (Filtrado por Sede vía Alpine.js Unificado) -->
                     <!-- ========================================================================= -->
-                    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-4 dark:bg-gray-800 dark:border-gray-700" 
+                    <section class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-4 dark:bg-gray-800 dark:border-gray-700" 
                         x-show="selectedAddress !== null" 
                         x-init="@if(isset($preSelectedAddress) && $preSelectedAddress) $nextTick(() => { selectAddress({{ $preSelectedAddress->id }}, '{{ $preSelectedAddress->type }}') }); @endif" 
                         x-transition>
