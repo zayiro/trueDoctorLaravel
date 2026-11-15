@@ -40,14 +40,6 @@
         '@context' => 'https://schema.org',
         '@type' => 'WebApplication',
         'name' => $name,
-        "address" => [
-            "@type" => "PostalAddress",
-            "streetAddress" => "Cra 7E # 70 - 134",
-            "addressLocality" => "Santiago de Cali",
-            "addressRegion" => "Valle del Cauca",
-            "postalCode" => "760012",
-            "addressCountry" => "CO"
-        ],
         'url' => 'https://opendoctor.online',
         "applicationCategory" => "HealthApplication",
         "aggregateRating" => [
@@ -64,11 +56,6 @@
             "Telemedicina y citas médicas virtuales por videoconferencia (Zoom) y presenciales en consultorio",
             "Análisis de piel mediante Inteligencia Artificial para la detección y orientación de afecciones cutáneas",
             "Segunda opinión médica por Inteligencia Artificial para la interpretación y análisis digital de exámenes (Laboratorio, Ecografía, Radiografía, Tomografía, Resonancia, DICOM)"
-        ],
-        'geo' => [
-            '@type' => 'GeoCoordinates',
-            'latitude' => '3.4516',  // Coordenadas de Cali, Colombia como base
-            'longitude' => '-76.5320'
         ],
         "about" => [
             [

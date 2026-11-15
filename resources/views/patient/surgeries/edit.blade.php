@@ -11,6 +11,17 @@ $breadcrumbs = [
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
+    @if ($errors->any())
+        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 shadow-sm rounded-r" role="alert">
+            <p class="font-bold">Por favor, corrige los siguientes errores:</p>
+            <ul class="list-disc list-inside text-sm mt-1">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <form action="{{ route('patient.surgeries.update', $surgery->id) }}" method="POST" class="space-y-6 bg-white p-8 rounded-xl shadow-sm border">
         @csrf
         @method('PUT') <!-- OBLIGATORIO PARA EDITAR -->

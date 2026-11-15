@@ -1,139 +1,121 @@
-{!! '<' . '?xml version="1.0" encoding="UTF-8"?' . '>' !!}
-
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
-    
-    <!-- 1. PÁGINAS ESTÁTICAS PRINCIPALES -->
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    {{-- Página principal --}}
     <url>
-        <loc>{{ url('/') }}</loc>
-        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
+        <loc>https://opendoctor.online/</loc>
+        <lastmod>{{ now()->toIso8601String() }}</lastmod>
         <changefreq>daily</changefreq>
         <priority>1.0</priority>
-    </url>  
+    </url>
+
+    {{-- Páginas estáticas públicas --}}
     <url>
-        <loc>{{ url('/register') }}</loc>
-        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
-            <changefreq>daily</changefreq>
-            <priority>0.6</priority>
-    </url>  
-    <url>
-        <loc>{{ url('/register-options') }}</loc>
-        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
+        <loc>https://opendoctor.online/search</loc>
+        <lastmod>{{ now()->toIso8601String() }}</lastmod>
         <changefreq>daily</changefreq>
+        <priority>0.9</priority>
+    </url>
+
+    <url>
+        <loc>https://opendoctor.online/search-symptom</loc>
+        <lastmod>{{ now()->toIso8601String() }}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://opendoctor.online/medical-analysis</loc>
+        <lastmod>{{ now()->toIso8601String() }}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://opendoctor.online/skin-analysis</loc>
+        <lastmod>{{ now()->toIso8601String() }}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://opendoctor.online/contact</loc>
+        <lastmod>{{ now()->toIso8601String() }}</lastmod>
+        <changefreq>monthly</changefreq>
         <priority>0.5</priority>
     </url>
+
     <url>
-        <loc>{{ url('/register-partner') }}</loc>
-        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
-            <changefreq>daily</changefreq>
-            <priority>0.5</priority>
-    </url>
-    <url>
-        <loc>{{ url('/medical-analysis') }}</loc>
-        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
-        <changefreq>daily</changefreq>
-        <priority>0.9</priority>
-    </url>
-    <url>
-        <loc>{{ url('/skin-analysis') }}s</loc>
-        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
-        <changefreq>daily</changefreq>
-        <priority>0.9</priority>
-    </url>
-    <url>
-        <loc>{{ url('/medical-analysis/upload') }}</loc>
-        <lastmod>2026-05-21T00:00:00+00:00</lastmod>
+        <loc>https://opendoctor.online/about</loc>
+        <lastmod>{{ now()->toIso8601String() }}</lastmod>
         <changefreq>monthly</changefreq>
-        <priority>0.7</priority>
-    </url>
-    <url>
-        <loc>{{ url('/skin-analysis/upload') }}</loc>
-        <lastmod>2026-05-21T00:00:00+00:00</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.7</priority>
-    </url>    
-    <url>
-        <loc>{{ url('/contact') }}</loc>
-        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
-        <changefreq>daily</changefreq>
-        <priority>0.7</priority>
-    </url>    
-    <url>
-        <loc>{{ url('/about') }}</loc>
-        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
-        <changefreq>daily</changefreq>
-        <priority>0.7</priority>
-    </url>
-    <url>
-        <loc>{{ route('search') }}</loc>
-        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
-        <changefreq>daily</changefreq>
-        <priority>0.9</priority>
+        <priority>0.5</priority>
     </url>
 
-    <!-- 2. PÁGINAS LEGALES E INFORMATIVAS -->
     <url>
-        <loc>{{ url('/terms') }}</loc>
-        <lastmod>2026-05-21T00:00:00+00:00</lastmod>
-        <changefreq>monthly</changefreq>
+        <loc>https://opendoctor.online/terms</loc>
+        <lastmod>{{ now()->toIso8601String() }}</lastmod>
+        <changefreq>yearly</changefreq>
         <priority>0.3</priority>
     </url>
+
     <url>
-        <loc>{{ url('/privacy') }}</loc>
-        <lastmod>2026-05-21T00:00:00+00:00</lastmod>
-        <changefreq>monthly</changefreq>
+        <loc>https://opendoctor.online/privacy</loc>
+        <lastmod>{{ now()->toIso8601String() }}</lastmod>
+        <changefreq>yearly</changefreq>
         <priority>0.3</priority>
-    </url>
-    <url>
-        <loc>{{ url('/support') }}</loc>
-        <lastmod>2026-05-21T00:00:00+00:00</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.4</priority>
     </url>
 
     <url>
-        <loc>{{ url('/sintomas') }}</loc>
-        <lastmod>2026-05-21T00:00:00+00:00</lastmod>
+        <loc>https://opendoctor.online/plans/show</loc>
+        <lastmod>{{ now()->toIso8601String() }}</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.7</priority>
     </url>
 
-    <!-- 3. PERFILES DINÁMICOS DE LOS DOCTORES -->
-    @foreach($doctors as $doctor)
-        <url>            
-            <loc>{{ route('partner.public.profile', ['slug' => $doctor->slug]) }}</loc>
-            <lastmod>{{ $doctor->updated_at->toAtomString() }}</lastmod>
-            <changefreq>weekly</changefreq>
-            <priority>0.9</priority>
-        </url>
-    @endforeach
+    {{-- Directorio de síntomas indexados --}}
+    <url>
+        <loc>https://opendoctor.online/sintomas</loc>
+        <lastmod>{{ now()->toIso8601String() }}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
 
-    <!-- 4. PERFILES DINÁMICOS DE LAS CLÍNICAS (NUEVO) -->
-    @foreach($clinics as $clinic)
-        <url>            
-            <loc>{{ route('partner.public.profile', ['slug' => $clinic->slug]) }}</loc>
-            <lastmod>{{ $clinic->updated_at->toAtomString() }}</lastmod>
-            <changefreq>weekly</changefreq>
-            <priority>0.9</priority>
-        </url>
-    @endforeach
-    
-    <!-- 5. LANDINGS DINÁMICAS DE SÍNTOMAS INDEXADOS -->
     @foreach($indexedSymptoms as $symptom)
-        <url>
-            <loc>{{ route('symptom.landing', $symptom->slug) }}</loc>
-            <lastmod>{{ $symptom->updated_at->tz('UTC')->toAtomString() }}</lastmod>
-            <changefreq>weekly</changefreq>
-            <priority>0.7</priority>
-        </url>
+    <url>
+        <loc>https://opendoctor.online/sintomas/{{ $symptom->slug }}</loc>
+        <lastmod>{{ $symptom->updated_at->toIso8601String() }}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.7</priority>
+    </url>
     @endforeach
 
-    <!-- 6. LANDINGS ESPECIALIDADES -->
+    {{-- Perfiles públicos de médicos --}}
+    @foreach($doctors as $doctor)
+    <url>
+        <loc>https://opendoctor.online/medical-partner/{{ $doctor->slug }}</loc>
+        <lastmod>{{ $doctor->updated_at->toIso8601String() }}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    @endforeach
+
+    {{-- Perfiles públicos de clínicas --}}
+    @foreach($clinics as $clinic)
+    <url>
+        <loc>https://opendoctor.online/clinic/{{ $clinic->slug }}</loc>
+        <lastmod>{{ $clinic->updated_at->toIso8601String() }}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    @endforeach
+
+    {{-- Especialidades médicas --}}
     @foreach($specialties as $specialty)
-        <url>            
-            <loc>{{ url('/search') }}?specialty={{ $specialty->slug }}</loc>
-            <lastmod>{{ $specialty->updated_at->toAtomString() }}</lastmod>
-            <changefreq>weekly</changefreq>
-            <priority>0.9</priority>
-        </url>
+    <url>
+        <loc>https://opendoctor.online/search?specialty={{ $specialty->slug }}</loc>
+        <lastmod>{{ now()->toIso8601String() }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.7</priority>
+    </url>
     @endforeach
 </urlset>

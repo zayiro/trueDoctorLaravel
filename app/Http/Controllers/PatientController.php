@@ -17,6 +17,7 @@ use App\Models\Department;
 use App\Models\PatientAllergy;
 use App\Models\PatientMedication;
 use App\Models\PatientHistory;
+use App\Models\PatientSurgery;
 use App\Services\Scheduling\SlotOverlapChecker;
 use App\Events\AppointmentCancelled;
 use App\Notifications\AppointmentRescheduledNotification;
@@ -753,4 +754,96 @@ class PatientController extends Controller
 
         return back()->with('success', $message);
     }
+
+    public function storeSurgery(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'year' => 'nullable|digits:4|integer|min:1900|max:' . date('Y'),
+            'observations' => 'nullable|string',
+            'anesthesia_complications' => 'nullable|boolean',
+            'anesthesia_details' => 'nullable|string',
+        ]);
+
+        // Obtiene el perfil de paciente del usuario autenticado
+        $patient = auth()->user()->patient;
+
+        if (!$patient) {
+            return back()->withErrors(['error' => 'No se encontró un perfil de paciente asociado a tu cuenta.']);
+        }
+
+        PatientSurgery::create([
+            'patient_id' => $patient->id,
+            'name' => $validated['name'],
+            'year' => $validated['year'] ?? null,
+            'observations' => $validated['observations'] ?? null,
+            'anesthesia_complications' => $request->boolean('anesthesia_complications'),
+            'anesthesia_details' => $request->boolean('anesthesia_complications')
+                ? ($validated['anesthesia_details'] ?? null)
+                : null,
+        ]);
+
+        return back()->with('success', 'Cirugía registrada correctamente.');
+    }
+
+    public function destroySurgery($id)
+    {
+        $surgery = PatientSurgery::findOrFail($id);
+
+        // Verifica que la cirugía pertenezca al paciente autenticado por seguridad
+        $patient = auth()->user()->patient;
+        if ($patient && $surgery->patient_id !== $patient->id) {
+            abort(403, 'No tienes permiso para eliminar este registro.');
+        }
+
+        $surgery->delete();
+
+        return back()->with('success', 'Cirugía eliminada correctamente.');
+    }
+
+    public function editSurgery($id)
+    {
+        $surgery = PatientSurgery::findOrFail($id);
+
+        $patient = auth()->user()->patient;
+        if ($patient && $surgery->patient_id !== $patient->id) {
+            abort(403, 'No tienes permiso para editar este registro.');
+        }
+
+        // Asegúrate de que el nombre de esta vista coincida con tu archivo Blade de edición
+        return view('patient.surgeries.edit', compact('surgery'));
+    }
+
+    public function updateSurgery(Request $request, $id)
+    {
+        $surgery = PatientSurgery::findOrFail($id);
+
+        $patient = auth()->user()->patient;
+        if ($patient && $surgery->patient_id !== $patient->id) {
+            abort(403, 'No tienes permiso para actualizar este registro.');
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'year' => 'nullable|digits:4|integer|min:1900|max:' . date('Y'),
+            'observations' => 'nullable|string',
+            'anesthesia_complications' => 'nullable|boolean',
+            'anesthesia_details' => 'nullable|string',
+        ]);
+
+        $surgery->update([
+            'name' => $validated['name'],
+            'year' => $validated['year'] ?? null,
+            'observations' => $validated['observations'] ?? null,
+            'anesthesia_complications' => $request->boolean('anesthesia_complications'),
+            'anesthesia_details' => $request->boolean('anesthesia_complications')
+                ? ($validated['anesthesia_details'] ?? null)
+                : null,
+        ]);
+
+        // Cambia 'patient.surgeries.index' por el nombre exacto de tu ruta principal de cirugías
+        return redirect()->route('patient.surgeries.index')
+            ->with('success', 'Cirugía actualizada correctamente.');
+    }
+
 }

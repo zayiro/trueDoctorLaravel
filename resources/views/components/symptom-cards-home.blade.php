@@ -19,10 +19,10 @@
     <section class="max-w-7xl mx-auto" aria-labelledby="symptoms-home-title">
         <div class="mb-8">
             <div>                
-                <h1 id="symptoms-home-title" class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
+                <h2 id="symptoms-home-title" class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight mb-6">
                     ¿No sabes a qué especialista
                     <span class="text-blue-600">médico consultar?</span>
-                </h1>
+                </h2>
                 <p class="text-slate-500 text-sm sm:text-base mt-1 dark:text-slate-400">
                     Orientación clínica basada en síntomas comunes y derivación médica inmediata.
                 </p>
