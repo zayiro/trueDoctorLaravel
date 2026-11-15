@@ -1,6 +1,7 @@
 <x-guest-layout 
-    :meta-title-medical-analysis="$meta_title_medicalAnalysis" 
-    :meta-description-medical-analysis="$meta_description_medicalAnalysis"
+    meta_title="Análisis de Piel con IA | Dermatología Online - OpenDoctor"
+    meta_description="Analiza lesiones de piel con inteligencia artificial. Sube una foto y recibe un informe dermatológico preliminar en minutos. Citas médicas en línea con especialistas."
+    keywords="análisis de piel con IA, dermatología online, citas médicas dermatología, análisis dermatológico inteligencia artificial, lesiones de piel, citas médicas en línea"
 >
     @if(session('error'))
         <div class="max-w-4xl mx-auto my-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400 text-center">
@@ -69,12 +70,12 @@
         }
     </style>
 
-    <div class="bg-gradient-to-b from-white via-purple-50 to-slate-50">
+    <main class="bg-gradient-to-b from-white via-purple-50 to-slate-50">
 
         {{-- HERO --}}
         <section class="mx-auto max-w-4xl px-4 pt-16 pb-10 text-center md:pt-24">            
             <h1 class="od-serif mt-5 text-4xl font-semibold leading-tight tracking-tight text-slate-900 md:text-6xl">
-                Lo que ves en tu piel merece más que adivinar.
+                Análisis de Piel con Inteligencia Artificial
             </h1>
             <p class="mx-auto mt-5 max-w-2xl text-base text-slate-600 md:text-lg">
                 Sube una foto y recibe un informe preliminar en minutos, con posibles hallazgos, señales de alarma y el especialista al que conviene acudir.
@@ -94,7 +95,7 @@
                 <div class="od-panel">
 
                     <div class="od-side">
-                        <h2 class="od-serif">Mira el problema con claridad antes de elegir una solución.</h2>
+                        <h2 class="od-serif">Casos que Analizamos con IA Dermatológica</h2>
                         <div class="od-arrows">
                             <button type="button" aria-label="Anterior" class="od-arrow od-arrow-prev"
                                     @click="$refs.track.scrollBy({ left: -320, behavior: 'smooth' })">
@@ -112,7 +113,7 @@
                             <article class="od-item">
                                 <div class="od-card" style="background: linear-gradient(135deg, {{ $c['c1'] }}, {{ $c['c2'] }});">
                                     @if ($c['image'])
-                                        <img src="{{ asset($c['image']) }}" alt="{{ $c['title'] }}" loading="lazy">
+                                        <img src="{{ asset($c['image']) }}" alt="Análisis de {{ $c['title'] }} con inteligencia artificial dermatológica" loading="lazy">
                                     @else
                                         <span class="od-emoji">{{ $c['emoji'] }}</span>
                                     @endif
@@ -133,14 +134,14 @@
 
         {{-- CÓMO FUNCIONA --}}
         <section class="mx-auto max-w-5xl px-4 pb-16 mt-4">
-            <h2 class="od-serif text-center text-3xl font-semibold text-slate-900 md:text-4xl">Así de simple</h2>
+            <h2 class="od-serif text-center text-3xl font-semibold text-slate-900 md:text-4xl">Cómo Funciona el Análisis Dermatológico con IA</h2>
             <div class="mt-10 grid gap-5 md:grid-cols-3 mb-3 gap-3">
                 @foreach ($steps as $s)
-                    <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <article class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                         <span class="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-sm font-bold text-purple-700">{{ $s['n'] }}</span>
                         <h3 class="mt-4 text-lg font-bold text-slate-900">{{ $s['title'] }}</h3>
                         <p class="mt-1 text-sm leading-relaxed text-slate-600">{{ $s['text'] }}</p>
-                    </div>
+                    </article>
                 @endforeach
             </div>
         </section>
@@ -148,7 +149,7 @@
         {{-- CTA FINAL --}}
         <section class="mx-auto max-w-4xl px-4 pb-20 mt-5">
             <div class="rounded-3xl bg-slate-900 px-6 py-12 text-center text-white md:px-12">
-                <h2 class="od-serif text-3xl font-semibold md:text-4xl">Empieza con una foto.</h2>
+                <h2 class="od-serif text-3xl font-semibold md:text-4xl">Comienza tu Análisis Dermatológico</h2>
                 <p class="mx-auto mt-3 max-w-xl text-sm text-slate-300">
                     Tu imagen se guarda de forma privada y solo se usa para generar tu informe.
                 </p>
@@ -161,5 +162,5 @@
                 Este análisis es orientativo, no constituye un diagnóstico y no reemplaza la valoración de un profesional de la salud. Si notas sangrado, crecimiento rápido o dolor intenso, consulta a un médico cuanto antes.
             </p>
         </section>
-    </div>
+    </main>
 </x-guest-layout>

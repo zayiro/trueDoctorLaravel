@@ -1,6 +1,7 @@
 <x-guest-layout
-    :meta_title="$meta_title_medicalAnalysis"
-    :meta_description="$meta_description_medicalAnalysis"
+    meta_title="Análisis de Exámenes Médicos con IA | Citas Médicas Online"
+    meta_description="Interpreta tus exámenes de laboratorio, radiografías y estudios médicos con inteligencia artificial en segundos. Citas médicas en línea con especialistas."
+    keywords="análisis médico con IA, interpretar exámenes médicos, análisis de laboratorio con IA, citas médicas en línea, inteligencia artificial médica, segunda opinión médica"
 >
 @php
     $exams = [
@@ -40,6 +41,7 @@
         </div>
     @endif
 
+    <main>
     {{-- ============ HERO ============ --}}
     <header class="max-w-7xl mx-auto px-6 pt-12 pb-16 md:pt-20 md:pb-24 grid lg:grid-cols-2 gap-14 items-center">
         <div class="space-y-6 mt-5">
@@ -96,8 +98,9 @@
         <div class="relative mb-8 lg:mb-0">
             <div class="rounded-3xl border border-slate-200 bg-slate-50 p-3 sm:p-4 shadow-sm">
                 <img src="{{ asset('images/examenes-medicos-con-ia.jpg') }}"
-                     alt="Análisis de exámenes médicos con inteligencia artificial"
-                     class="h-64 w-full rounded-2xl object-cover sm:h-80 lg:h-96">
+                     alt="Análisis de exámenes médicos con inteligencia artificial - Citas médicas en línea"
+                     class="h-64 w-full rounded-2xl object-cover sm:h-80 lg:h-96"
+                     loading="lazy">
             </div>
 
             <div class="absolute -top-4 right-4 sm:right-8 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-lg">
@@ -122,13 +125,13 @@
     <section id="tipos" class="border-y border-slate-200 bg-slate-50 py-16 md:py-20">
         <div class="max-w-7xl mx-auto px-6">
             <div class="mx-auto mb-12 max-w-2xl text-center">
-                <h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Qué puedes analizar</h2>
+                <h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Tipos de Exámenes Médicos que Analizamos</h2>
                 <p class="mt-3 text-slate-500">Desde un hemograma hasta una resonancia: sube tu estudio y recibe una explicación clara.</p>
             </div>
 
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($exams as $exam)
-                    <div class="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-blue-500 hover:shadow-md">
+                    <article class="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-blue-500 hover:shadow-md">
                         <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl {{ $exam['tone'] }}">
                             <i class="fa-solid {{ $exam['icon'] }}"></i>
                         </span>
@@ -145,17 +148,17 @@
     {{-- ============ CÓMO FUNCIONA ============ --}}
     <section class="max-w-7xl mx-auto px-6 py-16 md:py-20">
         <div class="mx-auto mb-12 max-w-2xl text-center">
-            <h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Así de simple</h2>
+            <h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Cómo Funciona el Análisis Médico con IA</h2>
             <p class="mt-3 text-slate-500">Tres pasos y tienes tu segunda opinión.</p>
         </div>
 
         <div class="grid gap-5 md:grid-cols-3">
             @foreach ($steps as $step)
-                <div class="rounded-2xl border border-slate-200 bg-white p-6">
+                <article class="rounded-2xl border border-slate-200 bg-white p-6">
                     <span class="flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold {{ $step['tone'] }}">{{ $step['n'] }}</span>
                     <h3 class="mt-5 text-lg font-bold text-slate-900">{{ $step['title'] }}</h3>
                     <p class="mt-2 text-sm leading-relaxed text-slate-600">{{ $step['text'] }}</p>
-                </div>
+                </article>
             @endforeach
         </div>
     </section>
@@ -164,19 +167,19 @@
     <section id="features" class="border-y border-slate-200 bg-slate-50 py-16 md:py-20">
         <div class="max-w-7xl mx-auto px-6">
             <div class="mx-auto mb-12 max-w-2xl text-center">
-                <h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">¿Por qué usar IA para entender tus exámenes?</h2>
+                <h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Ventajas del Análisis Médico con Inteligencia Artificial</h2>
                 <p class="mt-3 text-slate-500">La IA no reemplaza a tu médico: te da conocimiento para tomar mejores decisiones en tu próxima consulta.</p>
             </div>
 
             <div class="grid gap-6 md:grid-cols-3">
                 @foreach ($reasons as $reason)
-                    <div class="rounded-2xl border border-slate-200 bg-white p-8 transition hover:shadow-lg">
+                    <article class="rounded-2xl border border-slate-200 bg-white p-8 transition hover:shadow-lg">
                         <span class="flex h-12 w-12 items-center justify-center rounded-xl text-xl {{ $reason['tone'] }}">
                             <i class="fa-solid {{ $reason['icon'] }}"></i>
                         </span>
                         <h3 class="mt-5 text-xl font-bold text-slate-900">{{ $reason['title'] }}</h3>
                         <p class="mt-2 text-sm leading-relaxed text-slate-600">{{ $reason['text'] }}</p>
-                    </div>
+                    </article>
                 @endforeach
             </div>
         </div>
@@ -185,7 +188,7 @@
     {{-- ============ PREGUNTAS FRECUENTES ============ --}}
     <section class="mx-auto max-w-3xl px-6 py-16 md:py-20" x-data="{ open: 1 }">
         <div class="mb-10 text-center">
-            <h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Preguntas frecuentes</h2>
+            <h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Preguntas Frecuentes sobre Análisis Médico con IA</h2>
         </div>
 
         <div class="rounded-2xl border border-slate-200 bg-white px-6">
@@ -252,4 +255,5 @@
             </p>
         </div>
     </section>
+    </main>
 </x-guest-layout>

@@ -1,6 +1,7 @@
 <x-guest-layout 
-    :meta-title-medical-analysis="$meta_title_medicalAnalysis" 
-    :meta-description-medical-analysis="$meta_description_medicalAnalysis"
+    meta_title="Subir Exámenes Médicos para Análisis con IA | OpenDoctor Online"
+    meta_description="Carga tus exámenes de laboratorio, radiografías o estudios médicos. Obtén un análisis preliminar con inteligencia artificial en minutos. Citas médicas en línea."
+    keywords="análisis médico con IA, subir exámenes médicos, interpretación de laboratorios, análisis de estudios médicos, citas médicas en línea, inteligencia artificial médica"
 >
     <!-- MOSTRAR ERRORES Y MENSAJES -->
     @if ($errors->any())
@@ -45,12 +46,12 @@
         </div>
     @endif
 
-    <div class="max-w-7xl w-full mx-auto px-6 py-12 flex-grow mt-6">
-        <div class="bg-slate-950 rounded-2xl border border-white/10 p-8 shadow-2xl space-y-6">
+    <main class="max-w-7xl w-full mx-auto px-6 py-12 flex-grow mt-6">
+        <section class="bg-slate-950 rounded-2xl border border-white/10 p-8 shadow-2xl space-y-6">
             
             <!-- ENCABEZADO -->
             <div class="space-y-2">
-                <h1 class="text-2xl font-black text-white">Análisis Clínico Avanzado por IA</h1>
+                <h1 class="text-2xl font-black text-white">Sube tus Exámenes Médicos para Análisis con IA</h1>
                 <p class="text-md text-slate-400">Arrastra o selecciona informes médicos (PDF, JPG, PNG, DICOM) y obtén una interpretación guiada por Inteligencia Artificial.</p>
             </div>
 
@@ -122,7 +123,7 @@
                     </div>
 
                     <div class="md:col-span-2">
-                        <h2 class="text-xl font-black text-white">Estos datos aumentan la exactitud del informe</h2>
+                        <h3 class="text-xl font-black text-white">Estos datos aumentan la exactitud del informe</h3>
                     </div>
 
                     <!-- Motivo -->

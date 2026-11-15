@@ -1,22 +1,23 @@
 <x-guest-layout
-    :meta-title-medical-analysis="$meta_title_medicalAnalysis" 
-    :meta-description-medical-analysis="$meta_description_medicalAnalysis"
+    meta_title="Subir Foto de Piel para Análisis Dermatológico con IA | OpenDoctor"
+    meta_description="Sube una foto de tu lesión cutánea y recibe un análisis dermatológico preliminar con IA. Validación de calidad de imagen instantánea. Citas médicas dermatología online."
+    keywords="análisis dermatológico con IA, subir foto de piel, dermatología online, análisis de lesiones cutáneas, citas médicas dermatología, inteligencia artificial dermatológica"
 >
-    <div class="min-h-screen bg-slate-50 py-12 px-4 md:px-6">
+    <main class="min-h-screen bg-slate-50 py-12 px-4 md:px-6">
         <div class="max-w-5xl mx-auto">
             
             <!-- Encabezado de la Sección -->
-            <div class="text-center mb-10">
+            <header class="text-center mb-10">
                 <h1 class="text-4xl font-extrabold text-slate-900 tracking-tight mb-2">
-                    Análisis Avanzado de tu Piel
+                    Sube tu Foto para Análisis Dermatológico con IA
                 </h1>
                 <p class="text-base text-slate-600 max-w-xl mx-auto">
                     Sube una imagen para que nuestra IA verifique si cuenta con la iluminación y nitidez adecuadas para un reporte dermatológico.
                 </p>
-            </div>
+            </header>
 
             <!-- Contenedor Principal Reactivo con Alpine.js -->
-            <div x-data="skinUpload()" class="bg-white rounded-3xl shadow-md border border-slate-200 p-6 md:p-8 space-y-6">
+            <section x-data="skinUpload()" class="bg-white rounded-3xl shadow-md border border-slate-200 p-6 md:p-8 space-y-6">
 
                 <!-- Alerta de Errores Globales de Alpine -->
                 <div x-show="errorMessage" x-transition x-cloak class="bg-red-50 border-l-4 border-red-500 p-4 rounded-xl">
@@ -33,7 +34,7 @@
                     <!-- ======================================================= -->
                     <div x-show="step === 'upload'" class="space-y-6">
                         <div>
-                            <label class="block text-sm font-bold text-slate-800 mb-2">📸 Captura o Sube la Foto de la Lesión</label>
+                            <h2 class="block text-sm font-bold text-slate-800 mb-2">📸 Captura o Sube la Foto de la Lesión</h2>
                             
                             <div @click="$refs.fileInput.click()" class="border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center bg-slate-50 cursor-pointer hover:border-purple-500 hover:bg-slate-100 transition-all duration-300">
                                 <svg class="mx-auto h-12 w-12 text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -78,11 +79,11 @@
                         <!-- Email e Idioma -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label for="email" class="block text-sm font-bold text-slate-800 mb-1.5">¿A qué correo electrónico enviamos tu resultado?</label>
+                                <h2 class="block text-sm font-bold text-slate-800 mb-1.5">¿A qué correo electrónico enviamos tu resultado?</h2>
                                 <input type="email" name="email" id="email" placeholder="nombre@correo.com" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition text-sm text-slate-800" required>
                             </div>
                             <div>
-                                <label for="language" class="block text-sm font-bold text-slate-800 mb-1.5">¿En qué idioma quieres ver el resultado?</label>
+                                <h2 class="block text-sm font-bold text-slate-800 mb-1.5">¿En qué idioma quieres ver el resultado?</h2>
                                 <select name="language" id="language" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition text-sm text-slate-800">
                                     <option value="es" selected>Español (Spanish)</option>
                                     <option value="en">Inglés (English)</option>
@@ -95,7 +96,7 @@
 
                         <!-- Ubicación Opcional -->
                         <div>
-                            <label for="body_location" class="block text-sm font-bold text-slate-800 mb-1.5">Ubicación en el cuerpo <span class="text-xs font-normal text-slate-400">(Opcional)</span></label>
+                            <h3 class="block text-sm font-bold text-slate-800 mb-1.5">Ubicación en el cuerpo <span class="text-xs font-normal text-slate-400">(Opcional)</span></h3>
                             <select name="body_location" id="body_location" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition text-sm text-slate-800">
                                 <option value="">Selecciona una zona…</option>
                                 @foreach ($bodyLocations as $group => $options)
@@ -110,7 +111,7 @@
 
                         <!-- Descripción del Síntoma -->
                         <div>
-                            <label for="description" class="block text-sm font-bold text-slate-800 mb-1.5">📝 Descripción o Síntomas <span class="text-xs font-normal text-slate-400">(Opcional)</span></label>
+                            <h3 class="block text-sm font-bold text-slate-800 mb-1.5">📝 Descripción o Síntomas <span class="text-xs font-normal text-slate-400">(Opcional)</span></h3>
                             <textarea name="description" id="description" rows="3" placeholder="Ej: Empezó hace 1 semana, genera picazón leve y pica con el sudor..." class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition text-sm text-slate-800 resize-none"></textarea>
                         </div>
 
@@ -138,9 +139,9 @@
                     </div>
                 </form>
 
-            </div>
+            </section>
         </div>
-    </div>
+    </main>
     <script>
         function skinUpload() {
             return {

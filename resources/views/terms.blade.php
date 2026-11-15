@@ -1,12 +1,13 @@
 <x-guest-layout
-    meta_title="Términos de Servicio y Condiciones de Uso | OpenDoctorOnline"
-    meta_description="Consulta las condiciones legales, regulaciones de uso y responsabilidades de nuestra plataforma médica digital en OpenDoctorOnline. Tu seguridad es nuestra prioridad."
+    meta_title="Términos y Condiciones | Citas Médicas en Línea - OpenDoctor"
+    meta_description="Consulta los términos legales de uso de nuestra plataforma de citas médicas en línea y análisis con IA. Condiciones de servicio, privacidad y responsabilidades."
+    keywords="términos y condiciones médicas, condiciones de uso citas médicas, términos legales plataforma médica, citas médicas en línea, responsabilidad médica online"
 >
-    <div class="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 mt-8">
-        <div class="max-w-7xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+    <main class="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 mt-8">
+        <article class="max-w-7xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             
             <!-- Encabezado Principal Estilo Doctoralia -->
-            <div class="bg-gradient-to-r from-teal-600 to-cyan-700 px-6 py-12 text-center sm:px-12">
+            <header class="bg-gradient-to-r from-teal-600 to-cyan-700 px-6 py-12 text-center sm:px-12">
                 <span class="badge bg-teal-500/20 text-white text-xs px-3 py-1 rounded-pill mb-2 inline-block font-semibold">
                     Documento Legal SaaS
                 </span>
@@ -16,7 +17,7 @@
                 <p class="mt-3 max-w-2xl mx-auto text-teal-100 text-sm">
                     Última actualización: {{ now()->format('d de F, Y') }}
                 </p>
-            </div>
+            </header>
 
             <!-- Estructura de Rejilla Fluida (Grid) -->
             <div class="grid grid-cols-1 lg:grid-cols-12 border-t border-slate-100">
@@ -44,7 +45,7 @@
                 </aside>
 
                 <!-- Columna Derecha: Contenido Expandido y Legible (Ocupa 9 de 12 columnas) -->
-                <main class="lg:col-span-9 p-6 sm:p-10 lg:p-12 bg-white">
+                <section class="lg:col-span-9 p-6 sm:p-10 lg:p-12 bg-white">
                     <div class="text-slate-700 space-y-10 text-base sm:text-lg leading-relaxed">
                         
                         <p class="text-slate-500 font-medium pb-4 border-b border-slate-100">
@@ -133,9 +134,9 @@
                         </section>
 
                     </div>
-                </main>
+                </section>
 
             </div>
-        </div>
-    </div>
+        </article>
+    </main>
 </x-guest-layout>
