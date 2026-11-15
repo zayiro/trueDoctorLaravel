@@ -28,12 +28,6 @@
             <priority>0.5</priority>
     </url>
     <url>
-        <loc>{{ url('/login') }}</loc>
-        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
-        <changefreq>daily</changefreq>
-        <priority>0.7</priority>
-    </url>
-    <url>
         <loc>{{ url('/medical-analysis') }}</loc>
         <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
         <changefreq>daily</changefreq>
@@ -56,13 +50,7 @@
         <lastmod>2026-05-21T00:00:00+00:00</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.7</priority>
-    </url>
-    <url>
-        <loc>{{ url('/plans/show') }}</loc>
-        <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>
-        <changefreq>daily</changefreq>
-        <priority>0.9</priority>
-    </url>
+    </url>    
     <url>
         <loc>{{ url('/contact') }}</loc>
         <lastmod>{{ now()->startOfDay()->toAtomString() }}</lastmod>

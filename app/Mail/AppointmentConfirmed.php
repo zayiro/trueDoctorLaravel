@@ -50,33 +50,51 @@ class AppointmentConfirmed extends Mailable
         );
     }
 
-    /**
+        /**
      * Get the attachments for the message.
      *
      * @return array<int, Attachment>
      */
     public function attachments(): array
     {
-        // 1. Fusionamos el objeto Date de Eloquent con los strings de horas
-        // Como 'date' ya viene casteado como objeto Carbon, usamos format('Y-m-d')
+        $tz = config('app.timezone', 'America/Bogota');
         $fechaBase = $this->appointment->date->format('Y-m-d');
         
-        $start_time  = Carbon::parse("{$fechaBase} {$this->appointment->start_time}");
-        $end_time    = Carbon::parse("{$fechaBase} {$this->appointment->end_time}");
+        $start_time  = Carbon::parse("{$fechaBase} {$this->appointment->start_time}", $tz);
+        $end_time    = Carbon::parse("{$fechaBase} {$this->appointment->end_time}", $tz);
         $isVirtual   = ($this->appointment->service?->type === 'virtual') || ($this->appointment->address?->type === 'virtual');
-        $addressText = $isVirtual ? 'Consulta Médica por Telemedicina' : 'Consultorio Médico Presencial';
-        $partner     = $this->appointment->doctor->user->name ? 'Cita Médica con ' . $this->appointment->doctor->user->name : 'Cita Médica';
+        $addressText = $isVirtual ? 'Consulta Médica por Telemedicina' : ($this->appointment->address?->address ?? 'Consultorio Médico Presencial');
+        $doctorName  = $this->appointment->doctor?->user?->name;
+        $partner     = $doctorName ? 'Cita Médica con ' . $doctorName : 'Cita Médica';
+
+        // Datos del organizador: deben coincidir con el remitente (From) del correo para evitar "Unknown Organizer"
+        $organizerEmail = config('mail.from.address', 'noreply@opendoctor.online');
+        $organizerName  = config('mail.from.name', 'OpenDoctor Online');
+
+        // Determinamos quién recibe este correo (paciente o doctor) para registrarlo como invitado (Attendee)
+        $attendeeEmail = $this->userAction === 'patient'
+            ? $this->appointment->patient?->user?->email
+            : $this->appointment->doctor?->user?->email;
+
+        $attendeeName = $this->userAction === 'patient'
+            ? $this->appointment->patient?->user?->name
+            : $doctorName;
 
         // 2. Construcción del evento iCalendar con Spatie
-        $icsContent = Calendar::create('Calendario de Citas en OpenDoctorOnline')
-            ->event(
-                Event::create($partner)
-                    ->startsAt($start_time)
-                    ->endsAt($end_time)
-                    ->description("Estado de la cita: {$this->appointment->status->value}.\nPor favor, asista 10 minutos antes.")
-                    // Ajusta el nombre de la relación según tengas configurado tu modelo (ej. $this->appointment->doctor->office_address)
-                    ->address($addressText) 
-            )
+        $event = Event::create($partner)
+            ->uniqueIdentifier("appointment-{$this->appointment->reference}@opendoctor.online")
+            ->startsAt($start_time)
+            ->endsAt($end_time)
+            ->organizer($organizerEmail, $organizerName)
+            ->description("Referencia: {$this->appointment->reference}\nEstado de la cita: {$this->appointment->status->value}.\nPor favor, conéctese o asista 10 minutos antes.")
+            ->address($addressText);
+
+        if ($attendeeEmail) {
+            $event->attendee($attendeeEmail, $attendeeName ?? 'Participante');
+        }
+
+        $icsContent = Calendar::create('Calendario de Citas en OpenDoctor Online')
+            ->event($event)
             ->get();
 
         // 3. Adjunto en memoria con los headers correctos para clientes de correo
