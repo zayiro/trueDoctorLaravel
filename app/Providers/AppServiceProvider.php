@@ -122,7 +122,9 @@ class AppServiceProvider extends ServiceProvider
      */
     private function isAccountActive(User $user): bool
     {
-        return (bool) match ($user->role) {
+        $role = $user->getRoleNames()->first();
+        
+        return match ($role) {
             'patient' => $user->patient?->active ?? true,
             'doctor'  => $user->doctor?->active ?? true,
             'clinic'  => $user->clinic?->active ?? true,
