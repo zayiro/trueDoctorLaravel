@@ -68,6 +68,9 @@ $breadcrumbs = [
                             <input type="datetime-local" name="expires_at" id="expires_at" value="{{ old('expires_at') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
                             @error('expires_at') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                         </div>
+
+                        <!-- Módulos donde aplica -->
+                        @include('administrator.promo-codes._applies-to', ['selected' => old('applies_to', [])])
                     </div>
 
                     <!-- Activo Checkbox -->

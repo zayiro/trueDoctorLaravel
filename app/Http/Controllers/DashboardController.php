@@ -64,12 +64,16 @@ class DashboardController extends Controller
                 PromoCode::create([
                     'user_id'    => $user->id,
                     'code'       => $promoCode, // Ej: DA8F3KL
+                    'applies_to' => [
+                        PromoCode::MODULE_EXAM,
+                        PromoCode::MODULE_SKIN_ANALYSIS,
+                    ],
                     'type'       => 'percent',
                     'reward'     => 100.00, // 100% de descuento de bienvenida
                     'max_uses'   => 1,     // Un solo uso permitido
                     'expires_at' => null,  // Nunca expira (nulable)
                     'is_active'  => true,
-                ]);
+                ]);                
             }
         }
 

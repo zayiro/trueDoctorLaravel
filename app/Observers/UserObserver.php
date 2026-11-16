@@ -118,6 +118,10 @@ class UserObserver
         PromoCode::create([
             'user_id'    => $user->id,
             'code'       => Str::upper(Str::random(7)),
+            'applies_to' => [
+                PromoCode::MODULE_EXAM,
+                PromoCode::MODULE_SKIN_ANALYSIS,
+            ],
             'type'       => 'percent',
             'reward'     => 100.00, // 100% de descuento
             'max_uses'   => 1,

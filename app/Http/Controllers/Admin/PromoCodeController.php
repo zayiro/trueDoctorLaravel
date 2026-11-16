@@ -33,18 +33,11 @@ class PromoCodeController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'code' => ['required', 'string', 'max:255', 'unique:promo_codes,code'],
-            'type' => ['required', Rule::in(['fixed', 'percent'])],
-            'reward' => ['required', 'numeric', 'min:0'],
-            'max_uses' => ['nullable', 'integer', 'min:1'],
-            'starts_at' => ['nullable', 'date'],
-            'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
-            'is_active' => ['boolean'],
-        ]);
+        $validated = $request->validate($this->rules(), $this->messages());
 
         // Forzar valor por defecto del checkbox si no se marca
         $validated['is_active'] = $request->has('is_active');
+        $validated['applies_to'] = array_values(array_unique($validated['applies_to']));
         // Inicializamos los usos en cero explícitamente
         $validated['uses'] = 0; 
 
@@ -67,18 +60,11 @@ class PromoCodeController extends Controller
      */
     public function update(Request $request, PromoCode $promoCode)
     {
-        $validated = $request->validate([
-            'code' => ['required', 'string', 'max:255', Rule::unique('promo_codes')->ignore($promoCode->id)],
-            'type' => ['required', Rule::in(['fixed', 'percent'])],
-            'reward' => ['required', 'numeric', 'min:0'],
-            'max_uses' => ['nullable', 'integer', 'min:1'],
-            'starts_at' => ['nullable', 'date'],
-            'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
-            'is_active' => ['boolean'],
-        ]);
+        $validated = $request->validate($this->rules($promoCode), $this->messages());
 
         // Manejo manual del checkbox si viene ausente en el request
         $validated['is_active'] = $request->has('is_active');
+        $validated['applies_to'] = array_values(array_unique($validated['applies_to']));
 
         $promoCode->update($validated);
 
@@ -95,5 +81,33 @@ class PromoCodeController extends Controller
 
         return redirect()->route('administrator.promo-codes.index')
             ->with('status', 'Código de promoción eliminado correctamente.');
+    }
+
+    /**
+     * Reglas de validación compartidas por crear y editar.
+     */
+    private function rules(?PromoCode $promoCode = null): array
+    {
+        return [
+            'code' => ['required', 'string', 'max:255', Rule::unique('promo_codes', 'code')->ignore($promoCode?->id)],
+            'type' => ['required', Rule::in(['fixed', 'percent'])],
+            'reward' => ['required', 'numeric', 'min:0'],
+            'max_uses' => ['nullable', 'integer', 'min:1'],
+            'starts_at' => ['nullable', 'date'],
+            'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
+            'is_active' => ['boolean'],
+            // Módulos donde sirve el código: al menos uno, solo valores conocidos
+            'applies_to' => ['required', 'array', 'min:1'],
+            'applies_to.*' => ['string', Rule::in(PromoCode::MODULES)],
+        ];
+    }
+
+    private function messages(): array
+    {
+        return [
+            'applies_to.required' => 'Selecciona al menos un módulo donde aplique el código.',
+            'applies_to.min' => 'Selecciona al menos un módulo donde aplique el código.',
+            'applies_to.*.in' => 'Uno de los módulos seleccionados no es válido.',
+        ];
     }
 }

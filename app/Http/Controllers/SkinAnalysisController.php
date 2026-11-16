@@ -259,7 +259,7 @@ PROMPT;
             'code' => ['required', 'string', 'max:50'],
         ]);
 
-        $code = PromoCode::where('code', strtoupper(trim($validated['code'])))->first();
+        $code = PromoCode::forModule(PromoCode::MODULE_SKIN_ANALYSIS)->where('code', strtoupper(trim($validated['code'])))->first();
 
         if (!$code) {
             return response()->json(['valid' => false, 'message' => 'Código no encontrado.']);
@@ -318,7 +318,7 @@ PROMPT;
         $promoInput = strtoupper(trim((string) ($validated['promo_code'] ?? '')));
 
         if ($promoInput !== '') {
-            $candidate = PromoCode::where('code', $promoInput)->first();
+            $candidate = PromoCode::forModule(PromoCode::MODULE_SKIN_ANALYSIS)->where('code', $promoInput)->first();
 
             if (!$candidate || !$candidate->isRedeemable()) {
                 return $backToPreview('El código promocional no es válido o ya no está disponible.');

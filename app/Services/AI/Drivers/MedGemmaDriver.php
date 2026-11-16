@@ -169,10 +169,7 @@ class MedGemmaDriver implements AIVisionDriver
             'type' => 'object',
             'properties' => [
                 'nombre_examen' => ['type' => 'string'],
-                'especialidad_slug' => [
-                    'type' => 'string',
-                    'enum' => ['radiologia', 'cardiologia', 'neurologia', 'oncologia', 'medicina-general'],
-                ],
+                'especialidad_slug' => ['type' => 'string', 'enum' => config('ai_specialties.allowed')],
                 'hallazgos_clave' => [
                     'type' => 'array',
                     'items' => [

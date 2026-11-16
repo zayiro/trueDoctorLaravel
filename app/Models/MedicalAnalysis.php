@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Specialty;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -26,7 +27,8 @@ class MedicalAnalysis extends Model
         'wompi_transaction_id',
         'ai_response',
         'ai_provider',
-        'analysis_language'
+        'analysis_language',
+        'result_email_sent_at'
     ];
 
     protected $table = 'medical_analyses';
@@ -72,5 +74,26 @@ class MedicalAnalysis extends Model
     public function getRouteKeyName(): string
     {
         return 'access_token';
+    }
+
+    /**
+     * Especialidad que sugirió la IA y a dónde mandar a agendar.
+     * 'target' es la sugerida si tiene médicos (status = 1); si no, el fallback.
+     */
+    public function specialtyRecommendation(): array
+    {
+        $slug = $this->ai_response['especialidad_slug'] ?? null;
+
+        $suggested = $slug ? Specialty::where('slug', $slug)->first() : null;
+
+        if ($suggested && (int) $suggested->status === 1) {
+            return ['suggested' => $suggested, 'target' => $suggested, 'available' => true];
+        }
+
+        $fallback = Specialty::where('slug', config('ai_specialties.fallback', 'medicina-general'))
+            ->where('status', 1)
+            ->first();
+
+        return ['suggested' => $suggested, 'target' => $fallback, 'available' => false];
     }
 }

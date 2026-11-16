@@ -96,7 +96,7 @@ class OpenAIDriver implements AIVisionDriver
                 'type' => 'object',
                 'properties' => [
                     'nombre_examen' => ['type' => 'string'],
-                    'especialidad_slug' => ['type' => 'string'],
+                    'especialidad_slug' => ['type' => 'string', 'enum' => config('ai_specialties.allowed')],
                     'hallazgos_clave' => [
                         'type' => 'array',
                         'items' => [

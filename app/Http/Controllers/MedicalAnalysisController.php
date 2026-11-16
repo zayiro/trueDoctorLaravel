@@ -7,6 +7,7 @@ use App\Mail\ExamAnalysisReady;
 use App\Models\MedicalAnalysis;
 use App\Models\PromoCode;
 use App\Models\Setting;
+use App\Models\Specialty;
 use App\Services\AI\AIVisionManager;
 use App\Services\MedicalAnalysisFilePurger;
 use Carbon\Carbon;
@@ -183,7 +184,7 @@ class MedicalAnalysisController extends Controller
         $detectedType = strtolower(trim($data['detected_exam_type']));
         $email = trim(strtolower($data['customer_email']));
         $language = strtolower($data['selected_language']);
-        $reasonType = $data['reason_type'] ?? null;
+        $reasonType = $data['reason_type'] ?? 'other';
         $reasonCustom = trim($data['reason_custom'] ?? '');
 
         if (!in_array($detectedType, self::EXAM_TYPES, true)) {
@@ -249,7 +250,7 @@ class MedicalAnalysisController extends Controller
         // Camino gratuito: dispara la IA y va directo al resultado
         if ($isFree) {
             ProcessMedicalAnalysisAI::dispatch($analysis);
-            $this->notifyCustomer($analysis);
+            // El correo se envía al terminar la IA (ver analyzeWithAI)
 
             return response()->json([
                 'status' => 'success',
@@ -281,37 +282,20 @@ class MedicalAnalysisController extends Controller
                 ->with('info', 'El pago ya fue procesado.');
         }
 
-        $finalAmount = (int) round((float) $analysis->price);
+        $amount = (int) round((float) $analysis->price);
 
-        if ($finalAmount <= 0) {
+        if ($amount <= 0) {
             return redirect()->route('medical-analysis.show', $token)
                 ->with('error', 'Esta orden no requiere pago.');
         }
 
-        // Referencia de pago: "{id}-{ymdH}-{aleatorio}" (processPaymentResult valida el prefijo "{id}-")
-        $paymentReference = $analysis->id . '-' . Carbon::now()->format('ymdH') . '-' . strtoupper(Str::random(5));
-        $analysis->update(['payment_id' => $paymentReference]);
-
-        $amountInCents = $finalAmount * 100;
-        $currency = 'COP';
-
-        $signatureIntegrity = hash(
-            'sha256',
-            $paymentReference . $amountInCents . $currency . config('services.wompi.integrity_secret')
-        );
-
-        return view('medical-analysis.payment-gateway', [
-            'analysis' => $analysis,
-            'price' => $finalAmount,
-            'wompi' => [
-                'public_key' => config('services.wompi.public_key'),
-                'currency' => $currency,
-                'amount_in_cents' => $amountInCents,
-                'reference' => $paymentReference,
-                'signature_integrity' => $signatureIntegrity,
-                'redirect_url' => route('medical-analysis.payment-result', $token),
-            ],
-        ]);
+        return response()
+            ->view('medical-analysis.payment-gateway', [
+                'analysis' => $analysis,
+                'price' => $amount,
+                'wompi' => $this->buildWompiPayload($analysis, $amount, $token),
+            ])
+            ->withHeaders($this->privatePageHeaders());
     }
 
     /**
@@ -343,7 +327,11 @@ class MedicalAnalysisController extends Controller
 
                 if ($paymentStatus === 'APPROVED') {
                     if ($this->transactionMatches($transaction, $analysis)) {
-                        $this->markAsPaid($analysis, (string) $transactionId);
+                        $this->markAsPaid(
+                            $analysis,
+                            (string) $transactionId,
+                            (string) ($transaction['reference'] ?? '')
+                        );
                     } else {
                         // Aprobada, pero de otra orden u otro monto: no se acredita.
                         Log::warning('Pago aprobado que no coincide con la orden', [
@@ -367,7 +355,8 @@ class MedicalAnalysisController extends Controller
         return view('medical-analysis.payment-result', [
             'analysis' => $analysis->fresh(),
             'paymentStatus' => $paymentStatus,
-        ]);
+        ])
+        ->withHeaders($this->privatePageHeaders());
     }
 
     /**
@@ -382,10 +371,12 @@ class MedicalAnalysisController extends Controller
                 ->with('error', 'Debes procesar el pago primero.');
         }
 
-        return view('medical-analysis.show', [
-            'analysis' => $analysis,
-            'price' => $analysis->price,
-        ]);
+        return response()
+            ->view('medical-analysis.show', [
+                'analysis' => $analysis,
+                'price' => $analysis->price,
+            ])
+            ->withHeaders($this->privatePageHeaders());
     }
 
     // =====================================================================
@@ -408,7 +399,7 @@ class MedicalAnalysisController extends Controller
             return response()->json(['valid' => false, 'message' => 'La sesión expiró. Carga tus archivos nuevamente.']);
         }
 
-        $code = PromoCode::where('code', strtoupper(trim($validated['code'])))->first();
+        $code = PromoCode::forModule(PromoCode::MODULE_EXAM)->where('code', strtoupper(trim($validated['code'])))->first();
 
         if (!$code) {
             return response()->json(['valid' => false, 'message' => 'Código no encontrado.']);
@@ -537,6 +528,19 @@ class MedicalAnalysisController extends Controller
 
             $outcome = AIVisionManager::analyzeWithFallback($systemPrompt, $userText, $images, $order);
 
+            $result = is_string($outcome['result'])
+                ? (json_decode($outcome['result'], true) ?? [])
+                : $outcome['result'];
+
+            $allowed = config('ai_specialties.allowed');
+
+            if (!in_array($result['especialidad_slug'] ?? null, $allowed, true)) {
+                Log::warning("Análisis #{$analysis->id}: slug de especialidad inválido", [
+                    'slug' => $result['especialidad_slug'] ?? null,
+                ]);
+                $result['especialidad_slug'] = config('ai_specialties.fallback');
+            }
+
             $analysis->update([
                 'ai_response' => $outcome['result'],
                 'ai_provider' => $outcome['provider_used'],
@@ -545,6 +549,9 @@ class MedicalAnalysisController extends Controller
             ]);
 
             $this->deleteSourceFiles($analysis);
+
+            // Ahora sí: ai_response ya está guardado
+            $this->notifyCustomer($analysis->fresh());
         } catch (\Throwable $e) {
             Log::error("Análisis #{$analysis->id}: fallo IA: " . $e->getMessage());
             $analysis->update(['status' => 'failed']);
@@ -610,7 +617,7 @@ class MedicalAnalysisController extends Controller
         $discount = 0;
 
         if ($code !== '') {
-            $candidate = PromoCode::where('code', strtoupper($code))->first();
+            $candidate = PromoCode::forModule(PromoCode::MODULE_EXAM)->where('code', strtoupper($code))->first();
 
             if ($candidate && $candidate->isRedeemable()) {
                 $promo = $candidate;
@@ -633,6 +640,43 @@ class MedicalAnalysisController extends Controller
     }
 
     /**
+     * Datos del widget de Wompi para una orden. No escribe en la BD: la referencia viaja
+     * al widget y se guarda en payment_id solo cuando el pago se aprueba (ver markAsPaid).
+     *
+     * Formato: "{id}-{ymdH}-{aleatorio}". transactionMatches() valida el prefijo "{id}-"
+     * y el monto, así que abrir la pasarela en varias pestañas no invalida ningún pago.
+     */
+    private function buildWompiPayload(MedicalAnalysis $analysis, int $amount, string $token): array
+    {
+        $currency = 'COP';
+        $amountInCents = $amount * 100;
+
+        $reference = $analysis->id . '-' . Carbon::now()->format('ymdH') . '-' . strtoupper(Str::random(5));
+
+        return [
+            'public_key' => config('services.wompi.public_key'),
+            'currency' => $currency,
+            'amount_in_cents' => $amountInCents,
+            'reference' => $reference,
+            'signature_integrity' => hash(
+                'sha256',
+                $reference . $amountInCents . $currency . config('services.wompi.integrity_secret')
+            ),
+            'redirect_url' => route('medical-analysis.payment-result', $token),
+        ];
+    }
+
+    /** Cabeceras para páginas con token: sin indexar, sin caché y sin filtrar la URL por Referer. */
+    private function privatePageHeaders(): array
+    {
+        return [
+            'X-Robots-Tag' => 'noindex, nofollow, noarchive',
+            'Cache-Control' => 'no-store, private',
+            'Referrer-Policy' => 'no-referrer',
+        ];
+    }
+
+    /**
      * Evita acreditar una transacción aprobada de otra orden o de otro monto.
      */
     private function transactionMatches(array $transaction, MedicalAnalysis $analysis): bool
@@ -652,15 +696,22 @@ class MedicalAnalysisController extends Controller
      * Marca el pago como completado de forma atómica (si dos requests llegan a la vez,
      * solo el primero avanza), consume el código promocional y dispara el análisis.
      */
-    private function markAsPaid(MedicalAnalysis $analysis, string $transactionId): void
+    private function markAsPaid(MedicalAnalysis $analysis, string $transactionId, string $reference = ''): void
     {
+        $data = [
+            'payment_status' => 'completed',
+            'status' => 'processing',
+            'wompi_transaction_id' => $transactionId,
+        ];
+
+        // Referencia que Wompi aprobó (la validó transactionMatches)
+        if ($reference !== '') {
+            $data['payment_id'] = $reference;
+        }
+
         $updated = MedicalAnalysis::whereKey($analysis->id)
             ->where('payment_status', '!=', 'completed')
-            ->update([
-                'payment_status' => 'completed',
-                'status' => 'processing',
-                'wompi_transaction_id' => $transactionId,
-            ]);
+            ->update($data);
 
         if (!$updated) {
             return;
@@ -678,7 +729,7 @@ class MedicalAnalysisController extends Controller
         $analysis->refresh();
 
         ProcessMedicalAnalysisAI::dispatch($analysis);
-        $this->notifyCustomer($analysis);
+        // El correo se envía al terminar la IA (ver analyzeWithAI)
     }
 
     /** Cambia el estado de pago salvo que el pago ya esté completado. */
@@ -688,16 +739,25 @@ class MedicalAnalysisController extends Controller
             ->where('payment_status', '!=', 'completed')
             ->update(['payment_status' => $status]);
     }
-
+    
     /** Un fallo del correo nunca debe afectar al pago ni al análisis. */
     private function notifyCustomer(MedicalAnalysis $analysis): void
     {
-        if (!$analysis->customer_email) {
+        if (!$analysis->customer_email || $analysis->result_email_sent_at) {
+            return;
+        }
+
+        // No enviar correos con interpretación vacía
+        if (blank($analysis->ai_response['conclusion_paciente'] ?? null)) {
+            Log::warning('Correo omitido: ai_response sin conclusion_paciente', [
+                'analysis_id' => $analysis->id,
+            ]);
             return;
         }
 
         try {
             Mail::to($analysis->customer_email)->send(new ExamAnalysisReady($analysis));
+            $analysis->forceFill(['result_email_sent_at' => now()])->save();
         } catch (\Throwable $e) {
             Log::warning('No se pudo enviar el correo del análisis', [
                 'analysis_id' => $analysis->id,
@@ -793,7 +853,12 @@ class MedicalAnalysisController extends Controller
             default => 'Responde SOLO en Español.'
         };
 
-        $userText = "CONTEXTO DEL PACIENTE:\n- Motivo: {$clinicalReason}\n- Detalles: {$additionalDetails}\n\n" . $userTemplate . "\n\n{$languageInstructions}";
+        $listaSlugs = "'" . implode("', '", config('ai_specialties.allowed')) . "'";
+        $fallback = config('ai_specialties.fallback');
+
+        $specialtyRule = "REGLA CRÍTICA: en el campo 'especialidad_slug' usa OBLIGATORIAMENTE uno de estos valores exactos (minúsculas, sin acentos): {$listaSlugs}. Elige la especialidad que mejor trate la condición principal del paciente (por ejemplo, diabetes o problemas de tiroides → 'endocrinologia'). Si tienes dudas, usa '{$fallback}'.";
+
+        $userText = "CONTEXTO DEL PACIENTE:\n- Motivo: {$clinicalReason}\n- Detalles: {$additionalDetails}\n\n" . $userTemplate . "\n\n{$specialtyRule}\n\n{$languageInstructions}";
 
         return [$systemPrompt, $userText];
     }

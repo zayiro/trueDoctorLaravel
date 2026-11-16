@@ -23,7 +23,6 @@ $breadcrumbs = [
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-200">
                 <div class="p-6 text-gray-900">
-                    <!-- Busca el título h2 en index.blade.php y reemplázalo por este bloque flex -->
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-2xl font-bold text-gray-800">Códigos de Promoción</h2>
                         <a href="{{ route('administrator.promo-codes.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
@@ -37,6 +36,7 @@ $breadcrumbs = [
                                 <tr class="bg-gray-100 border-b border-gray-200 text-gray-600 text-sm font-semibold uppercase tracking-wider">
                                     <th class="p-4">Código</th>
                                     <th class="p-4">Tipo</th>
+                                    <th class="p-4">Aplica a</th>
                                     <th class="p-4">Descuento</th>
                                     <th class="p-4">Usos (Uso / Máx)</th>
                                     <th class="p-4">Estado</th>
@@ -48,6 +48,27 @@ $breadcrumbs = [
                                     <tr class="hover:bg-gray-50 transition">
                                         <td class="p-4 font-mono font-bold text-indigo-600">{{ $code->code }}</td>
                                         <td class="p-4 capitalize">{{ $code->type === 'fixed' ? 'Fijo' : 'Porcentaje' }}</td>
+                                        <td class="p-4">
+                                            @php
+                                                $modules = $code->applies_to ?? [];
+                                                $moduleStyles = [
+                                                    'appointment'   => 'bg-blue-100 text-blue-800',
+                                                    'exam'          => 'bg-purple-100 text-purple-800',
+                                                    'skin_analysis' => 'bg-amber-100 text-amber-800',
+                                                ];
+                                            @endphp
+                                            <div class="flex flex-wrap gap-1">
+                                                @forelse ($modules as $module)
+                                                    <span class="px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full {{ $moduleStyles[$module] ?? 'bg-gray-100 text-gray-800' }}">
+                                                        {{ \App\Models\PromoCode::MODULE_LABELS[$module] ?? $module }}
+                                                    </span>
+                                                @empty
+                                                    <span class="px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800" title="Este código no se puede canjear en ningún módulo">
+                                                        Sin módulo
+                                                    </span>
+                                                @endforelse
+                                            </div>
+                                        </td>
                                         <td class="p-4 font-semibold">
                                             {{ $code->type === 'fixed' ? '$' . number_format($code->reward, 2) : number_format($code->reward, 0) . '%' }}
                                         </td>

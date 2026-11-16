@@ -466,7 +466,7 @@ class AppointmentController extends Controller
 
             abort_unless($appointment->patient?->user?->id === auth()->id(), 403);
 
-            $promoCode = PromoCode::where('code', session('pending_promo_code'))->first();
+            $promoCode = PromoCode::forModule(PromoCode::MODULE_APPOINTMENT)->where('code', session('pending_promo_code'))->first();
       
             if (!$promoCode || !$promoCode->isValid(auth()->id()) || !$this->consumePromo($promoCode)) {
                 session()->forget(['pending_promo_code', 'pending_discount_amount']);
@@ -1023,7 +1023,7 @@ class AppointmentController extends Controller
         ]);
 
         $code = strtoupper($validated['code']);
-        $promoCode = PromoCode::where('code', $code)->first();
+        $promoCode = PromoCode::forModule(PromoCode::MODULE_APPOINTMENT)->where('code', $code)->first();
 
         if (!$promoCode || !$promoCode->isValid(auth()->id())) {
             return response()->json(['message' => 'El código promocional no es válido, está desactivado, expiró o superó el límite de usos.'], 422);

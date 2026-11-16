@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 
@@ -17,13 +18,31 @@ class PromoCode extends Model
         'starts_at',
         'expires_at',
         'is_active',
+        'applies_to',
+    ];
+
+    public const MODULE_APPOINTMENT   = 'appointment';
+    public const MODULE_EXAM          = 'exam';
+    public const MODULE_SKIN_ANALYSIS = 'skin_analysis';
+
+    public const MODULE_LABELS = [
+        self::MODULE_APPOINTMENT   => 'Citas médicas',
+        self::MODULE_EXAM          => 'Exámenes médicos',
+        self::MODULE_SKIN_ANALYSIS => 'Análisis de piel',
+    ];
+
+    public const MODULES = [
+        self::MODULE_APPOINTMENT,
+        self::MODULE_EXAM,
+        self::MODULE_SKIN_ANALYSIS,
     ];
 
     // Indica a Laravel que trate estos campos como fechas/fechas con hora automáticamente
     protected $casts = [
-        'starts_at' => 'datetime',
+        'starts_at'  => 'datetime',
         'expires_at' => 'datetime',
-        'is_active' => 'boolean',
+        'is_active'  => 'boolean',
+        'applies_to' => 'array',
     ];
 
     // Un código pertenece a un usuario
@@ -39,32 +58,12 @@ class PromoCode extends Model
      */
     public function isValid(?int $userId = null): bool
     {
-        // 1. Verificar si el cupón está activo manualmente
-        if (!$this->is_active) {
-            return false;
-        }
-
-        // 2. Si el código es individual, asegurar que le pertenezca al usuario que lo intenta usar
+        // Si el código es individual, debe pertenecer al usuario que lo intenta usar
         if ($this->user_id !== null && $this->user_id !== $userId) {
             return false;
         }
 
-        // 3. Verificar si ya alcanzó el límite de usos globales
-        if ($this->max_uses !== null && $this->uses >= $this->max_uses) {
-            return false;
-        }
-
-        // 4. Verificar rango de fechas (si aplica)
-        $now = now();
-        if ($this->starts_at && $now->lt($this->starts_at)) {
-            return false;
-        }
-
-        if ($this->expires_at && $now->gt($this->expires_at)) {
-            return false;
-        }
-
-        return true;
+        return $this->isRedeemable();
     }
 
     /**
@@ -98,5 +97,16 @@ class PromoCode extends Model
             : (int) round((float) $this->reward);
 
         return max(0, min($discount, $price));
+    }
+
+    /** Solo códigos que sirven para un módulo. Un código sin módulos no sirve en ninguno. */
+    public function scopeForModule(Builder $query, string $module): Builder
+    {
+        return $query->whereJsonContains('applies_to', $module);
+    }
+
+    public function appliesTo(string $module): bool
+    {
+        return in_array($module, $this->applies_to ?? [], true);
     }
 }
