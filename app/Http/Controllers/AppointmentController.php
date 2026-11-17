@@ -986,10 +986,17 @@ class AppointmentController extends Controller
                 $timeStr = (string)$appointment->start_time;
                 $appointmentDateTime = Carbon::parse($dateStr . ' ' . $timeStr);
                 
-                $name = $appointment->patient?->user?->name ?? 'Paciente';
+                $fullName = $appointment->patient?->user?->name ?? 'Paciente';
+                $name = Str::of($fullName)
+                ->trim()
+                ->before(' ')
+                ->title()
+                ->ascii()
+                ->toString();
+                
                 $date = $appointmentDateTime->format('d/m/Y');
                 $time = $appointmentDateTime->format('h:i A');                
-                $confirmationMessage = "Hola {$name}, tu cita fue confirmada para el {$date} a las {$time}";
+                $confirmationMessage = "Hola {$name}, tu cita medica en OpenDoctor quedo agendada para el {$date} a las {$time}. Nos vemos pronto.";
 
                 SendSmsReminder::dispatch(
                     $appointment->patient?->phone,
@@ -997,7 +1004,7 @@ class AppointmentController extends Controller
                     "appointment_{$appointment->reference}_confirmation"
                 );
 
-                $reminderMessage = "Recordatorio: Tu cita medica {$appointment->reference} inicia en 20 min.";
+                $reminderMessage = "Recordatorio: Tu cita medica en OpenDoctor {$appointment->reference} inicia en 20 min.";
                 $this->scheduleReminderBeforeEvent(
                     $appointment->patient?->phone,
                     $reminderMessage,
