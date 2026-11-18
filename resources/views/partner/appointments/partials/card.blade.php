@@ -8,18 +8,24 @@
     $canComplete     = $app->canBeCompleted();
     $canReschedule   = $app->canBeRescheduled();
     $isClinicTheme   = auth()->user()->role === 'doctor' && (session('doctor_context')['type'] ?? 'particular') === 'clinic';
+    $paymentLinks    = app(\App\Services\Appointments\PaymentLinkService::class);
+    $linkOpen        = $paymentLinks->isOpen($app);   // cita creada por el doctor esperando pago, enlace vigente
+    $payLinkUrl      = $linkOpen ? $paymentLinks->url($app) : null;
 
-    $badgeClass = $awaitingPayment ? 'bg-amber-50 text-amber-700 border-amber-200' : match ($statusValue) {
+    $badgePending    = $awaitingPayment || $linkOpen;
+    $badgeClass = $badgePending ? 'bg-amber-50 text-amber-700 border-amber-200' : match ($statusValue) {
         'confirmed' => 'bg-green-50 text-green-700 border-green-200',
         'pending'   => 'bg-amber-50 text-amber-700 border-amber-200',
         'completed' => 'bg-blue-50 text-blue-700 border-blue-200',
         default     => 'bg-rose-50 text-rose-700 border-rose-200',
     };
-    $badgeText = $awaitingPayment ? 'Pago pendiente' : match ($statusValue) {
+    $badgeText = $badgePending ? 'Pago pendiente' : match ($statusValue) {
         'confirmed' => 'Confirmada',
         'pending'   => 'Pendiente',
         'completed' => 'Atendida',
         'cancelled' => 'Cancelada',
+        'expired'   => 'Expirada',
+        'no_show'   => 'No asistió',
         default     => ucfirst($statusValue),
     };
 @endphp
@@ -195,6 +201,23 @@ class="p-5 bg-white space-y-3 relative">
                     </button>
                 @endif
 
+
+                {{-- 🔗 Enlace de pago (citas creadas por el doctor/clínica que esperan pago) --}}
+@if($linkOpen)
+                <div x-data="{ copied: false, sending: false, msg: '' }" class="w-full">
+                    <button type="button"
+                            @click="navigator.clipboard.writeText(@js($payLinkUrl)).then(() => { copied = true; setTimeout(() => copied = false, 2000); })"
+                            class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-blue-700 hover:bg-blue-50 rounded-lg transition w-full text-left">
+                        🔗 <span x-text="copied ? '¡Enlace copiado!' : 'Copiar enlace de pago'"></span>
+                    </button>
+                    <button type="button" :disabled="sending"
+                            @click="sending = true; msg = ''; fetch(@js(route('partner.appointments.payment-link.resend', $app->id)), { method: 'POST', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' } }).then(r => r.json()).then(d => { msg = d.message || ''; }).catch(() => { msg = 'No se pudo reenviar el correo.'; }).finally(() => sending = false)"
+                            class="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-100 rounded-lg transition w-full text-left disabled:opacity-50">
+                        ✉️ <span x-text="sending ? 'Enviando...' : 'Reenviar correo al paciente'"></span>
+                    </button>
+                    <p x-show="msg" x-text="msg" x-cloak class="px-3 pb-2 text-[11px] font-bold text-slate-500"></p>
+                </div>
+                @endif
 
                 <!-- Completar: activa, ya comenzó y (si es virtual) pagada -->
                 @if($canComplete)

@@ -8,6 +8,7 @@ class DoctorPayout extends Model
 {
     protected $fillable = [
         'appointment_id',
+        'payment_id',
         'payable_id',
         'payable_type',
         'total_charged',

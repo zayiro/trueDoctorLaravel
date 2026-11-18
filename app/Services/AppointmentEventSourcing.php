@@ -42,7 +42,7 @@ class AppointmentEventSourcing
             appointment: $appointment,
             eventType: self::EVENT_CREATED,
             payload: $data ?: $appointment->toArray(),
-            description: "Cita creada por {$appointment->patient->user->name}"
+            description: "Cita creada por " . ($appointment->patient?->user?->name ?? 'el sistema')
         );
     }
 
@@ -215,7 +215,7 @@ class AppointmentEventSourcing
                 'transaction_id' => $paymentData['transaction_id'] ?? null,
                 'processed_at' => now()->toIso8601String(),
             ],
-            description: "Pago procesado: {$paymentData['amount']} {$paymentData['currency'] ?? 'COP'}"
+            description: 'Pago procesado: ' . ($paymentData['amount'] ?? '') . ' ' . ($paymentData['currency'] ?? 'COP')
         );
     }
 

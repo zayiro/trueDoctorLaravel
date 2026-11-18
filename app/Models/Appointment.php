@@ -43,6 +43,9 @@ class Appointment extends Model
         'doctor_amount',
         'platform_amount',
         'paid_at',
+        'payment_expires_at',
+        'payment_token',
+        'created_by_user_id',
         'channel',
         'meeting_link',
         'meeting_link_password',
@@ -67,6 +70,7 @@ class Appointment extends Model
         'payment_status'   => \App\Enums\PaymentStatus::class,
         'reschedule_count' => 'integer',
         'paid_at'          => 'datetime',
+        'payment_expires_at' => 'datetime',
         'zoom_started'     => 'boolean',
         'email_sent'       => 'boolean',
     ];

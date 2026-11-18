@@ -15,6 +15,8 @@ use App\Services\AppointmentService;
 use App\Services\Availability\AvailabilityQuery;
 use App\Services\Availability\AvailabilityResolver;
 use App\Services\Availability\SlotPresenter;
+use App\Services\Appointments\AppointmentRescheduler;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Log;
 use App\Services\Scheduling\SlotOverlapChecker;
 use App\Services\AppointmentStateManager;
@@ -35,6 +37,9 @@ class PartnerAppointmentController extends Controller
         }
 
         $appointmentsQuery = Appointment::forCurrentContext();
+
+        // Las reservas que no se pagaron a tiempo (expired) se liberan en silencio: para el doctor nunca existieron.
+        $appointmentsQuery->where('status', '!=', 'expired');
 
         // forCurrentContext() devuelve TODAS las citas si no hay contexto en sesión.
         // Sin contexto, se acota por el dueño según el rol (nunca se listan citas de otros tenants).
@@ -82,7 +87,7 @@ class PartnerAppointmentController extends Controller
         $addressId = (int) $request->input('address_id');
         $dateInput = $request->input('date');
         $isVirtual = $request->input('is_virtual') === 'true';
-        $useNewEngine = (bool) config('booking.new_availability.slots_web', false);
+        $useNewEngine = true; // motor único: el motor anterior ya no se usa en este endpoint
 
         $address = Address::findOrFail($addressId);
         $doctorId = null;
@@ -169,17 +174,13 @@ class PartnerAppointmentController extends Controller
                         : SlotPresenter::legacyWeb($slots)
                 );
             } catch (\Throwable $e) {
-                Log::error('getSlots web: falló el motor nuevo; se usa el anterior', [
+                Log::error('getSlots web: falló el motor de disponibilidad', [
                     'address_id' => $addressId, 'doctor_ids' => $doctorIdsArray, 'error' => $e->getMessage(),
                 ]);
+
+                return response()->json(['error' => 'No se pudo consultar la disponibilidad. Intenta de nuevo.'], 500);
             }
         }
-
-        // Motor anterior (Legacy)
-        $appointmentService = app(AppointmentService::class);
-        $slots = $appointmentService->getAvailableSlots($addressId, $dateInput, $doctorId, $isVirtual);
-
-        return response()->json($slots);
     }
 
     public function getServices(Address $address)
@@ -365,101 +366,57 @@ class PartnerAppointmentController extends Controller
         return back()->with('success', 'La cita ha sido eliminada exitosamente del historial.');
     }
 
-    public function rescheduleProcess(Request $request, Appointment $appointment)
+    /**
+     * Vista para elegir el nuevo horario (doctor, clínica y admin).
+     */
+    public function rescheduleView(Appointment $appointment)
     {
-        $user = auth()->user();
+        $this->authorizeManage($appointment);
 
-        abort_unless(in_array($user->role, ['doctor', 'clinic'], true), 403, 'No autorizado.');
+        $appointment->loadMissing(['patient.user', 'doctor.user', 'service', 'address']);
 
-        $this->validateAppointmentAccess($appointment);
+        return view('partner.appointments.reschedule', compact('appointment'));
+    }
 
-        if ($user->role === 'clinic') {
-            if ($appointment->clinic_id !== $user->clinic?->id) {
-                abort(403, 'No autorizado. Esta cita no pertenece a tu centro clínico.');
-            }
-            $settings = ClinicSetting::where('clinic_id', $user->clinic->id)->first();
-        } else {
-            if ($appointment->doctor_id !== $user->doctor?->id) {
-                abort(403, 'No autorizado. Esta cita pertenece a otra agenda médica.');
-            }
-            $settings = DoctorSetting::where('doctor_id', $user->doctor->id)->first();
+    /**
+     * Turnos de un día para reprogramar esta cita (mismas reglas que se validan al guardar).
+     */
+    public function rescheduleSlots(Request $request, Appointment $appointment, AppointmentRescheduler $rescheduler)
+    {
+        $validated = $request->validate(['date' => 'required|date_format:Y-m-d']);
+
+        try {
+            $slots = $rescheduler->slotsFor($appointment, auth()->user(), $validated['date']);
+        } catch (AuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (Throwable $e) {
+            Log::error('rescheduleSlots: falló el motor de disponibilidad', ['appointment_id' => $appointment->id, 'error' => $e->getMessage()]);
+
+            return response()->json(['error' => 'No se pudo consultar la disponibilidad.'], 500);
         }
 
-        if (!$settings) {
-            return back()->with('error', 'La configuración de la agenda no está disponible.');
-        }
+        return response()->json(SlotPresenter::v2($slots));
+    }
 
-        // Solo se reprograman citas activas (antes se podía "reabrir" una cita cancelada o completada como confirmada)
-        if (!in_array($this->statusOf($appointment), ['pending', 'confirmed'], true)) {
-            return back()->with('error', 'Solo se pueden reprogramar citas pendientes o confirmadas.');
-        }
-
-        // Misma regla que en el panel del paciente: una cita virtual sin pagar no se reprograma
-        if ($appointment->isAwaitingPayment()) {
-            return back()->with('error', 'El paciente aún no ha pagado esta cita virtual; no se puede reprogramar hasta que se confirme el pago.');
-        }
-
+    /**
+     * Reprograma la cita. Toda la lógica vive en AppointmentRescheduler (la misma que usa el paciente).
+     */
+    public function rescheduleProcess(Request $request, Appointment $appointment, AppointmentRescheduler $rescheduler)
+    {
         $validated = $request->validate([
-            'new_date'       => 'required|date|after_or_equal:today',
-            'new_start_time' => 'required|date_format:H:i:s',
+            'new_date'       => 'required|date_format:Y-m-d|after_or_equal:today',
+            'new_start_time' => 'required|date_format:H:i,H:i:s',
         ]);
 
-        $newDate      = $validated['new_date'];
-        $newStartTime = $validated['new_start_time'];
-
-        // La fecha del día de hoy pasa la validación "after_or_equal:today" aunque la hora ya haya pasado
-        if (Carbon::parse("{$newDate} {$newStartTime}", $this->tz())->isPast()) {
-            return back()->with('error', 'La nueva fecha y hora ya pasaron. Selecciona un horario futuro.');
+        try {
+            $result = $rescheduler->reschedule($appointment, auth()->user(), $validated['new_date'], $validated['new_start_time']);
+        } catch (AuthorizationException $e) {
+            abort(403, $e->getMessage());
         }
 
-        $newEndTime   = Carbon::parse($newStartTime)->addMinutes($appointment->duration)->format('H:i:s');
-        $endTimeWithBuffer = Carbon::parse($newEndTime)->addMinutes($settings->buffer_time_minutes ?? 0)->format('H:i:s');
-
-        // 🔒 1. VALIDACIÓN DE CRUCES (delegada al checker centralizado)
-        $isSlotOccupied = SlotOverlapChecker::overlapsWithAppointments(
-            doctorId: $appointment->doctor_id,
-            date: $newDate,
-            newStart: $newStartTime,
-            newEnd: $endTimeWithBuffer,
-            excludeAppointmentId: $appointment->id,
-            statuses: ['pending', 'confirmed']
-        );
-
-        if ($isSlotOccupied) {
-            return back()->with('error', 'Operación cancelada. El horario seleccionado colisiona con otra cita médica vigente.');
-        }
-
-        // 🔒 2. VALIDACIÓN CONTRA BLOQUEOS DE AGENDA (delegada al checker centralizado)
-        $isDoctorUnavailable = SlotOverlapChecker::overlapsWithUnavailabilities(
-            doctorId: $appointment->doctor_id,
-            date: $newDate,
-            newStart: $newStartTime,
-            newEnd: $endTimeWithBuffer
-        );
-
-        if ($isDoctorUnavailable) {
-            return back()->with('error', 'No se puede reagendar: el doctor tiene su agenda bloqueada en este horario (vacaciones, congresos o bloqueos administrativos).');
-        }
-
-        // 3. PERSISTENCIA ATÓMICA (la reunión de Zoom se sincroniza vía AppointmentObserver → SyncZoomMeetingJob)
-        DB::transaction(function () use ($appointment, $newDate, $newStartTime, $newEndTime) {
-            $appointment->update([
-                'date'       => $newDate,
-                'start_time' => $newStartTime,
-                'end_time'   => $newEndTime,
-                'status'     => 'confirmed',
-                'email_sent' => false,
-            ]);
-        });
-
-        // Invalidar caché relevante
-        app(\App\Repositories\AvailabilityRepository::class)->invalidateAvailabilityCache(
-            $appointment->clinic_id,
-            [$appointment->doctor_id],
-            $appointment->address_id
-        );
-
-        return back()->with('success', 'La consulta médica ha sido reprogramada y confirmada exitosamente.');
+        return $result->ok
+            ? redirect()->route('partner.appointments.index', ['date' => $validated['new_date']])->with('success', $result->message)
+            : back()->with('error', $result->message);
     }
 
     public function updateStatus(Request $request, Appointment $appointment)

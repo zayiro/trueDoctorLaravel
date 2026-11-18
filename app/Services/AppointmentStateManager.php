@@ -32,10 +32,12 @@ class AppointmentStateManager
      * completed y cancelled son estados finales.
      */
     private const VALID_TRANSITIONS = [
-        'pending'   => ['confirmed', 'cancelled'],
-        'confirmed' => ['completed', 'cancelled', 'pending'], // 'pending': devolver a revisión (flujos con aprobación)
+        'pending'   => ['confirmed', 'cancelled', 'expired'], // expired: no pagó a tiempo
+        'confirmed' => ['completed', 'cancelled', 'pending', 'no_show'], // 'pending': devolver a revisión (flujos con aprobación)
         'completed' => [],
         'cancelled' => [],
+        'expired'   => [],
+        'no_show'   => [],
     ];
 
     private const STATE_DESCRIPTIONS = [
@@ -43,6 +45,8 @@ class AppointmentStateManager
         'confirmed' => 'Cita confirmada',
         'completed' => 'Cita completada',
         'cancelled' => 'Cita cancelada',
+        'expired'   => 'Cita expirada por falta de pago',
+        'no_show'   => 'El paciente no asistió',
     ];
 
     /**
@@ -121,12 +125,16 @@ class AppointmentStateManager
         }
 
         if (!$this->isTransitionValid($current, $target)) {
-            if (in_array($current, ['completed', 'cancelled'], true)) {
-                $label = $current === 'completed' ? 'completada' : 'cancelada';
+            if (in_array($current, ['completed', 'cancelled', 'expired', 'no_show'], true)) {
+                $label = ['completed' => 'completada', 'cancelled' => 'cancelada', 'expired' => 'expirada', 'no_show' => 'marcada como no asistida'][$current];
                 return "La cita ya está {$label} y no admite más cambios de estado.";
             }
 
             return "Transición no permitida: {$current} → {$target}.";
+        }
+
+        if ($target === 'no_show' && now(config('app.timezone', 'America/Bogota'))->lessThan($appointment->starts_at)) {
+            return 'No se puede marcar como no asistida una cita que aún no ha comenzado.';
         }
 
         if ($target === 'completed') {

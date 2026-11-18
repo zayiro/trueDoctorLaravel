@@ -3,7 +3,7 @@
         <div class="bg-white rounded-[2.5rem] shadow-xl overflow-hidden border border-slate-100 relative p-5">
 
             @if($status === 'approved')
-                {{-- Este caso ya redirige a success, pero por si acaso --}}
+                {{-- Paciente sin sesión (llegó desde el enlace del correo): el pago ya quedó confirmado --}}
                 <div class="flex flex-col items-center gap-4 text-center">
                     <div class="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
                         <svg class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -11,6 +11,15 @@
                         </svg>
                     </div>
                     <h1 class="text-2xl font-black text-slate-800">¡Pago exitoso!</h1>
+                    <p class="text-slate-500 text-sm leading-relaxed">
+                        Tu cita con Dr(a). {{ $appointment->doctor->user->name ?? 'tu especialista' }} quedó confirmada para el
+                        <strong class="text-slate-700">{{ \Carbon\Carbon::parse($appointment->date)->format('d/m/Y') }}</strong> a las
+                        <strong class="text-slate-700">{{ \Carbon\Carbon::parse($appointment->start_time)->format('g:i A') }}</strong>.
+                        Te enviamos los detalles{{ $appointment->service?->type === 'virtual' ? ' y el enlace de la videollamada' : '' }} a tu correo.
+                    </p>
+                    <a href="{{ route('login') }}" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl text-sm uppercase tracking-wider transition text-center">
+                        Ver mis citas
+                    </a>
                 </div>
 
             @else
@@ -34,8 +43,13 @@
                             {{ $status === 'declined' ? 'Pago no completado' : 'Pago pendiente' }}
                         </h1>
                         <p class="text-slate-500 text-sm leading-relaxed">
-                            {{ $transaction['status_message'] ?? 'La transacción no fue procesada.' }}
-                            <strong class="text-slate-700 block mt-1">Tu reserva sigue guardada por 2 horas.</strong>
+                            {{ $status === 'declined' ? 'La transacción no fue procesada.' : 'Estamos esperando la confirmación de tu banco. Si ya pagaste, te avisaremos por correo en unos minutos.' }}
+                            @if($canRetry && $appointment->payment_expires_at)
+                                @php($limit = $appointment->payment_expires_at->copy()->timezone('America/Bogota'))
+                                <strong class="text-slate-700 block mt-1">Tu reserva sigue guardada hasta {{ $limit->isToday() ? 'las ' . $limit->format('g:i A') : 'el ' . $limit->format('d/m/Y') . ' a las ' . $limit->format('g:i A') }}.</strong>
+                            @elseif(!$canRetry)
+                                <strong class="text-slate-700 block mt-1">El tiempo de esta reserva terminó. Puedes agendar un nuevo turno.</strong>
+                            @endif
                         </p>
                     </div>
 
@@ -75,15 +89,16 @@
                             <div class="bg-white rounded-xl p-3 border border-slate-100 col-span-2">
                                 <p class="text-slate-400 font-medium">Total a pagar</p>
                                 <p class="font-black text-blue-700">
-                                    ${{ number_format(($appointment->price + $appointment->commission_amount), 0, ',', '.') }} COP
+                                    ${{ number_format($payment->total_in_cents / 100, 0, ',', '.') }} COP
                                 </p>
                             </div>
                         </div>
 
                         {{-- Countdown 2 horas --}}
+                        @if($canRetry && $appointment->payment_expires_at)
                         <div class="bg-amber-50 border border-amber-100 rounded-xl p-3 flex items-center gap-2"
                             x-data="{
-                                seconds: {{ (int) max(0, now()->diffInSeconds($appointment->updated_at->addHours(2))) }},
+                                seconds: {{ (int) ($appointment->payment_expires_at ? max(0, now()->diffInSeconds($appointment->payment_expires_at, false)) : 0) }},
                                 get timeLeft() {
                                     if (this.seconds <= 0) return '00:00:00';
                                     let h = Math.floor(this.seconds / 3600);
@@ -103,12 +118,14 @@
                                 Reserva disponible por: <span class="font-black" x-text="timeLeft"></span>
                             </p>
                         </div>
+                        @endif
                     </div>
 
                     {{-- Botones --}}
                     <div class="flex flex-col gap-3">
                         {{-- Reintentar pago --}}
-                        <a href="{{ route('appointments.preview', $appointment->id) }}"
+                        @if($canRetry)
+                        <a href="{{ $retryUrl }}"
                             @click="retrying = true"
                             :class="retrying ? 'opacity-70 pointer-events-none' : ''"
                             class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl text-sm uppercase tracking-wider transition flex items-center justify-center gap-2">
@@ -121,6 +138,7 @@
                             </svg>
                             <span x-text="retrying ? 'Cargando...' : 'Reintentar pago'">Reintentar pago</span>
                         </a>
+                        @endif
 
                         {{-- Contactar soporte --}}
                         <a href="https://wa.me/573026433874?text=Hola,%20tuve%20un%20problema%20con%20mi%20pago%20para%20la%20cita%20ref:%20{{ $appointment->reference }}"

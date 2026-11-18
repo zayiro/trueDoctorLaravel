@@ -36,7 +36,7 @@ final class AvailabilityResolver
         $dayStart = $this->toBusinessTime($day)->setTime(0, 0);
         $data = $this->loader->load($query, $dayStart, $dayStart);
 
-        return $this->calculator->slotsForDay($data, $dayStart, $this->now(), $includePast);
+        return $this->calculator->slotsForDay($data, $dayStart, $this->now(), $includePast, $query->staffBooking);
     }
 
     /**
@@ -50,7 +50,7 @@ final class AvailabilityResolver
         $toDay = $this->toBusinessTime($to)->setTime(0, 0);
         $data = $this->loader->load($query, $fromDay, $toDay);
 
-        return $this->calculator->enabledDates($data, $fromDay, $toDay, $this->now());
+        return $this->calculator->enabledDates($data, $fromDay, $toDay, $this->now(), $query->staffBooking);
     }
 
     /**
@@ -121,4 +121,4 @@ final class AvailabilityResolver
         return CarbonImmutable::instance(DateTimeImmutable::createFromInterface($date))
             ->setTimezone(config('booking.timezone', 'America/Bogota'));
     }
-}
+}

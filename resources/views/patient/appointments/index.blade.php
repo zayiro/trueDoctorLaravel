@@ -107,7 +107,7 @@ $hasStatusFilter = filled(request('status'));
                         $cancellationNoticeHours = $settings->cancellation_notice_hours ?? 24;
                         $remainingHours = now('America/Bogota')->diffInHours($start, false);
 
-                        $canCancelVisually = $allowPatientCancellation && !$start->isPast() && ($remainingHours >= $cancellationNoticeHours) && !in_array($appointment->status, ['cancelled', 'completed']);
+                        $canCancelVisually = $allowPatientCancellation && !$start->isPast() && ($remainingHours >= $cancellationNoticeHours) && !in_array($appointment->status->value, ['cancelled', 'completed']);
                         @endphp
 
                         <li class="bg-white border border-gray-200 rounded-2xl shadow-sm hover:border-indigo-300 transition-colors">
@@ -196,10 +196,10 @@ $hasStatusFilter = filled(request('status'));
                                             this.loadingSlots = true;
                                             this.slots = [];
                                             
-                                            fetch(`/slots?date=${this.selectedDate}&doctor_id={{ $appointment->doctor_id }}&address_id={{ $appointment->address_id }}`)
-                                                .then(res => res.json())
+                                            fetch(`{{ route('patient.appointments.reschedule.slots', $appointment->id) }}?date=${this.selectedDate}`, { headers: { 'Accept': 'application/json' } })
+                                                .then(res => res.ok ? res.json() : [])
                                                 .then(data => {
-                                                    this.slots = data;
+                                                    this.slots = Array.isArray(data) ? data.filter(s => s.state === 'available') : [];
                                                     this.loadingSlots = false;
                                                 })
                                                 .catch(err => {
@@ -341,14 +341,7 @@ $hasStatusFilter = filled(request('status'));
                                                             class="w-full text-xs font-bold text-slate-700 border-slate-200 rounded-xl shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2.5 px-3 bg-white">
                                                         <option value="">Selecciona un turno libre...</option>
                                                         <template x-for="slot in slots" :key="slot.time">
-                                                            <option :value="(() => {
-                                                                        let [time, modifier] = slot.time.split(' ');
-                                                                        let [hours, minutes] = time.split(':');
-                                                                        if (hours === '12') hours = '00';
-                                                                        if (modifier === 'PM') hours = parseInt(hours, 10) + 12;
-                                                                        return `${hours.toString().padStart(2, '0')}:${minutes}:00`;
-                                                                    })()" 
-                                                                    x-text="slot.time"></option>
+                                                            <option :value="slot.time" x-text="slot.label"></option>
                                                         </template>
                                                     </select>
 

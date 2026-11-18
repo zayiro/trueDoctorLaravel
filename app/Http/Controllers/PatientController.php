@@ -19,7 +19,9 @@ use App\Models\PatientMedication;
 use App\Models\PatientHistory;
 use App\Models\PatientSurgery;
 use App\Models\PatientFamilyHistory;
-use App\Services\Scheduling\SlotOverlapChecker;
+use App\Services\AppointmentStateManager;
+use App\Services\Appointments\AppointmentRescheduler;
+use Illuminate\Auth\Access\AuthorizationException;
 use App\Events\AppointmentCancelled;
 use App\Notifications\AppointmentRescheduledNotification;
 use App\Notifications\AppointmentCancelledNotification;
@@ -37,7 +39,7 @@ class PatientController extends Controller
     /**
      * Límite máximo de reprogramaciones permitidas por cita.
      */
-    protected int $maxReschedules = 2;
+    protected int $maxReschedules = AppointmentRescheduler::MAX_PATIENT_RESCHEDULES;
 
     /**
      * 🔒 Helper para validar que el paciente pertenece al usuario autenticado.
@@ -647,131 +649,47 @@ class PatientController extends Controller
     }
 
     /**
-     * Procesa el reagendamiento estricto solicitado desde el dashboard del paciente.
-     * 🔒 REFACTORIZADO: Usa SlotOverlapChecker para consistencia con el resto del sistema.
+     * Reprogramación solicitada por el paciente. Toda la lógica vive en AppointmentRescheduler
+     * (la misma que usan el doctor y la clínica).
      */
-    public function reschedule(Request $request, Appointment $appointment)
+    public function reschedule(Request $request, Appointment $appointment, AppointmentRescheduler $rescheduler)
     {
-        $patient = Auth::user()->patient;
-        if (!$patient || $appointment->patient_id !== $patient->id) {
-            abort(403, 'No autorizado.');
-        }
-
-        // Una cita virtual sin pagar no se reprograma: primero debe pagarse (o cancelarse)
-        if ($appointment->isAwaitingPayment()) {
-            return back()->with('error', 'Debes completar el pago de esta cita virtual antes de poder reprogramarla.');
-        }
-
-        $rescheduleCount = $appointment->reschedule_count ?? 0;
-        if ($rescheduleCount >= $this->maxReschedules) {
-            return back()->with('error', 'Has alcanzado el límite máximo de reprogramaciones permitidas para esta cita. Por favor, contacta con soporte.');
-        }
-
-        $settings = $appointment->clinic_id
-            ? ClinicSetting::where('clinic_id', $appointment->clinic_id)->first()
-            : DoctorSetting::where('doctor_id', $appointment->doctor_id)->first();
-
-        if (!$settings) {
-            return back()->with('error', 'La configuración de la agenda médica no está disponible.');
-        }
-
-        if (!$settings->allow_patient_rescheduling) {
-            return back()->with('error', 'Este profesional o centro médico no permite reprogramar citas en línea.');
-        }
-
-        $cleanDate = Carbon::parse($appointment->date)->format('Y-m-d');
-        $cleanTime = Carbon::parse($appointment->start_time)->format('H:i:s');
-        $appointmentDateTime = Carbon::parse($cleanDate . ' ' . $cleanTime, 'America/Bogota');
-
-        if (now('America/Bogota')->diffInHours($appointmentDateTime, false) < $settings->cancellation_notice_hours) {
-            return back()->with('error', "Debes reprogramar con al menos {$settings->cancellation_notice_hours} horas de anticipación.");
-        }
-
         if ($request->has('new_start_time')) {
-            $request->merge(['new_start_time' => substr($request->new_start_time, 0, 5)]);
+            $request->merge(['new_start_time' => substr((string) $request->new_start_time, 0, 5)]);
         }
 
         $validated = $request->validate([
-            'new_date' => 'required|date|after_or_equal:today',
+            'new_date' => 'required|date_format:Y-m-d|after_or_equal:today',
             'new_start_time' => 'required|date_format:H:i',
         ]);
 
-        $newDate = $validated['new_date'];
-        $newStartTime = Carbon::parse($validated['new_start_time'])->format('H:i:s');
-        $newEndTime = Carbon::parse($newStartTime)->addMinutes($appointment->duration)->format('H:i:s');
-        $endTimeWithBuffer = Carbon::parse($newEndTime)->addMinutes($settings->buffer_time_minutes)->format('H:i:s');
-
-        $maxDateAllowed = Carbon::today('America/Bogota')->addDays($settings->max_advance_days);
-        if (Carbon::parse($newDate)->greaterThan($maxDateAllowed)) {
-            return back()->with('error', "Solo se permiten reprogramaciones hasta el " . $maxDateAllowed->format('d/m/Y'));
+        try {
+            $result = $rescheduler->reschedule($appointment, Auth::user(), $validated['new_date'], $validated['new_start_time']);
+        } catch (AuthorizationException $e) {
+            abort(403, 'No autorizado.');
         }
 
-        $dayOfWeekIso = Carbon::parse($newDate)->dayOfWeekIso;
+        return back()->with($result->ok ? 'success' : 'error', $result->message);
+    }
 
-        // 🔒 1. Validar horario de atención semanal usando SlotOverlapChecker
-        $hasSchedule = Schedule::where('address_id', $appointment->address_id)
-            ->where('day', $dayOfWeekIso)
-            ->where('is_active', true)
-            ->where(function ($query) use ($newStartTime, $newEndTime) {
-                // Fórmula universal: (StartA < EndB) AND (EndA > StartB)
-                $query->where('start_time', '<', $newEndTime)
-                      ->where('end_time', '>', $newStartTime);
-            })
-            ->exists();
+    /**
+     * Turnos disponibles para reprogramar esta cita (mismas reglas que se validan al guardar).
+     */
+    public function rescheduleSlots(Request $request, Appointment $appointment, AppointmentRescheduler $rescheduler)
+    {
+        $validated = $request->validate(['date' => 'required|date_format:Y-m-d|after_or_equal:today']);
 
-        if (!$hasSchedule) {
-            return back()->with('error', 'El médico no atiende en esta sede en el día u horario seleccionado.');
+        try {
+            $slots = $rescheduler->slotsFor($appointment, Auth::user(), $validated['date']);
+        } catch (AuthorizationException $e) {
+            abort(403, 'No autorizado.');
+        } catch (Throwable $e) {
+            Log::error('rescheduleSlots paciente: falló el motor de disponibilidad', ['appointment_id' => $appointment->id, 'error' => $e->getMessage()]);
+
+            return response()->json(['error' => 'No se pudo consultar la disponibilidad.'], 500);
         }
 
-        // 🔒 2. Validar inasistencias o bloqueos temporales usando SlotOverlapChecker
-        $isUnavailable = SlotOverlapChecker::overlapsWithUnavailabilities(
-            doctorId: $appointment->doctor_id,
-            date: $newDate,
-            newStart: $newStartTime,
-            newEnd: $endTimeWithBuffer
-        );
-
-        if ($isUnavailable) {
-            return back()->with('error', 'El médico no estará disponible en la fecha seleccionada por motivos de agenda.');
-        }
-
-        // 🔒 3. Prevenir Double-Booking usando SlotOverlapChecker
-        $isSlotOccupied = SlotOverlapChecker::overlapsWithAppointments(
-            doctorId: $appointment->doctor_id,
-            date: $newDate,
-            newStart: $newStartTime,
-            newEnd: $endTimeWithBuffer,
-            excludeAppointmentId: $appointment->id,
-            statuses: ['pending', 'confirmed']
-        );
-
-        if ($isSlotOccupied) {
-            return back()->with('error', 'El horario seleccionado o su tiempo de descanso ya se encuentra reservado.');
-        }
-
-        // 🔒 4. Ejecución de la transacción atómica
-        DB::transaction(function () use ($appointment, $newDate, $newStartTime, $newEndTime, $settings, $rescheduleCount) {
-            $appointment->update([
-                'date' => $newDate,
-                'start_time' => $newStartTime,
-                'end_time' => $newEndTime,
-                'status' => $settings->requires_approval ? 'pending' : 'confirmed',
-                'email_sent' => false,
-                'reschedule_count' => $rescheduleCount + 1,
-            ]);
-        });
-
-        $message = $settings->requires_approval
-            ? 'Tu solicitud de cambio fue enviada y está sujeta a la aprobación de la clínica.'
-            : 'Tu cita ha sido reprogramada exitosamente.';
-
-        $doctor = Doctor::findOrFail($appointment->doctor_id);
-        $userToNotify = User::find($doctor->user_id);
-        if ($userToNotify) {
-            $userToNotify->notify(new AppointmentRescheduledNotification($appointment, 'patient'));
-        }
-
-        return back()->with('success', $message);
+        return response()->json(\App\Services\Availability\SlotPresenter::v2($slots));
     }
 
     public function storeSurgery(Request $request)

@@ -134,9 +134,14 @@
                      @if ($virtualPaymentRequired)
                         <span class="text-sm font-bold text-slate-700">Pago en Línea</span>
                     @else
-                        <span class="text-sm font-bold text-slate-700">{{ $acceptsOnlinePayments ? 'Pago en Línea' : 'Pago en Consulta' }}</span>
+                        <span class="text-sm font-bold text-slate-700">{{ $virtualPaymentRequired ? 'Pago en Línea' : 'Pago en Consulta' }}</span>
                     @endif                    
                 </div>
+                @if($virtualPaymentRequired && $appointment->payment_expires_at)
+                    <div class="flex items-center bg-amber-50 border border-amber-100 rounded-2xl p-3 mb-4 text-amber-700 text-xs font-bold" role="status">
+                        Tu turno queda reservado hasta las {{ $appointment->payment_expires_at->timezone('America/Bogota')->format('g:i A') }}. Si no pagas antes, se libera automáticamente.
+                    </div>
+                @endif
                 <div class="flex items-start sm:items-center bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-4 text-slate-500" role="alert">
                     <svg class="w-4 h-4 me-2 shrink-0 mt-0.5 sm:mt-0" aria-hidden="true" xmlns="http://w3.org" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11h2v5m-2 0h4m-2.592-8.5h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
                     <p><span class="text-slate-500 font-medium me-1">La disponibilidad y el precio de la consulta médica no están garantizados hasta que finalice el pago.</span></p>
@@ -156,7 +161,7 @@
                     wompiBase: {{ $appointment->price }},
                     wompiCommission: {{ ($virtualPaymentRequired && $wompiData) ? $wompiData['commission_amount'] : 0 }},
                     appointmentId: @json($appointment->id),
-                    wompiCheckoutUrl: '{{ $wompiData['checkout_url'] ?? '' }}',
+                    appliedCode: '',
 
                     formatCOP(value) {
                         return new Intl.NumberFormat('es-CO', {
@@ -199,23 +204,12 @@
                                 this.discount = parseFloat(data.discount_amount);
                                 // Convertimos 'reward' (10.00) a un entero limpio (10) para el porcentaje
                                 this.couponPercentage = parseInt(data.reward); 
+                                this.appliedCode = data.code;
                                 this.successMessage = `¡Cupón ${data.code} aplicado con éxito!`;
-
-                                // Si se regeneró la pasarela de Wompi con el precio con descuento
-                                if (data.wompiData) {
-                                    this.isWompi = true;
-                                    this.wompiCheckoutUrl = data.wompiData.checkout_url;
-
-                                    console.log(data.wompiData.checkout_url);
-                                    
-                                    // Si tu backend recalcula comisiones dinámicas, actualízalas aquí
-                                    if (data.wompiData.commission_amount) {
-                                        this.wompiCommission = data.wompiData.commission_amount;
-                                    }
-                                }
                             } else {
                                 this.discount = 0;
                                 this.couponPercentage = 0;
+                                this.appliedCode = '';
                                 this.errorMessage = data.message || 'Código inválido';
                             }
                         } catch (error) {
@@ -272,6 +266,7 @@
                         
                     </div>
                     <!-- CAMPO DEL CÓDIGO PROMOCIONAL -->
+                    @if($virtualPaymentRequired)
                     <div class="mt-6 mx-auto text-left" x-show="discount === 0" x-transition x-cloak>
                         <label for="coupon" class="block text-[10px] font-black text-slate-600 uppercase tracking-wider mb-2">¿Tienes un código de descuento?</label>
                         <div class="flex space-x-2">
@@ -301,14 +296,16 @@
                             <p x-text="errorMessage ? errorMessage : successMessage"></p>
                         </div>
                     </div>
+                    @endif
 
                     <!-- FLUJOS DE ACCIÓN FINALES -->
                     <div class="mt-8 border-t border-slate-50 pt-6">
                         
                         <!-- Condición 1: Cita gratis (100% de descuento) -->                        
                         <div x-show="isFree" x-cloak>
-                            <form action="{{ route('appointments.success', $appointment) }}" method="POST" @submit="isSubmitting = true">
-                                @csrf                                
+                            <form action="{{ route('appointments.pay', $appointment) }}" method="POST" @submit="isSubmitting = true">
+                                @csrf
+                                <input type="hidden" name="promo_code" :value="appliedCode">
                                 <button type="submit" 
                                         :disabled="isSubmitting"
                                         class="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 disabled:cursor-not-allowed text-white py-4 rounded-2xl font-black shadow-lg shadow-emerald-100 transition-all text-sm uppercase tracking-wider flex items-center justify-center gap-2">
@@ -324,31 +321,25 @@
 
                         <!-- Condición 2: Flujo comercial normal con pasarelas activas -->
                         <div x-show="!isFree">
-                            @if($acceptsOnlinePayments)
-                                <form action="{{ route('appointments.confirm', $appointment->id) }}" method="GET">                                
-                                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-emerald-100 transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-wider focus:outline-none">
-                                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            @if($virtualPaymentRequired)
+                                <form action="{{ route('appointments.pay', $appointment) }}" method="POST" @submit="isSubmitting = true">
+                                    @csrf
+                                    <input type="hidden" name="promo_code" :value="appliedCode">
+                                    <button type="submit" :disabled="isSubmitting"
+                                        class="w-full text-white py-4 rounded-2xl font-black shadow-lg shadow-blue-100 transition-all text-sm uppercase tracking-wider flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"/>
                                         </svg>
-                                        Proceder al Pago Online
+                                        <span x-show="!isSubmitting">{{ $appointment->service->type === 'virtual' ? 'Pagar cita virtual' : 'Proceder al pago en línea' }}</span>
+                                        <span x-show="isSubmitting" x-cloak>Redirigiendo al pago...</span>
                                     </button>
                                 </form>
                             @else
-                                @if($virtualPaymentRequired && $wompiData)
-                                    <a :href="wompiCheckoutUrl"
-                                        class="w-full text-white py-4 rounded-2xl font-black shadow-lg shadow-blue-100 transition-all text-sm uppercase tracking-wider flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.75z"/>
-                                        </svg>
-                                        <span>Pagar cita virtual</span>
-                                    </a>                            
-                                @else
-                                    <form action="{{ route('appointments.success', $appointment) }}" method="GET">                                
-                                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 transition-all text-sm uppercase tracking-wider focus:outline-none flex items-center justify-center gap-2">
-                                            <span>Confirmar y Finalizar Reserva</span>
-                                        </button>
-                                    </form>
-                                @endif
+                                <form action="{{ route('appointments.success', $appointment) }}" method="GET">
+                                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 transition-all text-sm uppercase tracking-wider focus:outline-none flex items-center justify-center gap-2">
+                                        <span>Confirmar y Finalizar Reserva</span>
+                                    </button>
+                                </form>
                             @endif
                         </div>
 

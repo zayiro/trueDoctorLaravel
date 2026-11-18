@@ -41,7 +41,7 @@ final class AvailabilityCalculator
      *
      * @return Slot[]
      */
-    public function slotsForDay(AvailabilityData $data, DateTimeImmutable $day, DateTimeImmutable $now, bool $includePast = false): array
+    public function slotsForDay(AvailabilityData $data, DateTimeImmutable $day, DateTimeImmutable $now, bool $includePast = false, bool $staffBooking = false): array
     {
         $date = $day->format('Y-m-d');
         $isoDay = (int) $day->format('N');
@@ -60,7 +60,7 @@ final class AvailabilityCalculator
             $doctorId = (int) $rows[0]['doctor_id'];
             $addressId = (int) $rows[0]['address_id'];
 
-            if ($this->beyondHorizon($data, $doctorId, $addressId, $date, $now)) {
+            if (!$staffBooking && $this->beyondHorizon($data, $doctorId, $addressId, $date, $now)) {
                 continue;
             }
 
@@ -71,7 +71,7 @@ final class AvailabilityCalculator
                 blocks: array_map(fn (array $r) => ['start' => $r['start'], 'end' => $r['end']], $rows),
                 durationMinutes: (int) ($data->durations[$addressId] ?? $this->setting($data, $doctorId, $addressId, 'fallback_duration')),
                 now: $now,
-                minNoticeHours: (int) $this->setting($data, $doctorId, $addressId, 'min_notice_hours'),
+                minNoticeHours: $staffBooking ? 0 : (int) $this->setting($data, $doctorId, $addressId, 'min_notice_hours'),
                 booked: $this->bookedIntervals($data, $doctorId, $date, $tz),
                 blocked: $this->blockedIntervals($data, $doctorId, $addressId, $date, $tz),
                 bufferMinutes: (int) $this->setting($data, $doctorId, $addressId, 'buffer_minutes'),
@@ -97,12 +97,12 @@ final class AvailabilityCalculator
      *
      * @return string[]
      */
-    public function enabledDates(AvailabilityData $data, DateTimeImmutable $from, DateTimeImmutable $to, DateTimeImmutable $now): array
+    public function enabledDates(AvailabilityData $data, DateTimeImmutable $from, DateTimeImmutable $to, DateTimeImmutable $now, bool $staffBooking = false): array
     {
         $dates = [];
 
         for ($day = $from->setTime(0, 0); $day <= $to; $day = $day->modify('+1 day')) {
-            if (SlotGenerator::firstAvailable($this->slotsForDay($data, $day, $now)) !== null) {
+            if (SlotGenerator::firstAvailable($this->slotsForDay($data, $day, $now, false, $staffBooking)) !== null) {
                 $dates[] = $day->format('Y-m-d');
             }
         }
@@ -207,4 +207,4 @@ final class AvailabilityCalculator
 
         return $intervals;
     }
-}
+}

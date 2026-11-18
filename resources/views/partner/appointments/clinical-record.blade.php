@@ -7,7 +7,7 @@ $breadcrumbs = [
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-    <div class="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+<div class="w-full py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
 
         {{-- Alertas de sesión y errores --}}
         @if (session('success'))
@@ -69,11 +69,11 @@ $breadcrumbs = [
             </div>
         </div>
 
-        {{-- Grid Principal: Columna Izquierda (Contexto del Paciente) + Columna Derecha (Formulario SOAP o Notas) --}}
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {{-- Contenedor Principal: Izquierda (35%) + Derecha (65%) --}}
+        <div class="w-full flex flex-col lg:flex-row items-start gap-8">
 
-            {{-- COLUMNA IZQUIERDA (4 cols): Perfil de Salud Reportado por el Paciente (Solo Lectura) --}}
-            <div class="lg:col-span-4 space-y-5">
+            {{-- COLUMNA IZQUIERDA: Perfil de Salud Reportado por el Paciente --}}
+            <div class="w-full lg:w-1/3 shrink-0 space-y-5">
                 
                 <!-- Ficha Básica -->
                 <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-2.5">
@@ -150,14 +150,14 @@ $breadcrumbs = [
                 </div>
 
             </div>
-            {{-- COLUMNA DERECHA (8 cols): Formulario SOAP (0-3h) o Modo Notas Extemporáneas (>3h / Firmada) --}}
-            <div class="lg:col-span-8">
+                        {{-- COLUMNA DERECHA: Formulario SOAP (0-3h) o Modo Notas Extemporáneas (>3h / Firmada) --}}
+            <div class="w-full flex-1 min-w-0">
 
                 @if($isWithinSoapWindow)
                     <!-- MODO 1: FORMULARIO SOAP COMPLETO (DENTRO DE LAS 3 HORAS) -->
                     <form action="{{ route('partner.appointments.clinical-record.soap.store', $appointment->id) }}" 
                           method="POST" 
-                          class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                          class="w-full bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
                         @csrf
 
                         <div class="border-b border-slate-100 pb-4">
@@ -168,8 +168,8 @@ $breadcrumbs = [
                         </div>
 
                         <!-- Tipo de Entrada y Código CIE-10 -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
+                        <div class="w-full flex flex-col sm:flex-row gap-4">
+                            <div class="w-full sm:w-1/2">
                                 <label class="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">Tipo de Atención</label>
                                 <select name="entry_type" required class="w-full rounded-xl border-slate-200 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:ring-indigo-500">
                                     <option value="consultation" {{ old('entry_type', $history?->entry_type) === 'consultation' ? 'selected' : '' }}>Consulta Médica</option>
@@ -179,11 +179,10 @@ $breadcrumbs = [
                                 </select>
                             </div>
 
-                            <div>
+                            <div class="w-full sm:w-1/2">
                                 <label class="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">Diagnóstico Principal (CIE-10)</label>
                                 <x-cie10-autocomplete :value="old('cie10_code', $history?->cie10_code)" />
                             </div>
-
                         </div>
 
                         <!-- S: Subjetivo -->

@@ -1,0 +1,60 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services\Payments;
+
+/**
+ * Desglose de un cobro de cita, en centavos. Inmutable.
+ */
+final class AppointmentQuote
+{
+    public function __construct(
+        public readonly int $baseCents,
+        public readonly int $commissionCents,
+        public readonly int $discountCents,
+        public readonly int $totalCents,
+        public readonly float $commissionRate,
+        public readonly float $feeRate,
+        public readonly bool $isClinic,
+        public readonly ?string $promoCode = null,
+        public readonly ?int $promoId = null,
+    ) {
+    }
+
+    /** Fee estimado de la pasarela sobre lo que paga el cliente. */
+    public function estimatedFeeCents(): int
+    {
+        return (int) round($this->totalCents * $this->feeRate / 100);
+    }
+
+    /** Lo que le queda a OpenDoctor: comisión − descuento − fee. Puede ser negativo (promo del 100 %). */
+    public function platformMarginCents(): int
+    {
+        return $this->commissionCents - $this->discountCents - $this->estimatedFeeCents();
+    }
+
+    public function isFree(): bool
+    {
+        return $this->totalCents === 0;
+    }
+
+    /** Formato que ya usa la vista de resumen (valores en pesos). */
+    public function toArray(): array
+    {
+        return [
+            'base'              => $this->baseCents / 100,
+            'commission_rate'   => $this->commissionRate,
+            'commission_amount' => $this->commissionCents / 100,
+            'discount_amount'   => $this->discountCents / 100,
+            'total'             => $this->totalCents / 100,
+            'wompi_fee'         => $this->estimatedFeeCents() / 100,
+            'wompi_fee_rate'    => $this->feeRate,
+            'doctor_amount'     => $this->baseCents / 100,
+            'platform_amount'   => $this->platformMarginCents() / 100,
+            'is_clinic'         => $this->isClinic,
+            'is_free'           => $this->isFree(),
+            'promo_code'        => $this->promoCode,
+        ];
+    }
+}

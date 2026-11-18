@@ -128,16 +128,21 @@ final class AvailabilityLoader
     {
         // created_at se guarda en la zona de la aplicación: se compara con now() de Laravel, no con el reloj del negocio.
         $holdCutoff = now()->subMinutes((int) config('booking.pending_hold_minutes', 120))->toDateTimeString();
+        $now = now()->toDateTimeString();
 
         return DB::table('appointments')
             ->whereIn('doctor_id', $doctorIds)
             ->whereBetween('date', [$from->format('Y-m-d'), $to->format('Y-m-d')])
             ->when($query->excludeAppointmentId, fn ($builder) => $builder->where('id', '!=', $query->excludeAppointmentId))
-            ->where(function ($builder) use ($holdCutoff) {
+            ->where(function ($builder) use ($holdCutoff, $now) {
                 $builder->whereIn('status', ['confirmed', 'completed'])
-                    ->orWhere(function ($pending) use ($holdCutoff) {
+                    ->orWhere(function ($pending) use ($holdCutoff, $now) {
+                        // Pendiente retiene el turno si: ya pagó, o tiene vencimiento de pago vigente (payment_expires_at),
+                        // o (citas anteriores, sin vencimiento) se creó hace menos de `pending_hold_minutes`.
                         $pending->where('status', 'pending')
-                            ->where(fn ($hold) => $hold->where('created_at', '>=', $holdCutoff)->orWhere('payment_status', 'paid'));
+                            ->where(fn ($hold) => $hold->where('payment_status', 'paid')
+                                ->orWhere('payment_expires_at', '>', $now)
+                                ->orWhere(fn ($legacy) => $legacy->whereNull('payment_expires_at')->where('created_at', '>=', $holdCutoff)));
                     });
             })
             ->get(['doctor_id', 'date', 'start_time', 'end_time'])

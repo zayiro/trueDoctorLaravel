@@ -68,8 +68,9 @@
         @endif
         
         <!-- BARRA DE FILTROS NATIVA (INMUNE A LIVEWIRE) -->
+         <div class="bg-white border-gray-100 dark:border-gray-700 rounded-2xl p-5 my-5">
         <x-medical-search-bar :specialties="$specialties" :cities="$cities" :showCity="$physicalLocationsFound" :symptoms="$symptoms" />
-
+        </div>
         <!-- ENCABEZADO DE RESULTADOS ESTILIZADO -->
         <div class="mt-12 mb-8 bg-white border border-slate-150/60 rounded-3xl shadow-sm overflow-hidden animate-fade-in">
             <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-50">
@@ -84,7 +85,7 @@
                         <h1 class="text-lg font-black text-slate-800 tracking-tight leading-none">                    
                             @if($results->total() === 1)
                                 <p class="text-md text-gray-600 font-bold">
-                                    Un médico o especialista habilitado
+                                    Un especialista encontrado
                                 </p>
                             @elseif($results->total() > 1)
                                 <p class="text-md text-gray-600 font-bold">

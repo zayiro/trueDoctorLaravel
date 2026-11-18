@@ -34,16 +34,6 @@ class WompiService
         $currency      = 'COP';
         $integrity     = config('services.wompi.integrity_secret');
 
-        // Debug temporal — eliminar después
-        \Log::info('Wompi signature debug', [
-            'reference'     => $reference,
-            'amountInCents' => $amountInCents,
-            'currency'      => $currency,
-            'integrity'     => $integrity,
-            'cadena'        => $reference . $amountInCents . $currency . $integrity,
-            'signature'     => hash('sha256', $reference . $amountInCents . $currency . $integrity),
-        ]);
-
         $signature = hash('sha256', $reference . $amountInCents . $currency . $integrity);
 
         $params = http_build_query([
@@ -52,7 +42,7 @@ class WompiService
             'amount-in-cents'     => $amountInCents,
             'reference'           => $reference,
             'redirect-url'        => $this->redirectUrl,
-            'signature:integrity' => $signature,
+            'signature-integrity' => $signature,
         ]);
 
         $subscription = Subscription::create([

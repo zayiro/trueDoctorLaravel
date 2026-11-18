@@ -18,20 +18,25 @@ use App\Services\AppointmentService;
 use App\Services\ZoomService;
 use App\Services\Wompi\WompiService;
 use App\Services\Twilio\WhatsAppTemplateService;
-use App\Jobs\ExpireUnpaidAppointment;
+use App\Services\Payments\AppointmentCheckout;
+use App\Services\Appointments\AppointmentFinalizer;
+use App\Payments\PaymentService;
+use App\Models\Payment;
 use App\Jobs\SendSmsReminder;
 use App\Mail\AppointmentConfirmed;
 use App\Mail\VirtualRoomAccessMail;
 use App\Mail\PaymentFailedMail;
 use App\Notifications\MailLimitExceededNotification;
 use App\Http\Requests\SearchAppointmentByReferenceRequest;
-use App\Http\Requests\StoreAppointmentRequest;
 use App\Http\Requests\StoreAppointmentStepTwoRequest;
 use App\Http\Requests\ProcessPatientAppointmentRequest;
 use App\Http\Requests\CancelAppointmentFlowRequest;
 use App\Enums\PaymentStatus;
 use App\Enums\AppointmentStatus;
 use App\Services\Scheduling\SlotOverlapChecker;
+use App\Services\Availability\AvailabilityQuery;
+use App\Services\Availability\AvailabilityResolver;
+use App\Services\Availability\SlotNotAvailableException;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
@@ -127,81 +132,6 @@ class AppointmentController extends Controller
         ], 200);
     }
     
-    public function store(StoreAppointmentRequest $request)
-    {
-        $patient = DB::table('patients')->where('user_id', Auth::id())->first();
-        if (!$patient) {
-            return redirect()->back()->withErrors(['error' => 'No se encontró un perfil de paciente válido vinculado a tu cuenta.']);
-        }
-
-        $service = Service::findOrFail($request->service_id);
-        $address = Address::findOrFail($request->address_id);
-        $doctorId = (int) $request->input('doctor_id');
-        $dateInput = $request->input('date');
-        $startTime = Carbon::parse($request->start_time)->format('H:i:s');
-
-        $pivotDuration = DB::table('address_service')
-            ->where('address_id', $address->id)
-            ->where('service_id', $service->id)
-            ->value('duration') ?? 20;
-
-        $endTime = Carbon::parse($startTime)->addMinutes((int)$pivotDuration)->format('H:i:s');
-
-        // 🔒 ESCUDO DE CONCURRENCIA (delegado al checker centralizado)
-        $isAlreadyBooked = SlotOverlapChecker::overlapsWithAppointments(
-            doctorId: $doctorId,
-            date: $dateInput,
-            newStart: $startTime,
-            newEnd: $endTime,
-            statuses: ['pending', 'confirmed', 'completed']
-        );
-
-        if ($isAlreadyBooked) {
-            return redirect()->route('partner.public.profile', $request->input('doctor_slug', 'search'))
-                ->with('error', 'El turno seleccionado fue reservado por otro paciente. Por favor, elige uno nuevo.');
-        }
-
-        $appointmentData = [
-            'patient_id'     => (int) $patient->id,
-            'doctor_id'      => $doctorId,
-            'clinic_id'      => $address->clinic_id ? (int) $address->clinic_id : ($request->filled('clinic_id') ? (int) $request->clinic_id : null),
-            'service_id'     => (int) $service->id,
-            'address_id'     => (int) $address->id,
-            'date'           => $dateInput,
-            'start_time'     => $startTime,
-            'end_time'       => $endTime,
-            'status'         => AppointmentStatus::CONFIRMED->value, 
-            'payment_status' => PaymentStatus::PENDING->value,
-        ];
-
-        // 1. ✅ CREAR LA CITA PRIMERO (Para tener el ID válido antes de cualquier fallo de API)
-        $appointment = Appointment::create($appointmentData);
-
-        // 2. TELEMEDICINA: Intentar crear sala de Zoom
-        if ($service->type === 'virtual' || $address->type === 'virtual') {
-            try {                
-                $startDateTime = Carbon::parse($dateInput . ' ' . $startTime)->toIso8601String();
-                $zoomMeeting = $this->zoomService->createMeeting("Telemedicina_Ref: {$service->name}", $startDateTime, (int) $pivotDuration);
-
-                if ($zoomMeeting) {
-                    $this->persistZoomMeeting($appointment, $zoomMeeting);
-                }
-            } catch (\Exception $e) {
-                // ✅ AHORA SÍ tenemos el $appointment->id para registrar el fallo de forma segura
-                DB::table('zoom_creation_failures')->insert([
-                    'appointment_id' => $appointment->id,
-                    'error_log'      => $e->getMessage(),
-                    'created_at'     => now(),
-                    'updated_at'     => now()
-                ]);
-            }
-        }
-        
-        session()->forget(['booking_data', 'current_doctor_id', 'current_clinic_user_id']);
-
-        return redirect()->route('appointments.success', $appointment->id);
-    }
-
     public function storeStepTwo(StoreAppointmentStepTwoRequest $request) 
     {
         $addressId = (int) $request->input('address_id');
@@ -234,12 +164,22 @@ class AppointmentController extends Controller
             return response()->json(["message" => "No se pudo identificar al especialista responsable.", "status" => false], 422);
         }
 
-        $availableSlots = $this->appointmentService->getAvailableSlots(
-            $addressId, $dateInput, $targetDoctorId, $address->type === 'virtual', (int) $request->service_id
+        // Motor único de disponibilidad (la reserva definitiva vuelve a validar con candado en processPatient).
+        $tz = config('booking.timezone', 'America/Bogota');
+        $daySlots = app(AvailabilityResolver::class)->slotsForDay(
+            new AvailabilityQuery(
+                doctorIds: [(int) $targetDoctorId],
+                clinicId: $address->clinic_id ? (int) $address->clinic_id : null,
+                addressId: $addressId,
+                serviceId: (int) $request->service_id,
+            ),
+            Carbon::parse($dateInput, $tz)
         );
 
-        $formattedRequestedHour = Carbon::parse($hourInput)->format('g:i A');
-        $slotStillAvailable = collect($availableSlots)->contains('time', $formattedRequestedHour);
+        $requestedTimestamp = Carbon::parse($dateInput . ' ' . $hourInput, $tz)->getTimestamp();
+        $slotStillAvailable = collect($daySlots)->contains(
+            fn ($slot) => $slot->isAvailable() && $slot->start->getTimestamp() === $requestedTimestamp
+        );
 
         if (!$slotStillAvailable) {
             return response()->json(["message" => "El turno seleccionado acaba de ser reservado por otro paciente.", "status" => false], 409);
@@ -380,29 +320,43 @@ class AppointmentController extends Controller
         $duration = (int) $serviceSpecific->pivot->duration;
         $price = (float) $serviceSpecific->pivot->price;
         
-        $startTime = Carbon::parse($bookingData['date'] . ' ' . $bookingData['hour']);
+        $startTime = Carbon::parse($bookingData['date'] . ' ' . $bookingData['hour'], config('booking.timezone', 'America/Bogota'));
         $endTime = $startTime->copy()->addMinutes($duration);
 
-        $availableSlots = $this->appointmentService->getAvailableSlots(
-            $address->id, $bookingData['date'], $doctor->id, 
-            $address->type === 'virtual' || $serviceSpecific->type === 'virtual', $serviceSpecific->id
-        );
-
-        $formattedRequestedHour = Carbon::parse($bookingData['hour'])->format('g:i A');
-        $isStillAvailable = collect($availableSlots)->contains('time', $formattedRequestedHour);
-        
-        if (!$isStillAvailable) {
-            return redirect()->to('/')->with('error', 'Lo sentimos, ese horario acaba de ser reservado por otro paciente.');
-        }
-        
         $settings = $address->clinic_id ? $address->clinic->settings : $doctor->settings;
         $acceptsPayments = $settings ? (bool)$settings->accepts_online_payments : false;
         $requiresApproval = $acceptsPayments ? false : ($settings ? (bool)$settings->requires_approval : false);
         
+        $isVirtual = $serviceSpecific->type === 'virtual' || $address->type === 'virtual';
+        $onlineRequired = $isVirtual || $acceptsPayments;
+
         $status = $requiresApproval ? AppointmentStatus::PENDING->value : AppointmentStatus::CONFIRMED->value;
         $payment_status = PaymentStatus::PENDING->value;
+        $paymentExpiresAt = null;
+        $paidAt = null;
+
+        if ($onlineRequired && $price <= 0) {
+            // Servicio sin costo: no hay nada que cobrar.
+            $status = AppointmentStatus::CONFIRMED->value;
+            $payment_status = PaymentStatus::PAID->value;
+            $paidAt = now();
+        } elseif ($onlineRequired) {
+            // El turno queda retenido hasta pagar; si no se paga, el barrido lo expira y lo libera.
+            $status = AppointmentStatus::PENDING->value;
+            $paymentExpiresAt = now()->addMinutes((int) config('booking.pending_hold_minutes', 120));
+        }
                     
-        $appointment = DB::transaction(function () use ($patient, $doctor, $address, $serviceSpecific, $bookingData, $startTime, $endTime, $duration, $price, $status, $payment_status, $request) {
+        // 🔒 Motor único de disponibilidad: valida el turno y crea la cita en la MISMA transacción,
+        // con el doctor bloqueado (dos pacientes no pueden tomar el mismo turno).
+        $availabilityQuery = new AvailabilityQuery(
+            doctorIds: [(int) $doctor->id],
+            clinicId: $address->clinic_id ? (int) $address->clinic_id : null,
+            addressId: (int) $address->id,
+            serviceId: (int) $serviceSpecific->id,
+        );
+
+        try {
+          $appointment = app(AvailabilityResolver::class)->withBookableSlot($availabilityQuery, $startTime, function () use ($patient, $doctor, $address, $serviceSpecific, $bookingData, $startTime, $endTime, $duration, $price, $status, $payment_status, $paymentExpiresAt, $paidAt, $request) {
             return Appointment::create([
                 'patient_id'     => (int) $patient->id,
                 'doctor_id'      => (int) $doctor->id,
@@ -417,15 +371,20 @@ class AppointmentController extends Controller
                 'status'         => $status,
                 'payment_status' => $payment_status,
                 'channel'        => 'web',
+                'payment_expires_at' => $paymentExpiresAt,
+                'paid_at'        => $paidAt,
                 'notes'          => trim($request->notes),                
             ]);
-        });
-
-        if ($appointment->service->type === 'virtual') {
-            dispatch(new ExpireUnpaidAppointment($appointment))->delay(now()->addHours(2));
+          });
+        } catch (SlotNotAvailableException $e) {
+            return redirect()->to('/')->with('error', 'Lo sentimos, ese horario acaba de ser reservado por otro paciente.');
         }
-        
+
         session()->forget(['booking_data', 'current_doctor_id', 'current_clinic_user_id']);
+
+        if ($onlineRequired && $price <= 0) {
+            return redirect()->route('appointments.success', $appointment);
+        }
 
         return redirect()->route('appointments.preview', ['id' => $appointment->id]);
     }
@@ -450,70 +409,109 @@ class AppointmentController extends Controller
             abort(401, 'Debes iniciar sesión para visualizar el resumen de tu orden médica.');
         }
 
-        $virtualPaymentRequired = $appointment->service->type === 'virtual';
-        $wompiData = $virtualPaymentRequired ? $this->wompi->buildAppointmentCheckoutUrl($appointment) : null;
+        // Nombre heredado de la vista: ahora significa "esta cita se paga en línea" (virtual, o presencial con pagos en línea).
+        $virtualPaymentRequired = AppointmentCheckout::requiresOnlinePayment($appointment);
+
+        $paid = ($appointment->payment_status instanceof \BackedEnum ? $appointment->payment_status->value : (string) $appointment->payment_status) === PaymentStatus::PAID->value;
+        if ($paid) {
+            return redirect()->route('appointments.success', $appointment);
+        }
+
+        $status = $appointment->status instanceof \BackedEnum ? $appointment->status->value : (string) $appointment->status;
+        if ($virtualPaymentRequired && in_array($status, ['expired', 'cancelled'], true)) {
+            return redirect()->route('home')->with('error', 'Esta reserva ya no está disponible. Agenda una nueva cita.');
+        }
+
+        $wompiData = $virtualPaymentRequired ? app(AppointmentCheckout::class)->quote($appointment)->toArray() : null;
                 
         return view('appointments.preview', compact('appointment', 'virtualPaymentRequired', 'wompiData'));
     }
    
-    public function success(Appointment $appointment)
-    {      
-        $appointment->load(['doctor.user', 'clinic', 'service', 'address.city', 'patient.user']);
+    /**
+     * Inicia el cobro de una cita en línea: crea el intento de pago y manda al paciente a la pasarela.
+     * Con un código que cubre todo el precio no hay pasarela: la cita queda pagada y va directo al comprobante.
+     */
+    public function pay(Request $request, Appointment $appointment, AppointmentCheckout $checkout)
+    {
+        $this->authorizeOwnerOrFail($appointment);
 
-        if (session()->has('pending_promo_code')
-            && (float) session('pending_discount_amount') >= (float) $appointment->price
-            && $appointment->payment_status->value !== PaymentStatus::PAID->value) {
+        $data = $request->validate(['promo_code' => 'nullable|string|max:255']);
 
-            abort_unless($appointment->patient?->user?->id === auth()->id(), 403);
+        $promo = null;
+        if (!empty($data['promo_code'])) {
+            $promo = PromoCode::forModule(PromoCode::MODULE_APPOINTMENT)
+                ->where('code', strtoupper(trim($data['promo_code'])))->first();
 
-            $promoCode = PromoCode::forModule(PromoCode::MODULE_APPOINTMENT)->where('code', session('pending_promo_code'))->first();
-      
-            if (!$promoCode || !$promoCode->isValid(auth()->id()) || !$this->consumePromo($promoCode)) {
-                session()->forget(['pending_promo_code', 'pending_discount_amount']);
-                return redirect()->route('home')->with('error', 'El código promocional ya no está disponible.');
+            if (!$promo || !$promo->isValid(auth()->id())) {
+                return redirect()->route('appointments.preview', $appointment->id)
+                    ->with('error', 'El código promocional no es válido, expiró o superó el límite de usos.');
             }
-
-            $appointment->update([
-                'promo_code'      => $promoCode->code,
-                'discount_amount' => $appointment->price,
-                'status'          => AppointmentStatus::CONFIRMED->value,
-                'payment_status'  => PaymentStatus::PAID->value,
-                'paid_at'         => now(),
-            ]);
-            $appointment->refresh();
-            session()->forget(['pending_promo_code', 'pending_discount_amount']);
-        }
-        
-        if ($appointment->service->type === 'virtual' && $appointment->payment_status->value !== PaymentStatus::PAID->value) {
-            return redirect()->route('home')->with('error', 'Debes completar el pago para confirmar tu cita virtual.');
         }
 
-        $activeUser = Auth::user();
-        $comingFromPayment = $appointment->paid_at && $appointment->paid_at->diffInMinutes(now()) <= 10;
+        $appointment->loadMissing(['service', 'address', 'doctor.settings', 'clinic.settings']);
 
-        if (!$activeUser && !$comingFromPayment) {
-            abort(401, 'Debes iniciar sesión para visualizar el comprobante de tu cita.');
+        if (!AppointmentCheckout::requiresOnlinePayment($appointment)) {
+            return redirect()->route('appointments.preview', $appointment->id)
+                ->with('error', 'Esta cita se paga en consulta.');
         }
 
-        if ($activeUser && !$comingFromPayment) {
-            $hasAccess = false;
-            if ($activeUser->role === 'patient' && $appointment->patient && (int)$appointment->patient->user_id === (int)$activeUser->id) $hasAccess = true;
-            elseif ($activeUser->role === 'doctor' && $appointment->doctor && (int)$appointment->doctor_id === (int)$activeUser->doctor?->id) $hasAccess = true;
-            elseif ($activeUser->role === 'clinic' && (int)$appointment->clinic_id === (int)$activeUser->clinic?->id) $hasAccess = true;
+        try {
+            $payment = $checkout->start($appointment, Auth::user(), $promo);
+        } catch (\DomainException $e) {
+            return redirect()->route('appointments.preview', $appointment->id)->with('error', $e->getMessage());
+        } catch (Throwable $e) {
+            Log::error('appointments.pay_failed', ['appointment_id' => $appointment->id, 'error' => $e->getMessage()]);
 
-            if (!$hasAccess) abort(403, 'Acceso no autorizado a este comprobante.');
+            return redirect()->route('appointments.preview', $appointment->id)
+                ->with('error', 'No pudimos iniciar el pago. Inténtalo de nuevo en unos segundos.');
         }
 
-        $appointment = $this->processPostConfirmation($appointment, $activeUser);
-        
+        if ($payment->method === \App\Enums\PaymentMethod::Free) {
+            return redirect()->route('appointments.success', $appointment);
+        }
+
+        return redirect()->away($checkout->checkoutUrl($payment, route('payments.return', $payment->reference)));
+    }
+
+    /** Comprobante de la cita: solo para su paciente/doctor/clínica con sesión iniciada. */
+    public function success(Appointment $appointment, AppointmentFinalizer $finalizer)
+    {
+        if (!Auth::check()) {
+            return redirect()->guest(route('login'));
+        }
+
+        $this->authorizeOwnerOrFail($appointment);
+        $appointment->load(['doctor.user', 'clinic', 'service', 'address.city', 'patient.user', 'doctor.settings', 'clinic.settings']);
+
+        $paid = ($appointment->payment_status instanceof \BackedEnum ? $appointment->payment_status->value : (string) $appointment->payment_status) === PaymentStatus::PAID->value;
+
+        if (AppointmentCheckout::requiresOnlinePayment($appointment) && !$paid) {
+            return redirect()->route('appointments.preview', $appointment->id)
+                ->with('error', 'Debes completar el pago para confirmar tu cita.');
+        }
+
+        // Idempotente: Zoom, correos y SMS se hacen una sola vez, llegue primero el webhook o el paciente.
+        $appointment = $finalizer->finalize($appointment, Auth::user());
+
         return view('appointments.success', compact('appointment'));
     }
 
-    private function consumePromo(PromoCode $promo): bool
+    private function authorizeOwnerOrFail(Appointment $appointment): void
     {
-        return PromoCode::whereKey($promo->id)
-            ->where(fn ($q) => $q->whereNull('max_uses')->orWhereColumn('uses', '<', 'max_uses'))
-            ->increment('uses') > 0;
+        $user = Auth::user();
+        abort_unless($user, 401, 'Debes iniciar sesión.');
+
+        $appointment->loadMissing('patient');
+
+        $ok = match ($user->role) {
+            'patient' => $appointment->patient && (int) $appointment->patient->user_id === (int) $user->id,
+            'doctor'  => (int) $appointment->doctor_id === (int) $user->doctor?->id,
+            'clinic'  => (int) $appointment->clinic_id === (int) $user->clinic?->id,
+            'admin'   => true,
+            default   => false,
+        };
+
+        abort_unless($ok, 403, 'Acceso no autorizado a esta cita.');
     }
 
     public function cancelFlow(CancelAppointmentFlowRequest $request)
@@ -887,198 +885,62 @@ class AppointmentController extends Controller
         ]);
     }
 
-    public function paymentResult(Request $request)
-    {        
-        $transactionId = $request->query('id');
-        if (!$transactionId) return redirect()->route('home')->with('error', 'No se recibió información del pago.');
-
-        $response = Http::withToken(config('services.wompi.private_key'))
-            ->get("https://production.wompi.co/v1/transactions/{$transactionId}");
-
-        if (!$response->successful()) return redirect()->route('home')->with('error', 'No se pudo verificar el pago.');
-
-        $transaction = $response->json('data');
-        $reference   = $transaction['reference'];
-        $status      = strtolower($transaction['status']);
-
-        $appointment = Appointment::where('wompi_reference', $reference)->first();
-        if (!$appointment) return redirect()->route('home')->with('error', 'No se encontró la cita asociada al pago.');
-  
-        if ($status === 'approved') {
-            $appointment->update([
-                'payment_status' => PaymentStatus::PAID->value,
-                'paid_at'        => now(),
-                'status'         => AppointmentStatus::CONFIRMED->value,
-            ]);
-
-            $payable = $appointment->clinic_id ? $appointment->clinic : $appointment->doctor;
-            $wompiFee = Setting::where('key', 'wompi_fee')->value('value') ?? 2.9;                
-
-            DoctorPayout::create([
-                'appointment_id'      => $appointment->id,
-                'payable_id'          => $payable->id,
-                'payable_type'        => get_class($payable),
-                'total_charged'       => $appointment->price + ($appointment->commission_amount ?? 0),
-                'wompi_fee'           => round(($appointment->price + ($appointment->commission_amount ?? 0)) * ($wompiFee / 100), 2),
-                'platform_commission' => $appointment->commission_amount ?? 0,
-                'amount_to_pay'       => $appointment->doctor_amount ?? $appointment->price,
-                'status'              => PaymentStatus::PENDING->value,
-                'due_date'            => now()->addDays(3),
-            ]);
-
-            return redirect()->route('appointments.success', $appointment);
-        }
-
-        if ($status === 'declined' || $status === 'error') {
-            $appointment->update(['payment_status' => PaymentStatus::PENDING->value]);
-            $patientEmail = $appointment->patient?->user?->email;
-            if ($patientEmail) {
-                Mail::to($patientEmail)->send(new PaymentFailedMail($appointment));
-            }
-        }
-
-        return view('appointments.payment-result', compact('appointment', 'transaction', 'status'));
-    }
-
-    protected function processPostConfirmation(Appointment $appointment, ?User $activeUser): Appointment
+    /** Ruta heredada de retorno de Wompi: se resuelve por la capa de pagos y se manda a la página pública de resultado. */
+    public function paymentResult(Request $request, PaymentService $payments)
     {
-        $hasCreationFailure = DB::table('zoom_creation_failures')->where('appointment_id', $appointment->id)->exists();
-        $isVirtual = ($appointment->service?->type === 'virtual') || ($appointment->address?->type === 'virtual');
-
-        if ($isVirtual && !$appointment->zoom_meeting_id && !$hasCreationFailure) {
-            try {
-                DB::transaction(function () use ($appointment) {
-                    $fresh = $appointment->newQuery()->lockForUpdate()->find($appointment->id);
-                    if ($fresh->zoom_meeting_id) return;
-
-                    // ✅ AHORA ES SEGURO: $fresh->date ya es un objeto Carbon gracias al cast del modelo
-                    $startDateTime = Carbon::parse($fresh->date->format('Y-m-d') . ' ' . $fresh->start_time)->toIso8601String();
-                    $zoomMeeting = $this->zoomService->createMeeting("Telemedicina_Ref: {$fresh->reference}", $startDateTime, (int) $fresh->duration);
-
-                    if ($zoomMeeting) {
-                        $this->persistZoomMeeting($fresh, $zoomMeeting);
-                        DB::table('zoom_creation_failures')->where('appointment_id', $fresh->id)->delete();
-                    }
-                });
-            } catch (\Exception $e) {
-                Log::error('Error crítico Zoom en post-confirmación: ' . $e->getMessage());
-            }
+        $transactionId = $request->query('id');
+        if (!$transactionId) {
+            return redirect()->route('home')->with('error', 'No se recibió información del pago.');
         }
 
-        if (!$appointment->email_sent) {
-            try {
-                $patientEmail = $appointment->patient?->user?->email;
-                $doctorEmail  = $appointment->doctor?->user?->email;
-
-                if ($patientEmail) Mail::to($patientEmail)->send(new AppointmentConfirmed($appointment, 'patient'));
-                if ($doctorEmail)  Mail::to($doctorEmail)->send(new AppointmentConfirmed($appointment, 'partner'));
-            } catch (Throwable $e) {
-                Log::error('Error en notificaciones post-confirmación: ' . $e->getMessage());
-                try {
-                    $admins = User::where('role', 'admin')->get();
-                    Notification::send($admins, new MailLimitExceededNotification($e->getMessage(), $activeUser?->email));
-                } catch (\Exception $ne) { /* silencioso */ }
-            }         
-            
-            try {
-                // ✅ LIMPIO Y SEGURO: Aprovechamos los casts del modelo
-                $dateStr = $appointment->date->format('Y-m-d');
-                $timeStr = (string)$appointment->start_time;
-                $appointmentDateTime = Carbon::parse($dateStr . ' ' . $timeStr);
-                
-                $fullName = $appointment->patient?->user?->name ?? 'Paciente';
-                $name = Str::of($fullName)
-                ->trim()
-                ->before(' ')
-                ->title()
-                ->ascii()
-                ->toString();
-                
-                $date = $appointmentDateTime->format('d/m/Y');
-                $time = $appointmentDateTime->format('h:i A');                
-                $confirmationMessage = "Hola {$name}, tu cita medica en OpenDoctor quedo agendada para el {$date} a las {$time}. Nos vemos pronto.";
-
-                SendSmsReminder::dispatch(
-                    $appointment->patient?->phone,
-                    $confirmationMessage,
-                    "appointment_{$appointment->reference}_confirmation"
-                );
-
-                $reminderMessage = "Recordatorio: Tu cita medica en OpenDoctor {$appointment->reference} inicia en 20 min.";
-                $this->scheduleReminderBeforeEvent(
-                    $appointment->patient?->phone,
-                    $reminderMessage,
-                    $appointmentDateTime,
-                    20,
-                    "appointment_{$appointment->reference}_reminder"
-                );                
-            } catch (\Exception $e) {
-                Log::error('ERROR al programar recordatorios SMS', ['error' => $e->getMessage()]);
-            }
-
-            $appointment->update(['email_sent' => true]);
+        try {
+            $payment = $payments->syncByTransactionId((string) $transactionId);
+        } catch (Throwable $e) {
+            Log::warning('appointments.payment_result_sync_failed', ['error' => $e->getMessage()]);
+            $payment = null;
         }
 
-        return $appointment->fresh(['doctor.user', 'clinic', 'service', 'address.city', 'patient.user']);
+        if (!$payment) {
+            return redirect()->route('home')->with('error', 'No se pudo verificar el pago.');
+        }
+
+        return redirect()->route('payments.return', $payment->reference);
     }
 
-    public function validatePromoCode(Request $request)
+    /** Calcula el desglose con el código. No guarda nada: el código se vuelve a validar al pagar. */
+    public function validatePromoCode(Request $request, AppointmentCheckout $checkout)
     {
         $validated = $request->validate([
-            'code' => 'required|string|max:255',
+            'code'           => 'required|string|max:255',
             'appointment_id' => 'required|integer',
         ]);
 
-        $code = strtoupper($validated['code']);
-        $promoCode = PromoCode::forModule(PromoCode::MODULE_APPOINTMENT)->where('code', $code)->first();
+        $appointment = Appointment::with(['service', 'address', 'doctor.settings', 'clinic.settings'])->findOrFail($validated['appointment_id']);
+        $this->authorizeOwnerOrFail($appointment);
 
-        if (!$promoCode || !$promoCode->isValid(auth()->id())) {
+        if (!AppointmentCheckout::requiresOnlinePayment($appointment)) {
+            return response()->json(['message' => 'Los códigos solo aplican a citas con pago en línea.'], 422);
+        }
+
+        $promo = PromoCode::forModule(PromoCode::MODULE_APPOINTMENT)
+            ->where('code', strtoupper(trim($validated['code'])))->first();
+
+        if (!$promo || !$promo->isValid(auth()->id())) {
             return response()->json(['message' => 'El código promocional no es válido, está desactivado, expiró o superó el límite de usos.'], 422);
         }
 
-        $appointment = Appointment::findOrFail($validated['appointment_id']);
-        $basePrice = (float) $appointment->price;
-        $originalCommission = (float) ($appointment->commission_amount ?? 0);
-        $originalTotal = $basePrice + $originalCommission;
-
-        if ($promoCode->type === 'percent') {
-            $discountAmount = ($basePrice * $promoCode->reward) / 100;
-        } else {
-            $discountAmount = min($promoCode->reward, $basePrice);
-        }
-
-        $discountAmount = floor($discountAmount); 
-        $newDoctorPrice = $basePrice - $discountAmount;
-        $finalPrice = $newDoctorPrice + $originalCommission; 
-        $wompiData = null;
-        $virtualPaymentRequired = $appointment->service->type === 'virtual';
-
-        if ($virtualPaymentRequired && $finalPrice > 0) {
-            $clonedAppointment = $appointment->replicate();
-            $clonedAppointment->price = $newDoctorPrice;
-            $wompiData = $this->wompi->buildAppointmentCheckoutUrl($clonedAppointment);
-            
-            if (isset($wompiData['total'])) {
-                $finalPrice = (float) $wompiData['total'];
-            }
-        }
-
-        $realVisualDiscount = $originalTotal - $finalPrice;
-
-        session([
-            'pending_promo_code' => $promoCode->code,
-            'pending_discount_amount' => $discountAmount
-        ]);
+        $original = $checkout->quote($appointment);
+        $quote    = $checkout->quote($appointment, $promo);
 
         return response()->json([
-            'success' => true,
-            'code' => $promoCode->code,
-            'type' => $promoCode->type,
-            'reward' => $promoCode->reward,
-            'discount_amount' => $realVisualDiscount,
-            'base_price' => $originalTotal,
-            'final_price' => $finalPrice,
-            'wompiData' => $wompiData,
+            'success'         => true,
+            'code'            => $promo->code,
+            'type'            => $promo->type,
+            'reward'          => $promo->reward,
+            'discount_amount' => ($original->totalCents - $quote->totalCents) / 100,
+            'base_price'      => $original->totalCents / 100,
+            'final_price'     => $quote->totalCents / 100,
+            'wompiData'       => $quote->toArray(),
         ], 200);
     }
 }

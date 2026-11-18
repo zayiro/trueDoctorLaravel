@@ -16,7 +16,7 @@ class CompleteExpiredAppointments extends Command
         $now = now();
         
         $expired = Appointment::where('status', AppointmentStatus::CONFIRMED)
-            ->where('service_id', function ($q) {
+            ->whereIn('service_id', function ($q) {
                 $q->select('id')->from('services')->where('type', 'virtual');
             })
             ->whereRaw("CONCAT(date, ' ', end_time) < ?", [$now->format('Y-m-d H:i:s')])

@@ -218,15 +218,12 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     //AI Scribe: notificar que hay audio pendiente de subir por fallo de red
     Route::post('partner/patients/{id}/consultation-audio/notify-pending', [PartnerPatientController::class, 'notifyPendingAudio'])->name('partner.patients.consultation-audio.notify-pending');
 
-    // Vista de Reagendamiento Táctico (Alpine.js / API Slots compatible)
     // Vista para seleccionar el nuevo horario
-    Route::get('/partner/appointments/{appointment}/reschedule', [AppointmentController::class, 'rescheduleView'])->name('partner.appointments.reschedule');
+    Route::get('/partner/appointments/{appointment}/reschedule', [PartnerAppointmentController::class, 'rescheduleView'])->name('partner.appointments.reschedule');
+    Route::get('/partner/appointments/{appointment}/reschedule/slots', [PartnerAppointmentController::class, 'rescheduleSlots'])->name('partner.appointments.reschedule.slots');
+
     // Acción para procesar el cambio
     Route::put('/partner/appointments/{appointment}/reschedule/process', [PartnerAppointmentController::class, 'rescheduleProcess'])->name('partner.appointments.reschedule.process');
-
-    // Ruta para cancelar la cita (la que está causando el error)
-    Route::delete('/partner/appointments/{appointment}', [AppointmentController::class, 'destroy'])->name('partner.appointments.destroy');
-
     Route::post('/partner/patients/{patient}/update-condition', [PartnerPatientController::class, 'updateCondition'])
     ->name('partner.patients.update-condition');
     Route::post('/partner/patients/{patient}/allergies', [PartnerPatientController::class, 'storeAllergy'])
@@ -251,14 +248,7 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::delete('/partner/expertises/{expertise}', [MedicalExpertiseController::class, 'destroy'])->name('partner.expertises.destroy');    
 
     Route::post('/partner/appointments/{id}/generate-zoom', [AppointmentController::class, 'generateZoomLink'])->name('partner.appointments.generate_zoom');
-
-    // agendar cita medica por parte del doctor, clinica tipo (SPA)
-    Route::get('/partner/booking', [AppointmentBookingController::class, 'create'])->name('partner.booking.create');
-    // Endpoints asíncronos para guardar y limpiar el estado de la sesión
-    Route::post('/partner/booking/session-update', [AppointmentBookingController::class, 'updateSession'])->name('partner.booking.session.update');
-    Route::post('/partner/booking/session-clear', [AppointmentBookingController::class, 'clearSession'])->name('partner.booking.session.clear');
-    Route::post('/booking/search-patient', [AppointmentBookingController::class, 'searchPatient'])->name('partner.booking.search_patient');
-
+    
     Route::get('/campaigns', \App\Livewire\Campaigns\CampaignIndex::class)->name('campaigns.index');
     Route::get('/campaigns/create', \App\Livewire\Campaigns\CreateCampaign::class)->name('campaigns.create');
 
@@ -318,6 +308,7 @@ Route::middleware(['auth', 'role:patient'])->group(function () {
     Route::get('/patient/patient-identification', [PatientController::class, 'index'])->name('patient.patient-identification.index');
     Route::put('/patient/patient-identification/{patient}', [PatientController::class, 'update'])->name('patient.patient-identification.update');
     Route::get('/patient/appointments', [PatientController::class, 'appointments'])->name('patient.appointments.index');
+    Route::get('/patient/appointments/{appointment}/reschedule/slots', [PatientController::class, 'rescheduleSlots'])->name('patient.appointments.reschedule.slots');
     Route::get('/patient/allergies', [PatientController::class, 'indexAllergy'])->name('patient.allergies.index');
     Route::get('/patient/history', [PatientController::class, 'history'])->name('patient.history.index');
     Route::post('/patient/history-attachments', [PatientHistoryAttachmentController::class, 'store'])->name('patient.attachments.store');
@@ -353,12 +344,25 @@ Route::middleware(['auth', 'role:patient'])->group(function () {
 
     // Ruta de la sala de espera para el paciente
     Route::get('/patient/meet/{room_code}', [AppointmentController::class, 'waitingRoom'])->name('patient.appointments.waiting_room');
-
-    // Endpoint de búsqueda autocompletable para diagnósticos CIE-10
-    Route::get('/cie10/search', [AppointmentClinicalController::class, 'searchCie10'])->name('cie10.search');
-
+    
     Route::get('/payments', [PatientController::class, 'payments'])->name('patient.payments.index');
     Route::get('/payments/{appointment}/receipt', [PatientController::class, 'downloadReceipt'])->name('patient.payments.receipt');
+});
+
+Route::middleware(['auth', 'role:doctor|clinic'])->group(function () {    
+    // agendar cita medica por parte del doctor, clinica tipo (SPA)
+    Route::get('/partner/booking', [AppointmentBookingController::class, 'create'])->name('partner.booking.create');
+    // Endpoints asíncronos para guardar y limpiar el estado de la sesión
+    Route::post('/partner/booking/session-update', [AppointmentBookingController::class, 'updateSession'])->name('partner.booking.session.update');
+    Route::post('/partner/booking/session-clear', [AppointmentBookingController::class, 'clearSession'])->name('partner.booking.session.clear');
+    Route::post('/booking/search-patient', [AppointmentBookingController::class, 'searchPatient'])->name('partner.booking.search_patient');
+
+    Route::get('/partner/booking/options', [AppointmentBookingController::class, 'options'])->name('partner.booking.options');
+    Route::get('/partner/booking/services', [AppointmentBookingController::class, 'services'])->name('partner.booking.services');
+    Route::get('/partner/booking/calendar', [AppointmentBookingController::class, 'calendar'])->name('partner.booking.calendar');
+    Route::get('/partner/booking/slots', [AppointmentBookingController::class, 'slots'])->name('partner.booking.slots');
+    Route::post('/partner/booking', [AppointmentBookingController::class, 'store'])->middleware('throttle:20,1')->name('partner.booking.store');
+    Route::post('/partner/appointments/{appointment}/payment-link/resend', [AppointmentBookingController::class, 'resendPaymentLink'])->middleware('throttle:6,1')->name('partner.appointments.payment-link.resend');
 });
 
 Route::middleware(['auth'])->group(function () {    
@@ -369,9 +373,6 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.readAll');
     Route::delete('/notifications/{id}/delete', [NotificationController::class, 'destroyNotification'])->name('notifications.destroy');
-
-    // Esta es la que pones en el FORMULARIO
-    Route::get('/appointments/confirm/{id}', [AppointmentController::class, 'confirm'])->name('appointments.confirm');    
 
     // Ruta para procesar el formulario de documentos
     Route::post('/partner/verify-documents', [VerificationController::class, 'store'])->name('partner.verify.store');
@@ -428,6 +429,9 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/soap', [AppointmentClinicalController::class, 'storeSoap'])->name('soap.store');
             Route::post('/notes', [AppointmentClinicalController::class, 'storeExtemporaneousNote'])->name('notes.store');
         });
+
+    // Endpoint de búsqueda autocompletable para diagnósticos CIE-10
+    Route::get('/cie10/search', [AppointmentClinicalController::class, 'searchCie10'])->name('cie10.search');
 });
 
 Route::middleware('auth')
@@ -501,8 +505,6 @@ Route::post('/appointments/step-two', [AppointmentController::class, 'storeStepT
 Route::get('/appointments/patient', [AppointmentController::class, 'patient'])->name('appointments.patient');
 Route::post('/appointments/process-patient', [AppointmentController::class, 'processPatient'])->name('appointments.process-patient');
 Route::get('/appointments/preview/{id}', [AppointmentController::class, 'preview'])->name('appointments.preview');
-//Route::get('/appointments/success/{appointment}', [AppointmentController::class, 'success'])->name('appointments.success');
-Route::post('/appointments/success/{appointment}', [AppointmentController::class, 'success'])->name('appointments.success');
 Route::post('/appointments/cancel-flow', [AppointmentController::class, 'cancelFlow'])->name('appointments.cancel-flow');
 // Agregar esta ruta en tu archivo de rutas
 Route::post('/appointments/promo/validate', [AppointmentController::class, 'validatePromoCode'])->name('appointments.promo.validate');
@@ -516,7 +518,7 @@ Route::get('/plans/show', [PlanController::class, 'showPlans'])->name('plans.ind
 // Acción de seleccionar/suscribirse a un plan
 Route::post('/plans/{plan}/subscribe', [SubscriptionController::class, 'show'])->name('plans.subscribe');
 Route::post('/plans/{plan}/checkout', [SubscriptionController::class, 'checkout'])->name('plans.checkout');
-Route::post('/webhooks/wompi', [SubscriptionController::class, 'webhook'])->name('webhooks.wompi');
+Route::post('/webhooks/wompi', \App\Http\Controllers\WompiWebhookBridgeController::class)->name('webhooks.wompi');
 Route::get('/plans/payment/result', [SubscriptionController::class, 'result'])->name('plans.payment.result');
 
 // routes/api.php o routes/web.php
@@ -663,3 +665,10 @@ Route::get('/partner-profile/{slug}', [PublicProfileController::class, 'showProf
 Route::post('/partner-profile/contact', [PublicProfileController::class, 'sendContactMessage'])
     ->middleware('throttle:5,1') // máx. 5 mensajes por minuto por IP
     ->name('partner-profile.contact');
+
+Route::match(['get', 'post'], '/appointments/success/{appointment}', [AppointmentController::class, 'success'])->name('appointments.success');
+Route::post('/appointments/{appointment}/pay', [AppointmentController::class, 'pay'])->middleware('auth')->name('appointments.pay');
+Route::get('/payments/return/{reference}', \App\Http\Controllers\PaymentReturnController::class)->name('payments.return');
+Route::get('/pagar/{token}', [\App\Http\Controllers\PaymentLinkController::class, 'show'])->middleware('throttle:60,1')->name('appointments.pay-link.show');
+Route::post('/pagar/{token}/codigo', [\App\Http\Controllers\PaymentLinkController::class, 'promo'])->middleware('throttle:20,1')->name('appointments.pay-link.promo');
+Route::post('/pagar/{token}', [\App\Http\Controllers\PaymentLinkController::class, 'start'])->middleware('throttle:10,1')->name('appointments.pay-link.start');    

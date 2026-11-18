@@ -51,3 +51,15 @@ Schedule::call(function () {
 
 //Marca como completadas las citas virtuales cuyo horario ya terminó, se ejecuta cada hora
 Schedule::command('appointments:complete-expired')->hourly();
+
+// Citas sin pago a tiempo: libera el turno y avisa al paciente (no al doctor).
+Schedule::command('appointments:expire-unpaid')
+    ->everyMinute()
+    ->withoutOverlapping(5)
+    ->onOneServer();
+
+// Red de seguridad de pagos: consulta a la pasarela los pagos que se quedaron pendientes.
+Schedule::command('payments:reconcile')
+    ->everyFiveMinutes()
+    ->withoutOverlapping(10)
+    ->onOneServer();

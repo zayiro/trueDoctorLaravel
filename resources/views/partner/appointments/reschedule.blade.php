@@ -38,7 +38,7 @@ $breadcrumbs = [
                         <span class="bg-indigo-600 px-4 py-2 rounded-xl text-[10px] md:text-xs font-black text-white uppercase tracking-widest shadow-lg shadow-indigo-900/40">
                             {{ $appointment->service->name }}
                         </span>
-                        <span class="text-slate-400 Lech text-[10px] font-bold uppercase tracking-widest px-1">
+                        <span class="text-slate-400 text-[10px] font-bold uppercase tracking-widest px-1">
                             ⏱ Duración: {{ $appointment->duration }} Minutos
                         </span>
                     </div>
@@ -53,8 +53,8 @@ $breadcrumbs = [
                     
                     <!-- 1. Selección de Fecha -->
                     <div class="mb-10">
-                        <label Lifor="datePicker" class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">1. Elige la nueva fecha de consulta</label>
-                        <input type="date" name="date" id="datePicker" value="{{ $appointment->date }}" min="{{ now()->toDateString() }}"
+                        <label for="datePicker" class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">1. Elige la nueva fecha de consulta</label>
+                        <input type="date" name="new_date" id="datePicker" value="{{ $appointment->date->format('Y-m-d') }}" min="{{ now()->toDateString() }}"
                             class="w-full bg-slate-50 border-none rounded-2xl p-5 text-lg font-bold focus:ring-2 focus:ring-indigo-500 transition-all shadow-inner text-slate-700">
                     </div>
                     <!-- 2. Selección de Bloques Horarios (Slots Dinámicos) -->
@@ -91,7 +91,7 @@ $breadcrumbs = [
 
                     <!-- Botones Inferiores de Acción -->
                     <div class="flex flex-col sm:flex-row gap-4 pt-6 mt-6 border-t border-slate-50 items-center justify-between">
-                        <a href="{{ route('partner.appointments.index', ['date' => $appointment->date]) }}" class="text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors order-2 sm:order-1">
+                        <a href="{{ route('partner.appointments.index', ['date' => $appointment->date->format('Y-m-d')]) }}" class="text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors order-2 sm:order-1">
                             ← Volver a la agenda principal
                         </a>
 
@@ -117,48 +117,56 @@ $breadcrumbs = [
             const alertBox = document.getElementById('noScheduleAlert');
             spinner.classList.remove('hidden');
             slotsContainer.innerHTML = '';
-            alertBox.classList.add('hidden'); 
+            alertBox.classList.add('hidden');
             submitBtn.disabled = true;
 
             try {
-                const isVirtual = "{{ $appointment->service->type === 'virtual' ? 'true' : 'false' }}";
-                const addressId = "{{ $appointment->address_id }}";
-                const duration = "{{ $appointment->duration }}";
-                const excludeId = "{{ $appointment->id }}";
-                // 🔥 SOLUCIÓN SAAS: Inyectamos de forma obligatoria el ID del doctor dueño de la cita
-                const doctorId = "{{ $appointment->doctor_id }}"; 
-
-                // Construcción de la URL de consulta hacia la API del motor de disponibilidad
-                const url = `{{ route('api.slots.index') }}?date=${date}&duration=${duration}&exclude_id=${excludeId}&is_virtual=${isVirtual}&address_id=${addressId}&doctor_id=${doctorId}`;                
-                
-                const response = await fetch(url);                
+                // Mismas reglas que se validan al guardar (motor único de disponibilidad, modo agenda del personal)
+                const url = `{{ route('partner.appointments.reschedule.slots', $appointment) }}?date=${encodeURIComponent(date)}`;
+                const response = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
                 const slots = await response.json();
 
                 spinner.classList.add('hidden');
 
-                if (!slots || slots.length === 0) {
+                if (!Array.isArray(slots) || slots.length === 0) {
                     alertBox.classList.remove('hidden');
                     return;
                 }
 
-                // Dibujar e inyectar cada slot disponible en la pantalla
-                slots.forEach((slot, index) => {
-                    const slotTimeClean = slot.time.substring(0, 5); // Recorta a HH:MM
+                const reasons = {
+                    booked: 'Ocupado', full: 'Cupo del día completo', blocked: 'Agenda bloqueada',
+                    too_soon: 'Muy pronto', past: 'Ya pasó'
+                };
+
+                slots.forEach((slot) => {
                     const div = document.createElement('div');
-                    
-                    div.innerHTML = `
-                        <label class="cursor-pointer block select-none">
-                            <input type="radio" name="hour" value="${slot.time}" onchange="document.getElementById('submitBtn').disabled = false" class="sr-only peer">
-                            <div class="p-3.5 text-center bg-white border border-slate-200 rounded-xl font-bold text-sm text-slate-700 hover:bg-slate-50 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600 transition-all shadow-sm">
-                                ${slotTimeClean}
-                            </div>
-                        </label>
-                    `;
+                    const label = slot.time;
+
+                    if (slot.state === 'available') {
+                        div.innerHTML = `
+                            <label class="cursor-pointer block select-none">
+                                <input type="radio" name="new_start_time" value="${slot.time}" class="sr-only peer">
+                                <div class="p-3.5 text-center bg-white border border-slate-200 rounded-xl font-bold text-sm text-slate-700 hover:bg-slate-50 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600 transition-all shadow-sm">
+                                    ${label}
+                                </div>
+                            </label>`;
+                        div.querySelector('input').addEventListener('change', () => { submitBtn.disabled = false; });
+                    } else {
+                        const why = reasons[slot.state] || 'No disponible';
+                        div.innerHTML = `
+                            <div title="${why}" class="p-3.5 text-center bg-slate-50 border border-slate-100 rounded-xl font-bold text-sm text-slate-300 line-through cursor-not-allowed select-none">
+                                ${label}
+                            </div>`;
+                    }
                     slotsContainer.appendChild(div);
                 });
 
+                if (!slots.some((s) => s.state === 'available')) {
+                    alertBox.classList.remove('hidden');
+                }
             } catch (error) {
-                console.error("Error al procesar la API de slots:", error);
+                console.error("Error al consultar los horarios:", error);
                 spinner.classList.add('hidden');
                 slotsContainer.innerHTML = '<p class="col-span-full text-center py-6 text-red-500 font-bold text-xs bg-red-50 rounded-2xl border border-red-100">Ocurrió un error de conexión al consultar el calendario.</p>';
             }
