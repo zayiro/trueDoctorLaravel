@@ -46,7 +46,7 @@ $breadcrumbs = [
                             <tbody class="divide-y divide-gray-200 text-sm">
                                 @foreach ($promoCodes as $code)
                                     <tr class="hover:bg-gray-50 transition">
-                                        <td class="p-4 font-mono font-bold text-indigo-600">{{ $code->code }}</td>
+                                        <td class="p-4 font-mono font-bold text-indigo-600">{{ $code->code }}<span class="block font-sans text-xs font-normal text-gray-400">{{ $code->ownerLabel() }}</span></td>
                                         <td class="p-4 capitalize">{{ $code->type === 'fixed' ? 'Fijo' : 'Porcentaje' }}</td>
                                         <td class="p-4">
                                             @php

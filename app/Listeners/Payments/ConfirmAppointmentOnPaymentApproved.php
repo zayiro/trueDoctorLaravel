@@ -130,6 +130,8 @@ class ConfirmAppointmentOnPaymentApproved
         $total = $payment->total_in_cents / 100;
         $commission = $payment->commission_in_cents / 100;
         $discount = $payment->discount_in_cents / 100;
+        // Código creado por el doctor/clínica: el descuento sale de lo que recibe, no de la comisión.
+        $ownerBears = (($payment->payload['discount_borne_by'] ?? 'platform') === 'owner');
         $fee = $payment->provider_fee_in_cents > 0
             ? $payment->provider_fee_in_cents / 100
             : 0.0;
@@ -142,8 +144,8 @@ class ConfirmAppointmentOnPaymentApproved
                 'payable_type'        => get_class($payable),
                 'total_charged'       => $total,
                 'wompi_fee'           => $fee,
-                'platform_commission' => $commission - $discount, // puede ser negativo con códigos del 100 %
-                'amount_to_pay'       => $payment->base_amount_in_cents / 100,
+                'platform_commission' => $commission - ($ownerBears ? 0 : $discount), // puede ser negativo con códigos del 100 %
+                'amount_to_pay'       => ($payment->base_amount_in_cents - ($ownerBears ? $payment->discount_in_cents : 0)) / 100,
                 'status'              => 'pending',
                 'due_date'            => now()->addDays(3),
             ]

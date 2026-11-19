@@ -109,6 +109,13 @@
             'visible' => $hasIndividualPlan, // 🔒 BLOQUEADO para médicos institucionales
         ],
         [
+            'name' => 'Códigos promocionales',
+            'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z"/></svg>',
+            'href' => route('partner.promo-codes.index'),
+            'active' => request()->routeIs('partner.promo-codes.*'),
+            'visible' => $hasIndividualPlan,
+        ],
+        [
             'name' => 'Conocimientos Médicos',
             'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.174L4.3 12m-.04-1.826a5.25 5.25 0 0 1 10.48 0M4.26 10.174a5.25 5.25 0 0 0 10.48 0m0 1.826a5.25 5.25 0 0 1-10.48 0M14.74 12l.04-1.826m0 1.826a5.25 5.25 0 0 0-10.48 0M19.5 12h-4.5m4.5 0a3 3 0 0 1-3 3h-3m6-3a3 3 0 0 0-3-3h-3m0 6h-3m3 0a3 3 0 0 1-3-3V9m3 6a3 3 0 0 0-3-3V9m0 0V5.25A2.25 2.25 0 0 0 8.25 3h-1.5A2.25 2.25 0 0 0 4.5 5.25V9"/></svg>',
             'href' => route('partner.expertises.index'),

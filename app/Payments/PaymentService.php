@@ -52,6 +52,7 @@ final class PaymentService
         ?int $promoCodeId = null,
         ?Model $payee = null,
         ?string $provider = null,
+        ?array $payload = null,
     ): Payment {
         foreach (compact('baseInCents', 'commissionInCents', 'discountInCents', 'providerFeeInCents') as $name => $value) {
             if ($value < 0) {
@@ -88,6 +89,7 @@ final class PaymentService
             'currency'              => (string) config('payments.currency', 'COP'),
             'promo_code_id'         => $promoCodeId,
             'expires_at'            => $expiresAt,
+            'payload'               => $payload,
         ]);
     }
 
@@ -189,7 +191,8 @@ final class PaymentService
             $payment->fill([
                 'status'                  => $target,
                 'provider_transaction_id' => $transaction->id !== '' ? $transaction->id : $payment->provider_transaction_id,
-                'payload'                 => $transaction->safePayload(),
+                // Se conserva lo que guardó el cobro (p. ej. quién asume el descuento) y se agrega lo de la pasarela.
+                'payload'                 => array_merge($payment->payload ?? [], $transaction->safePayload()),
             ]);
 
             if ($target === PaymentTransactionStatus::Approved) {
@@ -287,7 +290,8 @@ final class PaymentService
             'status'                  => PaymentTransactionStatus::Review,
             'review_reason'           => $reason,
             'provider_transaction_id' => $transaction->id !== '' ? $transaction->id : $payment->provider_transaction_id,
-            'payload'                 => $transaction->safePayload(),
+            // Se conserva lo que guardó el cobro (p. ej. quién asume el descuento) y se agrega lo de la pasarela.
+                'payload'                 => array_merge($payment->payload ?? [], $transaction->safePayload()),
         ])->save();
 
         Log::warning('payments.needs_review', [

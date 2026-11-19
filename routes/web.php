@@ -40,6 +40,9 @@ use App\Http\Controllers\PrescriptionController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\GalleryController;
 use App\Http\Controllers\SkinAnalysisController;
+use App\Http\Controllers\PaymentLinkController;
+use App\Http\Controllers\PaymentReturnController;
+use App\Http\Controllers\WompiWebhookBridgeController;
 
 use App\Http\Controllers\ClinicAddressController;
 use App\Http\Controllers\ClinicServiceController;
@@ -518,7 +521,7 @@ Route::get('/plans/show', [PlanController::class, 'showPlans'])->name('plans.ind
 // Acción de seleccionar/suscribirse a un plan
 Route::post('/plans/{plan}/subscribe', [SubscriptionController::class, 'show'])->name('plans.subscribe');
 Route::post('/plans/{plan}/checkout', [SubscriptionController::class, 'checkout'])->name('plans.checkout');
-Route::post('/webhooks/wompi', \App\Http\Controllers\WompiWebhookBridgeController::class)->name('webhooks.wompi');
+Route::post('/webhooks/wompi', WompiWebhookBridgeController::class)->name('webhooks.wompi');
 Route::get('/plans/payment/result', [SubscriptionController::class, 'result'])->name('plans.payment.result');
 
 // routes/api.php o routes/web.php
@@ -668,7 +671,24 @@ Route::post('/partner-profile/contact', [PublicProfileController::class, 'sendCo
 
 Route::match(['get', 'post'], '/appointments/success/{appointment}', [AppointmentController::class, 'success'])->name('appointments.success');
 Route::post('/appointments/{appointment}/pay', [AppointmentController::class, 'pay'])->middleware('auth')->name('appointments.pay');
-Route::get('/payments/return/{reference}', \App\Http\Controllers\PaymentReturnController::class)->name('payments.return');
-Route::get('/pagar/{token}', [\App\Http\Controllers\PaymentLinkController::class, 'show'])->middleware('throttle:60,1')->name('appointments.pay-link.show');
-Route::post('/pagar/{token}/codigo', [\App\Http\Controllers\PaymentLinkController::class, 'promo'])->middleware('throttle:20,1')->name('appointments.pay-link.promo');
-Route::post('/pagar/{token}', [\App\Http\Controllers\PaymentLinkController::class, 'start'])->middleware('throttle:10,1')->name('appointments.pay-link.start');    
+Route::get('/payments/return/{reference}', PaymentReturnController::class)->name('payments.return');
+Route::get('/pay/{token}', [PaymentLinkController::class, 'show'])->middleware('throttle:60,1')->name('appointments.pay-link.show');
+Route::get('/pagar/{token}', [PaymentLinkController::class, 'show'])->middleware('throttle:60,1'); // enlaces ya enviados por correo, eliminar luego del 20/11/2026
+Route::post('/pay/{token}/code', [PaymentLinkController::class, 'promo'])->middleware('throttle:20,1')->name('appointments.pay-link.promo');
+Route::post('/pagar/{token}/codigo', [PaymentLinkController::class, 'promo'])->middleware('throttle:20,1'); // enlaces ya enviados por correo, eliminar luego del 20/11/2026
+Route::post('/pay/{token}', [PaymentLinkController::class, 'start'])->middleware('throttle:10,1')->name('appointments.pay-link.start');
+Route::post('/pagar/{token}', [PaymentLinkController::class, 'start'])->middleware('throttle:10,1'); // enlaces ya enviados por correo
+
+// Códigos promocionales de doctores particulares y clínicas (el descuento lo asume quien lo crea).
+Route::middleware(['auth', 'role:doctor|clinic'])->group(function () {
+    Route::resource('partner/promo-codes', \App\Http\Controllers\PartnerPromoCodeController::class)
+        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
+        ->names([
+            'index'   => 'partner.promo-codes.index',
+            'create'  => 'partner.promo-codes.create',
+            'store'   => 'partner.promo-codes.store',
+            'edit'    => 'partner.promo-codes.edit',
+            'update'  => 'partner.promo-codes.update',
+            'destroy' => 'partner.promo-codes.destroy',
+        ]);
+});

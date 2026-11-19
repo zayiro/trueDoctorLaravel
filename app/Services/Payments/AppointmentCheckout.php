@@ -21,9 +21,9 @@ use Illuminate\Support\Facades\DB;
  * Cobro de citas sobre la capa de pagos.
  *
  * Reglas de dinero (en centavos, sin decimales flotantes):
- *   - El doctor/clínica recibe SIEMPRE el precio completo de la cita.
  *   - El paciente paga: precio − descuento + comisión de la plataforma.
- *   - El código promocional lo asume OpenDoctor (no sale del precio del doctor).
+ *   - Código de OpenDoctor: lo asume la plataforma y el doctor/clínica recibe el precio completo.
+ *   - Código de un doctor/clínica: lo asume quien lo creó (recibe precio − descuento); la comisión no cambia.
  *   - Si el código cubre todo el precio, el paciente no paga nada (ni siquiera la comisión) y la cita se confirma sin cobro.
  *   - Margen de OpenDoctor = comisión − descuento − fee estimado de la pasarela.
  */
@@ -47,20 +47,20 @@ final class AppointmentCheckout
         $commissionCents = (int) round($baseCents * $commissionRate / 100);
 
         $discountCents = 0;
+        $bearer = AppointmentQuote::BEARER_PLATFORM;
 
         if ($promo !== null) {
-            $reward = (float) $promo->reward;
+            // El descuento se calcula sobre el precio del doctor, en pesos enteros. Los códigos de
+            // doctor/clínica quedan topados al porcentaje máximo permitido.
+            $discountCents = $promo->appointmentDiscountPesos((float) $appointment->price) * 100;
 
-            // El descuento se calcula sobre el precio del doctor, en pesos enteros (igual que antes).
-            $discountPesos = $promo->type === 'percent'
-                ? floor(((float) $appointment->price) * $reward / 100)
-                : floor(min($reward, (float) $appointment->price));
-
-            $discountCents = (int) round($discountPesos * 100);
-
-            // Cubre todo el precio: el paciente no paga nada, tampoco la comisión.
-            if ($discountCents >= $baseCents) {
-                $discountCents = $baseCents + $commissionCents;
+            if ($promo->isPlatform()) {
+                // Cubre todo el precio: el paciente no paga nada, tampoco la comisión (lo asume OpenDoctor).
+                if ($discountCents >= $baseCents) {
+                    $discountCents = $baseCents + $commissionCents;
+                }
+            } else {
+                $bearer = AppointmentQuote::BEARER_OWNER;
             }
         }
 
@@ -76,6 +76,7 @@ final class AppointmentCheckout
             isClinic: $isClinic,
             promoCode: $promo?->code,
             promoId: $promo?->id,
+            discountBearer: $bearer,
         );
     }
 
@@ -110,7 +111,7 @@ final class AppointmentCheckout
             // Se guarda el desglose en la cita (lo leen el desembolso, los recibos y las pantallas existentes).
             $locked->update([
                 'commission_amount' => $quote->commissionCents / 100,
-                'doctor_amount'     => $quote->baseCents / 100,
+                'doctor_amount'     => $quote->doctorAmountCents() / 100,
                 'platform_amount'   => $quote->platformMarginCents() / 100,
                 'promo_code'        => $quote->promoCode,
                 'discount_amount'   => $quote->discountCents / 100,
@@ -135,6 +136,7 @@ final class AppointmentCheckout
                 expiresAt: $locked->payment_expires_at,
                 promoCodeId: $quote->promoId,
                 payee: $payee,
+                payload: ['discount_borne_by' => $quote->discountBearer],
             );
 
             // Referencia heredada: la usan reportes y pantallas anteriores.

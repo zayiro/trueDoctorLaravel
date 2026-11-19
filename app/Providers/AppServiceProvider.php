@@ -87,6 +87,12 @@ class AppServiceProvider extends ServiceProvider
 
     private function registerRateLimiters(): void
     {
+        // Búsqueda pública (home y /search). Vive aquí y no en routes/web.php porque con route:cache ese archivo no se ejecuta.
+        RateLimiter::for('search', function (Request $request) {
+            return Limit::perMinute(20)->by($request->ip())
+                ->response(fn () => response('Demasiadas búsquedas.', 429));
+        });
+
         // Búsqueda de usuarios
         RateLimiter::for('App\Models\User::search', function () {
             return Limit::perMinute(60);

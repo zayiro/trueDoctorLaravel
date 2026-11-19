@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
-use App\Models\PromoCode;
+use App\Services\Promo\PromoCodeService;
 use App\Services\Appointments\PaymentLinkService;
 use App\Services\Payments\AppointmentCheckout;
 use DomainException;
@@ -46,9 +46,9 @@ class PaymentLinkController extends Controller
 
         $data = $request->validate(['code' => 'required|string|max:255']);
 
-        $promo = PromoCode::forModule(PromoCode::MODULE_APPOINTMENT)->where('code', strtoupper(trim($data['code'])))->first();
+        $promo = app(PromoCodeService::class)->findForAppointment($data['code'], $appointment, $appointment->patient?->user_id);
 
-        if (!$promo || !$promo->isValid($appointment->patient?->user_id)) {
+        if (!$promo) {
             return response()->json(['message' => 'El código promocional no es válido, expiró o superó el límite de usos.'], 422);
         }
 
@@ -77,9 +77,9 @@ class PaymentLinkController extends Controller
 
         $promo = null;
         if (!empty($data['promo_code'])) {
-            $promo = PromoCode::forModule(PromoCode::MODULE_APPOINTMENT)->where('code', strtoupper(trim($data['promo_code'])))->first();
+            $promo = app(PromoCodeService::class)->findForAppointment($data['promo_code'], $appointment, $payer?->id);
 
-            if (!$promo || !$promo->isValid($payer?->id)) {
+            if (!$promo) {
                 return back()->with('error', 'El código promocional no es válido, expiró o superó el límite de usos.');
             }
         }

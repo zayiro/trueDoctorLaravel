@@ -10,6 +10,8 @@ class PromoCode extends Model
 {
     protected $fillable = [
         'user_id',
+        'owner_type',
+        'owner_id',
         'code',
         'type',
         'reward',
@@ -37,6 +39,10 @@ class PromoCode extends Model
         self::MODULE_SKIN_ANALYSIS,
     ];
 
+    /** Quién asume el descuento. Sin dueño (null) lo asume OpenDoctor. */
+    public const OWNER_DOCTOR = 'doctor';
+    public const OWNER_CLINIC = 'clinic';
+
     // Indica a Laravel que trate estos campos como fechas/fechas con hora automáticamente
     protected $casts = [
         'starts_at'  => 'datetime',
@@ -49,6 +55,24 @@ class PromoCode extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** ¿Es un código de OpenDoctor (creado por el administrador o automático)? */
+    public function isPlatform(): bool
+    {
+        return $this->owner_type === null;
+    }
+
+    /** Códigos de un doctor o de una clínica en concreto. */
+    public function scopeOwnedBy(Builder $query, string $type, int $id): Builder
+    {
+        return $query->where('owner_type', $type)->where('owner_id', $id);
+    }
+
+    /** Porcentaje máximo de descuento que puede asumir un doctor o clínica. */
+    public static function ownerMaxPercent(): float
+    {
+        return (float) config('booking.promo_owner_max_percent', 50);
     }
 
     /**
@@ -99,10 +123,54 @@ class PromoCode extends Model
         return max(0, min($discount, $price));
     }
 
-    /** Solo códigos que sirven para un módulo. Un código sin módulos no sirve en ninguno. */
+    /**
+     * Descuento en pesos enteros para una cita (misma regla que usa el cobro).
+     * Los códigos de doctor/clínica nunca superan el porcentaje máximo del precio.
+     */
+    public function appointmentDiscountPesos(float $price): int
+    {
+        $reward = (float) $this->reward;
+
+        $discount = $this->type === 'percent'
+            ? floor($price * $reward / 100)
+            : floor(min($reward, $price));
+
+        if (!$this->isPlatform()) {
+            $discount = min($discount, floor($price * self::ownerMaxPercent() / 100));
+        }
+
+        return (int) max(0, $discount);
+    }
+
+    /** Nombre de quien asume el descuento, para mostrar en listados. */
+    public function ownerLabel(): string
+    {
+        if ($this->isPlatform()) {
+            return 'OpenDoctor';
+        }
+
+        if ($this->owner_type === self::OWNER_CLINIC) {
+            return Clinic::with('user')->find($this->owner_id)?->user?->name ?? 'Clínica #' . $this->owner_id;
+        }
+
+        $doctor = Doctor::with('user')->find($this->owner_id);
+
+        return $doctor?->user?->name ? 'Dr(a). ' . $doctor->user->name : 'Doctor #' . $this->owner_id;
+    }
+
+    /**
+     * Solo códigos que sirven para un módulo. Un código sin módulos no sirve en ninguno.
+     * Los códigos de doctor/clínica solo existen para citas.
+     */
     public function scopeForModule(Builder $query, string $module): Builder
     {
-        return $query->whereJsonContains('applies_to', $module);
+        $query->whereJsonContains('applies_to', $module);
+
+        if ($module !== self::MODULE_APPOINTMENT) {
+            $query->whereNull('owner_type');
+        }
+
+        return $query;
     }
 
     public function appliesTo(string $module): bool

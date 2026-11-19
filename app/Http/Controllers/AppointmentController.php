@@ -439,10 +439,10 @@ class AppointmentController extends Controller
 
         $promo = null;
         if (!empty($data['promo_code'])) {
-            $promo = PromoCode::forModule(PromoCode::MODULE_APPOINTMENT)
-                ->where('code', strtoupper(trim($data['promo_code'])))->first();
+            $promo = app(\App\Services\Promo\PromoCodeService::class)
+                ->findForAppointment($data['promo_code'], $appointment, auth()->id());
 
-            if (!$promo || !$promo->isValid(auth()->id())) {
+            if (!$promo) {
                 return redirect()->route('appointments.preview', $appointment->id)
                     ->with('error', 'El código promocional no es válido, expiró o superó el límite de usos.');
             }
@@ -922,10 +922,10 @@ class AppointmentController extends Controller
             return response()->json(['message' => 'Los códigos solo aplican a citas con pago en línea.'], 422);
         }
 
-        $promo = PromoCode::forModule(PromoCode::MODULE_APPOINTMENT)
-            ->where('code', strtoupper(trim($validated['code'])))->first();
+        $promo = app(\App\Services\Promo\PromoCodeService::class)
+            ->findForAppointment($validated['code'], $appointment, auth()->id());
 
-        if (!$promo || !$promo->isValid(auth()->id())) {
+        if (!$promo) {
             return response()->json(['message' => 'El código promocional no es válido, está desactivado, expiró o superó el límite de usos.'], 422);
         }
 

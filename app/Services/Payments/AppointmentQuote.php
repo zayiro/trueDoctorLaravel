@@ -9,6 +9,9 @@ namespace App\Services\Payments;
  */
 final class AppointmentQuote
 {
+    public const BEARER_PLATFORM = 'platform';
+    public const BEARER_OWNER    = 'owner';
+
     public function __construct(
         public readonly int $baseCents,
         public readonly int $commissionCents,
@@ -19,6 +22,7 @@ final class AppointmentQuote
         public readonly bool $isClinic,
         public readonly ?string $promoCode = null,
         public readonly ?int $promoId = null,
+        public readonly string $discountBearer = self::BEARER_PLATFORM,
     ) {
     }
 
@@ -28,10 +32,21 @@ final class AppointmentQuote
         return (int) round($this->totalCents * $this->feeRate / 100);
     }
 
-    /** Lo que le queda a OpenDoctor: comisión − descuento − fee. Puede ser negativo (promo del 100 %). */
+    public function ownerBearsDiscount(): bool
+    {
+        return $this->discountBearer === self::BEARER_OWNER;
+    }
+
+    /** Lo que recibe el doctor/clínica: el precio completo, menos el descuento cuando lo asume él. */
+    public function doctorAmountCents(): int
+    {
+        return $this->baseCents - ($this->ownerBearsDiscount() ? $this->discountCents : 0);
+    }
+
+    /** Lo que le queda a OpenDoctor: comisión − descuento (si lo asume la plataforma) − fee. Puede ser negativo. */
     public function platformMarginCents(): int
     {
-        return $this->commissionCents - $this->discountCents - $this->estimatedFeeCents();
+        return $this->commissionCents - ($this->ownerBearsDiscount() ? 0 : $this->discountCents) - $this->estimatedFeeCents();
     }
 
     public function isFree(): bool
@@ -50,7 +65,8 @@ final class AppointmentQuote
             'total'             => $this->totalCents / 100,
             'wompi_fee'         => $this->estimatedFeeCents() / 100,
             'wompi_fee_rate'    => $this->feeRate,
-            'doctor_amount'     => $this->baseCents / 100,
+            'doctor_amount'     => $this->doctorAmountCents() / 100,
+            'discount_bearer'   => $this->discountBearer,
             'platform_amount'   => $this->platformMarginCents() / 100,
             'is_clinic'         => $this->isClinic,
             'is_free'           => $this->isFree(),
