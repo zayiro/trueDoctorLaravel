@@ -1,6 +1,6 @@
 <x-guest-layout>
     <!-- Contenedor Principal del Reporte -->
-    <div class="max-w-7xl mx-auto space-y-8 animate-fade-in p-6 md:p-12 mt-12">
+    <div class="mx-auto max-w-5xl px-4 py-12 md:py-16">
 
         @if(in_array($analysis->status, ['pending', 'processing']))
 
@@ -279,7 +279,7 @@
                         </div>
                     @endif
 
-                    <div class="flex justify-end gap-4 pt-2 mb-2 print:hidden">
+                    <div class="flex justify-end gap-4 pt-4 mb-4 print:hidden">
                         <button onclick="window.print()" class="bg-slate-950 hover:bg-slate-900 border border-white/10 text-slate-300 px-5 py-3 rounded-xl font-semibold text-sm transition flex items-center gap-2 shadow-md">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.82l2.6-2.6m0 0l2.6 2.6m-2.6-2.6V18m6-9a3.5 3.5 0 11-7 0 3.5 3.5 0 017 0zM18 9v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V9a2.25 2.25 0 012.25-2.25h10.5A2.25 2.25 0 0118 9z"/>
@@ -288,9 +288,16 @@
                         </button>
                     </div>
 
-                    <p class="text-[11px] text-slate-500 leading-normal text-center italic max-w-2xl mx-auto pt-4 mb-2">
-                        Aviso importante: Esta valoración es una traducción informativa generada por inteligencia artificial generativa aplicada a la salud. Su propósito es exclusivamente educativo y de empoderamiento al paciente. No representa, sustituye ni constituye bajo ninguna circunstancia un diagnóstico, receta o dictamen médico oficial. Por favor, presente este reporte a su especialista clínico en su próxima consulta.
-                    </p>                            
+                    <p class="px-2 text-center text-xs leading-relaxed text-slate-500 print:hidden">
+                        <strong>Aviso importante:</strong> Esta valoración es una traducción informativa generada por inteligencia artificial generativa aplicada a la salud. Su propósito es exclusivamente educativo y de empoderamiento al paciente. No representa, sustituye ni constituye bajo ninguna circunstancia un diagnóstico, receta o dictamen médico oficial. Por favor, presente este reporte a su especialista clínico en su próxima consulta.
+                    </p>   
+                    
+                    <div class="text-center print:hidden">
+                        <a href="{{ route('medical-analysis.upload') }}"
+                        class="inline-flex items-center justify-center rounded-xl bg-slate-100 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-200">
+                            Hacer otro análisis
+                        </a>
+                    </div>
                 </div>
             @endif                            
         @endif

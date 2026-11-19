@@ -35,6 +35,8 @@
     // Configuración que lee el componente Alpine (@js escapa las comillas de forma segura)
     $cfg = [
         'basePrice' => (int) $price,
+        'fee' => (int) $wompiCommission,
+        'total' => (int) $total,
         'validateUrl' => route('medical-analysis.promo-codes.validate'),
         'processUrl' => route('medical-analysis.process-documents'),
     ];
@@ -124,10 +126,17 @@
                     </div>
                 </div>
 
+                {{-- Comisión de la pasarela (se oculta si es 0, por ejemplo en órdenes gratis) --}}
+                <div x-show="fee > 0" x-cloak
+                     class="flex justify-between items-center p-4 bg-white rounded-lg border border-slate-200">
+                    <span class="text-slate-600 font-medium">Comisión de pasarela:</span>
+                    <span class="text-slate-900 font-bold text-lg" x-text="money(fee)">${{ number_format($wompiCommission, 0, ',', '.') }}</span>
+                </div>
+
                 {{-- Total --}}
                 <div class="flex justify-between items-center p-6 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg text-white">
                     <span class="font-bold text-lg">Total a Pagar:</span>
-                    <span class="text-4xl font-black" x-text="money(total)">${{ number_format($price, 0, ',', '.') }}</span>
+                    <span class="text-4xl font-black" x-text="money(total)">${{ number_format($total, 0, ',', '.') }}</span>
                 </div>
             </div>
         </div>
@@ -238,6 +247,8 @@
     document.addEventListener('alpine:init', () => {
         Alpine.data('orderReview', (cfg) => ({
             basePrice: cfg.basePrice,
+            fee: cfg.fee,
+            total: cfg.total,
 
             promoInput: '',
             promo: { code: '', discountAmount: 0, type: null, value: null },
@@ -250,10 +261,7 @@
             progress: 0,
             statusMessage: '',
 
-            // ---- Cálculos (solo para mostrar: el servidor recalcula el precio real) ----
-            get total() {
-                return Math.max(0, this.basePrice - this.promo.discountAmount);
-            },
+            // ---- Totales (solo para mostrar: el servidor recalcula el precio real) ----
             get isFree() {
                 return this.total === 0;
             },
@@ -276,6 +284,8 @@
             },
             clearPromo(clearInput = false) {
                 this.promo = { code: '', discountAmount: 0, type: null, value: null };
+                this.fee = cfg.fee;
+                this.total = cfg.total;
                 this.promoMessage = '';
                 this.promoError = false;
                 if (clearInput) this.promoInput = '';
@@ -316,6 +326,8 @@
                             type: data.discount_type,
                             value: data.discount_value,
                         };
+                        this.fee = Number(data.fee);
+                        this.total = Number(data.total);
 
                         const amount = this.money(this.promo.discountAmount);
                         const text = this.isFree

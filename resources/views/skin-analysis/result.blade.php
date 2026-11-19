@@ -16,7 +16,7 @@
 @endphp
 
 <div class="bg-gradient-to-b from-white via-purple-50 to-slate-50">
-    <div class="mx-auto max-w-3xl px-4 py-12 md:py-16">
+    <div class="mx-auto max-w-5xl px-4 py-12 md:py-16">
 
         {{-- ============ PROCESANDO ============ --}}
         @if ($is_processing)
@@ -146,8 +146,41 @@
                         </div>
                     @endif
 
-                    {{-- Especialista --}}
-                    @if (!empty($report['especialista']))
+                    {{-- Recomendación médica: misma tarjeta que en exámenes (Dermatología o, si no hay médicos, Medicina General) --}}
+                    @php
+                        $suggested = $rec['suggested'] ?? null;
+                        $target = $rec['target'] ?? null;
+                    @endphp
+                    @if ($target)
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-5 space-y-1 print:hidden">
+                            <div class="mb-4">
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Recomendación Médica</h3>
+                                <h4 class="mt-2 text-lg font-black tracking-tight text-slate-900">¿Deseas revisar estos resultados con un profesional?</h4>
+                                <p class="text-sm font-medium leading-relaxed text-slate-700">
+                                    @if ($suggested && $rec['available'])
+                                        Tus resultados sugieren una valoración en <strong class="text-indigo-600">{{ $suggested->name }}</strong> para dar seguimiento a lo observado en tu piel.
+                                    @elseif ($suggested)
+                                        Tus resultados sugieren una valoración en <strong class="text-indigo-600">{{ $suggested->name }}</strong>.
+                                        Por ahora puedes comenzar con un médico de <strong class="text-indigo-600">{{ $target->name }}</strong>,
+                                        quien podrá evaluarte y orientarte sobre el siguiente paso.
+                                    @else
+                                        Te recomendamos revisar estos resultados con un médico de <strong class="text-indigo-600">{{ $target->name }}</strong>.
+                                    @endif
+                                </p>
+                            </div>
+                            <div class="mt-3 shrink-0">
+                                <a href="{{ route('search', ['specialty' => $target->slug]) }}"
+                                   class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-5 py-3 text-lg font-bold text-white shadow-md transition-all duration-200 hover:bg-indigo-700 active:scale-95"
+                                   target="_blank" rel="noopener noreferrer">
+                                    Agendar con {{ $target->name }}
+                                    <svg class="h-3.5 w-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path>
+                                    </svg>
+                                </a>
+                            </div>
+                        </div>
+                    @elseif (!empty($report['especialista']))
+                        {{-- Sin ningún médico disponible: se conserva el aviso de texto --}}
                         <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
                             <h2 class="text-sm font-bold uppercase tracking-wide text-slate-500">Especialista sugerido</h2>
                             <p class="mt-3 text-sm font-semibold text-slate-800">{{ $report['especialista'] }}</p>
@@ -155,9 +188,20 @@
                     @endif
                 @endif
 
-                <p class="px-2 text-center text-xs leading-relaxed text-slate-500">{{ $report['disclaimer'] ?? '' }}</p>
+                <div class="flex justify-end gap-4 pt-2 mb-2 print:hidden">
+                    <button onclick="window.print()" class="bg-slate-950 hover:bg-slate-900 border border-white/10 text-slate-300 px-5 py-3 rounded-xl font-semibold text-sm transition flex items-center gap-2 shadow-md">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.82l2.6-2.6m0 0l2.6 2.6m-2.6-2.6V18m6-9a3.5 3.5 0 11-7 0 3.5 3.5 0 017 0zM18 9v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V9a2.25 2.25 0 012.25-2.25h10.5A2.25 2.25 0 0118 9z"/>
+                        </svg>
+                        Imprimir o Guardar en PDF
+                    </button>
+                </div>
 
-                <div class="text-center">
+                <p class="px-2 text-center text-xs leading-relaxed text-slate-500 print:hidden">
+                    <strong>Aviso importante:</strong> Esta valoración es una traducción informativa generada por inteligencia artificial generativa aplicada a la salud. Su propósito es exclusivamente educativo y de empoderamiento al paciente. No representa, sustituye ni constituye bajo ninguna circunstancia un diagnóstico, receta o dictamen médico oficial. Por favor, presente este reporte a su especialista clínico en su próxima consulta.
+                </p>
+
+                <div class="text-center print:hidden">
                     <a href="{{ route('skin-analysis.upload') }}"
                        class="inline-flex items-center justify-center rounded-xl bg-slate-100 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-200">
                         Hacer otro análisis
@@ -167,4 +211,90 @@
         @endif
     </div>
 </div>
+
+<style>
+    @media print {
+        /* Ocultar todo lo que no es el reporte */
+        nav,
+        header,
+        footer,
+        .navbar,
+        button,
+        [x-data],
+        .print\:hidden {
+            display: none !important;
+        }
+
+        /* Fondo blanco para impresión */
+        body {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+        }
+
+        /* Contenedor principal sin padding extra */
+        .max-w-5xl {
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* Tarjetas con fondo blanco y borde visible */
+        .bg-slate-950,
+        .bg-slate-900 {
+            background-color: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            box-shadow: none !important;
+        }
+
+        /* Texto oscuro para contraste en papel */
+        .text-slate-300,
+        .text-slate-400,
+        .text-slate-500 {
+            color: #334155 !important;
+        }
+
+        .text-white {
+            color: #0f172a !important;
+        }
+
+        /* Evitar que las tarjetas se corten entre páginas */
+        .rounded-2xl {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        /* Márgenes de página */
+        @page {
+            margin: 1.5cm 1.5cm;
+            size: A4 portrait;
+        }
+
+        /* Tabla de biomarcadores */
+        table {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        tr {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        /* Badges de estado */
+        .bg-emerald-500\/10 { background-color: #d1fae5 !important; }
+        .bg-amber-500\/10   { background-color: #fef3c7 !important; }
+        .bg-red-500\/10     { background-color: #fee2e2 !important; }
+        .bg-gray-500\/10    { background-color: #f1f5f9 !important; }
+
+        .text-emerald-400 { color: #065f46 !important; }
+        .text-amber-400   { color: #92400e !important; }
+        .text-red-400     { color: #991b1b !important; }
+        .text-gray-400    { color: #475569 !important; }
+
+        /* Ocultar botones de acción */
+        .flex.justify-end {
+            display: none !important;
+        }
+    }
+</style>
 </x-guest-layout>

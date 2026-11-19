@@ -63,3 +63,7 @@ Schedule::command('payments:reconcile')
     ->everyFiveMinutes()
     ->withoutOverlapping(10)
     ->onOneServer();
+
+// Datos sensibles: borra subidas abandonadas y archivos de órdenes sin pagar o ya analizadas.
+Schedule::exec('sudo -n -u apache ' . PHP_BINARY . ' ' . base_path('artisan') . ' medical:purge-stale')->timezone('America/Bogota')->dailyAt('03:30')->withoutOverlapping()->onOneServer();
+Schedule::exec('sudo -n -u apache ' . PHP_BINARY . ' ' . base_path('artisan') . ' skin:purge-stale')->timezone('America/Bogota')->dailyAt('03:40')->withoutOverlapping()->onOneServer();

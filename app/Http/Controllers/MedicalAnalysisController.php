@@ -10,6 +10,7 @@ use App\Models\Setting;
 use App\Models\Specialty;
 use App\Services\AI\AIVisionManager;
 use App\Services\MedicalAnalysisFilePurger;
+use App\Services\Payments\AnalysisCheckout;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -51,6 +52,9 @@ class MedicalAnalysisController extends Controller
         'dicom' => 1,
         'lab' => 2,
     ];
+
+    /** Comisión de la pasarela que se le traslada al cliente (igual que en piel). */
+    private const WOMPI_COMMISSION_RATE = 0.03;
 
     private const PRIVATE_DISK = 'private';
     private const EXAM_DIR = 'medical-exams';
@@ -147,11 +151,16 @@ class MedicalAnalysisController extends Controller
                 ->with('error', 'La sesión ha expirado. Por favor, carga tus archivos nuevamente.');
         }
 
+        $price = $this->basePriceFor($validated['detected_exam_type']);
+        $fee = $this->commissionFor($price);
+
         return view('medical-analysis.preview', [
             'files' => session('medical_analysis_files', []),
             'totalSize' => session('medical_analysis_total_size', 0),
             'examType' => $validated['detected_exam_type'],
-            'price' => $this->basePriceFor($validated['detected_exam_type']),
+            'price' => $price,
+            'wompiCommission' => $fee,
+            'total' => $price + $fee,
             'email' => $validated['customer_email'],
             'language' => $validated['selected_language'],
             'reasonType' => $validated['reason_type'] ?? null,
@@ -203,6 +212,7 @@ class MedicalAnalysisController extends Controller
         }
 
         $isFree = $price === 0;
+        $fee = $this->commissionFor($price); // 0 si la orden es gratis
 
         // Guardar archivos en almacenamiento privado
         $storedPaths = $this->moveTempFilesToPrivate($files);
@@ -227,7 +237,9 @@ class MedicalAnalysisController extends Controller
                 'reason_type' => $reasonType,
                 'reason_custom' => $reasonCustom,
                 'promo_code' => $promo?->code,
-                'price' => $price, // lo que realmente se cobra, ya con descuento
+                'price' => $price, // precio ya con descuento (sin comisión)
+                'discount_amount' => $discount,
+                'wompi_fee' => $fee, // el cliente paga price + wompi_fee
                 'status' => $isFree ? 'processing' : 'pending',
                 'payment_status' => $isFree ? 'completed' : 'pending',
                 'analysis_language' => $language,
@@ -268,12 +280,13 @@ class MedicalAnalysisController extends Controller
     }
 
     /**
-     * ✅ PASO 4: Mostrar página de pago con widget Wompi
+     * ✅ PASO 4: Resumen de pago
      *
-     * El precio de la orden ya incluye el descuento (se calculó en processDocuments),
-     * así que aquí NO se vuelve a aplicar ningún código.
+     * El precio de la orden ya incluye el descuento (se calculó en processDocuments), así que aquí NO se
+     * vuelve a aplicar ningún código. Cada visita crea un intento de pago nuevo en la capa de pagos
+     * (el resultado llega por webhook y por el regreso del navegador a payments.return).
      */
-    public function paymentGateway($token)
+    public function paymentGateway($token, AnalysisCheckout $checkout)
     {
         $analysis = MedicalAnalysis::where('access_token', $token)->firstOrFail();
 
@@ -282,24 +295,41 @@ class MedicalAnalysisController extends Controller
                 ->with('info', 'El pago ya fue procesado.');
         }
 
-        $amount = (int) round((float) $analysis->price);
+        $fee = max(0, (int) $analysis->wompi_fee);
+        $amount = (int) round((float) $analysis->price) + $fee;
 
-        if ($amount <= 0) {
+        if ((int) round((float) $analysis->price) <= 0) {
             return redirect()->route('medical-analysis.show', $token)
                 ->with('error', 'Esta orden no requiere pago.');
+        }
+
+        try {
+            $payment = $checkout->start($analysis);
+            $checkoutUrl = $checkout->checkoutUrl($payment);
+        } catch (\DomainException $e) {
+            return redirect()->route('medical-analysis.upload')->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('Examen: no se pudo iniciar el pago', ['analysis_id' => $analysis->id, 'message' => $e->getMessage()]);
+
+            return redirect()->route('medical-analysis.upload')
+                ->with('error', 'No pudimos iniciar el pago. Inténtalo de nuevo en unos segundos.');
         }
 
         return response()
             ->view('medical-analysis.payment-gateway', [
                 'analysis' => $analysis,
                 'price' => $amount,
-                'wompi' => $this->buildWompiPayload($analysis, $amount, $token),
+                'fee' => $fee,
+                'checkoutUrl' => $checkoutUrl,
             ])
             ->withHeaders($this->privatePageHeaders());
     }
 
     /**
-     * ✅ PASO 5: Procesar resultado del pago (Callback de Wompi)
+     * ✅ PASO 5 (anterior): Procesar resultado del pago (Callback de Wompi)
+     *
+     * Los pagos nuevos regresan a payments.return. Esta ruta se conserva para los pagos que se
+     * iniciaron antes del cambio y todavía pueden volver aquí.
      *
      * Valida la transacción con Wompi (estado, referencia y monto).
      * Si APROBADO → marca pagado de forma atómica, dispara la IA y avisa al cliente.
@@ -423,6 +453,7 @@ class MedicalAnalysisController extends Controller
 
         $discountAmount = $code->discountFor($basePrice);
         $finalPrice = $basePrice - $discountAmount;
+        $fee = $this->commissionFor($finalPrice);
 
         return response()->json([
             'valid' => true,
@@ -430,6 +461,8 @@ class MedicalAnalysisController extends Controller
             'discount_value' => (float) $code->reward,
             'discount_amount' => $discountAmount,
             'final_price' => $finalPrice,
+            'fee' => $fee,
+            'total' => $finalPrice + $fee,
             'is_free' => $finalPrice === 0,
             'message' => 'Código aplicado correctamente.',
         ]);
@@ -592,6 +625,12 @@ class MedicalAnalysisController extends Controller
             ->all();
 
         return array_merge(self::DEFAULT_PRICES, $stored);
+    }
+
+    /** Comisión de la pasarela sobre el precio ya con descuento, en pesos. */
+    private function commissionFor(int|float $amount): int
+    {
+        return (int) round($amount * self::WOMPI_COMMISSION_RATE);
     }
 
     private function basePriceFor(string $examType): int

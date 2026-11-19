@@ -15,6 +15,14 @@
                 <p class="text-gray-700 mb-4">
                     <strong>Email:</strong> {{ $analysis->customer_email }}
                 </p>
+                @if (($fee ?? 0) > 0)
+                    <p class="text-gray-700 mb-2">
+                        <strong>Precio del análisis:</strong> ${{ number_format($price - $fee, 0, ',', '.') }} COP
+                    </p>
+                    <p class="text-gray-700 mb-2">
+                        <strong>Comisión de pasarela:</strong> ${{ number_format($fee, 0, ',', '.') }} COP
+                    </p>
+                @endif
                 <div class="border-t pt-4 mt-4">
                     <p class="text-2xl font-bold text-gray-900">
                         Total a pagar: ${{ number_format($price, 0, ',', '.') }} COP
@@ -22,19 +30,10 @@
                 </div>
             </div>
 
-            <form id="wompi-form" action="https://checkout.wompi.co/p/" method="GET">
-                <input type="hidden" name="public-key" value="{{ $wompi['public_key'] }}">
-                <input type="hidden" name="currency" value="{{ $wompi['currency'] }}">
-                <input type="hidden" name="amount-in-cents" value="{{ $wompi['amount_in_cents'] }}">
-                <input type="hidden" name="reference" value="{{ $wompi['reference'] }}">
-                <input type="hidden" name="signature:integrity" value="{{ $wompi['signature_integrity'] }}">
-                <input type="hidden" name="redirect-url" value="{{ $wompi['redirect_url'] }}">
-                <input type="hidden" name="customer-data:email" value="{{ $analysis->customer_email }}" />
-                
-                <button type="submit" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-all shadow-lg">
-                    Ir a Pagar con Wompi
-                </button>
-            </form>
+            <a href="{{ $checkoutUrl }}"
+               class="block w-full text-center bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-all shadow-lg">
+                Ir a Pagar con Wompi
+            </a>
 
             <p class="text-gray-500 text-sm mt-8 text-center">
                 Serás redirigido a la pasarela de pago de Wompi

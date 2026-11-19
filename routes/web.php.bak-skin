@@ -29,7 +29,6 @@ use App\Http\Controllers\MedicalExpertiseController;
 use App\Http\Controllers\DoctorSettingController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\ValidationController;
-use App\Http\Controllers\MedicalExamController; 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DoctorClinicController;
 use App\Http\Controllers\ClinicDoctorController;
@@ -552,12 +551,7 @@ Route::get('/sintomas/{slug}', [SymptomDirectoryController::class, 'show'])->nam
 // Directorio médico de socios ordenado por planes de suscripción
 Route::get('/medical-directory', [SearchController::class, 'medicalDirectory'])->name('medical.directory');
 
-Route::get('/examenes', [MedicalExamController::class, 'index'])->name('exams.index');
-Route::post('/examenes', [MedicalExamController::class, 'store'])->name('exams.store');
-Route::get('/examenes/{id}/pago', [MedicalExamController::class, 'checkout'])->name('exams.checkout');
-Route::post('/examenes/{id}/pagar', [MedicalExamController::class, 'processPayment'])->name('exams.id_pago');
-Route::get('/examenes/{id}/resultado', [MedicalExamController::class, 'showResult'])->name('exams.result');
-Route::get('/examenes/{id}/pago', [MedicalExamController::class, 'checkout'])->name('exams.checkout');
+Route::redirect('/examenes', '/medical-analysis', 301); // módulo anterior retirado
 
 // Ruta POST para procesar los múltiples archivos PDF
 Route::post('/medical-analysis/process-documents', [MedicalAnalysisController::class, 'processDocuments'])
@@ -678,3 +672,17 @@ Route::post('/pay/{token}/code', [PaymentLinkController::class, 'promo'])->middl
 Route::post('/pagar/{token}/codigo', [PaymentLinkController::class, 'promo'])->middleware('throttle:20,1'); // enlaces ya enviados por correo, eliminar luego del 20/11/2026
 Route::post('/pay/{token}', [PaymentLinkController::class, 'start'])->middleware('throttle:10,1')->name('appointments.pay-link.start');
 Route::post('/pagar/{token}', [PaymentLinkController::class, 'start'])->middleware('throttle:10,1'); // enlaces ya enviados por correo
+
+// Códigos promocionales de doctores particulares y clínicas (el descuento lo asume quien lo crea).
+Route::middleware(['auth', 'role:doctor|clinic'])->group(function () {
+    Route::resource('partner/promo-codes', \App\Http\Controllers\PartnerPromoCodeController::class)
+        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
+        ->names([
+            'index'   => 'partner.promo-codes.index',
+            'create'  => 'partner.promo-codes.create',
+            'store'   => 'partner.promo-codes.store',
+            'edit'    => 'partner.promo-codes.edit',
+            'update'  => 'partner.promo-codes.update',
+            'destroy' => 'partner.promo-codes.destroy',
+        ]);
+});

@@ -29,7 +29,6 @@ use App\Http\Controllers\MedicalExpertiseController;
 use App\Http\Controllers\DoctorSettingController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\ValidationController;
-use App\Http\Controllers\MedicalExamController; 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DoctorClinicController;
 use App\Http\Controllers\ClinicDoctorController;
@@ -552,12 +551,7 @@ Route::get('/sintomas/{slug}', [SymptomDirectoryController::class, 'show'])->nam
 // Directorio médico de socios ordenado por planes de suscripción
 Route::get('/medical-directory', [SearchController::class, 'medicalDirectory'])->name('medical.directory');
 
-Route::get('/examenes', [MedicalExamController::class, 'index'])->name('exams.index');
-Route::post('/examenes', [MedicalExamController::class, 'store'])->name('exams.store');
-Route::get('/examenes/{id}/pago', [MedicalExamController::class, 'checkout'])->name('exams.checkout');
-Route::post('/examenes/{id}/pagar', [MedicalExamController::class, 'processPayment'])->name('exams.id_pago');
-Route::get('/examenes/{id}/resultado', [MedicalExamController::class, 'showResult'])->name('exams.result');
-Route::get('/examenes/{id}/pago', [MedicalExamController::class, 'checkout'])->name('exams.checkout');
+Route::redirect('/examenes', '/medical-analysis', 301); // módulo anterior retirado
 
 // Ruta POST para procesar los múltiples archivos PDF
 Route::post('/medical-analysis/process-documents', [MedicalAnalysisController::class, 'processDocuments'])
@@ -691,4 +685,11 @@ Route::middleware(['auth', 'role:doctor|clinic'])->group(function () {
             'update'  => 'partner.promo-codes.update',
             'destroy' => 'partner.promo-codes.destroy',
         ]);
+});
+
+// Análisis de piel en el panel del administrador (reenviar informe y eliminar).
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::get('/admin/skin-analyses', [\App\Http\Controllers\Admin\SkinAnalysisAdminController::class, 'index'])->name('administrator.skin-analyses.index');
+    Route::post('/admin/skin-analyses/{skinAnalysis}/resend', [\App\Http\Controllers\Admin\SkinAnalysisAdminController::class, 'resend'])->name('administrator.skin-analyses.resend');
+    Route::delete('/admin/skin-analyses/{skinAnalysis}', [\App\Http\Controllers\Admin\SkinAnalysisAdminController::class, 'destroy'])->name('administrator.skin-analyses.destroy');
 });

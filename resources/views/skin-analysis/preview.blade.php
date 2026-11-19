@@ -89,6 +89,13 @@
                     </div>
                 </div>
 
+                {{-- Comisión de la pasarela (se oculta si es 0, por ejemplo en órdenes gratis) --}}
+                <div x-show="fee > 0" x-cloak
+                     class="flex justify-between items-center p-4 bg-white rounded-lg border border-slate-200">
+                    <span class="text-slate-600 font-medium">Comisión de pasarela:</span>
+                    <span class="text-slate-900 font-bold text-lg" x-text="money(fee)">${{ number_format($wompiCommission, 0, ',', '.') }}</span>
+                </div>
+
                 {{-- Total --}}
                 <div class="flex justify-between items-center p-6 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg text-white">
                     <span class="font-bold text-lg">Total a Pagar:</span>

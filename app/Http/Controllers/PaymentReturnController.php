@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Enums\PaymentKind;
 use App\Enums\PaymentTransactionStatus;
 use App\Models\Appointment;
+use App\Models\MedicalAnalysis;
 use App\Models\Payment;
+use App\Models\SkinAnalysis;
 use App\Payments\PaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -46,6 +48,14 @@ class PaymentReturnController extends Controller
             }
         }
 
+        if ($payment->kind === PaymentKind::Exam) {
+            return $this->examResult($payment);
+        }
+
+        if ($payment->kind === PaymentKind::SkinAnalysis) {
+            return $this->skinResult($payment);
+        }
+
         if ($payment->kind !== PaymentKind::Appointment) {
             return redirect()->route('home');
         }
@@ -76,6 +86,58 @@ class PaymentReturnController extends Controller
             'canRetry'    => $canRetry,
             'retryUrl'    => $this->retryUrl($appointment),
         ]);
+    }
+
+    /** Resultado del pago de un examen: la misma pantalla de siempre (aprobado, en verificación o declinado). */
+    private function examResult(Payment $payment)
+    {
+        $analysis = MedicalAnalysis::findOrFail($payment->payable_id);
+
+        $paymentStatus = match ($payment->status) {
+            PaymentTransactionStatus::Approved => 'APPROVED',
+            PaymentTransactionStatus::Declined,
+            PaymentTransactionStatus::Voided,
+            PaymentTransactionStatus::Error    => 'DECLINED',
+            default                            => 'PENDING',
+        };
+
+        return response()
+            ->view('medical-analysis.payment-result', [
+                'analysis'      => $analysis,
+                'paymentStatus' => $paymentStatus,
+            ])
+            ->withHeaders([
+                'X-Robots-Tag'    => 'noindex, nofollow, noarchive',
+                'Cache-Control'   => 'no-store, private',
+                'Referrer-Policy' => 'no-referrer',
+            ]);
+    }
+
+    /** Resultado del pago de piel: aprobado va al informe; lo demás vuelve al resumen de pago con un aviso. */
+    private function skinResult(Payment $payment)
+    {
+        $analysis = SkinAnalysis::findOrFail($payment->payable_id);
+
+        if ($payment->status === PaymentTransactionStatus::Approved) {
+            return redirect()->route('skin-analysis.result', ['token' => $analysis->access_token]);
+        }
+
+        // Sin posibilidad de reintentar (la orden venció o ya avanzó): no hay a dónde volver a pagar.
+        if (!in_array($analysis->status, SkinAnalysis::PAYABLE_STATUSES, true)) {
+            return redirect()->route('skin-analysis.index')
+                ->with('error', 'Esta orden ya no se puede pagar. Inicia un nuevo análisis.');
+        }
+
+        $declined = in_array($payment->status, [
+            PaymentTransactionStatus::Declined,
+            PaymentTransactionStatus::Voided,
+            PaymentTransactionStatus::Error,
+        ], true);
+
+        return redirect()->route('skin-analysis.payment', ['token' => $analysis->access_token])
+            ->with('error', $declined
+                ? 'El pago fue rechazado. Intenta nuevamente.'
+                : 'Tu pago aún está pendiente de confirmación. Si ya pagaste, espera unos minutos y recarga.');
     }
 
     private function retryUrl(Appointment $appointment): string

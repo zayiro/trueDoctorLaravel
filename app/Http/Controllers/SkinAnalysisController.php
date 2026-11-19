@@ -6,7 +6,10 @@ use Anthropic\Client;
 use App\Jobs\SkinAnalysisJob;
 use App\Mail\SkinAnalysisReceived;
 use App\Models\PromoCode;
+use App\Models\Setting;
 use App\Models\SkinAnalysis;
+use App\Models\Specialty;
+use App\Services\Payments\AnalysisCheckout;
 use App\Services\Wompi\WompiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -26,11 +29,15 @@ class SkinAnalysisController extends Controller
     private const DISK = 'private';
     private const TEMP_DIR = 'skin-analysis/temp';
 
-    private const BASE_PRICE = 9000;
+    /** Precio por defecto si el panel de configuración aún no define skin_analysis_price. */
+    private const DEFAULT_PRICE = 9000;
     private const WOMPI_COMMISSION_RATE = 0.03;
     private const CURRENCY = 'COP';
 
     private const AI_MODEL = 'claude-sonnet-5-5';
+
+    /** Especialidad que se recomienda tras un análisis de piel (slug de la tabla specialties). */
+    private const SUGGESTED_SPECIALTY = 'dermatologia';
 
     private const BODY_LOCATIONS = [
         'Cabeza y cuello' => ['Cara', 'Cuero cabelludo', 'Orejas', 'Labios y boca', 'Cuello'],
@@ -241,7 +248,7 @@ PROMPT;
         return view('skin-analysis.preview', [
             'sessionId' => $sessionId,
             'sessionData' => $sessionData,
-            'price' => self::BASE_PRICE,
+            'price' => $this->basePrice(),
             'wompiCommission' => $breakdown['fee'],
             'total' => $breakdown['total'],
             ...$this->meta(' - Preview'),
@@ -269,7 +276,7 @@ PROMPT;
             return response()->json(['valid' => false, 'message' => 'El código no está disponible (inactivo, vencido o agotado).']);
         }
 
-        $discount = $code->discountFor(self::BASE_PRICE);
+        $discount = $code->discountFor($this->basePrice());
         $price = $this->priceBreakdown($discount);
 
         return response()->json([
@@ -325,7 +332,7 @@ PROMPT;
             }
 
             $promo = $candidate;
-            $discount = $candidate->discountFor(self::BASE_PRICE);
+            $discount = $candidate->discountFor($this->basePrice());
         }
 
         $price = $this->priceBreakdown($discount);
@@ -342,7 +349,7 @@ PROMPT;
             'analysis_language' => $sessionData['language'],
             'body_location' => $sessionData['body_location'],
             'description' => $sessionData['description'],
-            'price' => self::BASE_PRICE,
+            'price' => $this->basePrice(),
             'discount_amount' => $discount,
             'wompi_fee' => $price['fee'],
             'total_amount' => $price['total'],
@@ -392,34 +399,36 @@ PROMPT;
 
     /**
      * GET /skin-analysis/payment/{token}
+     * Resumen de pago. Cada visita crea un intento de pago nuevo en la capa de pagos; el resultado llega
+     * por webhook y por el regreso del navegador a payments.return.
      */
-    public function paymentGateway(string $token): View
+    public function paymentGateway(string $token, AnalysisCheckout $checkout): View|RedirectResponse
     {
         $analysis = $this->findPayableAnalysis($token);
 
-        $reference = $this->paymentReference($analysis);
-        $amountInCents = $this->payableAmount($analysis) * 100;
+        try {
+            $payment = $checkout->start($analysis);
+            $checkoutUrl = $checkout->checkoutUrl($payment);
+        } catch (\DomainException $e) {
+            return redirect()->route('skin-analysis.upload')->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('Skin payment: no se pudo iniciar el pago', ['analysis_id' => $analysis->id, 'message' => $e->getMessage()]);
 
-        // Orden exigido por Wompi: referencia + monto en centavos + moneda + secreto de integridad
-        $signature = hash(
-            'sha256',
-            $reference . $amountInCents . self::CURRENCY . config('services.wompi.integrity_secret')
-        );
+            return redirect()->route('skin-analysis.upload')
+                ->with('error', 'No pudimos iniciar el pago. Inténtalo de nuevo en unos segundos.');
+        }
 
         return view('skin-analysis.payment', [
             'analysis' => $analysis,
-            'wompi_public_key' => config('services.wompi.public_key'),
-            'signature' => $signature,
-            'reference' => $reference,
-            'amount_in_cents' => $amountInCents,
-            'currency' => self::CURRENCY,
+            'checkoutUrl' => $checkoutUrl,
             ...$this->meta(' - Payment'),
         ]);
     }
 
     /**
-     * GET /skin-analysis/payment/result/{token}
-     * Wompi devuelve aquí al paciente con ?id=<transacción>.
+     * GET /skin-analysis/payment/result/{token}  (anterior)
+     * Los pagos nuevos regresan a payments.return; esta ruta se conserva para los pagos que se iniciaron
+     * antes del cambio. Wompi devuelve aquí al paciente con ?id=<transacción>.
      */
     public function processPaymentResult(string $token): RedirectResponse
     {
@@ -491,6 +500,7 @@ PROMPT;
         return view('skin-analysis.result', [
             'analysis' => $analysis,
             'is_processing' => $analysis->status === SkinAnalysis::STATUS_PROCESSING,
+            'rec' => $analysis->status === SkinAnalysis::STATUS_COMPLETED ? $this->specialtyRecommendation() : null,
             ...$this->meta(' - Result'),
         ]);
     }
@@ -513,6 +523,27 @@ PROMPT;
     // =====================================================================
 
     /**
+     * Especialidad a recomendar: Dermatología si tiene médicos activos; si no, la de respaldo
+     * (la misma lógica de los exámenes).
+     *
+     * @return array{suggested: ?Specialty, target: ?Specialty, available: bool}
+     */
+    private function specialtyRecommendation(): array
+    {
+        $suggested = Specialty::where('slug', self::SUGGESTED_SPECIALTY)->first();
+
+        if ($suggested && (int) $suggested->status === 1) {
+            return ['suggested' => $suggested, 'target' => $suggested, 'available' => true];
+        }
+
+        $fallback = Specialty::where('slug', config('ai_specialties.fallback', 'medicina-general'))
+            ->where('status', 1)
+            ->first();
+
+        return ['suggested' => $suggested, 'target' => $fallback, 'available' => false];
+    }
+
+    /**
      * Variables de SEO que exige el layout.
      */
     private function meta(string $suffix = ''): array
@@ -531,7 +562,7 @@ PROMPT;
      */
     private function priceBreakdown(int $discount): array
     {
-        $final = max(0, self::BASE_PRICE - $discount);
+        $final = max(0, $this->basePrice() - $discount);
         $fee = $this->commissionFor($final);
 
         return [
@@ -540,6 +571,14 @@ PROMPT;
             'fee' => $fee,
             'total' => $final + $fee,
         ];
+    }
+
+    /** Precio del análisis: el del panel de configuración o, si no existe, el valor por defecto. */
+    private function basePrice(): int
+    {
+        $price = (int) Setting::get('skin_analysis_price');
+
+        return $price > 0 ? $price : self::DEFAULT_PRICE;
     }
 
     private function commissionFor(int|float $amount): int
@@ -580,7 +619,13 @@ PROMPT;
             ],
         );
 
-        $raw = $message->content[0]->text ?? '';
+        // Solo los bloques de texto: el modelo puede anteponer bloques de razonamiento sin texto.
+        $raw = '';
+        foreach (($message->content ?? []) as $block) {
+            if (($block->type ?? null) === 'text') {
+                $raw .= (string) $block->text;
+            }
+        }
         $clean = trim(preg_replace('/^```(?:json)?|```$/m', '', $raw));
         $result = json_decode($clean, true);
 

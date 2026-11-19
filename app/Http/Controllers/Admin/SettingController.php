@@ -98,6 +98,11 @@ class SettingController extends Controller
             ];
         }
 
+        $schema['skin_analysis_price'] = [
+            'group' => 'skin_analysis',
+            'rules' => ['required', 'integer', 'min:5000', 'max:500000'],
+        ];
+
         foreach (array_keys($this->decimationTypes()) as $type) {
             $schema["{$type}_auto_decimation"] = [
                 'group' => 'analysis',

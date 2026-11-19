@@ -73,6 +73,9 @@ PROMPT;
             'failure_reason' => null,
         ]);
 
+        // El informe ya está guardado: la foto (dato sensible) ya no hace falta y se borra.
+        $this->deletePhotos($analysis);
+
         try {
             Mail::to($analysis->customer_email)->queue(new SkinAnalysisReady($analysis));
         } catch (\Throwable $e) {
@@ -84,6 +87,22 @@ PROMPT;
         }
 
         return $report;
+    }
+
+    /**
+     * Borra la carpeta de fotos del análisis. Un fallo aquí nunca debe invalidar el informe ya guardado:
+     * el comando skin:purge-stale lo reintenta después.
+     */
+    protected function deletePhotos(SkinAnalysis $analysis): void
+    {
+        try {
+            Storage::disk(self::DISK)->deleteDirectory($analysis->imageDirectory());
+        } catch (\Throwable $e) {
+            Log::warning('SkinAnalysis: no se pudieron borrar las fotos', [
+                'analysis_id' => $analysis->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -160,10 +179,27 @@ PROMPT;
             ],
         );
 
-        $text = trim($message->content[0]->text ?? '');
+        $text = trim($this->extractText($message));
 
         if ($text === '') {
             throw new \RuntimeException('La API de Claude devolvió una respuesta vacía.');
+        }
+
+        return $text;
+    }
+
+    /**
+     * Une los bloques de texto de la respuesta. El modelo puede anteponer bloques de razonamiento
+     * (thinking), que no tienen texto: leer solo content[0] fallaba cuando venían primero.
+     */
+    protected function extractText(object $message): string
+    {
+        $text = '';
+
+        foreach (($message->content ?? []) as $block) {
+            if (($block->type ?? null) === 'text') {
+                $text .= (string) $block->text;
+            }
         }
 
         return $text;

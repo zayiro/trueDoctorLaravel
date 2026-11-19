@@ -86,6 +86,41 @@ $inputBase = 'w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg te
                 </div>
             </div>
 
+            <!-- 1️⃣ bis PRECIO ANÁLISIS DE PIEL -->
+            <div class="bg-slate-950 border border-white/10 rounded-2xl p-6 space-y-4">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-face-smile text-pink-400"></i>
+                    Precio del Análisis de Piel
+                </h2>
+                <p class="text-slate-400 text-sm">Precio base que ve el usuario antes de aplicar códigos de promoción</p>
+
+                @php $skinPrice = (int) $settings->get('skin_analysis_price', 9000); @endphp
+                <div class="space-y-2 md:w-1/2">
+                    <label for="skin_analysis_price" class="text-sm font-bold text-white">Precio base (COP)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">$</span>
+                        <input type="number"
+                               id="skin_analysis_price"
+                               name="skin_analysis_price"
+                               value="{{ old('skin_analysis_price', $skinPrice) }}"
+                               class="{{ $inputBase }} pl-10 focus:ring-pink-500"
+                               step="500"
+                               min="5000"
+                               max="500000"
+                               required>
+                    </div>
+                    <p class="text-xs text-slate-400">
+                        Actual: ${{ number_format($skinPrice, 0, ',', '.') }} COP (el usuario paga además la comisión de pasarela)
+                    </p>
+                </div>
+
+                <div class="bg-pink-500/10 border border-pink-500/30 rounded-lg p-3">
+                    <p class="text-slate-300 text-xs">
+                        <strong>ℹ️</strong> El cambio aplica a los análisis nuevos. Los que ya están pendientes de pago conservan su precio.
+                    </p>
+                </div>
+            </div>
+
             <!-- 2️⃣ MODELOS DE IA POR TIPO -->
             <div class="bg-slate-950 border border-white/10 rounded-2xl p-6 space-y-4">
                 <h2 class="text-xl font-bold text-white flex items-center gap-2">

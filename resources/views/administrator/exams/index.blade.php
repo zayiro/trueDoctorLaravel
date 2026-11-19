@@ -30,7 +30,7 @@ $breadcrumbs = [
                 <p class="text-sm text-gray-500">Historial de análisis procesados.</p>
             </div>
             
-            <form method="GET" action="{{ route('exams.index') }}" class="flex gap-2">
+            <form method="GET" action="{{ route('administrator.exams.index') }}" class="flex gap-2">
                 <input 
                     type="text" 
                     name="search" 

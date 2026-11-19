@@ -33,21 +33,11 @@
                     </div>
                 </div>
 
-                {{-- Checkout web de Wompi: redirige al pago y regresa a redirect-url con ?id=... --}}
-                <form action="https://checkout.wompi.co/p/" method="GET">
-                    <input type="hidden" name="public-key" value="{{ $wompi_public_key }}">
-                    <input type="hidden" name="currency" value="{{ $currency }}">
-                    <input type="hidden" name="amount-in-cents" value="{{ $amount_in_cents }}">
-                    <input type="hidden" name="reference" value="{{ $reference }}">
-                    <input type="hidden" name="signature:integrity" value="{{ $signature }}">
-                    <input type="hidden" name="redirect-url" value="{{ route('skin-analysis.payment-result', ['token' => $analysis->access_token]) }}">
-                    <input type="hidden" name="customer-data:email" value="{{ $analysis->customer_email }}">
-
-                    <button type="submit"
-                            class="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-3.5 font-semibold text-white shadow-sm transition hover:bg-blue-700">
-                        Pagar ${{ number_format($analysis->total_amount, 0, ',', '.') }} COP
-                    </button>
-                </form>
+                {{-- El intento de pago ya está creado: este enlace lleva al checkout de Wompi y regresa a payments.return --}}
+                <a href="{{ $checkoutUrl }}"
+                   class="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-3.5 font-semibold text-white shadow-sm transition hover:bg-blue-700">
+                    Pagar ${{ number_format($analysis->total_amount, 0, ',', '.') }} COP
+                </a>
 
                 <p class="text-center text-xs leading-relaxed text-slate-500">
                     Este análisis es orientativo, no constituye un diagnóstico y no reemplaza la valoración de un profesional de la salud.
@@ -55,4 +45,4 @@
             </div>
         </div>
     </div>
-</x-guest-layout>    
+</x-guest-layout>

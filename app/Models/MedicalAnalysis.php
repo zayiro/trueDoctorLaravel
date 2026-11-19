@@ -17,6 +17,8 @@ class MedicalAnalysis extends Model
         'reason_custom',
         'promo_code',
         'price',
+        'discount_amount',
+        'wompi_fee',
         'status',
         'total_images_uploaded', 
         'processed_images_count', 
