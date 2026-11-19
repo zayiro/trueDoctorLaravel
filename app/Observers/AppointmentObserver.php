@@ -11,7 +11,6 @@ use App\Models\DoctorSetting;
 use App\Jobs\SyncZoomMeetingJob;
 use App\Jobs\CancelZoomMeetingJob;
 use App\Events\AppointmentRescheduled;
-use App\Repositories\AvailabilityRepository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
@@ -19,13 +18,6 @@ use Throwable;
 
 class AppointmentObserver
 {
-    private AvailabilityRepository $cacheRepo;
-
-    public function __construct(AvailabilityRepository $cacheRepo)
-    {
-        $this->cacheRepo = $cacheRepo;
-    }
-
     /**
      * Handle the Appointment "created" event.
      * 
@@ -99,7 +91,6 @@ class AppointmentObserver
      * - Eliminado DB::transaction() redundante
      * - Evento AppointmentRescheduled con afterCommit()
      * - Eliminado saveQuietly() (riesgo de loop infinito)
-     * - Invalidación de caché al cambiar estado
      * - email_sent se maneja con update() explícito, no saveQuietly()
      */
     public function updated(Appointment $appointment): void
@@ -129,44 +120,8 @@ class AppointmentObserver
                     'previous_datetime' => $previousDateTime,
                 ]);
             }
-
-            // 🔥 INVALIDAR CACHÉ DE DISPONIBILIDAD
-            // Crucial: al cancelar/reagendar una cita, el turno debe reflejarse inmediatamente
-            $this->invalidateCacheForAppointment($appointment);
         } catch (Throwable $e) {
             Log::error('AppointmentObserver: Error en updated', [
-                'appointment_id' => $appointment->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    /**
-     * Invalida el caché de disponibilidad para la sede de la cita.
-     * 🔒 CRÍTICO: Sin esto, los turnos cancelados/reagendados siguen apareciendo como ocupados.
-     */
-    private function invalidateCacheForAppointment(Appointment $appointment): void
-    {
-        try {
-            $addressId = $appointment->address_id;
-            $doctorId = $appointment->doctor_id;
-            $clinicId = $appointment->clinic_id;
-
-            if ($addressId && $doctorId) {
-                $this->cacheRepo->invalidateAvailabilityCache(
-                    $clinicId,
-                    [$doctorId],
-                    $addressId
-                );
-                
-                Log::info('AppointmentObserver: Caché invalidado', [
-                    'appointment_id' => $appointment->id,
-                    'address_id' => $addressId,
-                    'doctor_id' => $doctorId,
-                ]);
-            }
-        } catch (Throwable $e) {
-            Log::error('AppointmentObserver: Error al invalidar caché', [
                 'appointment_id' => $appointment->id,
                 'error' => $e->getMessage(),
             ]);

@@ -21,7 +21,7 @@ use Throwable;
  * en el enum (executed, no_show, rescheduled, zoom_*_failed): update() habría lanzado ValueError.
  *
  * Qué hace cada transición, vía eventos (los listeners se descubren solos en app/Listeners):
- *   confirmed → AppointmentConfirmed → InvalidateAvailabilityCacheOnAppointmentConfirmed
+ *   confirmed → AppointmentConfirmed
  *   cancelled → AppointmentCancelled → SendCancellationEmail   (la reunión de Zoom la elimina AppointmentObserver)
  *   completed → AppointmentCompleted → EndZoomMeetingOnAppointmentCompleted
  */

@@ -6,7 +6,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Clinic;
 use App\Models\Doctor;
-use App\Repositories\AvailabilityRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -20,10 +19,9 @@ class ContextDoctorController extends Controller
      * - El doctor debe estar activo y aprobado
      * - La clínica debe existir, estar activa y aprobada
      * - El doctor debe estar aprobado en la clínica (status = 'approved')
-     * - Se invalida el caché de disponibilidad al cambiar de contexto
      * - Se registra el cambio en los logs de auditoría
      */
-    public function switchContext(Request $request, AvailabilityRepository $cacheRepo)
+    public function switchContext(Request $request)
     {
         $request->validate([
             'context_id' => ['nullable', 'string'],
@@ -61,9 +59,6 @@ class ContextDoctorController extends Controller
                 'doctor_id' => $doctor->id,
                 'previous_context' => $previousContext,
             ]);
-
-            // Invalidar caché de disponibilidad del doctor en contexto particular
-            $this->invalidateDoctorCache($cacheRepo, $doctor->id, null);
 
             return back()->with('success', 'Entorno cambiado correctamente a: Consultorio Particular');
         }
@@ -118,44 +113,6 @@ class ContextDoctorController extends Controller
             'previous_context' => $previousContext,
         ]);
 
-        // Invalidar caché de disponibilidad del doctor en contexto de clínica
-        $this->invalidateDoctorCache($cacheRepo, $doctor->id, $clinicId);
-
         return back()->with('success', 'Entorno cambiado correctamente a: ' . $clinic->user->name);
-    }
-
-    /**
-     * Invalida el caché de disponibilidad para las sedes donde el doctor atiende.
-     * Esto asegura que al cambiar de contexto, la búsqueda pública refleje inmediatamente
-     * los cambios en la disponibilidad.
-     */
-    private function invalidateDoctorCache(AvailabilityRepository $cacheRepo, int $doctorId, ?int $clinicId): void
-    {
-        try {
-            // Obtener las sedes donde el doctor tiene horarios activos
-            $addressIds = \App\Models\Schedule::where('doctor_id', $doctorId)
-                ->where('is_active', true)
-                ->when($clinicId !== null, function ($query) use ($clinicId) {
-                    $query->where('clinic_id', $clinicId);
-                })
-                ->when($clinicId === null, function ($query) {
-                    $query->whereNull('clinic_id');
-                })
-                ->pluck('address_id')
-                ->unique()
-                ->all();
-
-            if (!empty($addressIds)) {
-                foreach ($addressIds as $addressId) {
-                    $cacheRepo->invalidateAvailabilityCache($clinicId, [$doctorId], $addressId);
-                }
-            }
-        } catch (\Exception $e) {
-            Log::error('ContextDoctorController: Error al invalidar caché', [
-                'error' => $e->getMessage(),
-                'doctor_id' => $doctorId,
-                'clinic_id' => $clinicId,
-            ]);
-        }
     }
 }

@@ -7,7 +7,6 @@ namespace App\Http\Controllers;
 use App\Models\Unavailability;
 use App\Models\Appointment;
 use App\Models\Address;
-use App\Services\AvailabilityService;
 use App\Services\Scheduling\SlotOverlapChecker;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,13 +16,6 @@ use Illuminate\Validation\Rule;
 
 class UnavailabilityController extends Controller
 {
-    private AvailabilityService $availabilityService;
-
-    public function __construct(AvailabilityService $availabilityService)
-    {
-        $this->availabilityService = $availabilityService;
-    }
-
     /**
      * Resuelve el doctor_id objetivo aplicando filtros estrictos de seguridad de Co-propiedad.
      * 
@@ -175,15 +167,13 @@ class UnavailabilityController extends Controller
      * - Valida start_date <= end_date
      * - Valida consistencia entre start_time y end_time
      * - Valida ausencias existentes superpuestas
-     * - Invalida caché de disponibilidad
      */
     public function store(Request $request)
     {
         $user = Auth::user();
-        $context = session('doctor_context');
 
         try {
-            return DB::transaction(function () use ($request, $user, $context) {
+            return DB::transaction(function () use ($request, $user) {
                 $doctorId = $this->resolveDoctorId($request, $user);
                 $this->checkAddressOwnership($request->address_id, $user);
 
@@ -260,14 +250,6 @@ class UnavailabilityController extends Controller
 
                 // 🔥 DISPARAR EVENTO CON CITAS AFECTADAS
                 event(new \App\Events\DoctorUnavailabilityCreated($unavailability, $conflicts));
-
-                //  INVALIDAR CACHÉ DE DISPONIBILIDAD
-                $clinicId = ($context['type'] ?? 'particular') === 'clinic' ? (int)$context['id'] : null;
-                $this->availabilityService->invalidateAvailabilityCache(
-                    $clinicId,
-                    [$doctorId],
-                    $request->address_id
-                );
 
                 return back()->with('success', 'Ausencia e indisponibilidad guardada correctamente. Se han notificado los pacientes afectados.');
             });
@@ -393,8 +375,6 @@ class UnavailabilityController extends Controller
 
     /**
      * Remueve el bloqueo validando jerarquías Multi-tenant estrictas.
-     * 
-     *  CORRECCIÓN: Invalida caché de disponibilidad al eliminar.
      */
     public function destroy(Unavailability $unavailability)
     {
@@ -427,19 +407,7 @@ class UnavailabilityController extends Controller
             }
         }
 
-        // Capturar datos antes de eliminar para invalidar caché
-        $doctorId = $unavailability->doctor_id;
-        $addressId = $unavailability->address_id;
-        $clinicId = ($context['type'] ?? 'particular') === 'clinic' ? (int)$context['id'] : null;
-
         $unavailability->delete();
-
-        // ⚡ INVALIDAR CACHÉ DE DISPONIBILIDAD
-        $this->availabilityService->invalidateAvailabilityCache(
-            $clinicId,
-            [$doctorId],
-            $addressId
-        );
 
         return back()->with('success', 'El periodo de indisponibilidad ha sido eliminado. Los turnos vuelven al buscador público.');
     }

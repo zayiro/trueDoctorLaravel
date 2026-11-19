@@ -16,7 +16,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use App\Services\ColombiaHolidayService;
 use App\Services\Availability\AvailabilityQuery;
 use App\Services\Availability\AvailabilityResolver;
 use Illuminate\Support\Facades\Log;
@@ -305,137 +304,40 @@ class PublicProfileController extends Controller
             $targetAddressId = (int)$doctor->addresses->first()->id;
         }
 
-        $enabledDates = []; 
+        $enabledDates = [];
         $enabledDays = [];
 
         if ($targetAddressId) {
             $settings = DB::table('doctor_settings')->where('doctor_id', $doctor->id)->first();
-            $minNoticeHours = $settings->min_notice_hours ?? 2;
-            $maxAdvanceDays = $settings->max_advance_days ?? 30;
-
+            $maxAdvanceDays = (int) ($settings->max_advance_days ?? 30);
             $maxDate = $now->copy()->addDays($maxAdvanceDays);
-            $colombianHolidays = ColombiaHolidayService::getHolidays($now->year);
 
-            // 1. Traer todos los horarios configurados por el médico en esta sede
-            $baseSchedules = DB::table('schedules')
+            // Días de la semana con horario en esta sede (0=Dom, 1=Lun ... 6=Sab) para pintar el calendario.
+            $enabledDays = DB::table('schedules')
                 ->where('address_id', $targetAddressId)
                 ->where('doctor_id', $doctor->id)
-                ->get()
-                ->groupBy('day');
+                ->pluck('day')
+                ->map(fn ($day) => (int) $day === 7 ? 0 : (int) $day)
+                ->unique()
+                ->values()
+                ->toArray();
 
-            // 🚀 Extracción indexada de días teóricos operativos (0=Dom, 1=Lun ... 6=Sab)
-            $enabledDays = $baseSchedules->keys()->map(function($day) {
-                return $day === 7 ? 0 : $day;
-            })->unique()->values()->toArray();
+            // Fechas con al menos un turno libre: las calcula el motor único de disponibilidad.
+            try {
+                $enabledDates = app(AvailabilityResolver::class)->enabledDates(
+                    new AvailabilityQuery([(int) $doctor->id], $fromClinicId ? (int) $fromClinicId : null, $targetAddressId),
+                    $now->copy()->startOfDay(),
+                    $maxDate->copy()->startOfDay()
+                );
 
-            // 2. Traer todas las citas activas/reservadas en este rango para evitar N+1
-            $bookedAppointments = Appointment::where('address_id', $targetAddressId)
-                ->where('doctor_id', $doctor->id)
-                ->whereBetween('date', [$now->toDateString(), $maxDate->toDateString()])
-                ->whereIn('status', ['pending', 'confirmed', 'completed'])
-                ->get()
-                ->groupBy(fn($app) => $app->date . '_' . $app->start_time);
-
-            // 3. Traer las indisponibilidades (vacaciones, congresos) del médico
-            $unavailabilities = DB::table('unavailabilities')
-                ->where('doctor_id', $doctor->id)
-                ->where(fn($q) => $q->whereNull('address_id')->orWhere('address_id', $targetAddressId))
-                ->where('start_date', '<=', $maxDate->toDateString())
-                ->where('end_date', '>=', $now->toDateString())
-                ->get();
-            // FASE 5 (interruptor BOOKING_NEW_PROFILE): el calendario sale del motor único de disponibilidad.
-            // Si falla, se usa el barrido anterior para no dejar el calendario vacío.
-            $useNewEngine = false;
-
-            if (config('booking.new_availability.profile')) {
-                try {
-                    $newDates = app(AvailabilityResolver::class)->enabledDates(
-                        new AvailabilityQuery([(int) $doctor->id], $fromClinicId ? (int) $fromClinicId : null, $targetAddressId),
-                        $now->copy()->startOfDay(),
-                        $maxDate->copy()->startOfDay()
-                    );
-
-                    $enabledDates = $newDates;
-                    $nextAvailableDate = $newDates[0] ?? $todayColombia;
-                    $useNewEngine = true;
-                } catch (\Throwable $e) {
-                    Log::error('PublicProfile: falló el motor nuevo; se usa el anterior', [
-                        'doctor_id'  => $doctor->id,
-                        'address_id' => $targetAddressId,
-                        'error'      => $e->getMessage(),
-                    ]);
-                }
+                $nextAvailableDate = $enabledDates[0] ?? $todayColombia;
+            } catch (\Throwable $e) {
+                Log::error('PublicProfile: falló el motor de disponibilidad', [
+                    'doctor_id'  => $doctor->id,
+                    'address_id' => $targetAddressId,
+                    'error'      => $e->getMessage(),
+                ]);
             }
-
-            // 4. ESCANEO DINÁMICO DEL HORIZONTE DE DISPONIBILIDAD (motor anterior)
-            if (!$useNewEngine) {
-            for ($dayOffset = 0; $dayOffset <= $maxAdvanceDays; $dayOffset++) {
-                $evalDate = $now->copy()->addDays($dayOffset);
-                $evalDateString = $evalDate->toDateString();
-                
-                if (array_key_exists($evalDateString, $colombianHolidays)) {
-                    continue; 
-                }
-
-                $evalDayOfWeek = $evalDate->dayOfWeekIso; 
-
-                if (!isset($baseSchedules[$evalDayOfWeek])) {
-                    continue;
-                }
-
-                $isDateUnavailable = $unavailabilities->contains(function ($unavail) use ($evalDateString) {
-                    return $evalDateString >= $unavail->start_date && 
-                           $evalDateString <= $unavail->end_date && 
-                           is_null($unavail->start_time);
-                });
-
-                if ($isDateUnavailable) {
-                    continue;
-                }
-
-                $hasAtLeastOneFreeSlot = false;
-
-                foreach ($baseSchedules[$evalDayOfWeek] as $sched) {
-                    $startTimeStr = $sched->start_time instanceof Carbon ? $sched->start_time->format('H:i:s') : Carbon::parse($sched->start_time)->format('H:i:s');
-                    $endTimeStr   = $sched->end_time instanceof Carbon   ? $sched->end_time->format('H:i:s')   : Carbon::parse($sched->end_time)->format('H:i:s');
-
-                    $earliestBookable = $now->copy()->addHours((int)$minNoticeHours);
-                    $slotEnd = Carbon::parse($evalDateString . ' ' . $endTimeStr, 'America/Bogota');
-
-                    // 🔒 Solo descartamos el rango si ya terminó completamente antes del mínimo de anticipación
-                    if ($slotEnd->lessThanOrEqualTo($earliestBookable)) {
-                        continue;
-                    }
-
-                    $isSlotInUnavailability = $unavailabilities->contains(function ($unavail) use ($evalDateString, $startTimeStr) {
-                        if ($evalDateString >= $unavail->start_date && $evalDateString <= $unavail->end_date && !is_null($unavail->start_time)) {
-                            $uStart = $unavail->start_time instanceof Carbon ? $unavail->start_time->format('H:i:s') : Carbon::parse($unavail->start_time)->format('H:i:s');
-                            $uEnd = $unavail->end_time instanceof Carbon ? $unavail->end_time->format('H:i:s') : Carbon::parse($unavail->end_time)->format('H:i:s');
-                            return $startTimeStr >= $uStart && $startTimeStr < $uEnd;
-                        }
-                        return false;
-                    });
-
-                    if ($isSlotInUnavailability) {
-                        continue;
-                    }
-
-                    $isBooked = isset($bookedAppointments[$evalDateString . '_' . $startTimeStr]);
-
-                    if (!$isBooked) {
-                        $hasAtLeastOneFreeSlot = true;
-                        if (empty($enabledDates)) {
-                            $nextAvailableDate = $evalDateString;
-                        }
-                        break; 
-                    }
-                }
-
-                if ($hasAtLeastOneFreeSlot) {
-                    $enabledDates[] = $evalDateString;
-                }
-            }
-            } // fin del barrido anterior
         }
 
         if ($addressId) {

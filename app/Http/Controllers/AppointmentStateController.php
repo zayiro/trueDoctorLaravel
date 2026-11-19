@@ -9,7 +9,6 @@ use App\Models\Doctor;
 use App\Models\Address;
 use App\Events\AppointmentCancelled;
 use App\Notifications\AppointmentStatusChangedNotification;
-use App\Repositories\AvailabilityRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -40,19 +39,11 @@ class AppointmentStateController extends Controller
         'admin'   => 'Administrador',
     ];
 
-    private AvailabilityRepository $cacheRepo;
-
-    public function __construct(AvailabilityRepository $cacheRepo)
-    {
-        $this->cacheRepo = $cacheRepo;
-    }
-
     /**
      * Controlador universal de estados.
      * El procesamiento de Zoom y correos se delega al AppointmentObserver y eventos.
      * 
      *  CORRECCIONES:
-     * - Invalida caché de disponibilidad al cambiar estado
      * - Dispara evento AppointmentCancelled cuando aplica
      * - Notifica al paciente sobre cambios de estado
      * - Valida transiciones de estado permitidas
@@ -108,10 +99,6 @@ class AppointmentStateController extends Controller
                     event(new AppointmentCancelled($appointment));
                 }
             });
-
-            // 🔥 INVALIDAR CACHÉ DE DISPONIBILIDAD
-            // Crucial: al cancelar/completar una cita, el turno debe volver a estar disponible
-            $this->invalidateAppointmentCache($appointment);
 
             //  NOTIFICAR AL PACIENTE sobre el cambio de estado
             $this->notifyPatient($appointment, $newStatus, $user);
@@ -242,33 +229,6 @@ class AppointmentStateController extends Controller
         }
 
         return $notes ?: null;
-    }
-
-    /**
-     * Invalida el caché de disponibilidad para la sede de la cita.
-     * 🔒 CRÍTICO: Sin esto, los turnos cancelados siguen apareciendo como ocupados.
-     */
-    private function invalidateAppointmentCache(Appointment $appointment): void
-    {
-        try {
-            $addressId = $appointment->address_id;
-            $doctorId = $appointment->doctor_id;
-            $clinicId = $appointment->clinic_id;
-
-            if ($addressId && $doctorId) {
-                $this->cacheRepo->invalidateAvailabilityCache(
-                    $clinicId,
-                    [$doctorId],
-                    $addressId
-                );
-            }
-        } catch (\Exception $e) {
-            // No romper el flujo si falla la invalidación de caché
-            Log::error('AppointmentStateController: Error al invalidar caché', [
-                'appointment_id' => $appointment->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
     }
 
     /**

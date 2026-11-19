@@ -6,9 +6,7 @@ use App\Models\Address;
 use App\Models\Appointment;
 use App\Models\Clinic;
 use App\Models\Doctor;
-use App\Models\Schedule;
 use App\Models\Service;
-use App\Repositories\AvailabilityRepository;
 use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -24,10 +22,6 @@ use Illuminate\Validation\ValidationException;
  */
 class OwnerServiceManager
 {
-    public function __construct(private readonly AvailabilityRepository $availabilityCache)
-    {
-    }
-
     /**
      * Crea el servicio en las sedes indicadas (una fila independiente por sede).
      *
@@ -64,10 +58,6 @@ class OwnerServiceManager
             return $created;
         });
 
-        foreach ($targets as $target) {
-            $this->invalidateCache($owner, $target['address']);
-        }
-
         return $services;
     }
 
@@ -95,8 +85,6 @@ class OwnerServiceManager
             $service->specialties()->sync($this->specialtyPivot($data['specialties'], $userId));
         });
 
-        $this->invalidateCache($owner, $address);
-
         return $service->refresh();
     }
 
@@ -119,8 +107,6 @@ class OwnerServiceManager
         }
 
         $service->delete();
-
-        $this->invalidateCache($owner, $address);
     }
 
     /**
@@ -188,20 +174,5 @@ class OwnerServiceManager
         return collect($specialtyIds)
             ->mapWithKeys(fn ($id) => [(int) $id => ['user_id' => $userId]])
             ->all();
-    }
-
-    private function invalidateCache(Doctor|Clinic $owner, Address $address): void
-    {
-        $doctorIds = $owner instanceof Doctor
-            ? [$owner->id]
-            : Schedule::where('address_id', $address->id)->whereNotNull('doctor_id')->distinct()->pluck('doctor_id')->all();
-
-        if (!empty($doctorIds)) {
-            $this->availabilityCache->invalidateAvailabilityCache(
-                $owner instanceof Clinic ? $owner->id : null,
-                $doctorIds,
-                $address->id
-            );
-        }
     }
 }

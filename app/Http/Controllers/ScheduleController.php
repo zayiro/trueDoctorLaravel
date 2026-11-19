@@ -8,7 +8,6 @@ use App\Models\Unavailability;
 use App\Models\Appointment;
 use App\Models\Doctor;
 use App\Models\Clinic;
-use App\Repositories\AvailabilityRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -192,7 +191,7 @@ class ScheduleController extends Controller
     /**
      * Actualiza bloques horarios existentes en lote de forma segura.
      */
-    public function update(Request $request, Address $address, AvailabilityRepository $cacheRepo)
+    public function update(Request $request, Address $address)
     {
         $this->authorizeAddressOwner($address);
         $context = session('doctor_context');
@@ -208,16 +207,12 @@ class ScheduleController extends Controller
             'schedules.*.end_time.after' => 'La hora de finalización debe ser estrictamente posterior a la hora de inicio.',
         ]);
 
-        $doctorIdsToInvalidate = [];
-
         foreach ($request->schedules as $id => $data) {
             $schedule = Schedule::where('id', $id)->where('address_id', $address->id)->first();
 
             if (!$schedule) {
                 continue;
             }
-
-            $doctorIdsToInvalidate[] = $schedule->doctor_id;
 
             if (!isset($data['is_active'])) {
                 $hasAppointments = Appointment::where('address_id', $address->id)
@@ -259,14 +254,6 @@ class ScheduleController extends Controller
             }
         }
 
-        if (!empty($doctorIdsToInvalidate)) {
-            $cacheRepo->invalidateAvailabilityCache(
-                $address->clinic_id, 
-                array_unique($doctorIdsToInvalidate), 
-                $address->id
-            );
-        }
-
         return redirect()->route('partner.schedules.index', $address->id)
             ->with('success', 'Los horarios y turnos de la sede han sido actualizados en lote.');
     }
@@ -301,7 +288,7 @@ class ScheduleController extends Controller
      * - Formato A (index.blade.php): day + start_time + end_time + replicate_days[] (strings)
      * - Formato B (form.blade.php): active_days[] + start_time[day] + end_time[day] (arrays)
      */
-    public function store(Request $request, AvailabilityRepository $cacheRepo)
+    public function store(Request $request)
     {
         $user = Auth::user();
         $context = session('doctor_context');
@@ -485,20 +472,13 @@ class ScheduleController extends Controller
             $createdCount++;
         }
 
-        // 🔥 INVALIDAR CACHÉ
-        $cacheRepo->invalidateAvailabilityCache(
-            $targetClinicId,
-            [$targetDoctorId],
-            $address->id
-        );
-
         return back()->with('success', "¡{$createdCount} bloque(s) de agenda agregado(s) correctamente!");
     }
 
     /**
      * Remueve franjas horarias de forma segura evaluando que no altere citas activas.
      */
-    public function destroy(Schedule $schedule, AvailabilityRepository $cacheRepo)
+    public function destroy(Schedule $schedule)
     {
         $this->authorizeAddressOwner($schedule->address);
         $context = session('doctor_context');
@@ -527,12 +507,6 @@ class ScheduleController extends Controller
         }
 
         $schedule->update(['is_active' => false]);
-
-        $cacheRepo->invalidateAvailabilityCache(
-            $schedule->clinic_id, 
-            [$schedule->doctor_id], 
-            $schedule->address_id
-        );
 
         return back()->with('success', 'Franja de horario removida correctamente.');
     }

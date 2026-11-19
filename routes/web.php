@@ -491,13 +491,6 @@ Route::get('/medical-partner/{slug}', [PublicProfileController::class, 'show'])-
 Route::get('/clinic/{slug}/{specialty_slug?}', [PublicClinicController::class, 'showClinicStaff'])->name('partner.clinic.public.decision');
 
 
-// Ruta API para que FullCalendar cargue los huecos libres
-Route::get('/api/{partner}/availability', [PublicProfileController::class, 'getAvailability'])
-    ->name('api.partner.availability')
-    ->missing(function () {
-    return redirect()->route('home'); // Redirige al inicio si no existe
-});
-
 // Endpoint unificado y ultra-seguro para el cálculo de slots en el calendario (Web y Reagendamiento)
 Route::get('/slots', [PartnerAppointmentController::class, 'getSlots'])->name('slots.index');
 
@@ -667,11 +660,8 @@ Route::match(['get', 'post'], '/appointments/success/{appointment}', [Appointmen
 Route::post('/appointments/{appointment}/pay', [AppointmentController::class, 'pay'])->middleware('auth')->name('appointments.pay');
 Route::get('/payments/return/{reference}', PaymentReturnController::class)->name('payments.return');
 Route::get('/pay/{token}', [PaymentLinkController::class, 'show'])->middleware('throttle:60,1')->name('appointments.pay-link.show');
-Route::get('/pagar/{token}', [PaymentLinkController::class, 'show'])->middleware('throttle:60,1'); // enlaces ya enviados por correo, eliminar luego del 20/11/2026
 Route::post('/pay/{token}/code', [PaymentLinkController::class, 'promo'])->middleware('throttle:20,1')->name('appointments.pay-link.promo');
-Route::post('/pagar/{token}/codigo', [PaymentLinkController::class, 'promo'])->middleware('throttle:20,1'); // enlaces ya enviados por correo, eliminar luego del 20/11/2026
 Route::post('/pay/{token}', [PaymentLinkController::class, 'start'])->middleware('throttle:10,1')->name('appointments.pay-link.start');
-Route::post('/pagar/{token}', [PaymentLinkController::class, 'start'])->middleware('throttle:10,1'); // enlaces ya enviados por correo
 
 // Códigos promocionales de doctores particulares y clínicas (el descuento lo asume quien lo crea).
 Route::middleware(['auth', 'role:doctor|clinic'])->group(function () {

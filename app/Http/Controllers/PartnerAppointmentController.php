@@ -11,14 +11,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
-use App\Services\AppointmentService;
 use App\Services\Availability\AvailabilityQuery;
 use App\Services\Availability\AvailabilityResolver;
 use App\Services\Availability\SlotPresenter;
 use App\Services\Appointments\AppointmentRescheduler;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Log;
-use App\Services\Scheduling\SlotOverlapChecker;
 use App\Services\AppointmentStateManager;
 use App\Notifications\AppointmentCancelledNotification;
 use Throwable;
@@ -86,11 +84,8 @@ class PartnerAppointmentController extends Controller
 
         $addressId = (int) $request->input('address_id');
         $dateInput = $request->input('date');
-        $isVirtual = $request->input('is_virtual') === 'true';
-        $useNewEngine = true; // motor único: el motor anterior ya no se usa en este endpoint
 
         $address = Address::findOrFail($addressId);
-        $doctorId = null;
         $doctorIdsArray = [];
 
         if ($request->filled('clinic_id')) {
@@ -102,7 +97,7 @@ class PartnerAppointmentController extends Controller
 
             $requestedDoctorId = $request->filled('doctor_id') ? (int) $request->input('doctor_id') : null;
 
-            if ($useNewEngine && $requestedDoctorId) {
+            if ($requestedDoctorId) {
                 $belongsToClinic = DB::table('clinic_doctor')
                     ->where('clinic_id', $clinicId)
                     ->where('doctor_id', $requestedDoctorId)
@@ -112,10 +107,10 @@ class PartnerAppointmentController extends Controller
                 if (!$belongsToClinic) {
                     return response()->json(['error' => 'El especialista no pertenece a esta clínica.'], 403);
                 }
-                $doctorId = $requestedDoctorId;
-                $doctorIdsArray = [$doctorId];
+
+                $doctorIdsArray = [$requestedDoctorId];
             } else {
-                // 🔒 CORRECCIÓN CRÍTICA: Obtener TODOS los doctores activos en esa sede para ese día, no solo uno.
+                // Todos los doctores con horario en esa sede ese día (no solo uno).
                 $doctorsForDay = DB::table('schedules')
                     ->where('address_id', $addressId)
                     ->where('day', Carbon::parse($dateInput, config('app.timezone', 'America/Bogota'))->dayOfWeekIso)
@@ -127,13 +122,15 @@ class PartnerAppointmentController extends Controller
 
                 if (!empty($doctorsForDay)) {
                     $doctorIdsArray = $doctorsForDay;
-                    $doctorId = $doctorsForDay[0]; // Fallback para el motor legacy
                 } else {
-                    $doctorId = DB::table('clinic_doctor')
+                    $fallbackDoctorId = DB::table('clinic_doctor')
                         ->where('clinic_id', $clinicId)
                         ->where('status', 'approved')
                         ->value('doctor_id');
-                    if ($doctorId) $doctorIdsArray = [$doctorId];
+
+                    if ($fallbackDoctorId) {
+                        $doctorIdsArray = [(int) $fallbackDoctorId];
+                    }
                 }
             }
 
@@ -154,32 +151,30 @@ class PartnerAppointmentController extends Controller
             }
         }
 
-        if ($useNewEngine) {
-            try {
-                $query = new AvailabilityQuery(
-                    doctorIds: $doctorIdsArray, // ✅ Ahora pasamos el array completo si hay múltiples doctores
-                    clinicId: $address->clinic_id ? (int) $address->clinic_id : null,
-                    addressId: $addressId,
-                    serviceId: $request->filled('service_id') ? (int) $request->input('service_id') : null,
-                );
+        try {
+            $query = new AvailabilityQuery(
+                doctorIds: $doctorIdsArray,
+                clinicId: $address->clinic_id ? (int) $address->clinic_id : null,
+                addressId: $addressId,
+                serviceId: $request->filled('service_id') ? (int) $request->input('service_id') : null,
+            );
 
-                $slots = app(AvailabilityResolver::class)->slotsForDay(
-                    $query,
-                    Carbon::parse($dateInput, config('app.timezone', 'America/Bogota'))
-                );
+            $slots = app(AvailabilityResolver::class)->slotsForDay(
+                $query,
+                Carbon::parse($dateInput, config('app.timezone', 'America/Bogota'))
+            );
 
-                return response()->json(
-                    $request->input('format') === 'v2'
-                        ? SlotPresenter::v2($slots)
-                        : SlotPresenter::legacyWeb($slots)
-                );
-            } catch (\Throwable $e) {
-                Log::error('getSlots web: falló el motor de disponibilidad', [
-                    'address_id' => $addressId, 'doctor_ids' => $doctorIdsArray, 'error' => $e->getMessage(),
-                ]);
+            return response()->json(
+                $request->input('format') === 'v2'
+                    ? SlotPresenter::v2($slots)
+                    : SlotPresenter::legacyWeb($slots)
+            );
+        } catch (\Throwable $e) {
+            Log::error('getSlots web: falló el motor de disponibilidad', [
+                'address_id' => $addressId, 'doctor_ids' => $doctorIdsArray, 'error' => $e->getMessage(),
+            ]);
 
-                return response()->json(['error' => 'No se pudo consultar la disponibilidad. Intenta de nuevo.'], 500);
-            }
+            return response()->json(['error' => 'No se pudo consultar la disponibilidad. Intenta de nuevo.'], 500);
         }
     }
 
@@ -443,12 +438,6 @@ class PartnerAppointmentController extends Controller
         if ($validated['status'] === 'cancelled') {
             $this->notifyPatientOfCancellation($appointment);
         }
-
-        app(\App\Repositories\AvailabilityRepository::class)->invalidateAvailabilityCache(
-            $appointment->clinic_id,
-            [$appointment->doctor_id],
-            $appointment->address_id
-        );
 
         return back()->with('success', 'El estado de la consulta ha sido actualizado correctamente.');
     }

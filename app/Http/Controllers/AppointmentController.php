@@ -14,7 +14,6 @@ use App\Models\User;
 use App\Models\DoctorPayout;
 use App\Models\PromoCode;
 use App\Models\PatientHistory;
-use App\Services\AppointmentService;
 use App\Services\ZoomService;
 use App\Services\Wompi\WompiService;
 use App\Services\Twilio\WhatsAppTemplateService;
@@ -33,7 +32,6 @@ use App\Http\Requests\ProcessPatientAppointmentRequest;
 use App\Http\Requests\CancelAppointmentFlowRequest;
 use App\Enums\PaymentStatus;
 use App\Enums\AppointmentStatus;
-use App\Services\Scheduling\SlotOverlapChecker;
 use App\Services\Availability\AvailabilityQuery;
 use App\Services\Availability\AvailabilityResolver;
 use App\Services\Availability\SlotNotAvailableException;
@@ -57,18 +55,15 @@ class AppointmentController extends Controller
 {
     use \App\Traits\SendsReminderSms;
 
-    protected AppointmentService $appointmentService;
     protected ZoomService $zoomService;
     protected $whatsapp;
     protected WompiService $wompi;
 
     public function __construct(
-        AppointmentService $service, 
         ZoomService $zoomService, 
         WhatsAppTemplateService $whatsapp, 
         WompiService $wompi
     ) {
-        $this->appointmentService = $service;
         $this->zoomService = $zoomService;
         $this->whatsapp = $whatsapp;
         $this->wompi = $wompi;
@@ -874,10 +869,6 @@ class AppointmentController extends Controller
             'status'       => AppointmentStatus::COMPLETED->value,
             'completed_at' => now(),
         ]);
-
-        // 4. Invalidar caché del motor nuevo (importante para Fase 3)
-        app(\App\Services\Availability\AvailabilityRepository::class)
-            ?->invalidateAvailabilityCache($appointment->doctor_id);
 
         return response()->json([
             'success' => true,

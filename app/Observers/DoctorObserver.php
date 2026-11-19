@@ -7,20 +7,12 @@ namespace App\Observers;
 use App\Models\Doctor;
 use App\Models\DoctorSetting;
 use App\Models\Plan;
-use App\Repositories\AvailabilityRepository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class DoctorObserver
 {
-    private AvailabilityRepository $cacheRepo;
-
-    public function __construct(AvailabilityRepository $cacheRepo)
-    {
-        $this->cacheRepo = $cacheRepo;
-    }
-
     /**
      * Handle the Doctor "created" event.
      * 
@@ -94,7 +86,7 @@ class DoctorObserver
      * Handle the Doctor "updated" event.
      * 
      * Se ejecuta cuando se actualiza un doctor.
-     * Útil para invalidar caché si cambió algo relevante.
+     * Registra en el log los cambios relevantes de estado.
      */
     public function updated(Doctor $doctor): void
     {
@@ -114,9 +106,6 @@ class DoctorObserver
                 'old_active' => $doctor->getOriginal('active'),
                 'new_active' => $doctor->active,
             ]);
-
-            // Invalidar caché de disponibilidad de todas las sedes del doctor
-            $this->invalidateDoctorCache($doctor);
         }
     }
 
@@ -141,9 +130,6 @@ class DoctorObserver
                 // 3. Desvincular el doctor de todas las clínicas
                 $doctor->clinics()->detach();
             });
-
-            // 4. Invalidar caché de disponibilidad
-            $this->invalidateDoctorCache($doctor);
 
             Log::info('DoctorObserver: Doctor eliminado y recursos limpiados', [
                 'doctor_id' => $doctor->id,
@@ -249,34 +235,6 @@ class DoctorObserver
                 'error' => $e->getMessage(),
             ]);
             throw $e; // Relanzar para que la transacción haga rollback
-        }
-    }
-
-    /**
-     * Invalida el caché de disponibilidad para todas las sedes del doctor.
-     */
-    private function invalidateDoctorCache(Doctor $doctor): void
-    {
-        try {
-            // Obtener todas las sedes del doctor
-            $addressIds = $doctor->addresses()
-                ->whereNull('deleted_at')
-                ->pluck('id')
-                ->all();
-
-            // Invalidar caché para cada sede
-            foreach ($addressIds as $addressId) {
-                $this->cacheRepo->invalidateAvailabilityCache(
-                    null, // clinic_id = null (doctor independiente)
-                    [$doctor->id],
-                    $addressId
-                );
-            }
-        } catch (Throwable $e) {
-            Log::error('DoctorObserver: Error al invalidar caché de doctor', [
-                'doctor_id' => $doctor->id,
-                'error' => $e->getMessage(),
-            ]);
         }
     }
 }

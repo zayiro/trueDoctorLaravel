@@ -8,7 +8,6 @@ use App\Models\Address;
 use App\Models\Appointment;
 use App\Models\Service;
 use App\Models\Specialty;
-use App\Repositories\AvailabilityRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -116,7 +115,7 @@ class ClinicServiceController extends Controller
     /**
      * Registrar un nuevo servicio o enlazar uno existente distribuyendo tarifas por sede.
      */
-    public function store(Request $request, AvailabilityRepository $cacheRepo)
+    public function store(Request $request)
     {
         $clinic = $this->getClinicContext();
 
@@ -161,7 +160,7 @@ class ClinicServiceController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($validated, $clinic, $cacheRepo) {
+            DB::transaction(function () use ($validated, $clinic) {
                 // Normalizar nombre del servicio
                 $normalizedName = $this->normalizeServiceName($validated['service_name']);
 
@@ -187,9 +186,6 @@ class ClinicServiceController extends Controller
                 } else {
                     $this->syncPhysicalService($service, $clinic, $validated);
                 }
-
-                // Invalidar caché de disponibilidad
-                $this->invalidateServiceCache($cacheRepo, $clinic, $service);
             });
 
             return redirect()->route('partner.clinic.services.index')
@@ -249,7 +245,7 @@ class ClinicServiceController extends Controller
     /**
      * Actualiza el catálogo institucional (Servicio, Especialidades y Tarifas por Sede).
      */
-    public function update(Request $request, $serviceId, AvailabilityRepository $cacheRepo)
+    public function update(Request $request, $serviceId)
     {
         $clinic = $this->getClinicContext();
 
@@ -283,7 +279,7 @@ class ClinicServiceController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($validated, $service, $clinic, $cacheRepo) {
+            DB::transaction(function () use ($validated, $service, $clinic) {
                 // Actualizar nombre del servicio (normalizado)
                 $service->update([
                     'name' => $this->normalizeServiceName($validated['name']),
@@ -303,9 +299,6 @@ class ClinicServiceController extends Controller
                 } else {
                     $this->syncPhysicalService($service, $clinic, $validated);
                 }
-
-                // Invalidar caché de disponibilidad
-                $this->invalidateServiceCache($cacheRepo, $clinic, $service);
             });
 
             return redirect()->route('partner.clinic.services.edit', $service->id)
@@ -321,7 +314,7 @@ class ClinicServiceController extends Controller
     /**
      * Desvincular un servicio de una sede específica de la clínica.
      */
-    public function destroy($serviceId, $addressId, AvailabilityRepository $cacheRepo)
+    public function destroy($serviceId, $addressId)
     {
         $clinic = $this->getClinicContext();
 
@@ -351,17 +344,6 @@ class ClinicServiceController extends Controller
 
         // Desvincular servicio de la sede
         $address->services()->detach($service->id);
-
-        // Invalidar caché
-        $doctorIds = Schedule::where('address_id', $address->id)
-            ->whereNotNull('doctor_id')
-            ->distinct()
-            ->pluck('doctor_id')
-            ->all();
-
-        if (!empty($doctorIds)) {
-            $cacheRepo->invalidateAvailabilityCache($clinic->id, $doctorIds, $address->id);
-        }
 
         return redirect()->route('partner.clinic.services.index')
             ->with('success', 'El servicio ha sido removido de la sede institucional correctamente.');
@@ -450,29 +432,5 @@ class ClinicServiceController extends Controller
         }
 
         $service->addresses()->sync($syncData);
-    }
-
-    /**
-     * Invalida el caché de disponibilidad para las sedes afectadas.
-     */
-    private function invalidateServiceCache(AvailabilityRepository $cacheRepo, $clinic, Service $service): void
-    {
-        $addressIds = $service->addresses()->pluck('id')->all();
-
-        if (empty($addressIds)) {
-            return;
-        }
-
-        $doctorIds = Schedule::whereIn('address_id', $addressIds)
-            ->whereNotNull('doctor_id')
-            ->distinct()
-            ->pluck('doctor_id')
-            ->all();
-
-        if (!empty($doctorIds)) {
-            foreach ($addressIds as $addressId) {
-                $cacheRepo->invalidateAvailabilityCache($clinic->id, $doctorIds, $addressId);
-            }
-        }
     }
 }

@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Models\Appointment;
 use App\Models\Specialty;
 use App\Models\Schedule;
-use App\Repositories\AvailabilityRepository;
 use Spatie\Permission\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -240,7 +239,7 @@ class ClinicDoctorController extends Controller
      * 
      * 🔒 CORRECCIÓN: Usa is_active = false en lugar de delete() físico para preservar auditoría.
      */
-    public function toggleStatus(Doctor $doctor, AvailabilityRepository $cacheRepo)
+    public function toggleStatus(Doctor $doctor)
     {
         if (auth()->user()->role !== 'clinic') {
             abort(403);
@@ -266,9 +265,6 @@ class ClinicDoctorController extends Controller
                         ->whereNull('deleted_at');
                 })
                 ->update(['is_active' => false, 'updated_at' => now()]);
-
-            // 🔥 INVALIDAR CACHÉ
-            $this->invalidateDoctorCache($cacheRepo, $clinic, $doctor->id);
         }
 
         return back()->with('success', "El especialista ha cambiado de estado en la nómina corporativa.");
@@ -281,7 +277,7 @@ class ClinicDoctorController extends Controller
      * NO tiene perfil independiente (no tiene sedes particulares, no está en otras clínicas).
      * Esto preserva el aislamiento multi-tenant para doctores con doble perfil.
      */
-    public function destroy(Doctor $doctor, AvailabilityRepository $cacheRepo)
+    public function destroy(Doctor $doctor)
     {
         if (auth()->user()->role !== 'clinic') {
             abort(403, 'No tienes permisos para realizar esta acción.');
@@ -355,9 +351,6 @@ class ClinicDoctorController extends Controller
                 ->update(['is_active' => false, 'updated_at' => now()]);
         });
 
-        // 6. Invalidar caché de disponibilidad
-        $this->invalidateDoctorCache($cacheRepo, $clinic, $doctor->id);
-
         return back()->with('success', 'Especialista removido de la nómina corporativa correctamente.');
     }
 
@@ -401,24 +394,6 @@ class ClinicDoctorController extends Controller
             ->exists();
 
         return $hasOwnPlan;
-    }
-
-    /**
-     * Invalida el caché de disponibilidad para las sedes de la clínica donde atiende el doctor.
-     */
-    private function invalidateDoctorCache(AvailabilityRepository $cacheRepo, Clinic $clinic, int $doctorId): void
-    {
-        $addressIds = DB::table('addresses')
-            ->where('clinic_id', $clinic->id)
-            ->whereNull('deleted_at')
-            ->pluck('id')
-            ->all();
-
-        if (!empty($addressIds)) {
-            foreach ($addressIds as $addressId) {
-                $cacheRepo->invalidateAvailabilityCache($clinic->id, [$doctorId], $addressId);
-            }
-        }
     }
 
     /**

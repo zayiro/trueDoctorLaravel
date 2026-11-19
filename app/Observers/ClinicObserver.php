@@ -7,20 +7,12 @@ namespace App\Observers;
 use App\Models\Clinic;
 use App\Models\ClinicSetting;
 use App\Models\Plan;
-use App\Repositories\AvailabilityRepository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class ClinicObserver
 {
-    private AvailabilityRepository $cacheRepo;
-
-    public function __construct(AvailabilityRepository $cacheRepo)
-    {
-        $this->cacheRepo = $cacheRepo;
-    }
-
     /**
      * Handle the Clinic "created" event.
      * 
@@ -94,7 +86,7 @@ class ClinicObserver
      * Handle the Clinic "updated" event.
      * 
      * Se ejecuta cuando se actualiza una clínica.
-     * Útil para invalidar caché si cambió algo relevante.
+     * Registra en el log los cambios relevantes de estado.
      */
     public function updated(Clinic $clinic): void
     {
@@ -105,9 +97,6 @@ class ClinicObserver
                 'old_active' => $clinic->getOriginal('active'),
                 'new_active' => $clinic->active,
             ]);
-
-            // Invalidar caché de disponibilidad de todas las sedes de la clínica
-            $this->invalidateClinicCache($clinic);
         }
 
         // Si cambió el validation_status
@@ -145,9 +134,6 @@ class ClinicObserver
                 // 3. Desvincular todos los doctores de la clínica
                 $clinic->doctors()->detach();
             });
-
-            // 4. Invalidar caché de disponibilidad
-            $this->invalidateClinicCache($clinic);
 
             Log::info('ClinicObserver: Clínica eliminada y recursos limpiados', [
                 'clinic_id' => $clinic->id,
@@ -189,40 +175,6 @@ class ClinicObserver
                 'error' => $e->getMessage(),
             ]);
             throw $e; // Relanzar para que la transacción haga rollback
-        }
-    }
-
-    /**
-     * Invalida el caché de disponibilidad para todas las sedes de la clínica.
-     */
-    private function invalidateClinicCache(Clinic $clinic): void
-    {
-        try {
-            // Obtener todos los doctores aprobados de la clínica
-            $doctorIds = $clinic->doctors()
-                ->where('clinic_doctor.status', 'approved')
-                ->pluck('doctor_id')
-                ->all();
-
-            // Obtener todas las sedes de la clínica
-            $addressIds = $clinic->addresses()
-                ->whereNull('deleted_at')
-                ->pluck('id')
-                ->all();
-
-            // Invalidar caché para cada sede
-            foreach ($addressIds as $addressId) {
-                $this->cacheRepo->invalidateAvailabilityCache(
-                    $clinic->id,
-                    $doctorIds,
-                    $addressId
-                );
-            }
-        } catch (Throwable $e) {
-            Log::error('ClinicObserver: Error al invalidar caché de clínica', [
-                'clinic_id' => $clinic->id,
-                'error' => $e->getMessage(),
-            ]);
         }
     }
 }

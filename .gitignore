@@ -27,3 +27,9 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 .aider*
+
+# Secretos: nunca al repositorio
+.env
+.env.*
+!.env.example
+!.env.testing

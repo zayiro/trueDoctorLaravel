@@ -6,19 +6,11 @@ namespace App\Observers;
 
 use App\Models\Address;
 use App\Models\Service;
-use App\Repositories\AvailabilityRepository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AddressObserver
 {
-    private AvailabilityRepository $cacheRepo;
-
-    public function __construct(AvailabilityRepository $cacheRepo)
-    {
-        $this->cacheRepo = $cacheRepo;
-    }
-
     /**
      * Handle the Address "created" event.
      * 
@@ -65,9 +57,6 @@ class AddressObserver
                     'doctor_id' => $address->doctor_id,
                 ]);
             });
-
-            // 🔥 INVALIDAR CACHÉ de disponibilidad
-            $this->invalidateCacheForNewAddress($address);
         } catch (\Exception $e) {
             Log::error('AddressObserver: Error al vincular servicios virtuales', [
                 'address_id' => $address->id,
@@ -111,40 +100,6 @@ class AddressObserver
             });
 
         return $query->get();
-    }
-
-    /**
-     * Invalida el caché de disponibilidad para la nueva sede.
-     */
-    private function invalidateCacheForNewAddress(Address $address): void
-    {
-        try {
-            $doctorIds = [];
-            
-            if ($address->doctor_id) {
-                $doctorIds[] = $address->doctor_id;
-            } elseif ($address->clinic_id) {
-                // Obtener doctores de la clínica
-                $doctorIds = DB::table('clinic_doctor')
-                    ->where('clinic_id', $address->clinic_id)
-                    ->where('status', 'approved')
-                    ->pluck('doctor_id')
-                    ->all();
-            }
-
-            if (!empty($doctorIds)) {
-                $this->cacheRepo->invalidateAvailabilityCache(
-                    $address->clinic_id,
-                    $doctorIds,
-                    $address->id
-                );
-            }
-        } catch (\Exception $e) {
-            Log::error('AddressObserver: Error al invalidar caché', [
-                'address_id' => $address->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
     }
 
     /**
@@ -196,33 +151,5 @@ class AddressObserver
             'clinic_id' => $address->clinic_id,
             'doctor_id' => $address->doctor_id,
         ]);
-
-        // Invalidar caché si la sede tenía doctores asociados
-        try {
-            $doctorIds = [];
-            
-            if ($address->doctor_id) {
-                $doctorIds[] = $address->doctor_id;
-            } elseif ($address->clinic_id) {
-                $doctorIds = DB::table('clinic_doctor')
-                    ->where('clinic_id', $address->clinic_id)
-                    ->where('status', 'approved')
-                    ->pluck('doctor_id')
-                    ->all();
-            }
-
-            if (!empty($doctorIds)) {
-                $this->cacheRepo->invalidateAvailabilityCache(
-                    $address->clinic_id,
-                    $doctorIds,
-                    $address->id
-                );
-            }
-        } catch (\Exception $e) {
-            Log::error('AddressObserver: Error al invalidar caché en deleted', [
-                'address_id' => $address->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
     }
 }

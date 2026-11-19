@@ -251,24 +251,10 @@
                                 $allAddresses = $result['model']->addresses ?? collect();
                                 $virtualAddresses = $allAddresses->where('type', 'virtual');
                                 $physicalAddresses = $allAddresses->where('type', 'physical');
-                                
-                                // Inyectamos localmente el AvailabilityService para resolver turnos en Blade
-                                $availabilityService = app(\App\Services\AvailabilityService::class);
-                                
-                                // Preparamos la matriz de doctores según el tipo de registro
-                                $doctorIds = $result['type'] === 'clinic' 
-                                    ? $result['model']->doctors->pluck('id')->toArray() 
-                                    : [$result['id']];
-                                    
-                                $clinicId = $result['type'] === 'clinic' ? $result['id'] : null;
                             @endphp
 
                             <!-- 🖥️ CANAL VIRTUAL (TELEMEDICINA FIRST) -->
                             @foreach($virtualAddresses as $vAddr)
-                                @php
-                                    $vTurn = $availabilityService->getNextAvailableTurn($doctorIds, $vAddr->id, $clinicId);
-                                    $vTurnText = $vTurn ? ucfirst($vTurn->isoFormat('dddd D [de] MMMM — h:mm A')) : 'Sin turnos próximos disponibles';
-                                @endphp
                                 <div class="bg-indigo-50/40 border border-indigo-100/70 rounded-2xl p-3.5 space-y-2">
                                     <div class="flex items-start gap-2 text-xs text-indigo-950">
                                         <!-- Heroicon: ComputerDesktop -->
@@ -298,11 +284,6 @@
                                 <div x-data="{ expanded: false }" class="space-y-3">
                                     
                                     @foreach($physicalAddresses as $index => $pAddr)
-                                        @php
-                                            $pTurn = $availabilityService->getNextAvailableTurn($doctorIds, $pAddr->id, $clinicId);
-                                            $pTurnText = $pTurn ? ucfirst($pTurn->isoFormat('dddd D [de] MMMM — h:mm A')) : 'Sin turnos próximos disponibles';
-                                        @endphp
-
                                         <!-- Las primeras 2 sedes se muestran siempre. De la tercera en adelante dependen de 'expanded' -->
                                         <div 
                                             @if($index >= 2) 

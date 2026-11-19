@@ -678,33 +678,6 @@ class MedicalAnalysisController extends Controller
             ->increment('uses') > 0;
     }
 
-    /**
-     * Datos del widget de Wompi para una orden. No escribe en la BD: la referencia viaja
-     * al widget y se guarda en payment_id solo cuando el pago se aprueba (ver markAsPaid).
-     *
-     * Formato: "{id}-{ymdH}-{aleatorio}". transactionMatches() valida el prefijo "{id}-"
-     * y el monto, así que abrir la pasarela en varias pestañas no invalida ningún pago.
-     */
-    private function buildWompiPayload(MedicalAnalysis $analysis, int $amount, string $token): array
-    {
-        $currency = 'COP';
-        $amountInCents = $amount * 100;
-
-        $reference = $analysis->id . '-' . Carbon::now()->format('ymdH') . '-' . strtoupper(Str::random(5));
-
-        return [
-            'public_key' => config('services.wompi.public_key'),
-            'currency' => $currency,
-            'amount_in_cents' => $amountInCents,
-            'reference' => $reference,
-            'signature_integrity' => hash(
-                'sha256',
-                $reference . $amountInCents . $currency . config('services.wompi.integrity_secret')
-            ),
-            'redirect_url' => route('medical-analysis.payment-result', $token),
-        ];
-    }
-
     /** Cabeceras para páginas con token: sin indexar, sin caché y sin filtrar la URL por Referer. */
     private function privatePageHeaders(): array
     {

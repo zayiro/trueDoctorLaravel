@@ -19,15 +19,39 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Pagination\LengthAwarePaginator;
-use App\Services\AvailabilityService;
+use App\Services\Availability\AvailabilityQuery;
+use App\Services\Availability\AvailabilityResolver;
+use Carbon\Carbon;
 
 class SearchController extends Controller
 {
-    protected AvailabilityService $availabilityService;
-
-    public function __construct(AvailabilityService $availabilityService)
+    public function __construct(private readonly AvailabilityResolver $availability)
     {
-        $this->availabilityService = $availabilityService;
+    }
+
+    /**
+     * Próximo turno libre de un conjunto de doctores (motor único de disponibilidad).
+     * Si el motor falla se registra el error y la tarjeta muestra "Sin turnos", sin tumbar la búsqueda.
+     */
+    private function nextTurn(array $doctorIds, ?int $clinicId): ?Carbon
+    {
+        if (empty($doctorIds)) {
+            return null;
+        }
+
+        try {
+            $slot = $this->availability->nextSlot(new AvailabilityQuery($doctorIds, $clinicId));
+
+            return $slot ? Carbon::instance($slot->start) : null;
+        } catch (\Throwable $e) {
+            Log::error('Búsqueda: falló el motor de disponibilidad', [
+                'doctor_ids' => $doctorIds,
+                'clinic_id'  => $clinicId,
+                'error'      => $e->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     /**
@@ -232,10 +256,7 @@ class SearchController extends Controller
                 $specialistsCount = count($doctorIds);
 
                 // ✅ CORRECCIÓN: Calcular disponibilidad UNA SOLA VEZ por clínica
-                $backupTurn = $this->availabilityService->getNextAvailableTurnAnyAddress(
-                    $doctorIds,
-                    $clinic->id
-                );
+                $backupTurn = $this->nextTurn($doctorIds, (int) $clinic->id);
 
                 $groupedResults->put($uniqueKey, [
                     'type'        => 'clinic',
@@ -278,10 +299,7 @@ class SearchController extends Controller
                 ], $decodedLang);
 
                 // ✅ CORRECCIÓN: Calcular disponibilidad UNA SOLA VEZ por doctor
-                $backupTurn = $this->availabilityService->getNextAvailableTurnAnyAddress(
-                    $doctorIds,
-                    null
-                );
+                $backupTurn = $this->nextTurn($doctorIds, null);
 
                 $groupedResults->put($uniqueKey, [
                     'type'              => 'doctor',

@@ -8,7 +8,6 @@ use App\Models\Address;
 use App\Models\City;
 use App\Models\Department;
 use App\Models\Schedule;
-use App\Repositories\AvailabilityRepository;
 use App\Traits\ValidatesMultiTenantOwnership;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -58,7 +57,7 @@ class ClinicAddressController extends Controller
      * Crear una nueva sede para la clínica.
      * REGLA DE NEGOCIO: Toda sede creada manualmente siempre será de tipo física.
      */
-    public function store(Request $request, AvailabilityRepository $cacheRepo)
+    public function store(Request $request)
     {
         $clinic = $this->getClinicContext();
 
@@ -90,7 +89,7 @@ class ClinicAddressController extends Controller
 
         try {
             // 3. Crear el registro forzando 'type' => 'physical' de manera interna
-            $newAddress = Address::create([
+            Address::create([
                 'clinic_id' => $clinic->id,
                 'doctor_id' => null,
                 'name'      => trim($validated['name']),
@@ -100,9 +99,6 @@ class ClinicAddressController extends Controller
                 'city_id'   => $validated['city_id'],
                 'status'    => true,
             ]);
-
-            // 🔥 INVALIDAR CACHÉ al crear nueva sede (por consistencia)
-            $cacheRepo->invalidateAvailabilityCache($clinic->id, [], $newAddress->id);
 
             return redirect()->route('partner.clinic.addresses.index')
                 ->with('success', 'La nueva sede física ha sido registrada correctamente en el sistema.');
@@ -115,10 +111,10 @@ class ClinicAddressController extends Controller
     /**
      * Alternar el estado operativo de la sede (Activa / Inactiva).
      * 
-     * 🔒 CORRECCIÓN: Ahora invalida el caché de disponibilidad para que la sede
-     * desactivada deje de aparecer en búsquedas inmediatamente.
+     * El motor de disponibilidad lee el estado de la sede en vivo: una sede desactivada
+     * deja de ofrecer turnos sin tener que limpiar ninguna caché.
      */
-    public function toggleStatus(Address $address, AvailabilityRepository $cacheRepo)
+    public function toggleStatus(Address $address)
     {
         $clinic = $this->getClinicContext();
 
@@ -132,17 +128,6 @@ class ClinicAddressController extends Controller
 
         $address->update(['status' => !$address->status]);
 
-        // 🔥 INVALIDAR CACHÉ: Crucial para que la sede desactivada deje de aparecer en búsquedas
-        $doctorIds = Schedule::where('address_id', $address->id)
-            ->whereNotNull('doctor_id')
-            ->distinct()
-            ->pluck('doctor_id')
-            ->all();
-
-        if (!empty($doctorIds)) {
-            $cacheRepo->invalidateAvailabilityCache($clinic->id, $doctorIds, $address->id);
-        }
-
         $textoStatus = $address->status ? 'activada' : 'desactivada';
         return back()->with('success', "El estado de la sede ha sido {$textoStatus} correctamente.");
     }
@@ -153,10 +138,9 @@ class ClinicAddressController extends Controller
      * 
      * 🔒 CORRECCIONES:
      * - Usa is_active = false en schedules (no delete físico) para preservar auditoría
-     * - Invalida caché de disponibilidad
      * - Manejo de errores transaccionales
      */
-    public function destroy(Address $address, AvailabilityRepository $cacheRepo)
+    public function destroy(Address $address)
     {
         $clinic = $this->getClinicContext();
 
@@ -188,15 +172,8 @@ class ClinicAddressController extends Controller
                 . 'con pacientes en el sistema. Debes cancelar o reagendar las consultas primero.');
         }
 
-        // 4. Capturar doctores ANTES de eliminar (para invalidar caché)
-        $doctorIds = Schedule::where('address_id', $address->id)
-            ->whereNotNull('doctor_id')
-            ->distinct()
-            ->pluck('doctor_id')
-            ->all();
-
         try {
-            // 5. Ejecutar desvinculación y borrado suave (SoftDeletes) en cascada
+            // 4. Ejecutar desvinculación y borrado suave (SoftDeletes) en cascada
             DB::transaction(function () use ($address) {
                 // 🔒 CORRECCIÓN CRÍTICA: Desactivar horarios en lugar de eliminarlos físicamente
                 // Esto preserva la auditoría médica y permite recuperar el histórico si es necesario
@@ -206,11 +183,6 @@ class ClinicAddressController extends Controller
                 // Laravel rellena automáticamente la columna 'deleted_at' de la tabla addresses
                 $address->delete();
             });
-
-            // 6. 🔥 INVALIDAR CACHÉ después de eliminar
-            if (!empty($doctorIds)) {
-                $cacheRepo->invalidateAvailabilityCache($address->clinic_id, $doctorIds, $address->id);
-            }
 
             return redirect()->route('partner.clinic.addresses.index')
                 ->with('success', 

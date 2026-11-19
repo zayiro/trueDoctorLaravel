@@ -5,9 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Address;
-use App\Models\Schedule;
 use App\Models\Appointment;
-use App\Models\Unavailability;
 use App\Services\AppointmentService;
 use App\Services\AppointmentEventSourcing;
 use Illuminate\Support\Carbon;
@@ -41,37 +39,9 @@ class AppointmentController extends Controller
 
     /**
      * Consulta de slots disponibles (API Abierta/Externa)
-     * 
-     * GET /api/appointments/slots
-     * Rate Limit: 60 requests/minuto
+     *
+     * GET /api/get-slots
      */
-
-    /*
-    public function getSlots(Request $request)
-    {
-        $request->validate([
-            'date' => 'required|date_format:Y-m-d',
-            'address_id' => 'required|exists:addresses,id',
-            'is_virtual' => 'required|in:true,false,1,0',
-            'duration' => 'nullable|integer|min:5|max:120',
-            'exclude_id' => 'nullable|integer'
-        ]);
-
-        $slots = $this->calculateAvailableSlots(
-            $request->date,
-            $request->address_id,
-            filter_var($request->is_virtual, FILTER_VALIDATE_BOOLEAN),
-            (int) $request->input('duration', 20),
-            $request->exclude_id
-        );
-
-        if ($slots === null) {
-            return response()->json([], 200);
-        }
-
-        return response()->json($slots, 200);
-    }*/
-
     public function getSlots(Request $request)
     {
         $request->validate([

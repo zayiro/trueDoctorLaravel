@@ -15,19 +15,4 @@ return [
 
     // Cuántos días hacia adelante busca el "próximo turno".
     'next_slot_window_days' => 30,
-
-    // Interruptores de despliegue por fases (todos apagados hasta validar cada fase).
-    'new_availability' => [
-        'search' => env('BOOKING_NEW_SEARCH', false),
-        'profile' => env('BOOKING_NEW_PROFILE', false),
-        'slots_web' => env('BOOKING_NEW_SLOTS_WEB', false),
-        'slots_api' => env('BOOKING_NEW_SLOTS_API', false),
-        'booking_validation' => env('BOOKING_NEW_VALIDATION', false),
-    ],
-
-    // Modo sombra: calcula con el motor nuevo y registra las diferencias, sin cambiar lo que ve el usuario.
-    'shadow' => env('BOOKING_SHADOW', false),
-
-    // Fracción de las consultas que se comparan en modo sombra (0.1 = 10 %). Cada comparación hace unas 8 consultas extra.
-    'shadow_sample_rate' => (float) env('BOOKING_SHADOW_SAMPLE', 0.1),
 ];
