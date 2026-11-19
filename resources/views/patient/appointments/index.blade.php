@@ -68,6 +68,9 @@ $hasStatusFilter = filled(request('status'));
                 </select>
             </form>
         </div>
+        {{-- Buscador por referencia de cita (solo citas del propio paciente) --}}
+        <x-appointment-search-form label="Buscar cita por referencia" class="mb-8" />
+
         <!-- ========================================================================= -->
         <!-- SECCIÓN 1: CITAS PRÓXIMAS (ACTUALES Y FUTURAS)                            -->
         <!-- ========================================================================= -->

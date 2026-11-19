@@ -38,6 +38,11 @@ $statusLabels = [
             <p class="text-xl font-bold text-slate-800 dark:text-white">Agenda Centralizada de Citas</p>
         </div>
 
+        {{-- Buscador por referencia de cita (solo citas de la clínica) --}}
+        <div class="mb-6">
+            <x-appointment-search-form label="Buscar cita por referencia" />
+        </div>
+
         <!-- BARRA DE FILTRADO AVANZADO (DISEÑO PREMIUM EN LÍNEA) -->
         <div class="bg-white border rounded-[2rem] p-5 shadow-sm border-slate-100 mb-6 dark:bg-gray-800 dark:border-gray-700">
             <form action="{{ route('partner.clinic.appointments.index') }}" method="GET" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">

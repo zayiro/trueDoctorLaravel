@@ -1,4 +1,4 @@
-<div {{ $attributes->merge(['class' => 'w-full']) }} 
+<div {{ $attributes->except('label')->merge(['class' => 'w-full']) }} 
      x-data="{ 
         reference: '', 
         appointment: null, 
@@ -34,7 +34,7 @@
     <!-- Formulario del Buscador (Modificado para no recargar la página) -->
     <form @submit.prevent="executeSearch()" class="relative w-full">
         <label for="reference" class="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-2 block">
-            Buscador de Citas Global
+            {{ $attributes->get('label', 'Buscador de Citas Global') }}
         </label>
         
         <div class="relative flex items-center bg-white border border-slate-200 rounded-2xl shadow-sm w-full focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-100/50 transition-all duration-300">
