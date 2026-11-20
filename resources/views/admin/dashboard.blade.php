@@ -268,7 +268,7 @@
                                 <div>
                                     <p class="text-[11px] text-slate-400">{{ $appointment->reference }}</p>
                                     <p class="text-xs font-black text-slate-700">Dr. {{ $appointment->doctor->user->name ?? 'Specialist' }}</p>
-                                    <p class="text-[11px] text-slate-400">{{ \Carbon\Carbon::parse($appointment->date)->format('d/m/Y h:i A') }}</p>
+                                    <p class="text-[11px] text-slate-400">{{ \Carbon\Carbon::parse($appointment->date)->format('d/m/Y') }} {{ $appointment->start_time ? \Carbon\Carbon::parse($appointment->start_time)->format('h:i A') : '' }}</p>
                                 </div>
                                 <span class="px-2 py-1 text-[9px] font-black rounded-lg uppercase bg-indigo-100 text-indigo-800">{{ $appointmentStatusPatient }}</span>
                             </div>

@@ -12,7 +12,7 @@ $breadcrumbs = [
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
     <div class="py-12 bg-gray-50 min-h-screen">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="sm:px-6 lg:px-10">
             
             <!-- Alerta de éxito -->
             @if (session('status'))
@@ -38,7 +38,7 @@ $breadcrumbs = [
                                     <th class="p-4">Tipo</th>
                                     <th class="p-4">Aplica a</th>
                                     <th class="p-4">Descuento</th>
-                                    <th class="p-4">Usos (Uso / Máx)</th>
+                                    <th class="p-4">Uso / Máx</th>
                                     <th class="p-4">Estado</th>
                                     <th class="p-4 text-right">Acciones</th>
                                 </tr>
@@ -46,7 +46,15 @@ $breadcrumbs = [
                             <tbody class="divide-y divide-gray-200 text-sm">
                                 @foreach ($promoCodes as $code)
                                     <tr class="hover:bg-gray-50 transition">
-                                        <td class="p-4 font-mono font-bold text-indigo-600">{{ $code->code }}<span class="block font-sans text-xs font-normal text-gray-400">{{ $code->ownerLabel() }}</span></td>
+                                        <td class="p-4 font-mono font-bold text-indigo-600">
+                                        {{ $code->code }}
+                                        <span class="block font-sans text-xs font-normal text-gray-400">{{ $code->ownerLabel() }}</span>
+                                        @if ($code->user_id)                                        
+                                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 mt-1">
+                                            {{ $code->user_id ? 'usuario ' . $code->user_id : '' }}
+                                        </span>
+                                        @endif
+                                    </td>
                                         <td class="p-4 capitalize">{{ $code->type === 'fixed' ? 'Fijo' : 'Porcentaje' }}</td>
                                         <td class="p-4">
                                             @php

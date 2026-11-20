@@ -39,7 +39,7 @@
     meta_description="Crea tu cuenta profesional en OpenDoctor de forma gratuita. Digitaliza tu consultorio, automatiza recordatorios por WhatsApp y gestiona tu agenda médica sin esfuerzo."
 >
     <section class="relative z-40 bg-white overflow-hidden py-16 sm:py-24">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div class="mb-12">
                 <!-- Etiqueta superior -->
                     <span class="inline-flex self-center lg:self-start items-center rounded-full bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-700/10 px-4 py-2 pt-2.5 text-xs font-semibold uppercase tracking-wider text-blue-800 mb-6">

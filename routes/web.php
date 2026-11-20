@@ -95,6 +95,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     
     // Procesar aprobación o rechazo
     Route::post('/validation/update', [ValidationController::class, 'update'])->name('administrator.validation.update');
+    Route::post('/validation/notify', [ValidationController::class, 'notify'])->name('administrator.validation.notify');
     
     // Visualizador seguro de documentos
     Route::get('/document/view/{type}', [ValidationController::class, 'viewDocument'])->name('administrator.document.view');

@@ -29,6 +29,22 @@ $breadcrumbs = [
                 <span class="font-semibold">Éxito:</span> {{ session('success') }}
             </div>
         @endif
+        @if (session('error'))
+            <div class="p-4 mb-6 text-sm text-red-800 rounded-xl bg-red-50 border border-red-200 shadow-sm">
+                <span class="font-semibold">Error:</span> {{ session('error') }}
+            </div>
+        @endif
+
+        @if ($errors->any())
+            <div class="p-4 mb-6 text-sm text-red-800 rounded-xl bg-red-50 border border-red-200 shadow-sm">
+                <ul class="list-disc list-inside">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
@@ -95,6 +111,7 @@ $breadcrumbs = [
                                             @endif 
                                         @endif
                                     </div>
+                                    @include('administrator.validation._notify', ['profile' => $partner])
                                 </td>
 
                                 <td class="p-4 text-right align-middle">
@@ -120,7 +137,7 @@ $breadcrumbs = [
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="p-12 text-center bg-slate-50/30">
+                                <td colspan="3" class="p-12 text-center bg-slate-50/30">
                                     <div class="inline-flex items-center justify-center w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full mb-3 text-xl border border-emerald-100 mt-3">✓</div>
                                     <div class="text-sm font-semibold text-slate-900">Al día con las revisiones</div>
                                     <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto mb-3">No hay registros esperando validación de documentos.</p>
