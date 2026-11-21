@@ -116,8 +116,8 @@ window.nearbyDoctorsMap = function ({ radius, endpoint }) {
 
             L.control.zoom({ position: 'bottomright' }).addTo(this.map);
 
-            L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap &copy; CARTO',
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=cb1_5dgr_1_7e0957440ef997e7a3478480', {
+                attribution: '&copy; OpenStreetMap contributors, &copy; CARTO',
                 subdomains: 'abcd',
                 maxZoom: 19,
             }).addTo(this.map);
@@ -139,6 +139,26 @@ window.nearbyDoctorsMap = function ({ radius, endpoint }) {
                 .bindPopup('<div class="font-sans text-xs font-semibold text-gray-800 px-1">Tu ubicación actual</div>');
 
             this.plotMarkers();
+
+            // El mapa nace dentro de un modal que acaba de mostrarse: se vuelve a medir (y a encuadrar)
+            // cuando el contenedor ya tiene su tamaño final, y cada vez que cambie.
+            this.fixMapSize();
+        },
+
+        fixMapSize() {
+            const refit = () => {
+                if (!this.map) return;
+                this.map.invalidateSize();
+                this.plotMarkers();
+            };
+
+            requestAnimationFrame(() => setTimeout(refit, 150));
+            setTimeout(refit, 600);
+
+            if (typeof ResizeObserver !== 'undefined' && this.$refs.mapContainer && !this.sizeObserver) {
+                new ResizeObserver(() => { if (this.map) this.map.invalidateSize(); }).observe(this.$refs.mapContainer);
+                this.sizeObserver = true;
+            }
         },
 
         plotMarkers() {
@@ -199,12 +219,13 @@ window.nearbyDoctorsMap = function ({ radius, endpoint }) {
             slotBadge.className = 'font-bold text-emerald-700';
             slotBadge.textContent = doctor.nextAppointment;
             slotBox.appendChild(slotBadge);
-            container.appendChild(slotBox);
+            if (doctor.nextAppointment) container.appendChild(slotBox);
 
             const link = document.createElement('a');
             link.href = doctor.profileUrl;
             link.className = 'block w-full text-center bg-blue-600 hover:bg-blue-700 !text-white text-xs font-semibold py-2 px-3 rounded-lg shadow-xs transition-colors';
             link.textContent = 'Agendar Cita';
+            link.style.setProperty('color', '#ffffff', 'important'); // Leaflet pinta de azul los enlaces del mapa
             container.appendChild(link);
 
             return container;

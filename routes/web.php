@@ -633,7 +633,12 @@ Route::get('/cities/search', [CityController::class, 'search'])->name('cities.se
 Route::get('/cities/nearby', [CityController::class, 'searchByCoordinates'])->name('cities.nearby');
 
 // Ruta dedicada para la vista del mapa de doctores cercanos
-Route::get('/doctors/nearby', [NearbyDoctorsController::class, 'index'])
+// Landing de campañas "Doctores cerca de mí" (página real e indexable). Los alias antiguos redirigen (301)
+// a la landing conservando ?ciudad= y los UTM. La ruta 'doctors.nearby' apuntaba a un método que no existe.
+Route::get('/doctores-cerca-de-mi', [\App\Http\Controllers\NearbyLandingController::class, 'index'])
+    ->name('doctors.landing');
+Route::get('/nearby-doctors', [\App\Http\Controllers\NearbyLandingController::class, 'redirect']);
+Route::get('/doctors/nearby', [\App\Http\Controllers\NearbyLandingController::class, 'redirect'])
     ->name('doctors.nearby');
 
 Route::get('/api/doctors/nearby', [NearbyDoctorsController::class, 'fetchNearby'])

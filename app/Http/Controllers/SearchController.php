@@ -329,6 +329,9 @@ class SearchController extends Controller
             }
         }
 
+        // Badge "cerca de ti": solo si el visitante dio su ubicación (sesión). Va fuera del caché de turnos.
+        $groupedResults = $this->withNearbyBadge($groupedResults, $request);
+
         // Paginación
         $page = LengthAwarePaginator::resolveCurrentPage();
         $perPage = 10;
@@ -354,6 +357,48 @@ class SearchController extends Controller
             'hasVirtual'             => $addresses->contains('type', 'virtual'),
             'physicalLocationsFound' => $physicalLocationsFound,
         ]);
+    }
+
+
+    /**
+     * Agrega 'near_km' y 'near_label' a los resultados cuya sede FÍSICA más cercana está a config('search_near.badge_km')
+     * km o menos de la ubicación que el visitante dio (sesión). Sin ubicación válida no cambia nada.
+     * Usa las sedes que ya vienen cargadas en $item['model']->addresses: no hace consultas extra.
+     */
+    private function withNearbyBadge(\Illuminate\Support\Collection $results, Request $request): \Illuminate\Support\Collection
+    {
+        $here = \App\Support\DeviceLocation::fromRequest($request);
+
+        if ($here === null) {
+            return $results;
+        }
+
+        $limit = (float) config('search_near.badge_km', 10);
+
+        return $results->map(function ($item) use ($here, $limit) {
+            $best = null;
+
+            foreach (($item['model']->addresses ?? collect()) as $address) {
+                if ($address->type !== 'physical' || $address->latitude === null || $address->longitude === null) {
+                    continue;
+                }
+
+                $km = \App\Support\DeviceLocation::distanceKm($here['lat'], $here['lng'], (float) $address->latitude, (float) $address->longitude);
+
+                if ($best === null || $km < $best) {
+                    $best = $km;
+                }
+            }
+
+            if ($best === null || $best > $limit) {
+                return $item;
+            }
+
+            $item['near_km']    = round($best, 1);
+            $item['near_label'] = $best < 1 ? 'menos de 1 km' : number_format($best, 1, ',', '.') . ' km';
+
+            return $item;
+        });
     }
 
     /**
@@ -622,23 +667,18 @@ class SearchController extends Controller
         $latitude = $request->input('latitude');
         $longitude = $request->input('longitude');
 
-        if (!$latitude || !$longitude) {
+        if (!is_numeric($latitude) || !is_numeric($longitude) || abs((float) $latitude) > 90 || abs((float) $longitude) > 180) {
             return response()->json(['error' => 'Ubicación inválida'], 400);
         }
 
         session([
             'device_location' => [
-                'latitude' => $latitude,
-                'longitude' => $longitude,
+                'latitude' => (float) $latitude,
+                'longitude' => (float) $longitude,
                 'saved_at' => now(),
             ]
         ]);
 
-        Log::info('Ubicación del dispositivo guardada', [
-            'latitude' => $latitude,
-            'longitude' => $longitude,
-            'user_id' => auth()->id(),
-        ]);
 
         return response()->json(['success' => true, 'message' => 'Ubicación guardada']);
     }

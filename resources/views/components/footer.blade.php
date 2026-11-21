@@ -17,6 +17,7 @@
                 <a href="{{ route('terms.show') }}" class="hover:text-indigo-600 transition-colors">Términos de Servicio</a>
                 <a href="{{ route('privacy.show') }}" class="hover:text-indigo-600 transition-colors">Política de Privacidad</a>
                 <a href="{{ route('support.show') }}" class="hover:text-indigo-600 transition-colors">Soporte Técnico</a>
+                <a href="{{ route('doctors.landing') }}" class="hover:text-indigo-600 transition-colors">Doctores cerca de mí</a>
                 <a href="{{ route('plans.index') }}" class="hover:text-indigo-600 transition-colors">Planes</a>
                 <a href="https://web.sispro.gov.co/THS/Cliente/ConsultasPublicas/ConsultaPublicaDeTHxIdentificacion.aspx" class="hover:text-indigo-600 transition-colors" target="_blank">ReTHUS</a>
             </div>

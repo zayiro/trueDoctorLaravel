@@ -16,6 +16,14 @@
         <priority>0.9</priority>
     </url>
 
+    {{-- Landing de campañas "Doctores cerca de mí" (la variante ?ciudad= NO va aquí: su canonical es esta URL) --}}
+    <url>
+        <loc>https://opendoctor.online/doctores-cerca-de-mi</loc>
+        <lastmod>{{ now()->toIso8601String() }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.9</priority>
+    </url>
+
     <url>
         <loc>https://opendoctor.online/search-symptom</loc>
         <lastmod>{{ now()->toIso8601String() }}</lastmod>

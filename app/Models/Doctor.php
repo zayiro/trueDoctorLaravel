@@ -228,7 +228,7 @@ class Doctor extends Model
             // ... más países
         ];
         
-        return $countries[strtolower($this->country_code)] ?? 'Desconocido';
+        return $countries[strtolower((string) $this->country_code)] ?? 'Desconocido';
     }
 
     // Si el doctor independiente tiene su propia dirección

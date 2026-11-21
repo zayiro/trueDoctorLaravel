@@ -5,6 +5,7 @@ Allow: /
 Allow: /sintomas/
 Allow: /search
 Allow: /search-symptom
+Allow: /doctores-cerca-de-mi
 Allow: /medical-partner/
 Allow: /clinic/
 Allow: /medical-analysis

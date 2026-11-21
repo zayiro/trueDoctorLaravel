@@ -180,13 +180,16 @@
                                 <span class="text-[12px] font-black uppercase">
                                     @foreach($result['languages'] as $lang)
                                         <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500">
+                                            @if(!empty($result['country_code']))
                                             <img 
                                                 src="{{ asset('images/flags/' . strtoupper($result['country_code']) . '.svg') }}"
                                                 width="20"
                                                 height="14"
                                                 loading="lazy"
                                                 alt="{{ $result['countryName'] }}"
-                                                class="rounded-sm shadow-xs object-cover">
+                                                class="rounded-sm shadow-xs object-cover"
+                                                data-flag-guard onerror="this.remove()">
+                                            @endif
                                         </span>
                                     @endforeach
                                 </span>
@@ -207,6 +210,19 @@
                             </div>
                         @endif
                         
+                        {{-- 📍 BADGE "CERCA DE TI": solo si el visitante dio su ubicación y la sede física más cercana está a pocos km --}}
+                        @if(!empty($result['near_label']))
+                            <div class="mt-2">
+                                <span data-near-badge class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
+                                    </svg>
+                                    {{ $result['type'] === 'clinic' ? 'Clínica cerca de ti' : 'Médico cerca de ti' }} · a {{ $result['near_label'] }}
+                                </span>
+                            </div>
+                        @endif
+
                         {{-- 🌐 IDIOMAS DEL ESPECIALISTA --}}
                         @if(!empty($result['languages'] ?? []))
                             <div class="flex items-center gap-1.5 flex-wrap mt-1.5">

@@ -125,6 +125,14 @@ return [
     |
     */
 
-    'serializable_classes' => false,
+    // Clases que la caché puede reconstruir al leer. Laravel 13 bloquea todas por defecto, y sin esto
+    // vuelven como __PHP_Incomplete_Class. El motor de turnos guarda un Slot (con su SlotState y fechas) por 60 s.
+    // Solo agregar aquí clases propias de valores simples guardadas por el servidor.
+    'serializable_classes' => [
+        \App\Services\Availability\Slot::class,
+        \App\Services\Availability\SlotState::class,
+        \DateTimeImmutable::class,
+        \DateTimeZone::class,
+    ],
 
 ];

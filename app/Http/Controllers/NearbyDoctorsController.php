@@ -9,12 +9,20 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Services\Availability\AvailabilityQuery;
+use App\Services\Availability\AvailabilityResolver;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class NearbyDoctorsController extends Controller
 {
     /** Máximo de especialistas devueltos al mapa. */
     private const MAX_RESULTS = 50;
+
+    /** Cuántos resultados (los más cercanos) calculan su próximo turno: es lo más costoso del endpoint. */
+    private const NEXT_TURN_LIMIT = 10;
 
     /**
      * Especialistas con sede física cerca de la ubicación del usuario.
@@ -80,8 +88,8 @@ class NearbyDoctorsController extends Controller
                         'latitude'        => round((float) $address->latitude, 4),
                         'longitude'       => round((float) $address->longitude, 4),
                         'distance'        => round((float) $address->distance_km, 1),
-                        // No se inventa disponibilidad: hasta calcularla con el motor de turnos, el mapa debe ocultar este campo
-                        'nextAppointment' => null,
+                        // Próximo turno real (motor de turnos), solo para los más cercanos. null = el mapa no muestra la cajita.
+                        'nextAppointment' => $this->nextTurnLabel($doctor, $address, $results->count() < self::NEXT_TURN_LIMIT),
                         'profileUrl'      => route('partner.public.profile', $doctor->slug),
                     ]);
                 }
@@ -101,6 +109,69 @@ class NearbyDoctorsController extends Controller
                 'success' => false,
                 'message' => 'No pudimos consultar los especialistas cercanos. Intenta de nuevo en unos minutos.',
             ], 500);
+        }
+    }
+
+    /**
+     * Próximo turno del médico EN ESA SEDE ("Hoy 3:00 PM", "Mañana 8:00 AM", "Lun 23 nov · 8:00 AM"),
+     * o null si no hay turnos en 14 días o no se pudo calcular. Se guarda 60 s para no recalcular en cada mapa abierto.
+     */
+    private function nextTurnLabel(Doctor $doctor, Address $address, bool $compute): ?string
+    {
+        if (!$compute) {
+            return null;
+        }
+
+        try {
+            $label = Cache::remember("nearby_next_turn:{$doctor->id}:{$address->id}", 60, function () use ($doctor, $address) {
+                $tz       = config('booking.timezone', 'America/Bogota');
+                $now      = Carbon::now($tz);
+                $resolver = app(AvailabilityResolver::class);
+                $query    = new AvailabilityQuery(
+                    [(int) $doctor->id],
+                    $address->clinic_id ? (int) $address->clinic_id : null,
+                    (int) $address->id
+                );
+
+                $dates = array_values($resolver->enabledDates(
+                    $query,
+                    $now->copy()->startOfDay(),
+                    $now->copy()->addDays(14)->startOfDay()
+                ));
+
+                foreach (array_slice($dates, 0, 3) as $date) {
+                    $day = Carbon::parse($date, $tz)->startOfDay();
+
+                    foreach ($resolver->slotsForDay($query, $day) as $slot) {
+                        if (!$slot->isAvailable()) {
+                            continue;
+                        }
+
+                        $time = $slot->start->format('g:i A');
+
+                        if ($day->isSameDay($now)) {
+                            return 'Hoy ' . $time;
+                        }
+                        if ($day->isSameDay($now->copy()->addDay())) {
+                            return 'Mañana ' . $time;
+                        }
+
+                        return $day->translatedFormat('D d M') . ' · ' . $time;
+                    }
+                }
+
+                return ''; // sin turnos (Cache no guarda null)
+            });
+
+            return $label !== '' ? $label : null;
+        } catch (Throwable $e) {
+            Log::warning('Nearby: no se pudo calcular el próximo turno', [
+                'doctor_id'  => $doctor->id,
+                'address_id' => $address->id,
+                'error'      => $e->getMessage(),
+            ]);
+
+            return null;
         }
     }
 

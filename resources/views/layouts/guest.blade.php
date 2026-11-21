@@ -231,7 +231,7 @@
                 const locationDecision = localStorage.getItem('opendoctor_location_consent');
                 
                 // Si no hay decisión previa y el dispositivo soporta geolocalización, solicitamos coordenadas
-                if (!locationDecision && navigator.geolocation) {
+                if (!locationDecision && !window.OD_SKIP_AUTO_GEO && navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(
                         async (position) => {
                             // Guardar consentimiento afirmativo en el navegador del cliente
@@ -239,16 +239,8 @@
                             
                             const latitude = position.coords.latitude;
                             const longitude = position.coords.longitude;
-                            let detectedCityName = 'Unknown';
 
                             try {
-                                // 2. Consulta inversa rápida a OpenStreetMap para extraer el nombre de la ciudad
-                                const reverseResponse = await fetch(`https://openstreetmap.org{latitude}&lon=${longitude}&zoom=10&addressdetails=1`);
-                                if (reverseResponse.ok) {
-                                    const data = await reverseResponse.json();
-                                    detectedCityName = data.address.city || data.address.town || data.address.municipality || 'Unknown';
-                                }
-
                                 // 3. 🔐 PERSISTENCIA EN EL BACKEND: Despachar la data hacia la sesión de Laravel
                                 await fetch("/api/session/location", {
                                     method: "POST",
@@ -259,8 +251,7 @@
                                     },
                                     body: JSON.stringify({
                                         latitude: latitude,
-                                        longitude: longitude,
-                                        city: detectedCityName
+                                        longitude: longitude
                                     })
                                 });
 
@@ -276,6 +267,48 @@
                         { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
                     );
                 }
+            });
+        </script>
+
+        <!-- ======================================================== -->
+        <!-- SINCRONIZAR UBICACIÓN YA AUTORIZADA                        -->
+        <!-- Si el visitante ya concedió el permiso de ubicación (p. ej. antes de que el guardado funcionara), -->
+        <!-- se envía en silencio al servidor, como máximo cada 30 min por pestaña. Nunca muestra un aviso: -->
+        <!-- solo actúa si el navegador ya tiene el permiso en "granted". -->
+        <!-- ======================================================== -->
+        <script data-location-sync>
+            document.addEventListener('DOMContentLoaded', () => {
+                try {
+                    if (localStorage.getItem('opendoctor_location_consent') !== 'allowed') return;
+                    if (!navigator.geolocation || !navigator.permissions) return;
+
+                    const last = Number(sessionStorage.getItem('opendoctor_location_synced') || 0);
+                    if (Date.now() - last < 30 * 60 * 1000) return;
+
+                    navigator.permissions.query({ name: 'geolocation' }).then((status) => {
+                        if (status.state !== 'granted') return; // "prompt" o "denied": no se pide nada
+
+                        navigator.geolocation.getCurrentPosition(
+                            (position) => {
+                                try { sessionStorage.setItem('opendoctor_location_synced', String(Date.now())); } catch (e) {}
+                                fetch('/api/session/location', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                                    },
+                                    body: JSON.stringify({
+                                        latitude: position.coords.latitude,
+                                        longitude: position.coords.longitude,
+                                    }),
+                                }).catch(() => {});
+                            },
+                            () => { /* sin ubicación: no pasa nada */ },
+                            { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 }
+                        );
+                    }).catch(() => {});
+                } catch (e) { /* no es crítico */ }
             });
         </script>
 

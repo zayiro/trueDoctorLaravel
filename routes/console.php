@@ -67,3 +67,14 @@ Schedule::command('payments:reconcile')
 // Datos sensibles: borra subidas abandonadas y archivos de órdenes sin pagar o ya analizadas.
 Schedule::exec('sudo -n -u apache ' . PHP_BINARY . ' ' . base_path('artisan') . ' medical:purge-stale')->timezone('America/Bogota')->dailyAt('03:30')->withoutOverlapping()->onOneServer();
 Schedule::exec('sudo -n -u apache ' . PHP_BINARY . ' ' . base_path('artisan') . ' skin:purge-stale')->timezone('America/Bogota')->dailyAt('03:40')->withoutOverlapping()->onOneServer();
+
+// Base de geolocalización por IP (MaxMind GeoLite2-City): se actualiza cada semana (miércoles 4:10 AM).
+// Corre como apache porque el archivo storage/app/geoip.mmdb le pertenece.
+Schedule::exec('sudo -n -u apache ' . PHP_BINARY . ' ' . base_path('artisan') . ' geoip:update')
+    ->timezone('America/Bogota')
+    ->weeklyOn(3, '04:10')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->onFailure(function () {
+        \Log::error('❌ geoip:update falló, revisa storage/app/geoip.mmdb');
+    });
