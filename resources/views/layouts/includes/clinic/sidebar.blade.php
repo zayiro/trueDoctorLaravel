@@ -73,8 +73,8 @@
         [
             'name' => 'Catálogo de Servicios',
             'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581a2.25 2.25 0 0 0 3.182 0l4.318-4.318a2.25 2.25 0 0 0 0-3.182L11.16 3.659A2.25 2.25 0 0 0 9.568 3Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M6 7.5h.008v.008H6V7.5Z" /></svg>',
-            'href' => route('partner.clinic.services.index'),
-            'active' => request()->routeIs('partner.clinic.services.*'),
+            'href' => route('partner.services.index'),
+            'active' => request()->routeIs('partner.services.*'),
         ], 
         // 👇 NUEVA INYECCIÓN: Enlace directo al módulo de Grillas Horarias y Agendas de OpenDoctor
         [

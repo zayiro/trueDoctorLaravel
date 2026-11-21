@@ -297,6 +297,11 @@ $breadcrumbs = [
                                 @endif
                                 
                                 <div class="flex flex-wrap gap-1 mt-2">
+                                    @if(($doctor->pivot->relationship ?? 'invited') === 'own')
+                                        <span class="text-[11px] font-black bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md border border-emerald-100">Equipo de la clínica</span>
+                                    @else
+                                        <span class="text-[11px] font-black bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md border border-indigo-100">Médico aliado</span>
+                                    @endif
                                     @forelse($doctor->specialties as $spec)
                                         <span class="text-[11px] font-bold bg-slate-50 text-slate-500 px-2 py-0.5 rounded-md border border-slate-100/70">{{ $spec->name }}</span>
                                     @empty

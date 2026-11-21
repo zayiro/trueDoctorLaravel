@@ -67,10 +67,10 @@ class SearchController extends Controller
 
         $specialties = Specialty::where('status', true)->orderBy('name', 'asc')->get();
 
-        $clinics = Clinic::select(['id', 'slug', 'updated_at'])
-            ->where('active', true)
-            ->where('validation_status', 'approved')
-            ->orderBy('updated_at', 'desc')
+        // Solo clínicas visibles (aprobadas, activas y con el mínimo de médicos).
+        $clinics = Clinic::listable()
+            ->select(['clinics.id', 'clinics.slug', 'clinics.updated_at'])
+            ->orderBy('clinics.updated_at', 'desc')
             ->get();
 
         $indexedSymptoms = IndexedSymptom::select(['id', 'slug', 'updated_at'])
@@ -173,9 +173,7 @@ class SearchController extends Controller
         ->whereNull('addresses.deleted_at')
         ->where(function ($query) {
             $query->where(function ($q1) {
-                $q1->whereHas('clinic', function ($q) {
-                    $q->where('active', true)->where('validation_status', 'approved');
-                });
+                $q1->whereHas('clinic', fn ($q) => $q->listable());
             })->orWhere(function ($q2) {
                 $q2->whereHas('doctor', function ($q) {
                     $q->where('active', true)->where('validation_status', 'approved');
@@ -188,8 +186,13 @@ class SearchController extends Controller
             $query->where(function ($sub) use ($request) {
                 $sub->whereHas('doctor.specialties', function ($q) use ($request) {
                     $q->where('specialties.slug', $request->specialty);
-                })->orWhereHas('clinic.doctors.specialties', function ($q) use ($request) {
-                    $q->where('specialties.slug', $request->specialty);
+                })->orWhereHas('clinic', function ($clinic) use ($request) {
+                    $clinic->whereHas('doctors', function ($doctor) use ($request) {
+                        $doctor->where('clinic_doctor.status', 'approved')
+                            ->where('doctors.validation_status', 'approved')
+                            ->where('doctors.active', true)
+                            ->whereHas('specialties', fn ($s) => $s->where('specialties.slug', $request->specialty));
+                    });
                 });
             });
         });
@@ -242,7 +245,10 @@ class SearchController extends Controller
                     continue;
                 }
 
-                $doctorsQuery = $clinic->doctors();
+                $doctorsQuery = $clinic->doctors()
+                    ->where('clinic_doctor.status', 'approved')
+                    ->where('doctors.validation_status', 'approved')
+                    ->where('doctors.active', true);
                 if ($request->filled('specialty')) {
                     $doctorsQuery->whereHas('specialties', function ($q) use ($request) {
                         $q->where('specialties.slug', $request->specialty);
@@ -376,6 +382,7 @@ class SearchController extends Controller
             },
             'addresses.city',
             'addresses.services',
+            'clinics' => fn ($query) => $query->listable()->wherePivot('status', 'approved'),
             'clinics.addresses.city',
             'clinics.addresses.services'
         ])
@@ -390,8 +397,10 @@ class SearchController extends Controller
             $query->where(function($mainQuery) use ($request) {
                 $mainQuery->whereHas('addresses.city', function ($q) use ($request) {
                     $q->where('slug', $request->city);
-                })->orWhereHas('clinics.addresses.city', function($q) use ($request) {
-                    $q->where('slug', $request->city);
+                })->orWhereHas('clinics', function ($clinic) use ($request) {
+                    $clinic->listable()
+                        ->wherePivot('status', 'approved')
+                        ->whereHas('addresses.city', fn ($q) => $q->where('slug', $request->city));
                 });
             });
         })
@@ -474,9 +483,13 @@ class SearchController extends Controller
                 'addresses.city',
                 'addresses.services',
             ])
-            ->where('active', true)
-            ->where('validation_status', 'approved')
-            ->whereHas('doctors.specialties', fn($q) => $q->where('slug', $triage['especialidad_slug']))
+            ->listable()
+            ->whereHas('doctors', function ($doctor) use ($triage) {
+                $doctor->where('clinic_doctor.status', 'approved')
+                    ->where('doctors.validation_status', 'approved')
+                    ->where('doctors.active', true)
+                    ->whereHas('specialties', fn ($q) => $q->where('slug', $triage['especialidad_slug']));
+            })
             ->take(2)
             ->get()
             ->map(fn($c) => array_merge($c->toArray(), ['result_type' => 'clinic']));

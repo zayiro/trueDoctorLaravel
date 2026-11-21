@@ -4,43 +4,8 @@
     meta_canonical="{{ $finalCanonical }}"
 >
     <!---hacer que la descripcion sea un array y cambiarlo aleatoriamente--->
-    @auth
-        @php
-            // Buscamos si el paciente tiene alguna cita virtual abandonada hoy
-            $pendingAppointment = \App\Models\Appointment::where('patient_id', auth()->user()->patient?->id)
-                ->where('status', 'pending')
-                ->where('payment_status', 'pending')
-                ->whereHas('service', function($query) {
-                    $query->where('type', 'virtual');
-                })
-                ->whereDate('created_at', \Carbon\Carbon::today('America/Bogota'))
-                ->latest()
-                ->first();
-        @endphp
-
-        @if($pendingAppointment)
-            <div class="relative z-40 bg-white pb-10 pt-10">
-                <div class="max-w-7xl mx-auto px-4 mt-4">                
-                    <div id="alert-1" class="p-4 mb-4 text-sm text-indigo-800 rounded-2xl bg-indigo-50 border border-indigo-100 shadow-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" role="alert">
-                        <span class="font-bold text-indigo-900 block shrink-0">¡Tienes una reserva en curso!</span> 
-                        <span class="text-indigo-700">
-                            Completa ahora el pago de tu videoconsulta con el 
-                            <strong>{{ $pendingAppointment->doctor->gender === 'male' ? 'Dr. ' : 'Dra. ' }}{{ ucfirst($pendingAppointment->doctor->user->name) }}</strong>.
-                            Y no pierdas tu reservación médica.
-                        </span>
-                        <a href="{{ route('appointments.preview', $pendingAppointment->id) }}" 
-                        class="inline-flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase tracking-wider px-4 py-2 pt-2.5 rounded-xl transition shadow-sm cursor-pointer">
-                            Retomar y pagar
-                        </a>
-                        <span class="sr-only">Close</span>
-                        <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/></svg>                  
-                    </div>
-                </div>
-            </div>
-
-            
-        @endif
-    @endauth
+    {{-- Aviso de reserva en curso: ver App\Services\Appointments\PendingBookingService --}}
+    @include('public.pending-booking-notice')
 
      @if(session('error'))
         <div class="relative z-40 bg-white pb-10 pt-10">

@@ -2,10 +2,8 @@
 
 namespace App\Services\Wompi;
 
-use App\Models\Appointment;
 use App\Models\Plan;
 use App\Models\Subscription;
-use App\Models\Setting;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
 
@@ -120,69 +118,5 @@ class WompiService
         $integrity             = config('services.wompi.integrity_secret'); // clave de integridad, diferente a la privada
         $signatureIntegrity    = $reference . $amountInCents . $currency . $integrity;
         return hash('sha256', $signatureIntegrity);
-    }
-
-    /**
-     * Genera la URL de checkout para pago de cita virtual.
-     */
-    public function buildAppointmentCheckoutUrl(Appointment $appointment, ?string $redirectUrl = null): array
-    {
-        // Determinar si es clínica o médico particular
-        $isClinic  = !is_null($appointment->clinic_id);
-
-        // Obtener comisión correcta según tipo
-        $commissionKey  = $isClinic
-            ? 'virtual_commission_clinic'
-            : 'virtual_commission_doctor';
-
-        $commissionRate = Setting::where('key', $commissionKey)->value('value') ?? 15;
-
-        // Fee de Wompi configurable
-        $wompiFeeRate = Setting::where('key', 'wompi_fee')->value('value') ?? 2.9;
-
-        // Cálculos
-        $price            = $appointment->price;
-        $commissionAmount = round($price * $commissionRate / 100, 2);
-        $totalToPay       = $price + $commissionAmount;
-        $wompiFee         = round($totalToPay * ($wompiFeeRate / 100), 2);
-        $doctorAmount     = $price;
-        $platformAmount   = round($commissionAmount - $wompiFee, 2);
-
-        $amountInCents = (int) ($totalToPay * 100);
-        $reference     = 'APT-' . $appointment->id . '-' . time();
-        $currency      = 'COP';
-        $signature     = $this->generateSignature($reference, $amountInCents, $currency);
-
-        // Guardar en la cita
-        $updated = $appointment->update([
-            'wompi_reference'   => $reference,
-            'payment_status'    => 'pending',
-            'commission_amount' => $commissionAmount,
-            'doctor_amount'     => $doctorAmount,
-            'platform_amount'   => $platformAmount,
-        ]);
-
-        $redirectUrl = $redirectUrl ?? route('appointments.payment.result');
-
-        $params = http_build_query([
-            'public-key'          => $this->publicKey,
-            'currency'            => $currency,
-            'amount-in-cents'     => $amountInCents,
-            'reference'           => $reference,
-            'redirect-url'        => $redirectUrl,
-            'signature-integrity' => $signature,
-        ]);
-
-        return [
-            'checkout_url'      => $this->checkoutUrl . '?' . $params,
-            'commission_rate'   => $commissionRate,
-            'commission_amount' => $commissionAmount,
-            'total'             => $totalToPay,
-            'wompi_fee'         => $wompiFee,
-            'wompi_fee_rate'    => $wompiFeeRate,
-            'doctor_amount'     => $doctorAmount,
-            'platform_amount'   => $platformAmount,
-            'is_clinic'         => $isClinic,
-        ];
     }
 }

@@ -8,14 +8,16 @@ $statusBadges = [
     'pending'   => 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900',
     'confirmed' => 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900',
     'cancelled' => 'bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900',
-    'completed' => 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800'
+    'completed' => 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800',
+    'no_show'   => 'bg-orange-50 text-orange-700 border-orange-100 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-900'
 ];
 
 $statusLabels = [
     'pending'   => 'Por Confirmar',
     'confirmed' => 'Confirmada',
     'cancelled' => 'Cancelada',
-    'completed' => 'Finalizada'
+    'completed' => 'Finalizada',
+    'no_show'   => 'No asistió'
 ];
 @endphp
 
@@ -29,7 +31,29 @@ $statusLabels = [
             changeDoctorModal: false, 
             activeAppointmentId: null,
             activeAppointmentRef: '',
-            activeCurrentDoctor: ''
+            activeCurrentDoctor: '',
+            doctorOptions: [],
+            doctorInfo: null,
+            doctorsLoading: false,
+            doctorsError: '',
+            selectedDoctor: '',
+            openChangeDoctor(id) {
+                this.activeAppointmentId = id;
+                this.doctorOptions = [];
+                this.doctorInfo = null;
+                this.doctorsError = '';
+                this.selectedDoctor = '';
+                this.doctorsLoading = true;
+                this.changeDoctorModal = true;
+                fetch('/clinic/appointments/' + id + '/doctor-options', { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+                    .then(r => r.json().then(j => ({ ok: r.ok, j: j })))
+                    .then(res => {
+                        if (!res.ok) { this.doctorsError = res.j.message || 'No pudimos cargar los médicos. Intenta de nuevo.'; }
+                        else { this.doctorInfo = res.j; this.doctorOptions = res.j.doctors || []; }
+                    })
+                    .catch(() => { this.doctorsError = 'No pudimos cargar los médicos. Intenta de nuevo.'; })
+                    .finally(() => { this.doctorsLoading = false; });
+            }
          }">
         
         <!-- ENCABEZADO INSTITUCIONAL -->
@@ -96,6 +120,10 @@ $statusLabels = [
         <!-- CUADRO DE AGENDAS EN CONSOLA (DISEÑO PREMIUM CORPORATIVO) -->
         <div class="space-y-4">
             @forelse($appointments as $app)
+                @php
+                    // status tiene cast a enum: se usa su valor string (un enum no sirve como llave de arreglo ni en in_array)
+                    $st = $app->status instanceof \BackedEnum ? $app->status->value : (string) $app->status;
+                @endphp
                 <div class="bg-white border rounded-[2rem] p-5 shadow-sm border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all hover:shadow-md dark:bg-gray-800 dark:border-gray-700">
                     
                     <!-- Información Base y Paciente -->
@@ -114,8 +142,8 @@ $statusLabels = [
                                 <span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold uppercase tracking-wider dark:bg-gray-700 dark:text-gray-300">
                                     Ref: {{ $app->reference }}
                                 </span>
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border {{ $statusBadges[$app->status] ?? 'bg-gray-100 text-gray-700' }}">
-                                    {{ $statusLabels[$app->status] ?? $app->status }}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border {{ $statusBadges[$st] ?? 'bg-gray-100 text-gray-700' }}">
+                                    {{ $statusLabels[$st] ?? $st }}
                                 </span>
                                 
                                 {{-- Indicador de Modalidad con SVG Nativo --}}
@@ -156,27 +184,24 @@ $statusLabels = [
                         {{-- BOTONERA OPERATIVA CORPORATIVA --}}
                         <div class="flex items-center gap-1.5 ml-auto lg:ml-0">
                             <!-- Enlace del doctor para Zoom Anfitrión (SVG Nativo) -->
-                            @if($app->service?->type === 'virtual' && $app->status === 'confirmed' && $app->zoom_start_url)
+                            @if($app->service?->type === 'virtual' && $st === 'confirmed' && $app->zoom_start_url)
                                 <a href="{{ $app->zoom_start_url }}" target="_blank" class="inline-flex items-center justify-center p-2.5 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-100 rounded-xl transition-all shadow-2xs dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900" title="Iniciar Videoconsulta (Zoom)">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://w3.org"><path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25z"></path></svg>
                                 </a>
                             @endif
 
-                            @if(in_array($app->status, ['pending', 'confirmed']))
-                                <!-- Reagendar Fecha / Hora (Abre Modal Alpine) -->
-                                <button type="button" 
-                                        @click="activeAppointmentId = '{{ $app->id }}'; activeAppointmentRef = '{{ $app->reference }}'; rescheduleModal = true" 
-                                        class="inline-flex items-center justify-center p-2.5 bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white border border-amber-100 rounded-xl transition-all shadow-2xs cursor-pointer dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900" 
-                                        title="Reagendar Cita">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://w3.org"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008z"></path></svg>
-                                </button>
+                            @if(in_array($st, ['pending', 'confirmed'], true))
+                                <!-- Reagendar: pantalla de turnos reales del especialista (misma que usa el médico) -->
+                                <a href="{{ route('partner.appointments.reschedule', $app->id) }}"
+                                   class="inline-flex items-center justify-center p-2.5 bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white border border-amber-100 rounded-xl transition-all shadow-2xs dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900"
+                                   title="Reagendar Cita">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"></path></svg>
+                                </a>
 
-                                <!-- Cambiar de Médico (Abre Modal Alpine) -->
-                                <button type="button" 
-                                        @click="activeAppointmentId = '{{ $app->id }}'; activeAppointmentRef = '{{ $app->reference }}'; activeCurrentDoctor = '{{ $app->doctor->user->name ?? '' }}'; changeDoctorModal = true" 
-                                        class="inline-flex items-center justify-center p-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white border border-indigo-100 rounded-xl transition-all shadow-2xs cursor-pointer dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900" 
-                                        title="Cambiar Especialista (Reasignar)">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://w3.org"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0zM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766z"></path></svg>
+                                <!-- Cambiar médico: reasignar la cita a otro médico de la clínica -->
+                                <button type="button" @click="openChangeDoctor({{ $app->id }})" title="Cambiar médico"
+                                        class="inline-flex items-center justify-center p-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white border border-indigo-100 rounded-xl transition-all shadow-2xs cursor-pointer dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"></path></svg>
                                 </button>
 
                                 <!-- Cancelar Cita -->
@@ -236,50 +261,9 @@ $statusLabels = [
                 </form>
             </div>
         </div>
-        <!-- ========================================================================= -->
-        <!-- 🗓️ MODAL 2: REAGENDAMIENTO DE FECHA Y HORA -->
-        <!-- ========================================================================= -->
-        <div x-show="rescheduleModal" class="fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto px-4" x-cloak>
-            <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" @click="rescheduleModal = false"></div>
 
-            <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl max-w-lg w-full p-6 md:p-8 z-10 dark:bg-gray-800 dark:border-gray-700 animate-scale-up" @click.away="rescheduleModal = false">
-                <div class="flex items-center gap-3 mb-4 border-b border-slate-50 dark:border-gray-700 pb-3">
-                    <div class="p-2 bg-amber-100 text-amber-700 rounded-xl dark:bg-amber-950/50 dark:text-amber-400">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://w3.org"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008z"></path></svg>
-                    </div>
-                    <div>
-                        <h3 class="text-lg font-black text-slate-800 dark:text-white">Reagendar Consulta</h3>
-                        <p class="text-[11px] text-slate-400 font-bold">Modificando Cita Ref: <span x-text="activeAppointmentRef" class="text-indigo-600"></span></p>
-                    </div>
-                </div>
-
-                <form :action="`/clinic/appointments/${activeAppointmentId}/reschedule`" method="POST" @submit="loading = true" class="space-y-4">
-                    @csrf
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Nueva Fecha</label>
-                            <input type="date" name="new_date" required min="{{ date('Y-m-d') }}" class="w-full rounded-xl border-slate-200 text-xs p-3 focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Nueva Hora de Inicio</label>
-                            <input type="time" name="new_start_time" required class="w-full rounded-xl border-slate-200 text-xs p-3 focus:ring-2 focus:ring-amber-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-50 dark:border-gray-700">
-                        <button type="button" @click="rescheduleModal = false" class="px-5 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 dark:border-gray-600 dark:text-slate-400 dark:hover:bg-gray-700 uppercase tracking-wider">
-                            Cerrar
-                        </button>
-                        <button type="submit" :disabled="loading" class="bg-amber-600 hover:bg-amber-700 text-white font-black px-6 py-3 rounded-xl text-xs uppercase tracking-wider shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer">
-                            <svg x-show="loading" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                            Guardar Cambios
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
         <!-- ========================================================================= -->
-        <!-- 👥 MODAL 3: REASIGNACIÓN DE MÉDICO DEL STAFF CORPORATIVO -->
+        <!-- 👨‍⚕️ MODAL 2: CAMBIAR MÉDICO -->
         <!-- ========================================================================= -->
         <div x-show="changeDoctorModal" class="fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto px-4" x-cloak>
             <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" @click="changeDoctorModal = false"></div>
@@ -287,41 +271,78 @@ $statusLabels = [
             <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl max-w-lg w-full p-6 md:p-8 z-10 dark:bg-gray-800 dark:border-gray-700 animate-scale-up" @click.away="changeDoctorModal = false">
                 <div class="flex items-center gap-3 mb-4 border-b border-slate-50 dark:border-gray-700 pb-3">
                     <div class="p-2 bg-indigo-100 text-indigo-700 rounded-xl dark:bg-indigo-950/50 dark:text-indigo-400">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://w3.org"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0zM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766z"></path></svg>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"></path></svg>
                     </div>
-                    <div>
-                        <h3 class="text-lg font-black text-slate-800 dark:text-white">Reasignar Especialista</h3>
-                        <p class="text-[11px] text-slate-400 font-bold">Médico actual asignado: <span x-text="activeCurrentDoctor" class="text-indigo-600 font-black"></span></p>
-                    </div>
+                    <h3 class="text-lg font-black text-slate-800 dark:text-white">Cambiar médico</h3>
                 </div>
 
-                <form :action="`/clinic/appointments/${activeAppointmentId}/change-doctor`" method="POST" @submit="loading = true" class="space-y-4">
-                    @csrf
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Seleccionar Nuevo Profesional Disponible</label>
-                        <select name="new_doctor_id" required class="w-full rounded-xl border-slate-200 py-3 px-3 text-xs bg-slate-50 text-slate-700 focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                            <option value="">-- Elija un médico de la nómina aprobada --</option>
-                            @foreach($staffDoctors as $doc)
-                                <option value="{{ $doc->id }}">{{ ucfirst($doc->name) }}</option>
-                            @endforeach
-                        </select>
-                        <p class="text-[10px] text-slate-400 font-medium mt-1 leading-normal">
-                            * Nota: El sistema validará automáticamente en el backend que el nuevo especialista posea la misma especialidad del servicio contratado y grillas de horarios libres vigentes.
-                        </p>
-                    </div>
+                <template x-if="doctorsLoading">
+                    <p class="text-sm text-slate-500 py-6 text-center dark:text-slate-400">Buscando médicos disponibles…</p>
+                </template>
 
-                    <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-50 dark:border-gray-700">
-                        <button type="button" @click="changeDoctorModal = false" class="px-5 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 dark:border-gray-600 dark:text-slate-400 dark:hover:bg-gray-700 uppercase tracking-wider">
-                            Cerrar
-                        </button>
-                        <button type="submit" :disabled="loading" class="bg-indigo-600 hover:bg-indigo-700 text-white font-black px-6 py-3 rounded-xl text-xs uppercase tracking-wider shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer">
-                            <svg x-show="loading" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                            Reasignar Turno
-                        </button>
+                <template x-if="!doctorsLoading && doctorsError">
+                    <p class="text-sm text-rose-600 py-4" x-text="doctorsError"></p>
+                </template>
+
+                <template x-if="!doctorsLoading && !doctorsError && doctorInfo">
+                    <form :action="`/clinic/appointments/${activeAppointmentId}/change-doctor`" method="POST" @submit="loading = true" class="space-y-4">
+                        @csrf
+                        <div class="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-xs text-slate-600 space-y-1 dark:bg-gray-700/40 dark:border-gray-700 dark:text-slate-300">
+                            <p><span class="font-black uppercase tracking-wider text-slate-400">Cita</span> <span class="font-bold" x-text="doctorInfo.reference"></span></p>
+                            <p><span class="font-black uppercase tracking-wider text-slate-400">Fecha</span> <span class="font-bold" x-text="doctorInfo.date_label + ' · ' + doctorInfo.time_label"></span></p>
+                            <p><span class="font-black uppercase tracking-wider text-slate-400">Médico actual</span> <span class="font-bold" x-text="doctorInfo.current_doctor"></span></p>
+                        </div>
+
+                        <template x-if="!doctorInfo.can_change">
+                            <p class="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-2xl p-4" x-text="doctorInfo.message"></p>
+                        </template>
+
+                        <template x-if="doctorInfo.can_change">
+                            <div class="space-y-3">
+                                <p class="text-xs text-slate-500 font-medium leading-relaxed dark:text-slate-400">
+                                    La fecha, la hora, la sede y el servicio no cambian. Solo pueden tomar la cita los médicos que tienen libre ese mismo turno. Se avisará por correo al paciente y a los dos médicos.
+                                </p>
+
+                                <template x-if="doctorOptions.length === 0">
+                                    <p class="text-sm text-slate-500 bg-slate-50 rounded-2xl p-4 dark:bg-gray-700/40 dark:text-slate-300">No hay otros médicos activos en la clínica.</p>
+                                </template>
+
+                                <div class="space-y-2 max-h-64 overflow-y-auto pr-1">
+                                    <template x-for="d in doctorOptions" :key="d.id">
+                                        <label class="flex items-start gap-3 rounded-2xl border p-3 transition-all"
+                                               :class="d.available ? 'border-slate-200 hover:border-indigo-400 cursor-pointer dark:border-gray-600' : 'border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed dark:border-gray-700 dark:bg-gray-700/30'">
+                                            <input type="radio" name="doctor_id" :value="d.id" x-model="selectedDoctor" :disabled="!d.available" class="mt-1 text-indigo-600 focus:ring-indigo-500">
+                                            <span class="flex-1">
+                                                <span class="block text-sm font-bold text-slate-800 dark:text-white" x-text="d.name"></span>
+                                                <span class="block text-xs" :class="d.available ? 'text-emerald-600' : 'text-slate-400'" x-text="d.available ? 'Disponible a esa hora' : d.reason"></span>
+                                            </span>
+                                        </label>
+                                    </template>
+                                </div>
+
+                                <div>
+                                    <textarea name="reason" rows="2" maxlength="255" placeholder="Motivo del cambio (opcional). Se incluirá en el correo." class="w-full rounded-2xl border-slate-200 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-inner text-slate-800 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea>
+                                </div>
+                            </div>
+                        </template>
+
+                        <div class="flex items-center justify-end gap-3 pt-2 border-t border-slate-50 dark:border-gray-700">
+                            <button type="button" @click="changeDoctorModal = false" class="px-5 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 dark:border-gray-600 dark:text-slate-400 dark:hover:bg-gray-700 uppercase tracking-wider">
+                                Cerrar
+                            </button>
+                            <button type="submit" x-show="doctorInfo.can_change" :disabled="loading || !selectedDoctor" class="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black px-6 py-3 rounded-xl text-xs uppercase tracking-wider shadow-md transition-all cursor-pointer">
+                                Confirmar cambio
+                            </button>
+                        </div>
+                    </form>
+                </template>
+
+                <template x-if="!doctorsLoading && doctorsError">
+                    <div class="flex justify-end pt-2">
+                        <button type="button" @click="changeDoctorModal = false" class="px-5 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 uppercase tracking-wider dark:border-gray-600 dark:text-slate-400">Cerrar</button>
                     </div>
-                </form>
+                </template>
             </div>
         </div>
-
     </div> {{-- Cierre del x-data principal --}}
 </x-admin-layout>

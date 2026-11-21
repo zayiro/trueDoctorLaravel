@@ -134,6 +134,14 @@ class AppointmentController extends Controller
         $hourInput = $request->input('hour');
         $address = Address::findOrFail($addressId);
 
+        // Los pacientes solo reservan en clínicas visibles (con el mínimo de médicos aprobados y activos).
+        if ($address->clinic_id && !Clinic::listable()->whereKey($address->clinic_id)->exists()) {
+            return response()->json([
+                "message" => "Esta clínica aún está integrando a su equipo médico. Muy pronto podrás reservar aquí.",
+                "status"  => false,
+            ], 422);
+        }
+
         $targetDoctorId = (int) $request->input('doctor_id');
 
         if (!$targetDoctorId) {
@@ -144,10 +152,15 @@ class AppointmentController extends Controller
         }
 
         if (!$targetDoctorId && $address->clinic_id) {
+            // Solo médicos con membresía aprobada en esta clínica y horario activo ese día.
             $targetDoctorId = DB::table('schedules')
-                ->where('address_id', $addressId)
-                ->where('day', Carbon::parse($dateInput)->dayOfWeekIso)
-                ->value('doctor_id');
+                ->join('clinic_doctor', 'clinic_doctor.doctor_id', '=', 'schedules.doctor_id')
+                ->where('clinic_doctor.clinic_id', $address->clinic_id)
+                ->where('clinic_doctor.status', 'approved')
+                ->where('schedules.address_id', $addressId)
+                ->where('schedules.day', Carbon::parse($dateInput)->dayOfWeekIso)
+                ->where('schedules.is_active', true)
+                ->value('schedules.doctor_id');
         }
 
         $targetClinicId = (int) $request->input('clinic_id');
@@ -336,9 +349,9 @@ class AppointmentController extends Controller
             $payment_status = PaymentStatus::PAID->value;
             $paidAt = now();
         } elseif ($onlineRequired) {
-            // El turno queda retenido hasta pagar; si no se paga, el barrido lo expira y lo libera.
+            // El turno queda retenido hasta pagar (nunca más allá del inicio de la cita); si no se paga, el barrido lo expira y lo libera.
             $status = AppointmentStatus::PENDING->value;
-            $paymentExpiresAt = now()->addMinutes((int) config('booking.pending_hold_minutes', 120));
+            $paymentExpiresAt = app(\App\Services\Appointments\PaymentLinkService::class)->holdUntil($startTime, $endTime);
         }
                     
         // 🔒 Motor único de disponibilidad: valida el turno y crea la cita en la MISMA transacción,
@@ -621,6 +634,47 @@ class AppointmentController extends Controller
     }
 
     /**
+     * Acciones de gestión de la consulta (iniciar o cerrar la sala, notas): solo el doctor de la cita,
+     * la clínica de la cita o un administrador. El paciente y cualquier otro usuario autenticado quedan fuera.
+     */
+    private function authorizeStaffOfAppointment(Appointment $appointment): void
+    {
+        $user = auth()->user();
+        abort_unless($user, 401, 'Debes iniciar sesión.');
+
+        $allowed = $user->role === 'admin'
+            || ($user->role === 'doctor' && $user->doctor && (int) $appointment->doctor_id === (int) $user->doctor->id)
+            || ($user->role === 'clinic' && $user->clinic && (int) $appointment->clinic_id === (int) $user->clinic->id);
+
+        abort_unless($allowed, 403, 'No puedes gestionar esta consulta.');
+    }
+
+    /**
+     * Cierre de la reunión: lo pueden pedir el staff de la cita (ver authorizeStaffOfAppointment) y, solo cuando la hora
+     * de la cita ya terminó, el paciente de ESA cita. La sala ejecuta este cierre en el navegador de todos los
+     * participantes al agotarse el tiempo, y el del paciente sirve de respaldo si el médico ya cerró su pestaña.
+     * Se dan 2 minutos de tolerancia por diferencias entre el reloj del navegador y el del servidor.
+     */
+    private function authorizeEndMeeting(Appointment $appointment): void
+    {
+        $user = auth()->user();
+        abort_unless($user, 401, 'Debes iniciar sesión.');
+
+        if ($user->role === 'patient') {
+            $appointment->loadMissing('patient');
+
+            $isOwner = $appointment->patient && (int) $appointment->patient->user_id === (int) $user->id;
+            $endsAt  = $appointment->starts_at->copy()->addMinutes((int) $appointment->duration);
+
+            abort_unless($isOwner && now()->addMinutes(2)->gte($endsAt), 403, 'La consulta aún no ha terminado.');
+
+            return;
+        }
+
+        $this->authorizeStaffOfAppointment($appointment);
+    }
+
+    /**
      * Intenta crear la reunión de Zoom de una cita que llegó a la sala sin ella.
      * Devuelve un código de motivo: recovered | unpaid | cancelled | completed | expired | not_virtual | throttled | failed
      */
@@ -780,6 +834,8 @@ class AppointmentController extends Controller
 
     public function startZoom(Appointment $appointment)
     {
+        $this->authorizeStaffOfAppointment($appointment);
+
         $appointment->update(['zoom_started' => true]);
 
         $patientEmail = $appointment->patient?->user?->email;
@@ -795,6 +851,8 @@ class AppointmentController extends Controller
 
     public function forceEndMeeting(Appointment $appointment)
     {
+        $this->authorizeEndMeeting($appointment);
+
         if (!$appointment->zoom_meeting_id) {
             return response()->json(['status' => 'ignored', 'message' => 'La cita no posee una sala de Zoom activa.'], 400);
         }
@@ -838,12 +896,16 @@ class AppointmentController extends Controller
 
     public function saveNotes(Request $request, Appointment $appointment)
     {
+        $this->authorizeStaffOfAppointment($appointment);
+
         $appointment->update(['notes' => $request->input('notes')]);
         return response()->json(['success' => true]);
     }
     
     public function endZoomMeeting(Appointment $appointment, ZoomService $zoomService): JsonResponse
     {
+        $this->authorizeStaffOfAppointment($appointment);
+
         // 1. Ya completada → idempotente
         if ($appointment->status === AppointmentStatus::COMPLETED) {
             return response()->json([

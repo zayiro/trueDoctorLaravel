@@ -1,7 +1,14 @@
 @php
+$isClinicUser = auth()->user()->role === 'clinic';
+$agendaUrl = $isClinicUser
+    ? route('partner.clinic.appointments.index', ['date' => $appointment->date->format('Y-m-d')])
+    : route('partner.appointments.index', ['date' => $appointment->date->format('Y-m-d')]);
+$schedulesUrl = $isClinicUser
+    ? route('partner.clinic.schedules.index')
+    : route('partner.schedules.index', ['address' => $appointment->address_id]);
 $breadcrumbs = [
     ['name' => 'Dashboard', 'href' => route('admin.dashboard')],
-    ['name' => 'Agenda Médica', 'href' => route('partner.appointments.index')],
+    ['name' => 'Agenda Médica', 'href' => $agendaUrl],
     ['name' => 'Reagendamiento de Cita']
 ];
 @endphp
@@ -74,7 +81,7 @@ $breadcrumbs = [
                             <h4 class="text-amber-900 font-black text-sm uppercase tracking-widest">Sin turnos en agenda</h4>
                             <p class="text-amber-700 text-sm mt-1 mb-4">No se han configurado bloques de franjas horarias de atención para este día de la semana en el consultorio.</p>
                             
-                            <a href="{{ route('partner.schedules.index', ['address' => $appointment->address_id]) }}" 
+                            <a href="{{ $schedulesUrl }}" 
                                 class="inline-flex items-center gap-2 bg-amber-600 text-white px-6 py-3 rounded-2xl text-xs font-bold hover:bg-amber-700 transition-all shadow-lg shadow-amber-200 uppercase tracking-wider">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
@@ -91,7 +98,7 @@ $breadcrumbs = [
 
                     <!-- Botones Inferiores de Acción -->
                     <div class="flex flex-col sm:flex-row gap-4 pt-6 mt-6 border-t border-slate-50 items-center justify-between">
-                        <a href="{{ route('partner.appointments.index', ['date' => $appointment->date->format('Y-m-d')]) }}" class="text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors order-2 sm:order-1">
+                        <a href="{{ $agendaUrl }}" class="text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors order-2 sm:order-1">
                             ← Volver a la agenda principal
                         </a>
 

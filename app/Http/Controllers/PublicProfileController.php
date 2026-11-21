@@ -25,6 +25,56 @@ class PublicProfileController extends Controller
     private const REVIEWS_PER_PAGE = 5;
     
     /**
+     * Etiqueta del próximo turno libre de un médico dentro de una clínica:
+     * "Hoy 3:00 PM", "Mañana 8:00 AM" o "Lun 23 nov · 8:00 AM". Sin turnos: "Sin turnos en los próximos 14 días".
+     *
+     * No usa AvailabilityResolver::nextSlot() a propósito: ese método guarda objetos Slot en caché y puede devolverlos
+     * rotos (__PHP_Incomplete_Class). enabledDates() + slotsForDay() son los mismos que usa el calendario.
+     */
+    private function nextTurnLabel(AvailabilityResolver $resolver, int $doctorId, int $clinicId, Carbon $now): string
+    {
+        $none = 'Sin turnos en los próximos 14 días';
+
+        try {
+            $query = new AvailabilityQuery([$doctorId], $clinicId);
+            $dates = array_values($resolver->enabledDates(
+                $query,
+                $now->copy()->startOfDay(),
+                $now->copy()->addDays(14)->startOfDay()
+            ));
+
+            foreach (array_slice($dates, 0, 3) as $date) {
+                $day = Carbon::parse($date, $now->getTimezone())->startOfDay();
+
+                foreach ($resolver->slotsForDay($query, $day) as $slot) {
+                    if (!$slot->isAvailable()) {
+                        continue;
+                    }
+
+                    $time = $slot->start->format('g:i A');
+
+                    if ($day->isSameDay($now)) {
+                        return 'Hoy ' . $time;
+                    }
+                    if ($day->isSameDay($now->copy()->addDay())) {
+                        return 'Mañana ' . $time;
+                    }
+
+                    return $day->translatedFormat('D d M') . ' · ' . $time;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('PublicProfile: no se pudo calcular el próximo turno del médico', [
+                'doctor_id' => $doctorId,
+                'clinic_id' => $clinicId,
+                'error'     => $e->getMessage(),
+            ]);
+        }
+
+        return $none;
+    }
+
+    /**
      * Muestra la pantalla del perfil unificado (Clínica o Doctor de opendoctor.online).
      * URL: /medical-partner/{slug}
      */
@@ -49,10 +99,28 @@ class PublicProfileController extends Controller
         // --------------------------------------------------------------------
         // 1. INTENTAR BUSCAR EN EL CATÁLOGO MAESTRO DE CLÍNICAS APROBADAS
         // --------------------------------------------------------------------
-        $clinic = Clinic::where('slug', $slug)
-            ->where('validation_status', 'approved')
-            ->where('active', true)
-            ->first();
+        // Clínica aprobada y activa. Si aún no llega al mínimo de médicos aprobados y activos,
+        // se muestra una página "próximamente" (sin médicos ni turnos) en lugar de un 404.
+        $clinic = Clinic::where('slug', $slug)->first();
+
+        // Clínica que existe pero aún no está habilitada (en revisión o desactivada).
+        if ($clinic && ($clinic->validation_status !== 'approved' || !$clinic->active)) {
+            return $this->friendlyUnavailable(
+                'Esta clínica aún no está disponible',
+                'Estamos terminando de preparar el perfil de esta clínica. Vuelve pronto o, mientras tanto, busca otros especialistas.'
+            );
+        }
+
+        if ($clinic && !$clinic->isListable()) {
+            $clinic->load('user');
+
+            return view('public.profiles.clinic_coming_soon', [
+                'clinic'         => $clinic,
+                'seoTitle'       => $clinic->name . ' | Próximamente en OpenDoctor',
+                'seoDescription' => $clinic->name . ' está integrando a su equipo médico en OpenDoctor. Muy pronto podrás agendar aquí.',
+                'metaRobots'     => 'noindex, follow',
+            ]);
+        }
 
         if ($clinic) {
             $showingAllStaffFallback = false;
@@ -62,6 +130,7 @@ class PublicProfileController extends Controller
                 $hasDoctorsInSpecialty = $clinic->doctors()
                     ->where('clinic_doctor.status', 'approved')
                     ->where('doctors.validation_status', 'approved')
+                    ->where('doctors.active', true)
                     ->whereHas('specialties', function($sp) use ($currentSpecialty) {
                         $sp->where('specialty_id', $currentSpecialty->id);
                     })->exists();
@@ -79,6 +148,7 @@ class PublicProfileController extends Controller
                 'doctors' => function ($query) use ($currentSpecialty, $showingAllStaffFallback) {
                     $query->where('clinic_doctor.status', 'approved')
                           ->where('doctors.validation_status', 'approved')
+                          ->where('doctors.active', true)
                           ->when(!$showingAllStaffFallback, function($q) use ($currentSpecialty) {
                               $q->whereHas('specialties', function($sp) use ($currentSpecialty) {
                                   $sp->where('specialty_id', $currentSpecialty->id);
@@ -100,57 +170,26 @@ class PublicProfileController extends Controller
                 : $clinic->addresses->first();
 
             if (!$address) {
-                abort(404, 'The requested medical address is not available.');
+                return $this->friendlyUnavailable(
+                    'Esta sede no está disponible por ahora',
+                    'No pudimos mostrarte esa sede en este momento. Puedes buscar otros especialistas o volver más tarde.'
+                );
             }
 
             if ($showingAllStaffFallback && $clinic->doctors->isNotEmpty()) {
                 $currentSpecialty = $clinic->doctors->first()->specialties->first();
             }
 
-            // 🚀 OPTIMIZACIÓN DE MEMORIA: Pluck directo desde la colección cargada en memoria, Cero SQL extra
-            $doctorIds = $clinic->doctors->pluck('id')->toArray();
+            // El próximo turno de cada médico sale del MISMO motor que usan el calendario y la reserva
+            // (bloqueos, cupo diario, anticipación, duración del servicio y sedes de ESTA clínica).
             $unifiedSlots = [];
-            for ($dayOffset = 0; $dayOffset < 7; $dayOffset++) {
-                $evalDate = $now->copy()->addDays($dayOffset);
-                $evalDayOfWeek = $evalDate->dayOfWeekIso;
-
-                $schedules = DB::table('schedules')
-                    ->where('address_id', $address->id)
-                    ->where('day', $evalDayOfWeek)
-                    ->whereIn('doctor_id', $doctorIds)
-                    ->get();
-
-                foreach ($schedules as $sched) {
-                    if ($dayOffset === 0 && $sched->start_time < $currentTime) {
-                        continue;
-                    }
-
-                    // Validación Transaccional Fiel: El turno pertenece estrictamente al médico asignado
-                    $isBooked = Appointment::where('address_id', $address->id)
-                        ->where('doctor_id', $sched->doctor_id)
-                        ->where('date', $evalDate->toDateString())
-                        ->where('start_time', $sched->start_time)
-                        ->whereIn('status', ['pending', 'confirmed', 'completed'])
-                        ->exists();
-
-                    if (!$isBooked) {
-                        $targetDoctor = $clinic->doctors->firstWhere('id', $sched->doctor_id);
-
-                        $unifiedSlots[] = [
-                            'date'        => $evalDate->toDateString(),
-                            'date_human'  => $evalDate->translatedFormat('D d \d\e F'),
-                            'start_time'  => $sched->start_time,
-                            'time_human'  => Carbon::parse($sched->start_time)->format('g:i A'),
-                            'doctor_id'   => $sched->doctor_id,
-                            'doctor_name' => $targetDoctor ? $targetDoctor->user->name : 'Especialista'
-                        ];
-
-                        if (count($unifiedSlots) >= 24) break 2;
-                    }
-                }
+            $resolver = app(AvailabilityResolver::class);
+            $nextTurnByDoctor = [];
+            foreach ($clinic->doctors as $doc) {
+                $nextTurnByDoctor[$doc->id] = $this->nextTurnLabel($resolver, (int) $doc->id, (int) $clinic->id, $now);
             }
-            
-            // FÓRMULA DE SÍNTESIS DEPURADA: Prepara las tarjetas moleculares para la clínica
+
+                        // FÓRMULA DE SÍNTESIS DEPURADA: Prepara las tarjetas moleculares para la clínica
             $results = [];
             $clinicAddresses = $clinic->addresses;
 
@@ -171,12 +210,13 @@ class PublicProfileController extends Controller
                     'slug'               => $doc->slug ?? $doc->user->slug,
                     'type'               => 'doctor',
                     'title'              => ($doc->gender === 'female' ? 'Dra. ' : 'Dr. ') . ucfirst($doc->user->name),
-                    'subtitle'           => "Sede " . $targetAddressModel->name . " • " . $targetAddressModel->address,
+                    'subtitle'           => (preg_match('/^sede\b/iu', trim((string) $targetAddressModel->name)) ? '' : 'Sede ') . $targetAddressModel->name . " • " . $targetAddressModel->address,
                     'rating'             => $doc->rating ?? 5,
                     'address_id'         => (int)$assignedAddressId, 
                     'active_address_ids' => !empty($activeAddressIds) ? $activeAddressIds : [$address->id],
                     'badge_text'         => $doc->specialties->first()->name ?? ($currentSpecialty ? $currentSpecialty->name : 'Especialista'),
-                    'next_turn'          => collect($unifiedSlots)->firstWhere('doctor_id', $doc->id)['time_human'] ?? 'Sin turnos esta semana',
+                    'relationship'       => $doc->pivot->relationship ?? 'invited',
+                    'next_turn'          => $nextTurnByDoctor[$doc->id] ?? 'Sin turnos en los próximos 14 días',
                     'user'               => $doc->user
                 ];
             }
@@ -184,7 +224,7 @@ class PublicProfileController extends Controller
             session(['current_clinic_user_id' => $clinic->user_id]);
             session()->forget('current_doctor_id');
             
-            return view('public.profiles.clinic_decision', [
+            return view('public.clinic_decision', [
                 'clinic'                  => $clinic,
                 'specialty'               => $currentSpecialty,
                 'clinicAddresses'         => $clinicAddresses,
@@ -202,7 +242,14 @@ class PublicProfileController extends Controller
         $doctor = Doctor::where('slug', $slug)
             ->where('validation_status', 'approved')
             ->where('active', true)
-            ->firstOrFail();
+            ->first();
+
+        if (!$doctor) {
+            return $this->friendlyUnavailable(
+                'No encontramos este perfil',
+                'Es posible que el enlace haya cambiado o que este perfil no esté disponible por ahora. Te ayudamos a encontrar otro especialista.'
+            );
+        }
 
         $fromClinicId = $request->input('from_clinic') ?? $request->input('clinic_id');
         $preSelectedAddress = null;
@@ -230,10 +277,27 @@ class PublicProfileController extends Controller
         // 🏢 CASO 1: EL MÉDICO ESTÁ OPERANDO COMO STAFF DE UNA CLÍNICA (?from_clinic=1)
         // =========================================================================
         if ($fromClinicId) {
-            $parentClinic = Clinic::where('id', $fromClinicId)->where('validation_status', 'approved')->first();
+            $parentClinic = Clinic::listable()->where('clinics.id', $fromClinicId)->first();
 
             if (!$parentClinic) {
-                abort(404, 'La institución médica vinculada no se encuentra activa.');
+                return $this->friendlyUnavailable(
+                    'Esta institución no está disponible por ahora',
+                    'Estamos preparando su equipo médico. Mientras tanto, puedes buscar otros especialistas.'
+                );
+            }
+
+            // El médico debe ser miembro aprobado de ESA clínica (no basta con pasar ?from_clinic=).
+            $isMember = DB::table('clinic_doctor')
+                ->where('clinic_id', $parentClinic->id)
+                ->where('doctor_id', $doctor->id)
+                ->where('status', 'approved')
+                ->exists();
+
+            if (!$isMember) {
+                return $this->friendlyUnavailable(
+                    'Este especialista no atiende aquí por ahora',
+                    'No encontramos disponibilidad de este especialista en esa institución. Puedes buscar otras opciones.'
+                );
             }
 
             // Traer únicamente las sedes oficiales de la clínica
@@ -306,13 +370,42 @@ class PublicProfileController extends Controller
 
         $enabledDates = [];
         $enabledDays = [];
+        $enabledDatesByAddress = [];
+        $nextDateByAddress = [];
 
         if ($targetAddressId) {
             $settings = DB::table('doctor_settings')->where('doctor_id', $doctor->id)->first();
             $maxAdvanceDays = (int) ($settings->max_advance_days ?? 30);
             $maxDate = $now->copy()->addDays($maxAdvanceDays);
 
-            // Días de la semana con horario en esta sede (0=Dom, 1=Lun ... 6=Sab) para pintar el calendario.
+            // Cada sede tiene sus propios horarios: calculamos los días con turno libre de CADA sede del médico,
+            // para que la página use la lista de la sede que el paciente elija (antes era solo la de la primera sede).
+            $datesForAddress = function (int $aid) use ($doctor, $fromClinicId, $now, $maxDate) {
+                try {
+                    return app(AvailabilityResolver::class)->enabledDates(
+                        new AvailabilityQuery([(int) $doctor->id], $fromClinicId ? (int) $fromClinicId : null, $aid),
+                        $now->copy()->startOfDay(),
+                        $maxDate->copy()->startOfDay()
+                    );
+                } catch (\Throwable $e) {
+                    Log::error('PublicProfile: falló el motor de disponibilidad', [
+                        'doctor_id'  => $doctor->id,
+                        'address_id' => $aid,
+                        'error'      => $e->getMessage(),
+                    ]);
+                    return [];
+                }
+            };
+
+            $addressIdsToCompute = $doctor->addresses->pluck('id')->map(fn ($id) => (int) $id)->push((int) $targetAddressId)->unique()->values();
+
+            foreach ($addressIdsToCompute as $aid) {
+                $dates = array_values($datesForAddress($aid));
+                $enabledDatesByAddress[$aid] = $dates;
+                $nextDateByAddress[$aid] = $dates[0] ?? null;
+            }
+
+            // Días de la semana con horario en la sede objetivo (0=Dom, 1=Lun ... 6=Sab) para pintar el calendario.
             $enabledDays = DB::table('schedules')
                 ->where('address_id', $targetAddressId)
                 ->where('doctor_id', $doctor->id)
@@ -322,21 +415,15 @@ class PublicProfileController extends Controller
                 ->values()
                 ->toArray();
 
-            // Fechas con al menos un turno libre: las calcula el motor único de disponibilidad.
-            try {
-                $enabledDates = app(AvailabilityResolver::class)->enabledDates(
-                    new AvailabilityQuery([(int) $doctor->id], $fromClinicId ? (int) $fromClinicId : null, $targetAddressId),
-                    $now->copy()->startOfDay(),
-                    $maxDate->copy()->startOfDay()
-                );
+            // Compatibilidad: la lista "global" sigue siendo la de la sede objetivo.
+            $enabledDates = $enabledDatesByAddress[(int) $targetAddressId] ?? [];
 
-                $nextAvailableDate = $enabledDates[0] ?? $todayColombia;
-            } catch (\Throwable $e) {
-                Log::error('PublicProfile: falló el motor de disponibilidad', [
-                    'doctor_id'  => $doctor->id,
-                    'address_id' => $targetAddressId,
-                    'error'      => $e->getMessage(),
-                ]);
+            if ($addressId) {
+                $nextAvailableDate = $nextDateByAddress[(int) $targetAddressId] ?? $todayColombia;
+            } else {
+                // Sin sede elegida: arrancamos en el primer día con turnos entre TODAS las sedes.
+                $candidates = array_filter($nextDateByAddress);
+                $nextAvailableDate = $candidates ? min($candidates) : $todayColombia;
             }
         }
 
@@ -379,17 +466,40 @@ class PublicProfileController extends Controller
             'fromClinicId'       => $fromClinicId,
             'nextAvailableDate'  => $nextAvailableDate,
             'enabledDates'       => $enabledDates,
+            'enabledDatesByAddress' => $enabledDatesByAddress,
             'enabledDays'        => $enabledDays ?? [],  // Entrega los índices numéricos para los fondos grises clickeables
             'todayColombia'      => $todayColombia       // Fuerza el minDate estricto contra el ayer real en el frontend
         ]);
     }
 
     /**
+     * Respuesta amable cuando un perfil no se puede mostrar. Mantiene el código 404 (bueno para SEO)
+     * pero con una página cálida, sin mensajes técnicos ni apariencia de error del sistema.
+     */
+    private function friendlyUnavailable(string $title, string $message)
+    {
+        return response()->view('public.profiles.unavailable', [
+            'title'      => $title,
+            'message'    => $message,
+            'seoTitle'   => $title . ' | OpenDoctor',
+            'metaRobots' => 'noindex, follow',
+        ], 404);
+    }
+
+    /**
      * Muestra el perfil público premium de un médico especialista a través de su slug.
      */
-    public function showProfile(string $slug, ReviewService $reviewService): View
+    public function showProfile(string $slug, ReviewService $reviewService)
     {
-        $doctor          = $this->findPublicDoctor($slug);
+        $doctor = $this->findPublicDoctor($slug);
+
+        if (!$doctor) {
+            return $this->friendlyUnavailable(
+                'No encontramos este perfil',
+                'Es posible que el enlace haya cambiado o que este perfil no esté disponible por ahora. Te ayudamos a encontrar otro especialista.'
+            );
+        }
+
         $clinicAddresses = $this->clinicAddressesFor($doctor);
 
         // Solo reseñas publicadas, paginadas y con el nombre del autor (sin N+1)
@@ -412,7 +522,7 @@ class PublicProfileController extends Controller
     /**
      * Doctor visible públicamente: activo y con validación aprobada.
      */
-    private function findPublicDoctor(string $slug): Doctor
+    private function findPublicDoctor(string $slug): ?Doctor
     {
         return Doctor::query()
             ->with([
@@ -428,7 +538,7 @@ class PublicProfileController extends Controller
             ->where('slug', $slug)
             ->where('active', true)
             ->where('validation_status', 'approved')
-            ->firstOrFail();
+            ->first();
     }
 
     /**
@@ -446,6 +556,7 @@ class PublicProfileController extends Controller
             ->where('s.doctor_id', $doctor->id)
             ->where('s.is_active', 1)
             ->where('cd.status', 'approved')
+            ->whereIn('a.clinic_id', Clinic::listable()->pluck('clinics.id'))
             ->pluck('a.id')
             ->unique();
 

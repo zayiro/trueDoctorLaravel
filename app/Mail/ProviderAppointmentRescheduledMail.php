@@ -10,6 +10,9 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Aviso al PROVEEDOR (médico independiente o clínica) de que una cita de su agenda fue reprogramada.
+ */
 class ProviderAppointmentRescheduledMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
@@ -29,7 +32,7 @@ class ProviderAppointmentRescheduledMail extends Mailable implements ShouldQueue
     public function content(): Content
     {
         return new Content(
-            view: 'emails.rescheduled',
+            markdown: 'emails.appointments.rescheduled-provider',
         );
     }
 }

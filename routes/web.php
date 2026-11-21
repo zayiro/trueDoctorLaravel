@@ -44,7 +44,6 @@ use App\Http\Controllers\PaymentReturnController;
 use App\Http\Controllers\WompiWebhookBridgeController;
 
 use App\Http\Controllers\ClinicAddressController;
-use App\Http\Controllers\ClinicServiceController;
 use App\Http\Controllers\ClinicScheduleController;
 use App\Http\Controllers\ClinicAppointmentController;
 use App\Http\Controllers\SymptomDirectoryController;
@@ -140,6 +139,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::get('/administrator/payouts', [AdminController::class, 'payouts'])->name('administrator.payouts.index');
     Route::post('/administrator/payouts/{payout}/mark-paid', [AdminController::class, 'markPayoutPaid'])->name('administrator.payouts.mark-paid');
+
+    Route::get('/administrator/refunds', [AdminController::class, 'refunds'])->name('administrator.refunds.index');
+    Route::post('/administrator/refunds/{refund}/mark-done', [AdminController::class, 'markRefundDone'])->name('administrator.refunds.mark-done');
     Route::delete('/administrator/users/{user}/delete', [UserManagementController::class, 'destroy'])->name('administrator.users.destroy');
 
     Route::resource('administrator/promo-codes', PromoCodeController::class)
@@ -164,13 +166,6 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::put('/partner/profile', [ProfileDoctorController::class, 'update'])->name('partner.profile.update');
     Route::post('/partner/profile/plan', [PlanController::class, 'update'])->name('partner.profile.plan.update');    
             
-    //Gestion de servicios
-    Route::get('/partner/services', [ServiceController::class, 'index'])->name('partner.services.index');
-    Route::get('/partner/services/create', [ServiceController::class, 'create'])->name('partner.services.create');
-    Route::post('/partner/services', [ServiceController::class, 'store'])->name('partner.services.store');
-    Route::get('/partner/services/{service}/edit', [ServiceController::class, 'edit'])->name('partner.services.edit');
-    Route::put('/partner/services/{service}', [ServiceController::class, 'update'])->name('partner.services.update');
-    Route::delete('/partner/services/{service}', [ServiceController::class, 'destroy'])->name('partner.services.destroy');
 
     // Gestión de Sedes
     Route::get('/partner/addresses', [AddressController::class, 'index'])->name('partner.addresses.index');
@@ -179,7 +174,6 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::put('/partner/addresses/{address}', [AddressController::class, 'update'])->name('partner.addresses.update');
     Route::delete('/partner/addresses/{address}', [AddressController::class, 'destroy'])->name('partner.addresses.destroy');
     Route::get('/partner/addresses/{address}/edit', [AddressController::class, 'edit'])->name('partner.addresses.edit');
-    Route::patch('/partner/services/{service}/toggle', [ServiceController::class, 'toggleStatus'])->name('partner.services.toggle');
     
     // Ver el listado y formulario de horarios de una sede
     Route::get('/partner/addresses/{address}/schedules', [ScheduleController::class, 'index'])->name('partner.schedules.index');
@@ -222,11 +216,8 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     Route::post('partner/patients/{id}/consultation-audio/notify-pending', [PartnerPatientController::class, 'notifyPendingAudio'])->name('partner.patients.consultation-audio.notify-pending');
 
     // Vista para seleccionar el nuevo horario
-    Route::get('/partner/appointments/{appointment}/reschedule', [PartnerAppointmentController::class, 'rescheduleView'])->name('partner.appointments.reschedule');
-    Route::get('/partner/appointments/{appointment}/reschedule/slots', [PartnerAppointmentController::class, 'rescheduleSlots'])->name('partner.appointments.reschedule.slots');
 
     // Acción para procesar el cambio
-    Route::put('/partner/appointments/{appointment}/reschedule/process', [PartnerAppointmentController::class, 'rescheduleProcess'])->name('partner.appointments.reschedule.process');
     Route::post('/partner/patients/{patient}/update-condition', [PartnerPatientController::class, 'updateCondition'])
     ->name('partner.patients.update-condition');
     Route::post('/partner/patients/{patient}/allergies', [PartnerPatientController::class, 'storeAllergy'])
@@ -284,13 +275,6 @@ Route::middleware(['auth', 'role:clinic'])->group(function () {
     Route::patch('/clinic/addresses/{address}/toggle', [ClinicAddressController::class, 'toggleStatus'])->name('partner.clinic.addresses.toggle');
     Route::delete('/clinic/addresses/{address}', [ClinicAddressController::class, 'destroy'])->name('partner.clinic.addresses.destroy');
     
-    // Módulo de Servicios Completo (Index, Create, Store, Edit, Destroy)
-    Route::get('/clinic/services', [ClinicServiceController::class, 'index'])->name('partner.clinic.services.index');
-    Route::get('/clinic/services/create', [ClinicServiceController::class, 'create'])->name('partner.clinic.services.create');
-    Route::post('/clinic/services', [ClinicServiceController::class, 'store'])->name('partner.clinic.services.store');
-    Route::get('/clinic/services/{address}/{service}/edit', [ClinicServiceController::class, 'edit'])->name('partner.clinic.services.edit');
-    Route::delete('/clinic/services/{address}/{service}', [ClinicServiceController::class, 'destroy'])->name('partner.clinic.services.destroy');    
-    Route::put('/clinic/services/{address}/{service}', [ClinicServiceController::class, 'update'])->name('partner.clinic.services.update');
 
     // Módulo Core: Horarios de Atención Semanales y Disponibilidad (Schedules)
     Route::get('/clinic/schedules', [ClinicScheduleController::class, 'index'])->name('partner.clinic.schedules.index');
@@ -299,6 +283,10 @@ Route::middleware(['auth', 'role:clinic'])->group(function () {
 
     // Ruta dinámica para procesar la cancelación desde la modal interactiva de Alpine
     Route::post('/clinic/appointments/{id}/cancel', [ClinicAppointmentController::class, 'cancel'])->name('partner.clinic.appointments.cancel');
+
+    // Cambiar médico: reasignar una cita a otro médico de la clínica (misma fecha, hora, sede y servicio)
+    Route::get('/clinic/appointments/{id}/doctor-options', [ClinicAppointmentController::class, 'doctorOptions'])->name('partner.clinic.appointments.doctor-options');
+    Route::post('/clinic/appointments/{id}/change-doctor', [ClinicAppointmentController::class, 'changeDoctor'])->name('partner.clinic.appointments.change-doctor');
 
     // API Interna para carga dinámica de ciudades DIVIPOLA
     Route::get('/clinic/api/departments/{department}/cities', [ClinicAddressController::class, 'getCitiesByDepartment'])->name('partner.clinic.api.cities');
@@ -344,6 +332,9 @@ Route::middleware(['auth', 'role:patient'])->group(function () {
 
     // Ruta para que el paciente ejecute la cancelación desde la web
     Route::post('/patient/appointments/{id}/cancel', [PatientController::class, 'cancelWeb'])->name('patient.appointments.cancel');
+
+    // Olvidar una reserva en curso sin pagar (libera el turno, sin correos)
+    Route::post('/appointments/{id}/discard', [\App\Http\Controllers\PendingBookingController::class, 'discard'])->name('appointments.discard');
 
     // Ruta de la sala de espera para el paciente
     Route::get('/patient/meet/{room_code}', [AppointmentController::class, 'waitingRoom'])->name('patient.appointments.waiting_room');
@@ -469,8 +460,6 @@ Route::post('/register-partner', [RegisterDoctorController::class, 'store'])->na
 
 // Rutas para registro/invitación de doctores a través de una clínica
 // Estas rutas permiten que una clínica invite a médicos existentes o registre nuevos
-Route::get('/clinic/{clinic}/register-doctor', [RegisterDoctorController::class, 'register'])->name('clinic.register-doctor.form');
-Route::post('/clinic/{clinic}/register-doctor', [RegisterDoctorController::class, 'store'])->name('clinic.register-doctor.store');
 
 // Ruta para mostrar el formulario de registro de clinicas
 Route::get('/register-clinic', [RegisterClinicController::class, 'register'])->name('clinic.register');
@@ -683,4 +672,21 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/skin-analyses', [\App\Http\Controllers\Admin\SkinAnalysisAdminController::class, 'index'])->name('administrator.skin-analyses.index');
     Route::post('/admin/skin-analyses/{skinAnalysis}/resend', [\App\Http\Controllers\Admin\SkinAnalysisAdminController::class, 'resend'])->name('administrator.skin-analyses.resend');
     Route::delete('/admin/skin-analyses/{skinAnalysis}', [\App\Http\Controllers\Admin\SkinAnalysisAdminController::class, 'destroy'])->name('administrator.skin-analyses.destroy');
+});
+
+// ETAPA0B: servicios para doctor y clinica (un solo ServiceController; el propietario sale del rol)
+Route::middleware(['auth', 'role:doctor|clinic'])->group(function () {
+    Route::get('/partner/services', [ServiceController::class, 'index'])->name('partner.services.index');
+    Route::get('/partner/services/create', [ServiceController::class, 'create'])->name('partner.services.create');
+    Route::post('/partner/services', [ServiceController::class, 'store'])->name('partner.services.store');
+    Route::get('/partner/services/{service}/edit', [ServiceController::class, 'edit'])->name('partner.services.edit');
+    Route::put('/partner/services/{service}', [ServiceController::class, 'update'])->name('partner.services.update');
+    Route::delete('/partner/services/{service}', [ServiceController::class, 'destroy'])->name('partner.services.destroy');
+});
+
+// ETAPA0D: reagendar para doctor y clinica (la autorizacion por cita la hace PartnerAppointmentController + AppointmentRescheduler)
+Route::middleware(['auth', 'role:doctor|clinic'])->group(function () {
+    Route::get('/partner/appointments/{appointment}/reschedule', [PartnerAppointmentController::class, 'rescheduleView'])->name('partner.appointments.reschedule');
+    Route::put('/partner/appointments/{appointment}/reschedule/process', [PartnerAppointmentController::class, 'rescheduleProcess'])->name('partner.appointments.reschedule.process');
+    Route::get('/partner/appointments/{appointment}/reschedule/slots', [PartnerAppointmentController::class, 'rescheduleSlots'])->name('partner.appointments.reschedule.slots');
 });

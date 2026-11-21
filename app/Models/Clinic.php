@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,9 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Clinic extends Model 
 {
+    /** Mínimo de médicos aprobados y activos para que la clínica sea visible al público. */
+    public const MIN_LISTABLE_DOCTORS = 3;
+
     protected $fillable = [
         'slug', 'user_id', 'nit', 'reps_code',
         'phone', 'country_code', 'bio', 'experience_years', 'languages', 'rating', 
@@ -50,9 +54,39 @@ class Clinic extends Model
             'status'    => true,
         ]);
     }
+    /**
+     * Clínicas visibles al público: aprobadas, activas y con al menos MIN_LISTABLE_DOCTORS médicos
+     * vinculados (clinic_doctor.status = approved), aprobados y activos.
+     */
+    public function scopeListable(Builder $query): Builder
+    {
+        return $query
+            ->where('clinics.validation_status', 'approved')
+            ->where('clinics.active', true)
+            ->whereHas('doctors', function ($doctors) {
+                $doctors->where('clinic_doctor.status', 'approved')
+                    ->where('doctors.validation_status', 'approved')
+                    ->where('doctors.active', true);
+            }, '>=', self::MIN_LISTABLE_DOCTORS);
+    }
+
+    public function isListable(): bool
+    {
+        return static::listable()->whereKey($this->getKey())->exists();
+    }
+
     public function getRouteKeyName(): string
     {
         return 'slug';
+    }
+
+    /**
+     * La tabla clinics no tiene columna name: el nombre institucional vive en users.name.
+     * Este accessor hace que $clinic->name funcione en correos, vistas y SEO.
+     */
+    public function getNameAttribute(): string
+    {
+        return $this->user?->name ?? 'Clínica';
     }
 
     protected static function booted()
@@ -112,7 +146,7 @@ class Clinic extends Model
     public function doctors(): BelongsToMany
     {
         return $this->belongsToMany(Doctor::class, 'clinic_doctor')
-                    ->withPivot('status')
+                    ->withPivot('status', 'relationship')
                     ->withTimestamps();
     }
     public function services() 
@@ -186,15 +220,5 @@ class Clinic extends Model
         ];
         
         return $countries[strtolower($this->country_code)] ?? 'Desconocido';
-    }
-
-    public function address()
-    {
-        return $this->morphOne(Address::class, 'addressable');
-    }
-
-    public function staff()
-    {
-        return $this->hasMany(Doctor::class);
     }
 }

@@ -60,7 +60,7 @@ $breadcrumbs = [
                 <div class="text-sm text-amber-600 font-medium italic mb-4 p-4 bg-amber-50 rounded-xl border border-amber-100 shadow-sm flex items-center gap-2">
                     <span>️ Has alcanzado el límite de <strong>{{ $owner->plan?->max_services ?? 'N/A' }}</strong> servicios de tu plan {{ $owner->plan?->name ?? 'Staff' }}.</span>
                     @if($owner->plan)
-                        <a href="{{ route('partner.profile.edit') }}" class="underline font-black ml-1 hover:text-amber-800 uppercase tracking-wider text-xs">Mejora tu plan aquí</a>.
+                        <a href="{{ (auth()->user()->role === 'clinic' ? route('partner.clinic.profile.edit') : route('partner.profile.edit')) }}" class="underline font-black ml-1 hover:text-amber-800 uppercase tracking-wider text-xs">Mejora tu plan aquí</a>.
                     @endif
                 </div>
             @endif

@@ -42,6 +42,47 @@ class AdminController extends Controller
         ]);
     }
 
+    public function refunds(Request $request)
+    {
+        $query = \App\Models\PaymentRefund::with([
+            'payment',
+            'processor',
+            'appointment.patient.user',
+            'appointment.doctor.user',
+            'appointment.clinic',
+        ])->orderByRaw("status = 'pending' desc")->orderByDesc('id');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $refunds      = $query->paginate(15)->withQueryString();
+        $totalPending = \App\Models\PaymentRefund::where('status', 'pending')->sum('amount_in_cents') / 100;
+
+        return view('administrator.refunds.index', compact('refunds', 'totalPending'));
+    }
+
+    public function markRefundDone(Request $request, \App\Models\PaymentRefund $refund)
+    {
+        $data = $request->validate([
+            'provider_reference' => 'required|string|max:255',
+            'admin_note'         => 'nullable|string|max:500',
+        ]);
+
+        try {
+            app(\App\Services\Payments\RefundService::class)->complete(
+                $refund,
+                $request->user(),
+                $data['provider_reference'],
+                $data['admin_note'] ?? null
+            );
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', 'Reembolso registrado. Se avisó al paciente por correo.');
+    }
+
     public function payouts(Request $request)
     {
         $query = DoctorPayout::with(['appointment.patient.user', 'appointment.doctor.user', 'appointment.clinic'])

@@ -129,23 +129,25 @@
                 <div class="flex justify-between items-center border-b border-slate-100 pb-4">
                     <div class="text-sm text-start text-slate-400 tracking-wider block mb-1">
                         <span class="text-slate-400 text-xs font-black uppercase tracking-wider">Forma de Pago</span>
-                        <div class="text-xs text-slate-900 font-light"></div>                        
                     </div>
                      @if ($virtualPaymentRequired)
                         <span class="text-sm font-bold text-slate-700">Pago en Línea</span>
                     @else
-                        <span class="text-sm font-bold text-slate-700">{{ $virtualPaymentRequired ? 'Pago en Línea' : 'Pago en Consulta' }}</span>
+                        <span class="text-sm font-bold text-slate-700">Pago en Consulta</span>
                     @endif                    
                 </div>
                 @if($virtualPaymentRequired && $appointment->payment_expires_at)
-                    <div class="flex items-center bg-amber-50 border border-amber-100 rounded-2xl p-3 mb-4 text-amber-700 text-xs font-bold" role="status">
-                        Tu turno queda reservado hasta las {{ $appointment->payment_expires_at->timezone('America/Bogota')->format('g:i A') }}. Si no pagas antes, se libera automáticamente.
+                    <div class="bg-amber-50 border border-amber-100 rounded-2xl p-3 mb-4 text-amber-700 text-xs" role="status">
+                        <p class="font-bold">Paga antes de las {{ $appointment->payment_expires_at->timezone('America/Bogota')->format('g:i A') }} para conservar tu turno. Si no pagas a tiempo, se libera automáticamente.</p>
+                        <p class="mt-1 font-medium text-amber-600">La disponibilidad y el precio de la consulta médica no están garantizados hasta que finalice el pago.</p>
                     </div>
                 @endif
+                @unless($virtualPaymentRequired && $appointment->payment_expires_at)
                 <div class="flex items-start sm:items-center bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-4 text-slate-500" role="alert">
                     <svg class="w-4 h-4 me-2 shrink-0 mt-0.5 sm:mt-0" aria-hidden="true" xmlns="http://w3.org" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11h2v5m-2 0h4m-2.592-8.5h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-                    <p><span class="text-slate-500 font-medium me-1">La disponibilidad y el precio de la consulta médica no están garantizados hasta que finalice el pago.</span></p>
+                    <p><span class="text-slate-500 font-medium me-1">{{ $virtualPaymentRequired ? 'La disponibilidad y el precio de la consulta médica no están garantizados hasta que finalice el pago.' : 'El pago se realiza directamente en la consulta. No se te cobra nada en línea.' }}</span></p>
                 </div>
+                @endunless
                 
                 <!-- CONTENEDOR PRINCIPAL INTEGRADO CON ALPINE.JS -->
                 <div x-data="{
@@ -235,7 +237,7 @@
                                 </div>
                                 <div class="flex items-center justify-between text-md border-t border-blue-200 pt-2 mt-2">
                                     <span class="font-black text-slate-800">Total a pagar</span>
-                                    <span class="font-black text-blue-700 text-base">${{ number_format($wompiData['total'], 0, ',', '.') }}</span>
+                                    <span class="font-black text-blue-700 text-base">${{ number_format($wompiData['total'] ?? $appointment->price, 0, ',', '.') }}</span>
                                 </div>
                                 <div class="flex items-center justify-between text-md text-green-600 font-semibold mb-1" x-show="discount > 0" x-cloak>
                                     <span>Código promocional (<span x-text="couponPercentage"></span>%)</span>
@@ -257,6 +259,15 @@
                                 </div>
                             </div>
                         </template>
+
+                        @unless($virtualPaymentRequired)
+                        {{-- Pago en consulta: no hay desglose en línea; se muestra el valor que se paga en el lugar. --}}
+                        <div class="flex items-center justify-between text-md">
+                            <span class="text-slate-500 font-medium">Valor de la consulta</span>
+                            <span class="font-black text-slate-800 text-base">{{ (float) $appointment->price > 0 ? '$' . number_format((float) $appointment->price, 0, ',', '.') : 'Sin costo' }}</span>
+                        </div>
+                        <p class="mt-1 text-xs text-slate-400 text-left">Se paga directamente en la consulta.</p>
+                        @endunless
 
                         <!-- Precio de cara al paciente -->
                         <div class="flex items-center justify-between text-md pt-2 mt-2" x-show="discount > 0" x-cloak>

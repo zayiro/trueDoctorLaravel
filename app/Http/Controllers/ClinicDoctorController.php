@@ -97,7 +97,7 @@ class ClinicDoctorController extends Controller
         }
 
         // Se guarda en estado 'pending' a la espera de que el médico acepte
-        $clinic->doctors()->attach($doctor->id, ['status' => 'pending']);
+        $clinic->doctors()->attach($doctor->id, ['status' => 'pending', 'relationship' => 'invited']);
         $doctor->user->notify(new ClinicInvitationNotification($clinic));
 
         return redirect()->route('partner.clinic.doctors.index')
@@ -156,19 +156,12 @@ class ClinicDoctorController extends Controller
                         throw new \Exception('Has alcanzado el límite máximo de médicos permitidos en tu plan actual.');
                     }
 
-                    // A. Crear Usuario usando su ID como Contraseña inicial
-                    $user = User::create([
-                        'name'     => trim($docData['name']),
-                        'email'    => strtolower(trim($docData['email'])),
-                        'password' => Hash::make(trim($docData['identification'])),
-                        'role'     => 'doctor',
-                    ]);
-
-                    // A. Crear Usuario usando su ID como Contraseña inicial
+                    // A. Crear Usuario con contraseña aleatoria inutilizable: el médico define la suya
+                    //    desde el enlace de activación que le llega por correo (DirectDoctorWelcomeNotification).
                     $user = new User([
                         'name'     => trim($docData['name']),
                         'email'    => strtolower(trim($docData['email'])),
-                        'password' => Hash::make(trim($docData['identification'])),
+                        'password' => Hash::make(Str::random(40)),
                         'role'     => 'doctor',
                     ]);
 
@@ -209,7 +202,7 @@ class ClinicDoctorController extends Controller
                     $doctor->specialties()->attach($docData['specialties']);
 
                     // C. Vincular directamente a la clínica como aprobado
-                    $clinic->doctors()->attach($doctor->id, ['status' => 'approved']);
+                    $clinic->doctors()->attach($doctor->id, ['status' => 'approved', 'relationship' => 'own']);
 
                     // ✅ CORRECCIÓN: Ahora SÍ es seguro enviar esta notificación
                     // porque el UserObserver NO envió el correo genérico (skip_welcome_email = true)
@@ -255,17 +248,8 @@ class ClinicDoctorController extends Controller
         $newStatus = $pivot->status === 'approved' ? 'inactive' : 'approved';
         $clinic->doctors()->updateExistingPivot($doctor->id, ['status' => $newStatus]);
 
-        // 🔒 CORRECCIÓN: Desactivar horarios en lugar de eliminarlos físicamente
-        if ($newStatus === 'inactive') {
-            Schedule::where('doctor_id', $doctor->id)
-                ->whereIn('address_id', function ($query) use ($clinic) {
-                    $query->select('id')
-                        ->from('addresses')
-                        ->where('clinic_id', $clinic->id)
-                        ->whereNull('deleted_at');
-                })
-                ->update(['is_active' => false, 'updated_at' => now()]);
-        }
+        // Los horarios NO se tocan: el motor de disponibilidad exige membresía 'approved',
+        // así que suspender oculta al médico y reactivarlo lo devuelve sin perder su grilla.
 
         return back()->with('success', "El especialista ha cambiado de estado en la nómina corporativa.");
     }

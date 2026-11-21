@@ -32,7 +32,7 @@ $breadcrumbs = [
                     </p>
                 </div>
             </div>
-            <a href="{{ route('partner.addresses.create') }}" class="whitespace-nowrap bg-amber-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-amber-700 transition shadow-sm text-sm">
+            <a href="{{ (auth()->user()->role === 'clinic' ? route('partner.clinic.addresses.index') : route('partner.addresses.create')) }}" class="whitespace-nowrap bg-amber-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-amber-700 transition shadow-sm text-sm">
                 Registra una sede aquí
             </a>
         </div>
@@ -52,7 +52,7 @@ $breadcrumbs = [
                     <p class="text-sm text-red-700 mt-0.5">Para crear servicios, primero debes asociar al menos una especialidad a tu perfil profesional.</p>
                 </div>
             </div>
-            <a href="{{ route('partner.profile.edit') }}" class="whitespace-nowrap bg-red-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-red-700 transition shadow-sm text-sm">
+            <a href="{{ (auth()->user()->role === 'clinic' ? route('partner.clinic.profile.edit') : route('partner.profile.edit')) }}" class="whitespace-nowrap bg-red-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-red-700 transition shadow-sm text-sm">
                 Agrega una especialidad aquí
             </a>
         </div>
@@ -155,7 +155,7 @@ $breadcrumbs = [
                     </div>
                 @else
                     <p class="text-sm text-red-600 font-medium bg-red-50 p-3 rounded-lg border border-red-100">
-                        ⚠️ No tienes especialidades configuradas. <a href="{{ route('partner.profile.edit') }}" class="underline font-bold">Agrega una especialidad aquí</a> antes de crear servicios.
+                        ⚠️ No tienes especialidades configuradas. <a href="{{ (auth()->user()->role === 'clinic' ? route('partner.clinic.profile.edit') : route('partner.profile.edit')) }}" class="underline font-bold">Agrega una especialidad aquí</a> antes de crear servicios.
                     </p>
                 @endif
 

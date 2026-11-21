@@ -778,10 +778,25 @@
         <!-- ARQUITECTURA REACTIVA DE PRODUCCIÓN: AGENDAMIENTO        -->
         <!-- ======================================================== -->
         <script>
+            // 📅 Días con turnos por sede (cada sede tiene su propia agenda)
+            window.odEnabledByAddress = @json($enabledDatesByAddress ?? []);
+            window.odEnabledDefault = @json($enabledDates ?? []);
+            window.odEnabledDates = function () {
+                // Sin datos por sede (p. ej. perfil de clínica): se usa la lista de siempre.
+                if (!window.odEnabledByAddress || Object.keys(window.odEnabledByAddress).length === 0) return window.odEnabledDefault;
+                try {
+                    const root = document.querySelector('[x-data^="bookingSystem"]');
+                    const data = (root && window.Alpine) ? Alpine.$data(root) : null;
+                    const addr = data ? data.selectedAddress : null;
+                    if (addr !== null && addr !== undefined) return window.odEnabledByAddress[addr] || [];
+                } catch (e) {}
+                return window.odEnabledDefault;
+            };
+
             // 📅 Inicializador nativo global (100% invisible para el compilador de Livewire)
             document.addEventListener("DOMContentLoaded", function() {
                 const element = document.querySelector('[x-ref="datepicker"]');
-                const realEnabledDates = @json($enabledDates ?? []);
+                const realEnabledDates = { includes: (d) => window.odEnabledDates().includes(d) };
                 
                 if (element) {
                     flatpickr(element, {
@@ -874,7 +889,7 @@
                     init() {
                         this.$watch('selectedDate', (value) => {
                             if (value && this.selectedService) {
-                                const realEnabledDates = @json($enabledDates ?? []);
+                                const realEnabledDates = { includes: (d) => window.odEnabledDates().includes(d) };
                                 if (realEnabledDates.includes(value)) {
                                     this.fetchAvailableSlots();
                                 } else {
@@ -890,13 +905,24 @@
                         this.selectedService = null;
                         this.availableSlots = [];
                         this.fetchServicesLocal();
+
+                        // Cada sede tiene su agenda: si el día elegido no tiene turnos en esta sede, saltamos al primero que sí.
+                        const diasSede = (window.odEnabledByAddress || {})[id] || [];
+                        if (diasSede.length && !diasSede.includes(this.selectedDate)) {
+                            this.selectedDate = diasSede[0];
+                        }
+                        const fpInput = document.querySelector('[x-ref="datepicker"]');
+                        if (fpInput && fpInput._flatpickr) {
+                            fpInput._flatpickr.setDate(this.selectedDate, false);
+                            fpInput._flatpickr.redraw();
+                        }
                     },
 
                     selectService(id, duration) {
                         this.selectedService = id;
                         this.serviceDuration = duration;
                         
-                        const realEnabledDates = @json($enabledDates ?? []);
+                        const realEnabledDates = { includes: (d) => window.odEnabledDates().includes(d) };
                         if (this.selectedDate && realEnabledDates.includes(this.selectedDate)) {
                             this.fetchAvailableSlots();
                         } else {

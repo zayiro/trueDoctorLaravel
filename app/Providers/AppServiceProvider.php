@@ -106,6 +106,9 @@ class AppServiceProvider extends ServiceProvider
      */
     private function registerFortifyAuthentication(): void
     {
+        // Cierra la sesión de cuentas que el admin desactiva mientras están logueadas.
+        \Illuminate\Support\Facades\Route::pushMiddlewareToGroup('web', \App\Http\Middleware\EnsureAccountIsActive::class);
+
         Fortify::authenticateUsing(function (Request $request) {
             $user = User::where('email', $request->email)->first();
 

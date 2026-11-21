@@ -63,7 +63,13 @@ class AppointmentExpirer
         return $expired;
     }
 
-    public function expire(int $appointmentId): bool
+    /**
+     * Expira una reserva sin pagar y libera el turno.
+     *
+     * Por defecto es la expiración automática (motivo "sin pago a tiempo", actor 'system', con correo al paciente).
+     * Cuando el propio paciente descarta la reserva se llama con otro motivo, actor 'patient' y sin correo.
+     */
+    public function expire(int $appointmentId, string $reason = 'Reserva sin pago a tiempo', string $actor = 'system', bool $notifyPatient = true): bool
     {
         // Antes de soltar el turno se le pregunta a la pasarela: el pago pudo aprobarse sin que llegara el webhook.
         Payment::where('payable_type', (new Appointment)->getMorphClass())
@@ -79,7 +85,7 @@ class AppointmentExpirer
                 }
             });
 
-        $done = DB::transaction(function () use ($appointmentId) {
+        $done = DB::transaction(function () use ($appointmentId, $reason, $actor) {
             $appointment = Appointment::whereKey($appointmentId)->lockForUpdate()->first();
 
             if (!$appointment
@@ -89,10 +95,10 @@ class AppointmentExpirer
                 return false;
             }
 
-            $this->states->transitionTo($appointment, 'expired', 'Reserva sin pago a tiempo', [
+            $this->states->transitionTo($appointment, 'expired', $reason, [
                 'payment_status'     => 'cancelled',
                 'payment_expires_at' => null,
-            ], 'system');
+            ], $actor);
 
             Payment::where('payable_type', $appointment->getMorphClass())
                 ->where('payable_id', $appointment->id)
@@ -110,7 +116,7 @@ class AppointmentExpirer
         $appointment = Appointment::with(['patient.user', 'doctor.user', 'service'])->find($appointmentId);
         $email = $appointment?->patient?->user?->email;
 
-        if ($email) {
+        if ($email && $notifyPatient) {
             try {
                 Mail::to($email)->send(new AppointmentExpiredMail($appointment));
             } catch (Throwable $e) {

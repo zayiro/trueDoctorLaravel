@@ -49,10 +49,20 @@ class SendCancellationEmail implements ShouldQueue
         $appointment = $event->appointment->load([
             'doctor.user',
             'patient.user',
-            'clinic',
+            'clinic.user',
             'service',
             'address'
         ]);
+
+        $actor = $event->actor ?? null;
+
+        // Reembolso: toda cancelación de una cita pagada en línea abre un reembolso completo (idempotente).
+        // Va antes de los correos para que el del paciente pueda informarlo.
+        try {
+            app(\App\Services\Payments\RefundService::class)->openForCancelledAppointment($appointment, $actor);
+        } catch (\Throwable $e) {
+            Log::error('refund.open_failed', ['appointment_id' => $appointment->id, 'error' => $e->getMessage()]);
+        }
 
         // ==========================================
         // FRENTE 1: ELIMINACIÓN DE REUNIÓN EN ZOOM VIA ZOOMSERVICE
@@ -75,25 +85,37 @@ class SendCancellationEmail implements ShouldQueue
         }
 
         try {
+            $sentTo = [];
+
             // 2. ENVIAR AL DOCTOR
-            if ($appointment->doctor?->user?->email) {
-                Mail::to($appointment->doctor->user->email)
-                    ->send(new AppointmentCancelledMail($appointment, 'partner'));
+            $doctorEmail = $appointment->doctor?->user?->email;
+            if ($doctorEmail) {
+                Mail::to($doctorEmail)
+                    ->send(new AppointmentCancelledMail($appointment, 'partner', $actor));
+                $sentTo[] = strtolower($doctorEmail);
             }
 
-            // 3. ENVIAR AL PACIENTE
+            // 3. ENVIAR A LA CLÍNICA (si la cita es de una clínica y su cuenta es distinta a la del médico)
+            $clinicEmail = $appointment->clinic_id ? $appointment->clinic?->user?->email : null;
+            if ($clinicEmail && !in_array(strtolower($clinicEmail), $sentTo, true)) {
+                Mail::to($clinicEmail)
+                    ->send(new AppointmentCancelledMail($appointment, 'partner', $actor, $appointment->clinic->user->name));
+                $sentTo[] = strtolower($clinicEmail);
+            }
+
+            // 4. ENVIAR AL PACIENTE
             // Accedemos a la relación 'patient', luego a su 'user' y extraemos el 'email'
             if ($appointment->patient?->user?->email) {
                 Mail::to($appointment->patient->user->email)
-                    ->send(new AppointmentCancelledMail($appointment, 'patient'));
+                    ->send(new AppointmentCancelledMail($appointment, 'patient', $actor));
             }
 
         } catch (\Exception $e) {
             Log::error("Error en cola de envío de correos para la cita {$appointment->reference}: " . $e->getMessage());
-            
+
             // Lanzamos la excepción para que el motor de colas intente de nuevo según tus propiedades $tries
             throw $e;
-        }        
+        }
     }
 
     /**
@@ -106,7 +128,7 @@ class SendCancellationEmail implements ShouldQueue
             [
                 'attempts' => DB::raw('attempts + 1'),
                 'status' => 'failed',
-                'last_error' => substr($errorMessage, 0, 500),                
+                'last_error' => substr($errorMessage, 0, 500),
                 'updated_at' => now()
             ]
         );

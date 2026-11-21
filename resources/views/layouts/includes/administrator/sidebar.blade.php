@@ -38,6 +38,13 @@
             'active' => request()->routeIs('administrator.payouts.index'),
         ],
         [
+            'name'   => 'Reembolsos',
+            'icon'   => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>',
+            'href'   => route('administrator.refunds.index'),
+            'active' => request()->routeIs('administrator.refunds.*'),
+            'badge'  => rescue(fn () => \App\Models\PaymentRefund::where('status', 'pending')->count(), 0) ?: null,
+        ],
+        [
             'name' => 'Directorio de Usuarios',
             'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766A4.125 4.125 0 0 1 8.624 16.5c1.472 0 2.812.493 3.884 1.32M15 11.25a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6.5 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>',
             'href' => route('administrator.users.index'),

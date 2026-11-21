@@ -102,7 +102,7 @@
     {{-- Perfiles públicos de clínicas --}}
     @foreach($clinics as $clinic)
     <url>
-        <loc>https://opendoctor.online/clinic/{{ $clinic->slug }}</loc>
+        <loc>https://opendoctor.online/medical-partner/{{ $clinic->slug }}</loc>
         <lastmod>{{ $clinic->updated_at->toIso8601String() }}</lastmod>
         <changefreq>weekly</changefreq>
         <priority>0.8</priority>

@@ -10,6 +10,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Log;
+use App\Services\AppointmentStateManager;
+use App\Notifications\AppointmentCancelledNotification;
+use Throwable;
 
 class ClinicAppointmentController extends Controller
 {
@@ -42,10 +46,11 @@ class ClinicAppointmentController extends Controller
             ->where('clinic_doctor.status', 'approved')
             ->with('user')
             ->get()
-            ->map(fn ($doctor) => [
-                'id'   => $doctor->id,
-                'name' => $doctor->user->name ?? 'Sin nombre',
-            ]);
+            ->map(fn ($doctor) => new \ArrayObject([
+                'id'     => $doctor->id,
+                'name'   => $doctor->user->name ?? 'Sin nombre',
+                'gender' => $doctor->gender,
+            ], \ArrayObject::ARRAY_AS_PROPS));
 
         // 2. Obtener sedes institucionales usando Eloquent
         $clinicAddresses = $clinic->addresses()
@@ -55,6 +60,7 @@ class ClinicAppointmentController extends Controller
 
         // 3. Query base filtrando estrictamente por el tenant de la clínica
         $query = Appointment::where('clinic_id', $clinic->id)
+            ->where('status', '!=', 'expired') // reservas no pagadas a tiempo: para la clínica nunca existieron
             ->with(['patient.user', 'doctor.user', 'address.city', 'service']);
 
         // 4. Aplicar filtros dinámicos validados
@@ -94,64 +100,114 @@ class ClinicAppointmentController extends Controller
     }
 
     /**
-     * Cambia el estado de una cita (confirmar, cancelar, completar).
+     * Cancela una cita de la clínica.
+     *
+     * Pasa por AppointmentStateManager (única puerta de cambios de estado): valida la transición, deja auditoría
+     * y dispara AppointmentCancelled (correo al paciente, SendCancellationEmail). La reunión de Zoom la elimina
+     * AppointmentObserver al detectar el cambio de estado. Misma lógica que usa el médico en PartnerAppointmentController.
      */
-    public function updateStatus(Request $request, int $appointmentId)
+    public function cancel(Request $request, int $id)
     {
         $clinic = $this->getClinicContext();
 
         $validated = $request->validate([
-            'status' => ['required', Rule::in(['pending', 'confirmed', 'completed', 'cancelled', 'no_show'])],
-            'cancellation_reason' => ['nullable', 'string', 'max:500', 'required_if:status,cancelled'],
+            'cancellation_notes' => ['required', 'string', 'max:255'],
         ], [
-            'status.required' => 'Debes seleccionar un estado válido.',
-            'status.in' => 'El estado seleccionado no es válido.',
-            'cancellation_reason.required_if' => 'Debes indicar el motivo de la cancelación.',
+            'cancellation_notes.required' => 'Debes indicar el motivo de la cancelación.',
         ]);
 
         $appointment = Appointment::where('clinic_id', $clinic->id)
-            ->where('id', $appointmentId)
+            ->where('id', $id)
             ->firstOrFail();
 
-        // Validar que no se pueda cambiar el estado de una cita ya completada o cancelada
-        if (in_array($appointment->status, ['completed', 'cancelled'])) {
-            return back()->with('error', 'No se puede modificar el estado de una cita ya completada o cancelada.');
-        }
-
-        // Validar que no se pueda confirmar una cita en el pasado
-        if ($validated['status'] === 'confirmed' && $appointment->date < now()->toDateString()) {
-            return back()->with('error', 'No se puede confirmar una cita con fecha pasada.');
-        }
+        $reason = 'Cancelado por la clínica. Motivo: ' . trim($validated['cancellation_notes']);
 
         try {
-            DB::transaction(function () use ($appointment, $validated) {
-                $updateData = ['status' => $validated['status']];
-                
-                if ($validated['status'] === 'cancelled' && !empty($validated['cancellation_reason'])) {
-                    $updateData['cancellation_reason'] = $validated['cancellation_reason'];
-                    $updateData['cancelled_at'] = now();
-                }
-
-                if ($validated['status'] === 'completed') {
-                    $updateData['completed_at'] = now();
-                }
-
-                $appointment->update($updateData);
-            });
-
-            $statusMessages = [
-                'pending'   => 'La cita ha sido marcada como pendiente.',
-                'confirmed' => 'La cita ha sido confirmada exitosamente.',
-                'completed' => 'La cita ha sido marcada como completada.',
-                'cancelled' => 'La cita ha sido cancelada.',
-                'no_show'   => 'La cita ha sido marcada como no asistida.',
-            ];
-
-            return back()->with('success', $statusMessages[$validated['status']] ?? 'Estado actualizado.');
-        } catch (\Exception $e) {
-            report($e);
-            return back()->with('error', 'Error al actualizar el estado: ' . $e->getMessage());
+            app(AppointmentStateManager::class)->transitionTo(
+                $appointment,
+                'cancelled',
+                $reason,
+                ['notes' => ($appointment->notes ? $appointment->notes . "\n" : '') . "[Auditoría: {$reason}]"],
+                'doctor'
+            );
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
         }
+
+        // Notificación en base de datos para el paciente; un fallo aquí no debe deshacer la cancelación.
+        try {
+            $patientUser = $appointment->patient?->user;
+
+            if ($patientUser) {
+                $patientUser->notify(new AppointmentCancelledNotification($appointment, 'doctor'));
+            }
+        } catch (Throwable $e) {
+            Log::warning("No se pudo notificar la cancelación al paciente (cita {$appointment->id}): " . $e->getMessage());
+        }
+
+        return back()->with('success', 'La cita ha sido cancelada y se notificó al paciente.');
+    }
+
+    /**
+     * Médicos de la clínica que pueden tomar esta cita (misma fecha, hora, sede y servicio).
+     * Responde JSON para el modal "Cambiar médico".
+     */
+    public function doctorOptions(Request $request, int $id)
+    {
+        $clinic = $this->getClinicContext();
+
+        $appointment = Appointment::where('clinic_id', $clinic->id)
+            ->where('id', $id)
+            ->firstOrFail();
+
+        try {
+            return response()->json(
+                app(\App\Services\Appointments\AppointmentDoctorChanger::class)->options($appointment, Auth::user())
+            );
+        } catch (Throwable $e) {
+            Log::warning("No se pudieron cargar los médicos para la cita {$appointment->id}: " . $e->getMessage());
+
+            return response()->json(['message' => 'No pudimos cargar los médicos disponibles. Intenta de nuevo.'], 500);
+        }
+    }
+
+    /**
+     * Reasigna la cita a otro médico de la clínica.
+     * Pasa por AppointmentDoctorChanger (única puerta): valida el turno del médico nuevo con bloqueo, audita y avisa por correo.
+     */
+    public function changeDoctor(Request $request, int $id)
+    {
+        $clinic = $this->getClinicContext();
+
+        $validated = $request->validate([
+            'doctor_id' => ['required', 'integer'],
+            'reason'    => ['nullable', 'string', 'max:255'],
+        ], [
+            'doctor_id.required' => 'Selecciona el médico que tomará la cita.',
+        ]);
+
+        $appointment = Appointment::where('clinic_id', $clinic->id)
+            ->where('id', $id)
+            ->firstOrFail();
+
+        try {
+            $result = app(\App\Services\Appointments\AppointmentDoctorChanger::class)->change(
+                $appointment,
+                Auth::user(),
+                (int) $validated['doctor_id'],
+                $validated['reason'] ?? null
+            );
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            return back()->with('error', $e->getMessage());
+        } catch (Throwable $e) {
+            Log::error("Error al cambiar el médico de la cita {$appointment->id}: " . $e->getMessage());
+
+            return back()->with('error', 'No pudimos cambiar el médico. Intenta de nuevo en unos minutos.');
+        }
+
+        return $result->ok
+            ? back()->with('success', $result->message)
+            : back()->with('error', $result->message);
     }
 
     /**

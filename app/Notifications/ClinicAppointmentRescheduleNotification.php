@@ -52,7 +52,7 @@ class ClinicAppointmentRescheduleNotification extends Notification implements Sh
         $reason = $this->unavailability->reason ?? 'una razón personal';
 
         $appointmentsList = $this->affectedAppointments
-            ->map(fn($apt) => "- {$apt->patient->user->name} ({$apt->date->format('d/m/Y')} {$apt->start_time->format('H:i')})")
+            ->map(fn($apt) => "- {$apt->patient->user->name} ({$apt->date->format('d/m/Y')} {$apt->starts_at->format('H:i')})")
             ->join("\n");
 
         return (new MailMessage)
@@ -61,7 +61,7 @@ class ClinicAppointmentRescheduleNotification extends Notification implements Sh
             ->line("El especialista {$doctorName} ha registrado una inasistencia del {$startDate} al {$endDate} por {$reason}.")
             ->line("Esto afecta a {$affectedCount} cita(s) que requieren reagendamiento inmediato:")
             ->line($appointmentsList)
-            ->action('Ver Detalles', route('clinic.affected-appointments.index'))
+            ->action('Ver Detalles', route('partner.clinic.appointments.index'))
             ->line('Por favor, contacta a los pacientes afectados para coordinar nuevas fechas.')
             ->salutation('Saludos cordiales');
     }

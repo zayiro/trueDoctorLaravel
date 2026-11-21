@@ -65,29 +65,26 @@ class UserManagementController extends Controller
             return redirect()->back()->with('error', 'No puedes alterar tu propio estado de cuenta.');
         }
 
-        $profile = null;
-        $isPatient = false;
+        // El servicio cambia el perfil y, si es una clínica, también a sus médicos propios (con marca para revertir).
+        $r = app(\App\Services\Accounts\AccountStatusService::class)->toggle($user);
 
-        if ($user->role === 'doctor') {
-            $profile = $user->doctor;
-        } elseif ($user->role === 'clinic') {
-            $profile = $user->clinic;
-        } elseif ($user->role === 'patient') {
-            $profile = $user->patient;
-            $isPatient = true;
+        if ($r === null) {
+            return redirect()->back()->with('error', 'Esta cuenta no tiene un perfil que activar o desactivar.');
         }
 
-        // Invertimos el estado actual
-        $newStatus = !($profile ? $profile->active : true);
+        $msg = "La cuenta de {$user->name} ha sido " . ($r['active'] ? 'activada' : 'desactivada') . ' correctamente.';
 
-        if ($profile) {
-            $newStatus = !$profile->active;
-            $profile->update(['active' => $newStatus]);
-            
+        if ($r['cascaded'] > 0) {
+            $msg .= $r['active']
+                ? " Se reactivaron {$r['cascaded']} médico(s) propio(s) de la clínica."
+                : " También se desactivaron {$r['cascaded']} médico(s) propio(s) de la clínica.";
         }
 
-        $statusText = $newStatus ? 'activada' : 'desactivada';
-        return redirect()->back()->with('success', "La cuenta de {$user->name} ha sido {$statusText} correctamente.");
+        if (!$r['active'] && $r['upcoming'] > 0) {
+            $msg .= " Ojo: tiene {$r['upcoming']} cita(s) futura(s) activa(s) ({$r['upcoming_paid']} pagada(s) en línea) que NO se cancelaron; coordínalas con los pacientes.";
+        }
+
+        return redirect()->back()->with('success', $msg);
     }
 
     /**

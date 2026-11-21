@@ -18,11 +18,18 @@ class AppointmentCancelled
     public $appointment;
 
     /**
+     * Quién canceló: 'patient', 'doctor' (médico o clínica, que actúa como proveedor) o 'system'.
+     * Es opcional: quien dispare el evento sin indicarlo mantiene el comportamiento anterior (texto neutro).
+     */
+    public ?string $actor;
+
+    /**
      * Create a new event instance.
      */
-    public function __construct(Appointment $appointment)
+    public function __construct(Appointment $appointment, ?string $actor = null)
     {
         $this->appointment = $appointment;
+        $this->actor = $actor;
     }
 
     /**

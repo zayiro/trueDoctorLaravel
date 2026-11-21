@@ -34,6 +34,24 @@ class PaymentLinkService
         return now()->addHours((int) config('booking.payment_link_hours', 24))->min($startsAt);
     }
 
+    /**
+     * Plazo para pagar una reserva hecha por el propio paciente.
+     *
+     * El turno se retiene `booking.pending_hold_minutes` (120), pero NUNCA más allá del inicio de la cita: no tiene
+     * sentido pagar una consulta que ya empezó. En reservas de último minuto se garantiza una ventana mínima de
+     * `booking.min_payment_window_minutes` (10) para alcanzar a pagar, y jamás pasa del fin de la cita.
+     * Se devuelve en la zona de la aplicación: Eloquent guarda la hora en la zona del objeto Carbon.
+     */
+    public function holdUntil(Carbon $startsAt, Carbon $endsAt): Carbon
+    {
+        $now = now();
+
+        $deadline = $now->copy()->addMinutes((int) config('booking.pending_hold_minutes', 120))->min($startsAt);
+        $floor = $now->copy()->addMinutes((int) config('booking.min_payment_window_minutes', 10))->min($endsAt);
+
+        return $deadline->max($floor)->copy()->setTimezone(config('app.timezone', 'America/Bogota'));
+    }
+
     public function url(Appointment $appointment): ?string
     {
         return $appointment->payment_token

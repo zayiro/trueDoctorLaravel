@@ -13,10 +13,12 @@ class EnsureDoctorContext
     {
         if (auth()->check() && auth()->user()->role === 'doctor') {            
             // 1. Obtener todas las clínicas activas/aprobadas del médico
-            $myClinics = DB::table('clinic_doctor')
+            $doctorId = auth()->user()->doctor?->id;
+
+            $myClinics = !$doctorId ? collect() : DB::table('clinic_doctor')
                 ->join('clinics', 'clinic_doctor.clinic_id', '=', 'clinics.id')
                 ->join('users AS clinic_user', 'clinics.user_id', '=', 'clinic_user.id') // Alias asignado
-                ->where('clinic_doctor.doctor_id', auth()->user()->doctor->id)
+                ->where('clinic_doctor.doctor_id', $doctorId)
                 ->where('clinic_doctor.status', 'approved')
                 ->select(
                     'clinics.id', 
@@ -29,17 +31,18 @@ class EnsureDoctorContext
             $showContextSelector = $myClinics->isNotEmpty();
 
             // 3. Inicializar la sesión según corresponda
-            if ($showContextSelector) {
-                if (!session()->has('doctor_context')) {
-                    session(['doctor_context' => [
-                        'type'  => 'particular',
-                        'id'    => null,
-                        'name'  => 'Consultorio Particular',
-                        'photo' => auth()->user()->profile_photo_path
-                    ]]);
-                }
-            } else {
-                // Si lo desvinculan o no tiene, forzamos siempre el entorno particular
+            //    Se revalida en CADA petición: si el contexto guardado es de una clínica y el médico
+            //    ya no es miembro aprobado (lo suspendieron o lo desvincularon), vuelve a particular.
+            $context = session('doctor_context');
+            $keepContext = $showContextSelector && is_array($context) && (
+                ($context['type'] ?? null) === 'particular'
+                || (
+                    ($context['type'] ?? null) === 'clinic'
+                    && $myClinics->contains(fn ($clinic) => (int) $clinic->id === (int) ($context['id'] ?? 0))
+                )
+            );
+
+            if (!$keepContext) {
                 session(['doctor_context' => [
                     'type'  => 'particular',
                     'id'    => null,

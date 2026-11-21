@@ -18,7 +18,7 @@ final class AvailabilityLoader
 {
     public function load(AvailabilityQuery $query, DateTimeImmutable $from, DateTimeImmutable $to): AvailabilityData
     {
-        $doctorIds = $this->approvedDoctorIds($query->doctorIds);
+        $doctorIds = $this->approvedDoctorIds($query->doctorIds, $query->clinicId);
 
         if ($doctorIds === []) {
             return AvailabilityData::empty();
@@ -52,13 +52,35 @@ final class AvailabilityLoader
         );
     }
 
-    /** @return int[] */
-    private function approvedDoctorIds(array $doctorIds): array
+    /**
+     * Médicos que se pueden reservar: aprobados y activos. En el contexto de una clínica, además
+     * deben ser miembros aprobados de esa clínica y la clínica debe estar aprobada y activa.
+     *
+     * @return int[]
+     */
+    private function approvedDoctorIds(array $doctorIds, ?int $clinicId = null): array
     {
-        return DB::table('doctors')
-            ->whereIn('id', $doctorIds)
-            ->where('validation_status', 'approved')
-            ->pluck('id')
+        $builder = DB::table('doctors')
+            ->whereIn('doctors.id', $doctorIds)
+            ->where('doctors.validation_status', 'approved')
+            ->where('doctors.active', true);
+
+        if ($clinicId !== null) {
+            $builder
+                ->whereExists(fn ($member) => $member->selectRaw('1')
+                    ->from('clinic_doctor')
+                    ->whereColumn('clinic_doctor.doctor_id', 'doctors.id')
+                    ->where('clinic_doctor.clinic_id', $clinicId)
+                    ->where('clinic_doctor.status', 'approved'))
+                ->whereExists(fn ($clinic) => $clinic->selectRaw('1')
+                    ->from('clinics')
+                    ->where('clinics.id', $clinicId)
+                    ->where('clinics.validation_status', 'approved')
+                    ->where('clinics.active', true));
+        }
+
+        return $builder
+            ->pluck('doctors.id')
             ->map(fn ($id) => (int) $id)
             ->all();
     }

@@ -96,7 +96,7 @@ class Doctor extends Model
     public function clinics(): BelongsToMany
     {
         return $this->belongsToMany(Clinic::class, 'clinic_doctor')
-                    ->withPivot('status')
+                    ->withPivot('status', 'relationship')
                     ->withTimestamps();
     }
 

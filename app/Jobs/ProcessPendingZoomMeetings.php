@@ -26,7 +26,7 @@ class ProcessPendingZoomMeetings implements ShouldQueue
     {
         $fallidos = ZoomCreationFailure::where('status', 'pending')
             ->where('attempts', '<', 5)
-            ->with('appointment')
+            ->with('appointment.patient.user')
             ->get();
 
         foreach ($fallidos as $fallo) {
@@ -60,8 +60,18 @@ class ProcessPendingZoomMeetings implements ShouldQueue
             }
 
             try {
+                // Una cita que ya no necesita sala (cancelada, vencida, completada…) no se recupera: no crear Zoom ni escribir al paciente.
+                $estadoCita = $appointment->status instanceof \BackedEnum ? $appointment->status->value : (string) $appointment->status;
+                if (in_array($estadoCita, ['cancelled', 'expired', 'completed', 'no_show'], true)) {
+                    $fallo->update([
+                        'status' => 'failed',
+                        'last_error' => '[' . now()->toDateTimeString() . '] Cita en estado ' . $estadoCita . ': no requiere sala de Zoom.',
+                    ]);
+                    continue;
+                }
+
                 $topic = "Teleconferencia Médica - Ref: " . $appointment->reference;
-                $startDateTime = $appointment->scheduled_at;
+                $startDateTime = $appointment->date->format('Y-m-d') . ' ' . $appointment->start_time;
                 $duration = $appointment->duration ?? 45;
 
                 $zoomMeeting = $zoomService->createMeeting($topic, $startDateTime, $duration);
@@ -69,14 +79,19 @@ class ProcessPendingZoomMeetings implements ShouldQueue
                 if ($zoomMeeting) {
                     $appointment->update([
                         'zoom_meeting_id'       => $zoomMeeting['meeting_id'],
-                        'zoom_start_url'        => Crypt::encryptString($zoomMeeting['url_partner']),
-                        'meeting_link'          => Crypt::encryptString($zoomMeeting['url_patient']),
-                        'meeting_link_password' => Crypt::encryptString($zoomMeeting['password']),
+                        'zoom_start_url'        => $zoomMeeting['url_partner'],
+                        'meeting_link'          => $zoomMeeting['url_patient'],
+                        'meeting_link_password' => $zoomMeeting['password'],
                     ]);
 
-                    Mail::to($appointment->email)->queue(
-                        new PatientZoomLinkMail($appointment, $zoomMeeting['url_patient'], $zoomMeeting['password'])
-                    );
+                    $correoPaciente = $appointment->patient?->user?->email;
+                    if ($correoPaciente) {
+                        Mail::to($correoPaciente)->queue(
+                            new PatientZoomLinkMail($appointment, $zoomMeeting['url_patient'], $zoomMeeting['password'])
+                        );
+                    } else {
+                        Log::warning("Zoom recuperado pero el paciente no tiene correo (Ref: {$appointment->reference}).");
+                    }
 
                     $fallo->update([
                         'status' => 'completed',

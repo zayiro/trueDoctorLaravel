@@ -409,9 +409,14 @@ class PartnerAppointmentController extends Controller
             abort(403, $e->getMessage());
         }
 
-        return $result->ok
-            ? redirect()->route('partner.appointments.index', ['date' => $validated['new_date']])->with('success', $result->message)
-            : back()->with('error', $result->message);
+        if (!$result->ok) {
+            return back()->with('error', $result->message);
+        }
+
+        // La clínica tiene su propia agenda; el médico, la suya.
+        $agenda = auth()->user()->role === 'clinic' ? 'partner.clinic.appointments.index' : 'partner.appointments.index';
+
+        return redirect()->route($agenda, ['date' => $validated['new_date']])->with('success', $result->message);
     }
 
     public function updateStatus(Request $request, Appointment $appointment)

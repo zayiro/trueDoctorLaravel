@@ -105,7 +105,7 @@
 
             @auth
                 @if(Auth::user()->role === 'patient')
-                    <div x-data="{ open: false }">
+                    <div x-data="{ open: false }" class="mt-5">
                         <button @click="open = true"
                             class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-2xl transition flex items-center justify-center gap-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -145,7 +145,7 @@
                 @endif
             @else
                 <a href="{{ route('login') }}"
-                    class="w-full border border-blue-200 text-blue-600 font-bold py-3 px-6 rounded-2xl transition hover:bg-blue-50 flex items-center justify-center gap-2">
+                    class="mt-5 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-2xl transition flex items-center justify-center gap-2">
                     Inicia sesión para enviar un mensaje
                 </a>
             @endauth
@@ -230,6 +230,15 @@
                                     <span class="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-md uppercase tracking-wide border border-blue-100">
                                         {{ $result['badge_text'] }}
                                     </span>
+                                    @if(($result['relationship'] ?? 'invited') === 'own')
+                                        <span title="Médico que forma parte del equipo propio de la clínica" class="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-md uppercase tracking-wide border border-emerald-100/40">
+                                            Equipo de la clínica
+                                        </span>
+                                    @else
+                                        <span title="Médico independiente que atiende en esta clínica por alianza" class="px-2 py-0.5 bg-slate-50 text-slate-600 text-[10px] font-bold rounded-md uppercase tracking-wide border border-slate-200/60">
+                                            Médico aliado
+                                        </span>
+                                    @endif
                                 </div>
 
                                 <!-- Detalles de la Sede y Dirección -->
@@ -268,9 +277,12 @@
 
                                 <!-- Gancho de Inmediatez Nativo (Realtime Pulse) -->
                                 @if(isset($result['next_turn']) && $result['next_turn'])
-                                    <div class="mt-3 inline-flex items-center gap-2 px-2 py-0.5 bg-emerald-50 border border-emerald-100/70 text-emerald-800 text-[10px] font-black rounded-lg shadow-2xs">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block {{ str_contains($result['next_turn'], 'Sin turnos') ? '' : 'animate-pulse' }}"></span>
-                                        {{ str_contains($result['next_turn'], 'Sin turnos') ? $result['next_turn'] : 'Disponible: ' . ucfirst($result['next_turn']) }}
+                                    @php $sinTurnos = str_contains($result['next_turn'], 'Sin turnos'); @endphp
+                                    <div class="mt-3 inline-flex items-center gap-2 px-2 py-0.5 border text-[10px] font-black rounded-lg shadow-2xs {{ $sinTurnos ? 'bg-slate-50 border-slate-200 text-slate-500' : 'bg-emerald-50 border-emerald-100/70 text-emerald-800' }}">
+                                        @unless($sinTurnos)
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                                        @endunless
+                                        {{ $sinTurnos ? $result['next_turn'] : 'Disponible: ' . ucfirst($result['next_turn']) }}
                                     </div>
                                 @endif
                             </div> <!-- Cierre B. Cuerpo de Información -->

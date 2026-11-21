@@ -6,6 +6,7 @@ use App\Events\DoctorUnavailabilityCreated;
 use App\Models\AffectedAppointment;
 use App\Models\Appointment;
 use App\Notifications\AppointmentRescheduleRequiredNotification;
+use App\Notifications\ClinicAppointmentRescheduleNotification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\DB;
@@ -92,7 +93,7 @@ class NotifyAffectedAppointments implements ShouldQueue
                 'affected_appointments_count' => $affectedAppointments->count(),
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
 
             Log::error('Error al procesar DoctorUnavailabilityCreated', [
