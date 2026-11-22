@@ -12,7 +12,7 @@ L.Icon.Default.mergeOptions({
     shadowUrl: markerShadow,
 });
 
-const TILES = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=cb1_5dgr_1_7e0957440ef997e7a3478480';
+const TILES = window.OD_TILES || '';
 
 const doctorPin = L.divIcon({
     className: 'bg-transparent',

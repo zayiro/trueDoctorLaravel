@@ -276,7 +276,8 @@
         <!-- se envía en silencio al servidor, como máximo cada 30 min por pestaña. Nunca muestra un aviso: -->
         <!-- solo actúa si el navegador ya tiene el permiso en "granted". -->
         <!-- ======================================================== -->
-        <script data-location-sync>
+        <script data-od-map-config>window.OD_TILES = @json(config('maps.carto_key') ? config('maps.tiles_url') . '?key=' . config('maps.carto_key') : null);</script>
+    <script data-location-sync>
             document.addEventListener('DOMContentLoaded', () => {
                 try {
                     if (localStorage.getItem('opendoctor_location_consent') !== 'allowed') return;

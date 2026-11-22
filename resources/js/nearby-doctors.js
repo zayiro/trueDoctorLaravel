@@ -116,7 +116,7 @@ window.nearbyDoctorsMap = function ({ radius, endpoint }) {
 
             L.control.zoom({ position: 'bottomright' }).addTo(this.map);
 
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=cb1_5dgr_1_7e0957440ef997e7a3478480', {
+            L.tileLayer(window.OD_TILES || '', {
                 attribution: '&copy; OpenStreetMap contributors, &copy; CARTO',
                 subdomains: 'abcd',
                 maxZoom: 19,
