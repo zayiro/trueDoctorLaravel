@@ -48,6 +48,23 @@ $inputBase = 'w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg te
             @csrf
             @method('PUT')
 
+            <!-- 🏢 DATOS DE LA EMPRESA (encabezado de los soportes de liquidación) -->
+            <div class="bg-slate-950 border border-white/10 rounded-2xl p-6 space-y-4">
+                <h2 class="text-xl font-bold text-white">🏢 Datos de la empresa</h2>
+                <p class="text-slate-400 text-sm">Salen en el encabezado de los soportes de liquidación que reciben médicos y clínicas.</p>
+
+                <div class="grid md:grid-cols-2 gap-4">
+                    @foreach ($company as $key => $label)
+                        <div class="space-y-1">
+                            <label for="{{ $key }}" class="block text-sm font-semibold text-slate-300">{{ $label }}</label>
+                            <input type="{{ $key === 'company_email' ? 'email' : 'text' }}" id="{{ $key }}" name="{{ $key }}"
+                                   value="{{ old($key, $settings[$key] ?? '') }}"
+                                   class="{{ $inputBase }} focus:ring-blue-500">
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
             <!-- 1️⃣ PRECIOS DE EXÁMENES -->
             <div class="bg-slate-950 border border-white/10 rounded-2xl p-6 space-y-4">
                 <h2 class="text-xl font-bold text-white flex items-center gap-2">

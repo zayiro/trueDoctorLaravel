@@ -209,15 +209,13 @@ class AppointmentController extends Controller
                 ], 422);
             }
 
-            // 3. Actualizar estado en transacción
-            DB::transaction(function () use ($appointment) {
-                $appointment->update([
-                    'status' => 'cancelled'
-                ]);
+            // 3. Cancelar por la puerta única: valida la transición, dispara los eventos y abre el reembolso si estaba pagada
+            $result = app(\App\Services\Appointments\AppointmentCancellationService::class)
+                ->cancel($appointment, 'system', null, 'api');
 
-                // Registrar evento de auditoría
-                AppointmentEventSourcing::recordCancelled($appointment, 'Cancelada vía API Gateway');
-            });
+            if (!$result->ok) {
+                return response()->json(['error' => $result->message], 422);
+            }
 
             Log::info('API Gateway: Cita cancelada exitosamente', [
                 'appointment_id' => $appointment->id,

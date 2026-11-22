@@ -137,8 +137,23 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/contact', [UserManagementController::class, 'contactMessages'])->name('administrator.contact.index');
     Route::delete('/admin/contact/{id}/delete', [UserManagementController::class, 'destroyContact'])->name('administrator.contact.destroy');
 
-    Route::get('/administrator/payouts', [AdminController::class, 'payouts'])->name('administrator.payouts.index');
-    Route::post('/administrator/payouts/{payout}/mark-paid', [AdminController::class, 'markPayoutPaid'])->name('administrator.payouts.mark-paid');
+    Route::get('/administrator/payouts', [\App\Http\Controllers\Admin\PayoutController::class, 'index'])->name('administrator.payouts.index');
+    Route::get('/administrator/payouts/export', [\App\Http\Controllers\Admin\PayoutController::class, 'export'])->name('administrator.payouts.export');
+    Route::post('/administrator/payouts/{payout}/mark-paid', [\App\Http\Controllers\Admin\PayoutController::class, 'markPaid'])->name('administrator.payouts.mark-paid');
+    Route::get('/administrator/payouts/batches', [\App\Http\Controllers\Admin\PayoutBatchController::class, 'index'])->name('administrator.payouts.batches.index');
+    Route::post('/administrator/payouts/batches', [\App\Http\Controllers\Admin\PayoutBatchController::class, 'store'])->name('administrator.payouts.batches.store');
+    Route::get('/administrator/payouts/batches/{batch}', [\App\Http\Controllers\Admin\PayoutBatchController::class, 'show'])->name('administrator.payouts.batches.show');
+    Route::post('/administrator/payouts/batches/{batch}/approve', [\App\Http\Controllers\Admin\PayoutBatchController::class, 'approve'])->name('administrator.payouts.batches.approve');
+    Route::post('/administrator/payouts/batches/{batch}/cancel', [\App\Http\Controllers\Admin\PayoutBatchController::class, 'cancel'])->name('administrator.payouts.batches.cancel');
+    Route::post('/administrator/payouts/batches/{batch}/lines/{payout}/release', [\App\Http\Controllers\Admin\PayoutBatchController::class, 'release'])->name('administrator.payouts.batches.release');
+    Route::post('/administrator/payouts/batches/{batch}/pay', [\App\Http\Controllers\Admin\PayoutBatchController::class, 'pay'])->name('administrator.payouts.batches.pay');
+    Route::get('/administrator/payouts/reports/{report}/download', [\App\Http\Controllers\Admin\PayoutBatchController::class, 'downloadReport'])->name('administrator.payouts.reports.download');
+    Route::post('/administrator/payouts/reports/{report}/resend', [\App\Http\Controllers\Admin\PayoutBatchController::class, 'resendReport'])->name('administrator.payouts.reports.resend');
+    Route::post('/administrator/payouts/batches/{batch}/account/reveal', [\App\Http\Controllers\Admin\PayoutBatchController::class, 'revealAccount'])->middleware('throttle:20,60')->name('administrator.payouts.batches.account.reveal');
+    Route::post('/administrator/payouts/batches/{batch}/account/verify', [\App\Http\Controllers\Admin\PayoutBatchController::class, 'verifyAccount'])->name('administrator.payouts.batches.account.verify');
+    Route::get('/administrator/commissions', [\App\Http\Controllers\Admin\SpecialCommissionController::class, 'index'])->name('administrator.commissions.index');
+    Route::get('/administrator/commissions/history', [\App\Http\Controllers\Admin\SpecialCommissionController::class, 'history'])->name('administrator.commissions.history');
+    Route::put('/administrator/commissions/{type}/{id}', [\App\Http\Controllers\Admin\SpecialCommissionController::class, 'update'])->where('type', 'doctor|clinic')->where('id', '[0-9]+')->middleware('throttle:30,1')->name('administrator.commissions.update');
 
     Route::get('/administrator/refunds', [AdminController::class, 'refunds'])->name('administrator.refunds.index');
     Route::post('/administrator/refunds/{refund}/mark-done', [AdminController::class, 'markRefundDone'])->name('administrator.refunds.mark-done');
@@ -160,6 +175,11 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 Route::middleware(['auth', 'role:doctor'])->group(function () {    
     Route::get('/partner/settings', [DoctorSettingController::class, 'edit'])->name('partner.settings.edit');
     Route::put('/partner/settings', [DoctorSettingController::class, 'update'])->name('partner.settings.update');
+
+    // Mis liquidaciones (médico)
+    Route::get('/partner/payouts', [\App\Http\Controllers\PartnerPayoutController::class, 'index'])->name('partner.payouts.index');
+    Route::get('/partner/payouts/{report}/download', [\App\Http\Controllers\PartnerPayoutController::class, 'download'])->name('partner.payouts.download');
+    Route::put('/partner/payouts/bank', [\App\Http\Controllers\PartnerPayoutController::class, 'saveAccount'])->middleware('throttle:10,60')->name('partner.payouts.bank');
 
     // Ver y editar el perfil
     Route::get('/partner/profile', [ProfileDoctorController::class, 'edit'])->name('partner.profile.edit');
@@ -262,6 +282,15 @@ Route::middleware(['auth', 'role:clinic'])->group(function () {
     // Ver y editar el perfil
     Route::get('/clinic/partner/profile', [ProfileClinicController::class, 'edit'])->name('partner.clinic.profile.edit');
     Route::put('/clinic/partner/profile', [ProfileClinicController::class, 'update'])->name('partner.clinic.profile.update');
+
+    // Ajustes de la clínica (agenda, cancelaciones, notificaciones)
+    Route::get('/clinic/settings', [\App\Http\Controllers\ClinicSettingController::class, 'edit'])->name('partner.clinic.settings.edit');
+    Route::put('/clinic/settings', [\App\Http\Controllers\ClinicSettingController::class, 'update'])->name('partner.clinic.settings.update');
+
+    // Mis liquidaciones (clínica)
+    Route::get('/clinic/payouts', [\App\Http\Controllers\PartnerPayoutController::class, 'index'])->name('partner.clinic.payouts.index');
+    Route::get('/clinic/payouts/{report}/download', [\App\Http\Controllers\PartnerPayoutController::class, 'download'])->name('partner.clinic.payouts.download');
+    Route::put('/clinic/payouts/bank', [\App\Http\Controllers\PartnerPayoutController::class, 'saveAccount'])->middleware('throttle:10,60')->name('partner.clinic.payouts.bank');
 
     Route::get('/clinic/doctors', [ClinicDoctorController::class, 'index'])->name('partner.clinic.doctors.index');
     Route::post('/clinic/doctors', [ClinicDoctorController::class, 'store'])->name('partner.clinic.doctors.store');

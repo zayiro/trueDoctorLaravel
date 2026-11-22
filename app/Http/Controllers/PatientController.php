@@ -381,61 +381,19 @@ class PatientController extends Controller
             ->where('patient_id', $patient->id)
             ->firstOrFail();
 
-        // Solo se pueden cancelar citas activas (evita doble cancelación y notificaciones repetidas)
-        $currentStatus = $appointment->status instanceof \BackedEnum
-            ? $appointment->status->value
-            : (string) $appointment->status;
-
-        if (!in_array($currentStatus, ['pending', 'confirmed'], true)) {
-            return redirect()->back()->with('error', 'Esta consulta ya no se puede cancelar.');
-        }
-
-        $now = Carbon::now('America/Bogota');
-
-        // `date` tiene cast a Carbon: hay que formatearla antes de unirla con la hora
-        $appointmentDateTime = Carbon::parse(
-            $appointment->date->format('Y-m-d') . ' ' . $appointment->start_time,
-            'America/Bogota'
-        );
-
-        if ($now->greaterThanOrEqualTo($appointmentDateTime)) {
-            return redirect()->back()->with('error', 'No es posible cancelar una consulta médica que ya se encuentra en desarrollo o que pertenece al pasado.');
-        }
-
-        $settings = $appointment->clinic_id ? $appointment->clinic?->settings : $appointment->doctor?->settings;
-        $cancellationNoticeHours = $settings ? (int) $settings->cancellation_notice_hours : 2;
-        $hoursDifference = $now->diffInHours($appointmentDateTime, false);
-
-        if ($hoursDifference < $cancellationNoticeHours) {
-            return redirect()->back()->with('error', "Las políticas de este centro médico o especialista exigen un mínimo de {$cancellationNoticeHours} horas de anticipación para cancelar el turno.");
-        }
-
-        $validated = $request->validate([
+        $request->validate([
             'cancellation_reason' => 'nullable|string|max:255'
         ]);
 
-        $reason = $request->filled('cancellation_reason')
-            ? 'Cancelado por el paciente. Motivo: ' . trim($request->cancellation_reason)
-            : 'Cancelado de forma autónoma por el paciente desde la plataforma web.';
+        // Plazo, política del médico/clínica, transición y avisos viven en un solo sitio.
+        $result = app(\App\Services\Appointments\AppointmentCancellationService::class)->cancel(
+            $appointment,
+            'patient',
+            $request->filled('cancellation_reason') ? trim((string) $request->cancellation_reason) : null
+        );
 
-        try {
-            // El gestor valida la transición y dispara AppointmentCancelled (correos) después del commit.
-            // La reunión de Zoom la elimina AppointmentObserver (CancelZoomMeetingJob).
-            app(AppointmentStateManager::class)->transitionTo(
-                $appointment,
-                'cancelled',
-                $reason,
-                ['notes' => ($appointment->notes ? $appointment->notes . "\n" : '') . "[Auditoría: {$reason}]"],
-                'patient'
-            );
-        } catch (\InvalidArgumentException $e) {
-            return redirect()->back()->with('error', $e->getMessage());
-        }
-
-        $doctor = Doctor::findOrFail($appointment->doctor_id);
-        $userToNotify = User::find($doctor->user_id);
-        if ($userToNotify) {
-            $userToNotify->notify(new AppointmentCancelledNotification($appointment, 'patient'));
+        if (!$result->ok) {
+            return redirect()->back()->with('error', $result->message);
         }
 
         return redirect()->route('patient.appointments.index')

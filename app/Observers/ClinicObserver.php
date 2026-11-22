@@ -50,7 +50,6 @@ class ClinicObserver
                         'currency'                   => 'COP',
                         'min_notice_hours'           => 2,
                         'max_advance_days'           => 30,
-                        'requires_approval'          => false,
                         'buffer_time_minutes'        => 0,
                         'max_appointments_per_day'   => null,
                         'allow_patient_cancellation' => true,

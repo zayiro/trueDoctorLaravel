@@ -166,9 +166,7 @@
             if (typeof gtag === 'function') {
                 const status = @json($status);
                 const appointmentId = @json($appointment->id);
-                const appointmentPrice = @json($appointment->price);
-                const appointmentCommission = @json($appointment->commission_amount ?? 0);
-                const totalPrice = appointmentPrice + appointmentCommission;
+                const totalPrice = @json($payment->total_in_cents / 100);
                 const doctorId = @json($appointment->doctor_id);
                 const doctorName = @json($appointment->doctor->user->name ?? '');
                 

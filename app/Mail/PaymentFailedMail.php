@@ -58,7 +58,7 @@ class PaymentFailedMail extends Mailable
             : 'el ' . $limit->format('d/m/Y') . ' a las ' . $limit->format('H:i');
     }
 
-    /** Lo que se cobra: el total del último intento de pago; si no hay, el cálculo de las citas anteriores. */
+    /** Lo que se cobra: el total del último intento de pago; si no hay, el precio de la cita. */
     private function total(): float
     {
         $cents = Payment::where('payable_type', $this->appointment->getMorphClass())
@@ -68,6 +68,6 @@ class PaymentFailedMail extends Mailable
 
         return $cents !== null
             ? $cents / 100
-            : (float) $this->appointment->price + (float) $this->appointment->commission_amount;
+            : (float) $this->appointment->price;
     }
 }

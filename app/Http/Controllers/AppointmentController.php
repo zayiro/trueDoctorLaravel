@@ -333,7 +333,7 @@ class AppointmentController extends Controller
 
         $settings = $address->clinic_id ? $address->clinic->settings : $doctor->settings;
         $acceptsPayments = $settings ? (bool)$settings->accepts_online_payments : false;
-        $requiresApproval = $acceptsPayments ? false : ($settings ? (bool)$settings->requires_approval : false);
+        $requiresApproval = false; // La aprobación manual de citas ya no existe.
         
         $isVirtual = $serviceSpecific->type === 'virtual' || $address->type === 'virtual';
         $onlineRequired = $isVirtual || $acceptsPayments;
@@ -430,9 +430,10 @@ class AppointmentController extends Controller
             return redirect()->route('home')->with('error', 'Esta reserva ya no está disponible. Agenda una nueva cita.');
         }
 
-        $wompiData = $virtualPaymentRequired ? app(AppointmentCheckout::class)->quote($appointment)->toArray() : null;
+        $offersOnline = AppointmentCheckout::offersOnlinePayment($appointment);
+        $wompiData = ($virtualPaymentRequired || $offersOnline) ? app(AppointmentCheckout::class)->quote($appointment)->toArray() : null;
                 
-        return view('appointments.preview', compact('appointment', 'virtualPaymentRequired', 'wompiData'));
+        return view('appointments.preview', compact('appointment', 'virtualPaymentRequired', 'offersOnline', 'wompiData'));
     }
    
     /**
@@ -458,7 +459,7 @@ class AppointmentController extends Controller
 
         $appointment->loadMissing(['service', 'address', 'doctor.settings', 'clinic.settings']);
 
-        if (!AppointmentCheckout::requiresOnlinePayment($appointment)) {
+        if (!AppointmentCheckout::canPayOnline($appointment)) {
             return redirect()->route('appointments.preview', $appointment->id)
                 ->with('error', 'Esta cita se paga en consulta.');
         }
@@ -526,6 +527,7 @@ class AppointmentController extends Controller
     {
         $appointmentId = $request->integer('id');
         $user = Auth::user(); 
+        $info = 'Proceso de reserva cancelado con éxito. El horario de atención ha sido liberado.';
 
         if ($appointmentId > 0) {
             $appointment = Appointment::with('patient')->find($appointmentId);
@@ -547,14 +549,24 @@ class AppointmentController extends Controller
                     abort(403, 'Operación no autorizada. No tienes propiedad sobre esta orden médica.');
                 }
 
-                // ✅ GRACIAS AL MODELO CON SOFTDELETES, ESTO AHORA HACE UN BORRADO LÓGICO (AUDITABLE)
-                $appointment->delete(); 
+                // Ya no se borra la cita: una reserva sin pagar se libera, una cita pagada se rechaza
+                // (se cancela desde Mis citas, con reembolso) y una confirmada sin pago pasa por la cancelación normal.
+                $result = app(\App\Services\Appointments\AppointmentCancellationService::class)
+                    ->abandonBooking($appointment, $user->role === 'patient' ? 'patient' : 'doctor');
+
+                if (!$result->ok) {
+                    return redirect()->back()->with('error', $result->message);
+                }
+
+                if ($result->kind === 'cancelled') {
+                    $info = 'Tu cita fue cancelada y el horario quedó disponible.';
+                }
             }
         }
         
         session()->forget(['booking_data', 'current_doctor_id', 'current_clinic_user_id']);
 
-        return redirect()->route('search')->with('info', 'Proceso de reserva cancelado con éxito. El horario de atención ha sido liberado.');
+        return redirect()->route('search')->with('info', $info);
     }
     
     public function joinRoom(Appointment $appointment, ZoomService $zoomService, RoomSessionGuard $roomSessions)

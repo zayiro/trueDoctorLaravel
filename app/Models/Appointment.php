@@ -127,8 +127,11 @@ class Appointment extends Model
         }
 
         $isVirtual = ($this->service?->type === 'virtual') || ($this->address?->type === 'virtual');
-        if (!$isVirtual) {
-            return null;
+        if (!$isVirtual && !\App\Services\Payments\AppointmentCheckout::requiresOnlinePayment($this)) {
+            // Presencial que se paga en sede: la única acción posible es el pago en línea opcional, si se ofrece.
+            return ($audience === 'patient' && \App\Services\Payments\AppointmentCheckout::offersOnlinePayment($this))
+                ? ['type' => 'pay_optional', 'label' => 'Pagar en línea', 'url' => route('appointments.preview', ['id' => $this->id])]
+                : null;
         }
 
         $payment = $this->payment_status instanceof \BackedEnum ? $this->payment_status->value : (string) $this->payment_status;
@@ -146,6 +149,10 @@ class Appointment extends Model
                 'label' => 'Completar pago',
                 'url'   => route('appointments.preview', ['id' => $this->id]),
             ];
+        }
+
+        if (!$isVirtual) {
+            return null; // presencial ya pagada: no hay sala
         }
 
         if ($status !== \App\Enums\AppointmentStatus::CONFIRMED->value) {

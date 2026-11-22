@@ -246,7 +246,7 @@ final class PaymentService
             $locked->fill([
                 'status'      => PaymentTransactionStatus::Approved,
                 'approved_at' => now(),
-                'payload'     => ['marked_by_user_id' => $by?->id, 'marked_at' => now()->toIso8601String()],
+                'payload'     => array_merge((array) $locked->payload, ['marked_by_user_id' => $by?->id, 'marked_at' => now()->toIso8601String()]),
             ])->save();
 
             DB::afterCommit(fn () => $this->dispatchEvent($locked));

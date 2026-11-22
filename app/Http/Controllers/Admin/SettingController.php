@@ -38,6 +38,15 @@ class SettingController extends Controller
         'imaging_ai_fallback_model',
     ];
 
+    /** Datos de empresa que salen en el encabezado de los soportes de liquidación (clave => etiqueta). */
+    private const COMPANY = [
+        'company_legal_name' => 'Razón social',
+        'company_nit' => 'NIT',
+        'company_address' => 'Dirección',
+        'company_city' => 'Ciudad',
+        'company_email' => 'Correo de la empresa',
+    ];
+
     /** Comisiones (clave => [etiqueta, valor por defecto]). */
     private const COMMISSIONS = [
         'virtual_commission_doctor' => ['Comisión Cita Virtual - Doctor (%)', 0],
@@ -58,6 +67,7 @@ class SettingController extends Controller
             'decimationTypes' => $this->decimationTypes(),
             'aiModels' => self::AI_MODELS,
             'commissions' => self::COMMISSIONS,
+            'company' => self::COMPANY,
         ]);
     }
 
@@ -75,7 +85,7 @@ class SettingController extends Controller
             foreach ($data as $key => $value) {
                 Setting::updateOrCreate(
                     ['key' => $key],
-                    ['value' => $value, 'group' => $schema[$key]['group']]
+                    ['value' => $value ?? '', 'group' => $schema[$key]['group']]
                 );
             }
         });
@@ -126,6 +136,13 @@ class SettingController extends Controller
             $schema[$field] = [
                 'group' => 'commissions',
                 'rules' => ['required', 'numeric', 'min:0', 'max:100'],
+            ];
+        }
+
+        foreach (self::COMPANY as $field => $label) {
+            $schema[$field] = [
+                'group' => 'company',
+                'rules' => $field === 'company_email' ? ['nullable', 'email', 'max:150'] : ['nullable', 'string', 'max:' . ($field === 'company_nit' ? 30 : 150)],
             ];
         }
 

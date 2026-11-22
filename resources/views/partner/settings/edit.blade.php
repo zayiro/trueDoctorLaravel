@@ -11,7 +11,7 @@ $breadcrumbs = [
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
-    <div class="max-w-7xl mx-auto py-8 px-4" x-data="{ acceptsPayments: {{ $settings->accepts_online_payments ? 'true' : 'false' }}, requiresApproval: {{ $settings->requires_approval ? 'true' : 'false' }}, allowCancellation: {{ $settings->allow_patient_cancellation ? 'true' : 'false' }} }">
+    <div class="max-w-7xl mx-auto py-8 px-4" x-data="{ acceptsPayments: {{ $settings->accepts_online_payments ? 'true' : 'false' }}, allowCancellation: {{ $settings->allow_patient_cancellation ? 'true' : 'false' }} }">
         @if (session('success'))
             <div id="alert-success" class="flex items-center p-4 mb-4 text-green-800 rounded-2xl bg-green-50 border border-green-100 shadow-sm transition-opacity duration-500" role="alert">
                 <svg class="flex-shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://w3.org" fill="currentColor" viewBox="0 0 20 20">
@@ -49,52 +49,13 @@ $breadcrumbs = [
             <p class="text-sm text-gray-600">Personaliza las reglas de tu agenda, políticas de cancelación y notificaciones.</p>
         </div>
         
-        <form action="{{ route('partner.settings.update') }}" method="POST" class="space-y-6">
+        <form action="{{ $formAction ?? route('partner.settings.update') }}" method="POST" class="space-y-6">
             @csrf
             @method('PUT')
 
-            <!-- SECCIÓN 1: Pagos -->
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">💳 Pagos y Facturación</h2>
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between opacity-60">
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <label class="font-medium text-gray-400 block">Activar Pagos Online</label>
-                                <!-- Badge estético de Deshabilitado / Próximamente -->
-                                <span class="bg-gray-100 text-gray-500 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider border border-gray-200">
-                                    Inactivo
-                                </span>
-                            </div>
-                            <span class="text-xs text-gray-400 block mt-0.5">Exige el pago de la consulta inmediatamente después de seleccionar el horario.</span>
-                        </div>
-                        
-                        <!-- Botón visualmente deshabilitado (removidos eventos de Alpine.js y cursor pointer) -->
-                        <button type="button" 
-                            disabled
-                            class="relative inline-flex h-6 w-11 shrink-0 cursor-not-allowed rounded-full bg-gray-200 transition-colors duration-200 ease-in-out">
-                            
-                            <!-- Fijamos el valor estrictamente en 0 para que viaje al controlador de Laravel como desactivado -->
-                            <input type="hidden" name="accepts_online_payments" value="0">
-                            
-                            <!-- El switch se queda fijo a la izquierda (desactivado) -->
-                            <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out mt-0.5 ml-0.5 translate-x-0"></span>
-                        </button>
-                    </div>
+            @include('partner.settings._pagos')
 
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" x-show="acceptsPayments" x-transition>
-                        <div>
-                            <label for="currency" class="block text-sm font-medium text-gray-700">Divisa base</label>
-                            <select id="currency" name="currency" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <option value="COP" {{ $settings->currency == 'COP' ? 'selected' : '' }} selected>COP - Peso Colombiano</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>            
-
-            <!-- SECCIÓN 2: Reglas de Citas -->
+                        <!-- SECCIÓN 2: Reglas de Citas -->
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">📅 Control de Agenda</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -129,32 +90,6 @@ $breadcrumbs = [
                             <option value="zoom" {{ old('virtual_meeting_platform', $settings->virtual_meeting_platform ?? '') == 'zoom' ? 'selected' : '' }} selected>Zoom</option>                            
                         </select>
                     </div>
-                </div>
-
-                <!-- Bloque de Aprobación Manual Deshabilitado de Forma Segura -->
-                <div class="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between opacity-60">
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <label class="font-medium text-gray-400 block">Requiere aprobación manual</label>
-                            <!-- Badge estético de Inactivo -->
-                            <span class="bg-gray-100 text-gray-500 text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider border border-gray-200">
-                                Inactivo
-                            </span>
-                        </div>
-                        <span class="text-xs text-gray-400 block mt-0.5">Las citas ingresarán en estado 'pendiente' hasta que las confirmes en tu panel.</span>
-                    </div>
-                    
-                    <!-- Switch inmóvil y bloqueado visualmente -->
-                    <button type="button" 
-                        disabled
-                        class="relative inline-flex h-6 w-11 shrink-0 cursor-not-allowed rounded-full bg-gray-200 transition-colors duration-200 ease-in-out">
-                        
-                        <!-- Forzamos el envío de un 0 constante a las tablas de configuraciones en Laravel -->
-                        <input type="hidden" name="requires_approval" value="0">
-                        
-                        <!-- El pin del switch queda fijo a la izquierda (desactivado) -->
-                        <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out mt-0.5 ml-0.5 translate-x-0"></span>
-                    </button>
                 </div>
 
             </div>

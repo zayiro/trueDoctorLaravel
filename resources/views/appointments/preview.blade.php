@@ -132,6 +132,8 @@
                     </div>
                      @if ($virtualPaymentRequired)
                         <span class="text-sm font-bold text-slate-700">Pago en Línea</span>
+                    @elseif($offersOnline ?? false)
+                        <span class="text-sm font-bold text-slate-700">Tú eliges: en línea o en sede</span>
                     @else
                         <span class="text-sm font-bold text-slate-700">Pago en Consulta</span>
                     @endif                    
@@ -145,7 +147,7 @@
                 @unless($virtualPaymentRequired && $appointment->payment_expires_at)
                 <div class="flex items-start sm:items-center bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-4 text-slate-500" role="alert">
                     <svg class="w-4 h-4 me-2 shrink-0 mt-0.5 sm:mt-0" aria-hidden="true" xmlns="http://w3.org" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11h2v5m-2 0h4m-2.592-8.5h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-                    <p><span class="text-slate-500 font-medium me-1">{{ $virtualPaymentRequired ? 'La disponibilidad y el precio de la consulta médica no están garantizados hasta que finalice el pago.' : 'El pago se realiza directamente en la consulta. No se te cobra nada en línea.' }}</span></p>
+                    <p><span class="text-slate-500 font-medium me-1">{{ $virtualPaymentRequired ? 'La disponibilidad y el precio de la consulta médica no están garantizados hasta que finalice el pago.' : (($offersOnline ?? false) ? 'Puedes pagar ahora en línea (con una comisión de servicio) o pagar directamente en la consulta, sin costo adicional.' : 'El pago se realiza directamente en la consulta. No se te cobra nada en línea.') }}</span></p>
                 </div>
                 @endunless
                 
@@ -267,6 +269,23 @@
                             <span class="font-black text-slate-800 text-base">{{ (float) $appointment->price > 0 ? '$' . number_format((float) $appointment->price, 0, ',', '.') : 'Sin costo' }}</span>
                         </div>
                         <p class="mt-1 text-xs text-slate-400 text-left">Se paga directamente en la consulta.</p>
+                        @if(($offersOnline ?? false) && $wompiData)
+                        <div class="mt-3 bg-blue-50 border border-blue-100 rounded-2xl p-4 text-left">
+                            <p class="text-xs font-black text-slate-600 uppercase tracking-wider mb-2">Si pagas en línea</p>
+                            <div class="flex items-center justify-between text-md mb-1">
+                                <span class="text-slate-500 font-medium">Valor de la consulta</span>
+                                <span class="font-bold text-slate-700">${{ number_format((float) $appointment->price, 0, ',', '.') }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-md mb-1">
+                                <span class="text-slate-500 font-medium">Comisión de servicio</span>
+                                <span class="font-bold text-slate-700">${{ number_format((float) $wompiData['commission_amount'], 0, ',', '.') }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-md border-t border-blue-200 pt-2 mt-2">
+                                <span class="font-black text-slate-800">Total en línea</span>
+                                <span class="font-black text-blue-700 text-base">${{ number_format((float) $wompiData['total'], 0, ',', '.') }}</span>
+                            </div>
+                        </div>
+                        @endif
                         @endunless
 
                         <!-- Precio de cara al paciente -->
@@ -346,9 +365,20 @@
                                     </button>
                                 </form>
                             @else
+                                @if(($offersOnline ?? false) && $wompiData)
+                                <form action="{{ route('appointments.pay', $appointment) }}" method="POST" @submit="isSubmitting = true">
+                                    @csrf
+                                    <button type="submit" :disabled="isSubmitting"
+                                        class="w-full text-white py-4 rounded-2xl font-black shadow-lg shadow-blue-100 transition-all text-sm uppercase tracking-wider flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed">
+                                        <span x-show="!isSubmitting">Pagar en línea · ${{ number_format((float) $wompiData['total'], 0, ',', '.') }}</span>
+                                        <span x-show="isSubmitting" x-cloak>Redirigiendo al pago...</span>
+                                    </button>
+                                </form>
+                                <p class="my-3 text-center text-xs font-bold uppercase tracking-wider text-slate-400">o</p>
+                                @endif
                                 <form action="{{ route('appointments.success', $appointment) }}" method="GET">
                                     <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 transition-all text-sm uppercase tracking-wider focus:outline-none flex items-center justify-center gap-2">
-                                        <span>Confirmar y Finalizar Reserva</span>
+                                        <span>{{ ($offersOnline ?? false) ? 'Pagar en sede (sin costo adicional)' : 'Confirmar y Finalizar Reserva' }}</span>
                                     </button>
                                 </form>
                             @endif

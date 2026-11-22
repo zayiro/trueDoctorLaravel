@@ -119,6 +119,11 @@ class ConfirmAppointmentOnPaymentApproved
     /** Desembolso al doctor/clínica: uno por cita, con el precio completo (el descuento lo asume OpenDoctor). */
     private function ensurePayout(Appointment $appointment, Payment $payment): void
     {
+        // El dinero de un pago en sede nunca pasa por OpenDoctor: no hay nada que liquidar.
+        if ($payment->method === \App\Enums\PaymentMethod::OnSite) {
+            return;
+        }
+
         $payable = $appointment->clinic_id ? Clinic::find($appointment->clinic_id) : Doctor::find($appointment->doctor_id);
 
         if (!$payable) {

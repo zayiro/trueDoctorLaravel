@@ -20,10 +20,10 @@ class ClinicSetting extends Model
         'clinic_id', // OBLIGATORIO: Permite la inyección automática desde el Observer
         'plan_id',   // OBLIGATORIO: Permite asignar el plan de suscripción corporativo
         'accepts_online_payments',
+        'presential_payment_mode',
         'currency',
         'min_notice_hours',
         'max_advance_days',
-        'requires_approval',
         'buffer_time_minutes',
         'max_appointments_per_day',
         'allow_patient_cancellation',
@@ -42,7 +42,6 @@ class ClinicSetting extends Model
         'accepts_online_payments'    => 'boolean',
         'min_notice_hours'           => 'integer',
         'max_advance_days'           => 'integer',
-        'requires_approval'          => 'boolean',
         'buffer_time_minutes'        => 'integer',
         'max_appointments_per_day'   => 'integer', // null si es ilimitado
         'allow_patient_cancellation' => 'boolean',

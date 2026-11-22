@@ -17,19 +17,7 @@ class AppointmentService
      */
     private function resolveCancellationPolicy($appointment): array
     {
-        if ($appointment->clinic_id && $appointment->clinic) {
-            $settings = $appointment->clinic->settings;
-            return [
-                'allowed' => $settings->allow_patient_cancellation ?? true,
-                'notice_hours' => $settings->cancellation_notice_hours ?? 2,
-            ];
-        }
-
-        $settings = $appointment->doctor->settings;
-        return [
-            'allowed' => $settings->allow_patient_cancellation ?? true,
-            'notice_hours' => $settings->cancellation_notice_hours ?? 24,
-        ];
+        return app(\App\Services\Appointments\AppointmentCancellationService::class)->policyFor($appointment);
     }
 
     /**
@@ -55,8 +43,10 @@ class AppointmentService
             return ['allowed' => false, 'message' => 'La cita solicitada no existe en la base de datos.'];
         }
 
-        if (in_array($appointment->status, ['cancelled', 'completed'])) {
-            return ['allowed' => false, 'message' => "No se puede modificar una cita con estado '{$appointment->status}'."];
+        $statusValue = $appointment->status instanceof \BackedEnum ? $appointment->status->value : (string) $appointment->status;
+
+        if (in_array($statusValue, ['cancelled', 'completed'], true)) {
+            return ['allowed' => false, 'message' => "No se puede modificar una cita con estado '{$statusValue}'."];
         }
 
         // 🔥 CONTROL POLÍTICAS CORPORATIVAS EN EDICIÓN (Refactorizado a método genérico)

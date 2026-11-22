@@ -19,7 +19,7 @@ class DoctorSettingController extends Controller
         // Cargar las configuraciones o crearlas con valores por defecto si no existen
         $settings = $doctor->settings()->firstOrCreate(['doctor_id' => $doctor->id]);
         
-        return view('partner.settings.edit', compact('settings'));
+        return view('partner.settings.edit', ['settings' => $settings, 'owner' => $doctor]);
     }
 
     /**
@@ -33,7 +33,6 @@ class DoctorSettingController extends Controller
             'currency'                   => 'required|string|size:3',
             'min_notice_hours'           => 'required|integer|min:0|max:168', 
             'max_advance_days'           => 'required|integer|min:1|max:365',  
-            'requires_approval'          => 'boolean',
             'buffer_time_minutes'        => 'required|integer|min:0|max:60',
             'max_appointments_per_day'   => 'nullable|integer|min:1|max:100',
             'allow_patient_cancellation' => 'boolean',
@@ -47,11 +46,15 @@ class DoctorSettingController extends Controller
 
         $doctor = Auth::user()->doctor;
 
-        // Extraemos los datos del request exceptuando la metadata de Laravel
-        $data = $request->except(['_token', '_method']);
+        // Lista cerrada: solo los campos de este formulario. Nada más del request llega a la base (ej. plan_id).
+        $data = $request->only([
+            'accepts_online_payments', 'currency', 'min_notice_hours', 'max_advance_days',
+            'buffer_time_minutes', 'max_appointments_per_day', 'allow_patient_cancellation', 'cancellation_notice_hours', 'allow_patient_rescheduling',
+            'virtual_meeting_platform', 'google_calendar_sync', 'email_notifications', 'whatsapp_notifications',
+        ]);
         
         $booleans = [
-            'accepts_online_payments', 'requires_approval', 'allow_patient_cancellation',
+            'accepts_online_payments', 'allow_patient_cancellation',
             'allow_patient_rescheduling', 'google_calendar_sync', 'email_notifications',
             'whatsapp_notifications'
         ];
@@ -61,14 +64,13 @@ class DoctorSettingController extends Controller
             $data[$field] = $request->has($field);
         }
 
-        // 2. 👇 CANDADO DE SEGURIDAD ABSOLUTO (SOBREESCRITURA FORZADA)
-        // Sin importar lo que el cliente intente inyectar o modificar alterando el HTML,
-        // el backend neutraliza estas dos columnas obligándolas a guardarse siempre apagadas (0 / false).
-        $data['accepts_online_payments'] = false;
-        $data['requires_approval']        = false;
+        // Política de pago de citas presenciales (exige aceptar la comisión de servicio al activar el pago en línea).
+        $data = array_merge($data, \App\Services\Payments\PresentialPolicy::prepare($doctor, $request));
 
         // 3. Persistencia segura en la base de datos
         $doctor->settings()->update($data);
+
+        \App\Services\Payments\PresentialPolicy::recordAcceptance($doctor, $data, $request);
 
         // 4. Redirección limpia al alias corporativo de tu sistema
         return redirect()->route('partner.settings.edit')

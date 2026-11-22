@@ -40,7 +40,7 @@ final class AppointmentCheckout
     {
         $isClinic = $appointment->clinic_id !== null;
 
-        $commissionRate = (float) (Setting::where('key', $isClinic ? 'virtual_commission_clinic' : 'virtual_commission_doctor')->value('value') ?? 15);
+        $commissionRate = CommissionRates::forAppointment($appointment);
         $feeRate = (float) (Setting::where('key', 'wompi_fee')->value('value') ?? 2.9);
 
         $baseCents = (int) round(((float) $appointment->price) * 100);
@@ -108,13 +108,10 @@ final class AppointmentCheckout
                 ->get()
                 ->each(fn (Payment $old) => $this->payments->markExpired($old));
 
-            // Se guarda el desglose en la cita (lo leen el desembolso, los recibos y las pantallas existentes).
+            // El dinero (comisión, monto del médico, margen) vive en `payments`; en la cita solo queda lo pactado.
             $locked->update([
-                'commission_amount' => $quote->commissionCents / 100,
-                'doctor_amount'     => $quote->doctorAmountCents() / 100,
-                'platform_amount'   => $quote->platformMarginCents() / 100,
-                'promo_code'        => $quote->promoCode,
-                'discount_amount'   => $quote->discountCents / 100,
+                'promo_code'      => $quote->promoCode,
+                'discount_amount' => $quote->discountCents / 100,
             ]);
 
             if ($quote->totalCents === 0) {
@@ -166,6 +163,34 @@ final class AppointmentCheckout
             : $appointment->doctor?->settings;
 
         return (bool) ($settings->accepts_online_payments ?? false);
+    }
+
+    /** Presencial que se paga en sede, pero el médico/clínica ofrece pagar en línea (el paciente elige). */
+    public static function offersOnlinePayment(Appointment $appointment): bool
+    {
+        $isVirtual = ($appointment->service?->type === 'virtual') || ($appointment->address?->type === 'virtual');
+
+        if ($isVirtual || self::requiresOnlinePayment($appointment) || (float) $appointment->price <= 0) {
+            return false;
+        }
+
+        $raw = fn ($v) => $v instanceof \BackedEnum ? (string) $v->value : (string) $v;
+
+        if (!in_array($raw($appointment->status), ['pending', 'confirmed'], true) || $raw($appointment->payment_status) === 'paid') {
+            return false;
+        }
+
+        $settings = $appointment->clinic_id
+            ? $appointment->clinic?->settings
+            : $appointment->doctor?->settings;
+
+        return ($settings->presential_payment_mode ?? 'onsite') === 'choice';
+    }
+
+    /** ¿Se puede pagar en línea esta cita? (obligatorio u opcional) */
+    public static function canPayOnline(Appointment $appointment): bool
+    {
+        return self::requiresOnlinePayment($appointment) || self::offersOnlinePayment($appointment);
     }
 
     private function assertPayable(Appointment $appointment): void

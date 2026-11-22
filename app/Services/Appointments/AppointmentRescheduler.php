@@ -206,14 +206,14 @@ final class AppointmentRescheduler
         return 'Has alcanzado el límite máximo de reprogramaciones permitidas para esta cita. Por favor, contacta con soporte.';
     }
 
-    /** Misma regla que processPatient: si el doctor acepta pagos en línea, no hay aprobación manual. */
+    /** La aprobación manual de citas ya no existe: una reprogramación siempre queda confirmada. */
     private function requiresApproval(mixed $settings): bool
     {
         if (!$settings) {
             return false;
         }
 
-        return ((bool) $settings->accepts_online_payments) ? false : (bool) $settings->requires_approval;
+        return false; // La aprobación manual de citas ya no existe.
     }
 
     private function settingsFor(Appointment $appointment): mixed

@@ -228,10 +228,10 @@ $hasStatusFilter = filled(request('status'));
                                                    class="inline-flex justify-center items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black uppercase tracking-wider text-center w-full shadow-md transition-all transform hover:-translate-y-0.5 {{ $roomAction['live'] ? 'animate-pulse' : '' }}">
                                                     {{ $roomAction['live'] ? '🟢 Entrar a Consulta Ahora' : '🟢 Entrar a la sala' }}
                                                 </a>
-                                            @elseif ($roomAction['type'] === 'pay')
+                                            @elseif (in_array($roomAction['type'], ['pay', 'pay_optional'], true))
                                                 <a href="{{ $roomAction['url'] }}"
                                                    class="inline-flex justify-center items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-wider text-center w-full shadow-md transition-all transform hover:-translate-y-0.5">
-                                                    💳 Completar pago
+                                                    {{ $roomAction['type'] === 'pay_optional' ? '💳 Pagar en línea' : '💳 Completar pago' }}
                                                 </a>
                                                 <span class="flex items-center text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 p-1.5 rounded-lg text-center w-full">
                                                     Tu consulta virtual se confirma al completar el pago.

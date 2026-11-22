@@ -78,3 +78,10 @@ Schedule::exec('sudo -n -u apache ' . PHP_BINARY . ' ' . base_path('artisan') . 
     ->onFailure(function () {
         \Log::error('❌ geoip:update falló, revisa storage/app/geoip.mmdb');
     });
+
+// Borrador del lote de liquidaciones: viernes 6:00 a. m. (hora de Colombia), citas realizadas hasta el jueves.
+Schedule::command('payouts:generate-batch')
+    ->timezone('America/Bogota')
+    ->weeklyOn(5, '06:00')
+    ->withoutOverlapping()
+    ->onOneServer();
