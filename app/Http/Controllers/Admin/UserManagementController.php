@@ -41,7 +41,27 @@ class UserManagementController extends Controller
         // 4. Paginación optimizada de registros
         $users = $query->latest()->paginate(15)->withQueryString();
 
-        return view('administrator.users.index', compact('users'));
+        // Porcentaje de comisión vigente de cada médico/clínica de la página (misma regla que se cobra: especial -> general)
+        $users->getCollection()->load(['doctor.settings', 'clinic.settings']);
+        $fmt = fn (float $v): string => rtrim(rtrim(number_format($v, 2, '.', ''), '0'), '.');
+        $rates = [];
+        foreach ($users->getCollection() as $u) {
+            $owner = $u->role === 'doctor' ? $u->doctor : ($u->role === 'clinic' ? $u->clinic : null);
+            if (!$owner) {
+                continue;
+            }
+            $s = $owner->settings;
+            $rates[$u->id] = [
+                'virtual'    => $fmt(\App\Services\Payments\CommissionRates::forOwner($owner, 'virtual')),
+                'presential' => $fmt(\App\Services\Payments\CommissionRates::forOwner($owner, 'presential')),
+                'special'    => (bool) ($s && (
+                    ($s->special_virtual_commission !== null && $s->special_virtual_commission !== '')
+                    || ($s->special_presential_commission !== null && $s->special_presential_commission !== '')
+                )),
+            ];
+        }
+
+        return view('administrator.users.index', compact('users', 'rates'));
     }
 
     /**

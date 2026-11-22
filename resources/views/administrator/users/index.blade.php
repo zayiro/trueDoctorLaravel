@@ -141,7 +141,7 @@ $breadcrumbs = [
                                         
                                         <!-- Acceso directo a la comisión especial (solo médicos y clínicas) -->
                                         @if(in_array($item->role, ['doctor', 'clinic'], true))
-                                            <a href="{{ route('administrator.commissions.index', ['type' => $item->role, 'q' => $item->email]) }}" class="py-1.5 px-3 text-xs font-semibold rounded-lg bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition" title="Porcentaje de comisión de este usuario">% Comisión</a>
+                                            <a href="{{ route('administrator.commissions.index', ['type' => $item->role, 'q' => $item->email]) }}" class="py-1.5 px-3 text-xs font-semibold rounded-lg bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition" title="Porcentaje de comisión de este usuario{{ isset($rates[$item->id]) ? ' — virtual '.$rates[$item->id]['virtual'].'%, presencial '.$rates[$item->id]['presential'].'%'.($rates[$item->id]['special'] ? ' (especial)' : '') : '' }}"><span class="block leading-tight">% Comisión</span>@if(isset($rates[$item->id]))<span class="block text-[10px] font-medium leading-tight {{ $rates[$item->id]['special'] ? 'text-indigo-600' : 'text-slate-400' }}">V {{ $rates[$item->id]['virtual'] }}% · P {{ $rates[$item->id]['presential'] }}%{{ $rates[$item->id]['special'] ? ' ★' : '' }}</span>@endif</a>
                                         @endif
 
                                         <!-- Switch de Estado (Activar/Desactivar) -->
