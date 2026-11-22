@@ -332,6 +332,12 @@
                     this.selectedCity = activeItem;
                     this.searchQuery = activeItem.name + ', ' + activeItem.countryName;
                     this.selectedSlug = activeItem.id;
+                    this.suggestions = [activeItem];
+                } else if (this.selectedSlug && new URLSearchParams(window.location.search).get('city_name')) {
+                    const p = new URLSearchParams(window.location.search);
+                    this.selectedCity = { id: p.get('city_id'), name: p.get('city_name'), countryName: p.get('city_countryName') || 'Colombia', countryCode: p.get('city_countryCode') || 'CO', lat: p.get('city_lat') || '', lng: p.get('city_lng') || '' };
+                    this.searchQuery = this.selectedCity.name + ', ' + this.selectedCity.countryName;
+                    this.suggestions = [this.selectedCity];
                 }
             },
             filteredItems() {
@@ -340,7 +346,9 @@
             openDropdown() { 
                 this.isOpen = true; 
                 this.highlightedIndex = -1; 
-                if (this.searchQuery.length < 2) {
+                if (this.selectedCity.id && this.suggestions.length === 0) {
+                    this.suggestions = [this.selectedCity];
+                } else if (this.searchQuery.length < 2) {
                     this.suggestions = this.getDefaultCities();
                 }
             },
@@ -351,7 +359,16 @@
                 this.isOpen = true;
                 clearTimeout(this.searchTimeout);
 
-                console.log(this.selectedCity);
+                const label = this.selectedCity.id ? `${this.selectedCity.name}, ${this.selectedCity.countryName || 'Colombia'}` : '';
+                if (this.selectedCity.id && this.searchQuery === label) {
+                    this.suggestions = [this.selectedCity];
+                    return;
+                }
+                if (this.selectedCity.id) {
+                    // El texto cambió: se descarta la ciudad anterior para no enviar un código viejo.
+                    this.selectedCity = {};
+                    this.selectedSlug = '';
+                }
 
                 // 🔥 Si ya hay una ciudad seleccionada y el query es igual a su nombre, no busques
                 if (this.selectedCity.id && this.searchQuery === this.selectedCity.name) {
@@ -366,7 +383,7 @@
                 
                 this.loading = true;
                 this.searchTimeout = setTimeout(() => {
-                    fetch(`{{ route('cities.search') }}?q=${encodeURIComponent(this.searchQuery)}`)
+                    fetch(`{{ route('cities.search') }}?q=${encodeURIComponent(this.searchQuery.split(',')[0].trim())}`)
                         .then(res => res.json())
                         .then(data => {
                             if (data.data && data.data.length > 0) {

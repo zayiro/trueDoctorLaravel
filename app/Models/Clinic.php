@@ -197,11 +197,6 @@ class Clinic extends Model
         return $this->morphMany(Review::class, 'reviewable');
     }
 
-    public function campaigns(): HasMany
-    {
-        return $this->hasMany(Campaign::class, 'clinic_id');
-    }
-
     public function gallery()
     {
         return $this->morphMany(GalleryImage::class, 'galleryable')

@@ -204,6 +204,19 @@ $statusLabels = [
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"></path></svg>
                                 </button>
 
+                                <!-- No asistió: cita confirmada que ya empezó -->
+                                @if(app(\App\Services\AppointmentStateManager::class)->validationError($app, 'no_show') === null)
+                                    <form action="{{ route('appointments.updateStatus', $app->id) }}" method="POST" class="inline"
+                                          onsubmit="return confirm('¿Confirmas que el paciente no se presentó? No se puede deshacer. Si la cita fue pagada en línea, se liquidará igual al médico.');">
+                                        @csrf
+                                        @method('PATCH')
+                                        <input type="hidden" name="status" value="no_show">
+                                        <button type="submit" title="El paciente no asistió" class="inline-flex items-center justify-center px-3 py-2.5 bg-orange-50 text-orange-700 hover:bg-orange-600 hover:text-white border border-orange-100 rounded-xl transition-all shadow-2xs text-xs font-bold">
+                                            No asistió
+                                        </button>
+                                    </form>
+                                @endif
+
                                 <!-- Cancelar Cita -->
                                 <button type="button" @click="activeAppointmentId = '{{ $app->id }}'; cancellationModal = true" class="inline-flex items-center justify-center px-3 py-2.5 bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white border border-rose-100 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-2xs cursor-pointer dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900">
                                     Cancelar Cita

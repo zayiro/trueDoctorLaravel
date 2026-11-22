@@ -51,7 +51,7 @@ class PayoutController extends Controller
             fputcsv($out, [
                 'Liquidación', 'Cita', 'Fecha cita', 'Fecha cobro', 'Modalidad', 'Tipo beneficiario', 'Beneficiario',
                 'Médico que atendió', 'Sede', 'Referencia del pago', 'Cobrado al paciente', 'Fee Wompi',
-                'Comisión plataforma', 'A pagar', 'Estado', 'Ref. transferencia', 'Fecha de pago', 'Registrado por', 'Lote',
+                'Comisión plataforma', 'A pagar', 'Estado', 'Ref. transferencia', 'Fecha de pago', 'Registrado por', 'Lote', 'Asistencia', 'Sala Zoom iniciada',
             ], ';', '"', '\\');
 
             $money = fn ($v) => number_format((float) $v, 2, ',', '');
@@ -88,6 +88,8 @@ class PayoutController extends Controller
                         $fmt($p->paid_at),
                         $safe($p->paidBy?->name ?? ''),
                         $safe($p->batch?->number ?? ''),
+                        (($a?->status instanceof \BackedEnum ? $a->status->value : (string) $a?->status) === 'no_show') ? 'No asistió' : 'Atendida',
+                        $virtual ? ($a?->zoom_started ? 'Sí' : 'No') : '',
                     ], ';', '"', '\\');
                 }
             });

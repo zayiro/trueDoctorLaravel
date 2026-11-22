@@ -120,7 +120,7 @@ $breadcrumbs = [
                                         } elseif ($item->role === 'clinic') {
                                             $profileActive = $item->clinic?->active;
                                         } elseif ($item->role === 'patient') {
-                                            $profileActive = $item->patient->active;
+                                            $profileActive = $item->patient?->active;
                                         }
                                     @endphp
                                     
@@ -139,6 +139,11 @@ $breadcrumbs = [
                                 <td class="p-4 text-right align-middle">
                                     <div class="inline-flex items-center justify-end gap-x-2">
                                         
+                                        <!-- Acceso directo a la comisión especial (solo médicos y clínicas) -->
+                                        @if(in_array($item->role, ['doctor', 'clinic'], true))
+                                            <a href="{{ route('administrator.commissions.index', ['type' => $item->role, 'q' => $item->email]) }}" class="py-1.5 px-3 text-xs font-semibold rounded-lg bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition" title="Porcentaje de comisión de este usuario">% Comisión</a>
+                                        @endif
+
                                         <!-- Switch de Estado (Activar/Desactivar) -->
                                         <form action="{{ route('administrator.users.toggle', $item) }}" method="POST" onsubmit="return confirm('¿Deseas alterar el estado de acceso de este usuario en producción?');">
                                             @csrf

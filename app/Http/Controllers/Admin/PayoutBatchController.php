@@ -25,8 +25,9 @@ class PayoutBatchController extends Controller
         $eligibleCount = (clone $eligible)->count();
         $eligibleTotal = (float) (clone $eligible)->sum('amount_to_pay');
         $unbatched = DoctorPayout::where('status', 'pending')->whereNull('batch_id')->count();
+        $unclosed = \App\Services\Payments\PayoutAttendance::unclosed($cutoff);
 
-        return view('administrator.payouts.batches.index', compact('batches', 'cutoff', 'eligibleCount', 'eligibleTotal', 'unbatched'));
+        return view('administrator.payouts.batches.index', compact('batches', 'cutoff', 'eligibleCount', 'eligibleTotal', 'unbatched', 'unclosed'));
     }
 
     public function store(Request $request)

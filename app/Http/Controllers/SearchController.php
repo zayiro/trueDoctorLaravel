@@ -201,7 +201,7 @@ class SearchController extends Controller
 
         // Filtro por Ciudad
         $searchQuery->when($request->city_id, function ($query) use ($request) {
-            $query->where('addresses.city_id', $request->city_id);
+            $query->whereIn('addresses.city_id', \App\Support\CitySearch::ids((string) $request->city_id, $request->input('city_name'), $request->input('city_countryCode')));
         });
 
         $addresses = $searchQuery->orderBy('owner_plan_price', 'desc')

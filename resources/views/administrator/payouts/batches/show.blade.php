@@ -100,7 +100,14 @@ $eventLabels = ['created' => 'Lote creado', 'line_released' => 'Línea excluida'
                                         <tr class="border-t border-gray-100">
                                             <td class="py-1 pr-3">#{{ $line->appointment_id }}</td>
                                             <td class="py-1 pr-3">{{ $la?->date ? \Carbon\Carbon::parse($la->date)->format('d/m/Y') : '—' }}</td>
-                                            <td class="py-1 pr-3">{{ $lv ? 'Virtual' : 'Presencial' }}</td>
+                                            <td class="py-1 pr-3">{{ $lv ? 'Virtual' : 'Presencial' }}
+                                                @if(($la?->status instanceof \BackedEnum ? $la->status->value : (string) $la?->status) === 'no_show')
+                                                    <span class="ml-1 px-1.5 py-0.5 rounded bg-orange-100 text-orange-800 font-semibold" title="El paciente pagó en línea y no se presentó; por política se le paga al médico.">No asistió</span>
+                                                @endif
+                                                @if($lv && !$la?->zoom_started)
+                                                    <span class="ml-1 px-1.5 py-0.5 rounded bg-red-100 text-red-800 font-semibold" title="Zoom no registra que el médico haya iniciado la sala. Revisa antes de aprobar.">Sala no iniciada</span>
+                                                @endif
+                                            </td>
                                             <td class="py-1 pr-3">{{ $lv ? 'Virtual' : ($la?->address?->name ?? '—') }}</td>
                                             <td class="py-1 pr-3 text-right font-semibold">{{ $money($line->amount_to_pay) }}</td>
                                             <td class="py-1 pr-3">{{ $line->status === 'paid' ? 'Pagada · ' . $line->transfer_reference : 'Pendiente' }}</td>

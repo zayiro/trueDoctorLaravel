@@ -3,7 +3,6 @@
 use App\Models\City;
 
 use Illuminate\Http\Request;
-use App\Livewire\PublicLanding;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\SearchController;
@@ -102,7 +101,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     //borrar cache desde el navegador cuando este logueado con role de admin
     Route::get('/clear-cache', [AdminController::class, 'clearCache'])->name('administrator.clearcache.index'); 
     
-    Route::post('/cache/cities/clear', [CityController::class, 'clearCitiesCache'])->name('administrator.cache.city');
+    Route::post('/cache/cities/clear', [CityController::class, 'clearCache'])->name('administrator.cache.city');
 
     // Rutas protegidas de administración
     Route::resource('administrator/seo-sintomas', IndexedSymptomController::class)
@@ -261,10 +260,7 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     // Eliminar un registro (Destroy)
     Route::delete('/partner/expertises/{expertise}', [MedicalExpertiseController::class, 'destroy'])->name('partner.expertises.destroy');    
 
-    Route::post('/partner/appointments/{id}/generate-zoom', [AppointmentController::class, 'generateZoomLink'])->name('partner.appointments.generate_zoom');
     
-    Route::get('/campaigns', \App\Livewire\Campaigns\CampaignIndex::class)->name('campaigns.index');
-    Route::get('/campaigns/create', \App\Livewire\Campaigns\CreateCampaign::class)->name('campaigns.create');
 
     // Bandeja de clínicas vinculadas para el médico
     Route::get('clinics', [DoctorClinicController::class, 'index'])->name('partner.doctor_clinics.index');
@@ -318,7 +314,6 @@ Route::middleware(['auth', 'role:clinic'])->group(function () {
     Route::post('/clinic/appointments/{id}/change-doctor', [ClinicAppointmentController::class, 'changeDoctor'])->name('partner.clinic.appointments.change-doctor');
 
     // API Interna para carga dinámica de ciudades DIVIPOLA
-    Route::get('/clinic/api/departments/{department}/cities', [ClinicAddressController::class, 'getCitiesByDepartment'])->name('partner.clinic.api.cities');
 
     Route::get('/clinic/appointments', [ClinicAppointmentController::class, 'index'])->name('partner.clinic.appointments.index');
 });
@@ -346,11 +341,9 @@ Route::middleware(['auth', 'role:patient'])->group(function () {
     Route::delete('/patient/family-history/{id}', [PatientController::class, 'destroyFamilyHistory'])->name('patient.family-history.destroy');
 
     Route::get('/patient/medications', [PatientController::class, 'indexMedication'])->name('patient.medications.index');
-    Route::delete('/patient/medications/{medication}', [PatientController::class, 'destroyMedication'])->name('patient.medications.destroy');
 
     Route::post('/patient/medications', [PatientController::class, 'storeMedication'])->name('patient.medications.store');
     Route::put('/patient/medications/{medication}', [PatientController::class, 'updateMedication'])->name('patient.medications.update');
-    Route::patch('/patient/medications/{medication}/toggle', [PatientController::class, 'toggleStatusMedication'])->name('patient.medications.toggle');
     
     Route::get('/patient/pdf/clinical-history/{patient}', [PatientController::class, 'downloadClinicalHistory'])->name('patient.pdf.clinical-history');
     // Vista de solo lectura de la historia clínica oficial del paciente
@@ -366,7 +359,6 @@ Route::middleware(['auth', 'role:patient'])->group(function () {
     Route::post('/appointments/{id}/discard', [\App\Http\Controllers\PendingBookingController::class, 'discard'])->name('appointments.discard');
 
     // Ruta de la sala de espera para el paciente
-    Route::get('/patient/meet/{room_code}', [AppointmentController::class, 'waitingRoom'])->name('patient.appointments.waiting_room');
     
     Route::get('/payments', [PatientController::class, 'payments'])->name('patient.payments.index');
     Route::get('/payments/{appointment}/receipt', [PatientController::class, 'downloadReceipt'])->name('patient.payments.receipt');
@@ -561,7 +553,7 @@ Route::get('/sintomas', [SymptomDirectoryController::class, 'index'])->name('sym
 Route::get('/sintomas/{slug}', [SymptomDirectoryController::class, 'show'])->name('symptom.landing');
 
 // Directorio médico de socios ordenado por planes de suscripción
-Route::get('/medical-directory', [SearchController::class, 'medicalDirectory'])->name('medical.directory');
+Route::redirect('/medical-directory', '/search', 301)->name('medical.directory');
 
 Route::redirect('/examenes', '/medical-analysis', 301); // módulo anterior retirado
 
@@ -654,9 +646,6 @@ Route::post('/skin-analysis/promo-codes/validate', [SkinAnalysisController::clas
 Route::get('/verify/{signatureHash}', [PrescriptionController::class, 'verify'])
      ->name('document.verify');  
      
-Route::get('{partner_slug}/{campaign_slug}.html', PublicLanding::class)
-    ->name('landing.public')
-    ->where('partner_slug', '(?!appointments|administrator|admin|partner|patient|clinic|api|medical-analysis|verify|sintomas|medical-partner|plans)[a-zA-Z0-9\-]+');
 
 Route::get('/cities/search', [CityController::class, 'search'])->name('cities.search');
 Route::get('/cities/nearby', [CityController::class, 'searchByCoordinates'])->name('cities.nearby');

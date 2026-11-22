@@ -27,6 +27,9 @@ $colors = ['draft' => 'bg-gray-100 text-gray-700', 'approved' => 'bg-blue-100 te
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6">
             <p class="text-sm text-gray-700">
                 Con corte al <strong>{{ $cutoff->format('d/m/Y') }}</strong> hay <strong>{{ $eligibleCount }}</strong> liquidación(es) elegible(s) por <strong>{{ $money($eligibleTotal) }}</strong>.
+                @if(!empty($unclosed))
+                    <span class="block mt-1 text-amber-700 font-semibold">{{ $unclosed }} cita(s) presenciales pagadas en línea ya pasaron y siguen sin cerrar: no entran al lote hasta que el médico las marque «Atendida» o «No asistió».</span>
+                @endif
                 @if($unbatched > $eligibleCount)
                     <span class="text-gray-500">Otras {{ $unbatched - $eligibleCount }} pendientes todavía no son elegibles (cita no realizada, posterior al corte o con reembolso).</span>
                 @endif

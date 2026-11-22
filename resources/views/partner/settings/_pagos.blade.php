@@ -17,7 +17,7 @@
 
 <!-- SECCIÓN 1: Pagos -->
 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-     x-data="{ mode: @json($mode), accepted: @json($accepted) }">
+     x-data='{ mode: @json($mode), accepted: @json($accepted) }'>
     <h2 class="text-lg font-semibold text-gray-800 mb-1 flex items-center gap-2">💳 Pagos y Facturación</h2>
     <p class="text-sm text-gray-500 mb-4">
         Las citas virtuales siempre se pagan en línea{!! $virtTxt !!}.

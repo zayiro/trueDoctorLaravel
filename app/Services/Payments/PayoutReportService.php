@@ -75,7 +75,7 @@ class PayoutReportService
             return [
                 'appointment' => $p->appointment_id,
                 'date'        => $a?->date ? \Carbon\Carbon::parse($a->date)->format('d/m/Y') : '',
-                'modality'    => $virtual ? 'Virtual' : 'Presencial',
+                'modality'    => ($virtual ? 'Virtual' : 'Presencial') . (($a?->status instanceof \BackedEnum ? $a->status->value : (string) $a?->status) === 'no_show' ? ' · paciente no asistió' : ''),
                 'place'       => $virtual ? 'Virtual' : ($a?->address?->name ?? ''),
                 'amount'      => (float) $p->amount_to_pay,
             ];

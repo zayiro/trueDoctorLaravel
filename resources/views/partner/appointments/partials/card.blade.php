@@ -230,6 +230,19 @@ class="p-5 bg-white space-y-3 relative">
                     </form>
                 @endif
 
+                <!-- No asistió: cita confirmada que ya empezó. Si fue pagada en línea, se liquida al médico. -->
+                @if(app(\App\Services\AppointmentStateManager::class)->validationError($app, 'no_show') === null)
+                    <form action="{{ route('appointments.updateStatus', $app->id) }}" method="POST" class="w-full"
+                          onsubmit="return confirm('¿Confirmas que el paciente no se presentó? No se puede deshacer. Si la cita fue pagada en línea, se te liquidará igual.');">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="status" value="no_show">
+                        <button type="submit" class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-orange-600 hover:bg-orange-50 rounded-lg transition text-left">
+                            🚫 El paciente no asistió
+                        </button>
+                    </form>
+                @endif
+
                 <!-- Reagendar: activa y (si es virtual) pagada -->
                 @if($canReschedule)
                     <button type="button" @click="openReschedule = true; actionsOpen = false" 

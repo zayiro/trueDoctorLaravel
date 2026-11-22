@@ -897,59 +897,6 @@ class AppointmentController extends Controller
         ]);
     }
 
-    public function getStatus(Appointment $appointment): JsonResponse
-    {
-        return response()->json([
-            'status' => $appointment->status->value,
-            'zoom_started' => (bool) $appointment->zoom_started,
-            'completed_at' => $appointment->updated_at
-        ]);
-    }
-
-    public function saveNotes(Request $request, Appointment $appointment)
-    {
-        $this->authorizeStaffOfAppointment($appointment);
-
-        $appointment->update(['notes' => $request->input('notes')]);
-        return response()->json(['success' => true]);
-    }
-    
-    public function endZoomMeeting(Appointment $appointment, ZoomService $zoomService): JsonResponse
-    {
-        $this->authorizeStaffOfAppointment($appointment);
-
-        // 1. Ya completada → idempotente
-        if ($appointment->status === AppointmentStatus::COMPLETED) {
-            return response()->json([
-                'success' => true,
-                'message' => 'La consulta ya estaba finalizada.'
-            ]);
-        }
-
-        // 2. Intentar cerrar Zoom si existe (best-effort, no bloqueante)
-        if ($appointment->zoom_meeting_id) {
-            try {
-                $zoomService->endMeeting($appointment->zoom_meeting_id);
-            } catch (\Throwable $e) {
-                Log::warning('Zoom falló al cerrar, pero continuamos', [
-                    'appointment_id' => $appointment->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
-
-        // 3. SIEMPRE marcar como completada (la verdad está en nuestra DB)
-        $appointment->update([
-            'status'       => AppointmentStatus::COMPLETED->value,
-            'completed_at' => now(),
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Consulta finalizada correctamente.'
-        ]);
-    }
-
     /** Ruta heredada de retorno de Wompi: se resuelve por la capa de pagos y se manda a la página pública de resultado. */
     public function paymentResult(Request $request, PaymentService $payments)
     {

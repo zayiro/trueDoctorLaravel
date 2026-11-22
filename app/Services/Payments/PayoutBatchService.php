@@ -48,7 +48,7 @@ class PayoutBatchService
         return DoctorPayout::query()
             ->where('status', DoctorPayout::STATUS_PENDING)
             ->whereNull('batch_id')
-            ->whereHas('appointment', fn ($a) => $a->where('status', 'completed')->where('payment_status', 'paid')
+            ->whereHas('appointment', fn ($a) => $a->whereIn('status', \App\Services\Payments\PayoutAttendance::PAYABLE_STATUSES)->where('payment_status', 'paid')
                 ->whereRaw('TIMESTAMP(appointments.date, appointments.end_time) <= ?', [$cut]))
             ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('payment_refunds')
                 ->whereColumn('payment_refunds.appointment_id', 'doctor_payouts.appointment_id'));

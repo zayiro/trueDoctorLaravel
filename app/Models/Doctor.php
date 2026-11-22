@@ -195,11 +195,6 @@ class Doctor extends Model
         return $this->hasMany(Schedule::class, 'doctor_id');
     }
 
-    public function campaigns()
-    {
-        return $this->hasMany(Campaign::class, 'doctor_id');
-    }
-
     public function canDo($feature)
     {
         $plan = $this->plan;
