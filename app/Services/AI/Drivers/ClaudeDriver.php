@@ -69,7 +69,6 @@ class ClaudeDriver implements AIVisionDriver
                 ],
                 'tools' => [$tool],
                 'tool_choice' => ['type' => 'tool', 'name' => 'reportar_analisis_clinico'],
-                'temperature' => 0.2,
             ]);
 
         if ($response->failed()) {

@@ -133,6 +133,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::get('/admin/settings', [SettingController::class, 'index'])->name('administrator.settings.index');
     Route::put('/admin/settings', [SettingController::class, 'update'])->name('administrator.settings.update');
+    Route::get('/admin/ai-chat', [\App\Http\Controllers\Admin\AiChatSettingController::class, 'index'])->name('administrator.ai-chat.index');
+    Route::put('/admin/ai-chat', [\App\Http\Controllers\Admin\AiChatSettingController::class, 'update'])->name('administrator.ai-chat.update');
     Route::get('/admin/contact', [UserManagementController::class, 'contactMessages'])->name('administrator.contact.index');
     Route::delete('/admin/contact/{id}/delete', [UserManagementController::class, 'destroyContact'])->name('administrator.contact.destroy');
 
@@ -361,6 +363,7 @@ Route::middleware(['auth', 'role:patient'])->group(function () {
     // Ruta de la sala de espera para el paciente
     
     Route::get('/payments', [PatientController::class, 'payments'])->name('patient.payments.index');
+    Route::get('/patient/ai-chats', [\App\Http\Controllers\AiChatPatientController::class, 'index'])->name('patient.ai-chats.index');
     Route::get('/payments/{appointment}/receipt', [PatientController::class, 'downloadReceipt'])->name('patient.payments.receipt');
 });
 
@@ -676,6 +679,30 @@ Route::get('/pay/{token}', [PaymentLinkController::class, 'show'])->middleware('
 Route::post('/pay/{token}/code', [PaymentLinkController::class, 'promo'])->middleware('throttle:20,1')->name('appointments.pay-link.promo');
 Route::post('/pay/{token}', [PaymentLinkController::class, 'start'])->middleware('throttle:10,1')->name('appointments.pay-link.start');
 
+// Chat de Salud con IA de OpenDoctor — compra (páginas sin indexar; el chat se agrega en pasos siguientes)
+Route::prefix('chat-salud-ia')->name('ai-chat.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\AiChatLandingController::class, 'show'])->name('landing');
+    Route::post('/avisame', [\App\Http\Controllers\AiChatLandingController::class, 'waitlist'])->middleware('throttle:5,10')->name('waitlist');
+    Route::get('/comprar', [\App\Http\Controllers\AiChatPurchaseController::class, 'buy'])->name('buy');
+    Route::post('/comprar', [\App\Http\Controllers\AiChatPurchaseController::class, 'select'])->middleware('throttle:30,1')->name('select');
+    Route::get('/datos', [\App\Http\Controllers\AiChatPurchaseController::class, 'patient'])->name('patient');
+    Route::post('/datos', [\App\Http\Controllers\AiChatPurchaseController::class, 'process'])->middleware('throttle:10,1')->name('process');
+    Route::get('/pago/{token}', [\App\Http\Controllers\AiChatPurchaseController::class, 'checkout'])->middleware('throttle:30,1')->name('checkout');
+    Route::get('/compra/{token}', [\App\Http\Controllers\AiChatPurchaseController::class, 'purchased'])->middleware('throttle:60,1')->name('purchased');
+    Route::get('/s/{token}', [\App\Http\Controllers\AiChatSessionController::class, 'enter'])->middleware('throttle:60,1')->name('enter');
+    Route::post('/s/{token}/verificar', [\App\Http\Controllers\AiChatSessionController::class, 'verify'])->middleware('throttle:10,1')->name('verify');
+    Route::post('/s/{token}/reenviar', [\App\Http\Controllers\AiChatSessionController::class, 'resend'])->middleware('throttle:3,10')->name('resend');
+    Route::get('/s/{token}/empezar', [\App\Http\Controllers\AiChatSessionController::class, 'start'])->middleware('throttle:60,1')->name('start');
+    Route::post('/s/{token}/empezar', [\App\Http\Controllers\AiChatSessionController::class, 'begin'])->middleware('throttle:10,1')->name('begin');
+    Route::get('/s/{token}/chat', [\App\Http\Controllers\AiChatSessionController::class, 'chat'])->middleware('throttle:60,1')->name('chat');
+    Route::post('/s/{token}/mensaje', [\App\Http\Controllers\AiChatSessionController::class, 'message'])->middleware('throttle:30,1')->name('message');
+    Route::get('/s/{token}/estado', [\App\Http\Controllers\AiChatSessionController::class, 'state'])->middleware('throttle:120,1')->name('state');
+    Route::post('/s/{token}/idioma', [\App\Http\Controllers\AiChatSessionController::class, 'locale'])->middleware('throttle:20,1')->name('locale');
+    Route::post('/s/{token}/liberar', [\App\Http\Controllers\AiChatSessionController::class, 'release'])->middleware('throttle:60,1')->name('release');
+    Route::get('/s/{token}/informe', [\App\Http\Controllers\AiChatSessionController::class, 'report'])->middleware('throttle:60,1')->name('report');
+    Route::get('/s/{token}/descargar', [\App\Http\Controllers\AiChatSessionController::class, 'download'])->middleware('throttle:20,1')->name('download');
+});
+
 // Códigos promocionales de doctores particulares y clínicas (el descuento lo asume quien lo crea).
 Route::middleware(['auth', 'role:doctor|clinic'])->group(function () {
     Route::resource('partner/promo-codes', \App\Http\Controllers\PartnerPromoCodeController::class)
@@ -712,4 +739,9 @@ Route::middleware(['auth', 'role:doctor|clinic'])->group(function () {
     Route::get('/partner/appointments/{appointment}/reschedule', [PartnerAppointmentController::class, 'rescheduleView'])->name('partner.appointments.reschedule');
     Route::put('/partner/appointments/{appointment}/reschedule/process', [PartnerAppointmentController::class, 'rescheduleProcess'])->name('partner.appointments.reschedule.process');
     Route::get('/partner/appointments/{appointment}/reschedule/slots', [PartnerAppointmentController::class, 'rescheduleSlots'])->name('partner.appointments.reschedule.slots');
+});
+
+// Chat de Salud IA: términos del servicio
+Route::prefix('chat-salud-ia')->name('ai-chat.')->group(function () {
+    Route::get('/terminos', [\App\Http\Controllers\AiChatTermsController::class, 'show'])->name('terms');
 });

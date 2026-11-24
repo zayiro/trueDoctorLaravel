@@ -8,6 +8,7 @@ enum PaymentKind: string
     case Subscription = 'subscription';
     case Exam         = 'exam';
     case SkinAnalysis = 'skin_analysis';
+    case AiChat       = 'ai_chat';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum PaymentKind: string
             self::Subscription => 'Suscripción de plan',
             self::Exam         => 'Análisis de exámenes',
             self::SkinAnalysis => 'Análisis de piel',
+            self::AiChat       => 'Chat de Salud con IA',
         };
     }
 
@@ -26,6 +28,7 @@ enum PaymentKind: string
             self::Appointment  => 'appointment',
             self::Exam         => 'exam',
             self::SkinAnalysis => 'skin_analysis',
+            self::AiChat       => null,
             self::Subscription => null,
         };
     }

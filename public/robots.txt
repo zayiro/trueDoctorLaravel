@@ -6,6 +6,7 @@ Allow: /sintomas/
 Allow: /search
 Allow: /search-symptom
 Allow: /doctores-cerca-de-mi
+Allow: /chat-salud-ia$
 Allow: /medical-partner/
 Allow: /clinic/
 Allow: /medical-analysis

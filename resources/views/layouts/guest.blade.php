@@ -4,7 +4,8 @@
     'keywords' => null, 
     'meta_robots' => null,
     'meta_canonical' => null,
-    'meta_image' => null
+    'meta_image' => null,
+    'meta_skip_faq' => false
 ])
 
 @php
@@ -36,17 +37,13 @@
     
     $finalImage = !empty($meta_image) ? $meta_image : asset('/images/logoAuth.jpg');
     
-    $schemaJson = json_encode([
+    $schemaJson = json_encode(array_filter([
         '@context' => 'https://schema.org',
         '@type' => 'WebApplication',
         'name' => $name,
         'url' => 'https://opendoctor.online',
         "applicationCategory" => "HealthApplication",
-        "aggregateRating" => [
-            "@type" => "AggregateRating",
-            "ratingValue" => 4.6,
-            "ratingCount" => 1739
-        ],
+        // AggregateRating: quitada. Solo se debe publicar una calificación que salga de valoraciones reales de pacientes.
         "operatingSystem" => "All",
         "browserRequirements" => "Requires HTML5 / JavaScript",
         "inLanguage" => "es",        
@@ -87,7 +84,7 @@
                 "name" => "World"
             ],
         ],
-        "hasPart" => [
+        "hasPart" => $meta_skip_faq ? null : [
             [
                 "@type" => "FAQPage",
                 "mainEntity" => [
@@ -118,7 +115,7 @@
                 ]
             ]
         ]
-    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    ], fn ($v) => $v !== null), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
     $keywords = 'Agenda cita médica online, consulta especialista, telemedicina Colombia, plataforma agendamiento, cita médica virtual, Exámenes de laboratorio online, Analisis de Piel por Inteligencia Artificial, Laboratorio, Ecografía, Radiografía, Tomografía, Resonancia, DICOM';        
 @endphp
 <!DOCTYPE html>

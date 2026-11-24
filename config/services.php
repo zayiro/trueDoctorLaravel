@@ -58,7 +58,7 @@ return [
 
     'anthropic' => [
         'key' => env('ANTHROPIC_API_KEY'),
-        'vision_model' => env('ANTHROPIC_VISION_MODEL', 'claude-opus-4-5'),
+        'vision_model' => env('ANTHROPIC_VISION_MODEL', 'claude-sonnet-5-5'),
     ],
 
     'ai_vision' => [

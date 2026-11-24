@@ -56,7 +56,6 @@ final class AnalysisCheckout
                 ->each(fn (Payment $old) => $this->payments->markExpired($old));
 
             $total = $base - $discount + $commission;
-            $feeRate = (float) (Setting::get('wompi_fee') ?? 2.9);
 
             $promoId = $locked->promo_code
                 ? PromoCode::where('code', strtoupper((string) $locked->promo_code))->value('id')
@@ -69,7 +68,7 @@ final class AnalysisCheckout
                 baseInCents: $base,
                 commissionInCents: $commission,
                 discountInCents: $discount,
-                providerFeeInCents: (int) round($total * $feeRate / 100),
+                providerFeeInCents: \App\Services\Payments\GatewayFee::providerFee((int) $total),
                 promoCodeId: $promoId ? (int) $promoId : null,
             );
         });

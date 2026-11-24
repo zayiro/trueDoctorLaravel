@@ -24,8 +24,39 @@
     $hasIndividualPlan = $doctorSettings && $doctorSettings?->plan_id !== null;
 @endphp
 
-<x-admin-layout :breadcrumbs="$breadcrumbs">    
-    @if(isset($promoCode))
+<x-admin-layout :breadcrumbs="$breadcrumbs">
+    @if ($isAdmin ?? false)
+        @include('admin.partials.ai-model-alert')
+    @endif    
+    @if(session('status') === 'correo-verificado')
+        <div class="m-3 mb-5">
+            <div class="flex items-center p-4 text-emerald-800 rounded-2xl bg-emerald-50 border border-emerald-100 shadow-sm" role="alert">
+                <div class="text-sm font-bold">¡Correo confirmado! Tu código promocional de bienvenida ya está disponible.</div>
+            </div>
+        </div>
+    @endif
+    @if(isset($promoCode) && auth()->user()?->email_verified_at === null)
+        {{-- Código oculto hasta confirmar el correo: no se imprime en el HTML. --}}
+        <div class="m-3 mb-5">
+            <div class="bg-slate-900 border border-white/10 rounded-2xl p-6 shadow-xl">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-sm font-bold tracking-wider text-slate-400 uppercase">Tu Regalo de Bienvenida</h3>
+                    <span class="inline-flex items-center rounded-md bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-400 ring-1 ring-inset ring-emerald-500/20">Por redimir</span>
+                </div>
+                <p class="mt-1 text-2xl font-black text-white tracking-tight">Tienes un código promocional esperándote</p>
+                <p class="mt-1 text-md text-slate-400">Confirma tu correo ({{ auth()->user()->email }}) para ver tu código y usarlo en tu próximo análisis.</p>
+                @if(session('status') === 'verification-link-sent')
+                    <p class="mt-3 text-sm font-semibold text-emerald-400">Te enviamos un enlace de confirmación. Revisa tu bandeja de entrada y la carpeta de spam.</p>
+                @endif
+                <form method="POST" action="{{ route('verification.send') }}" class="mt-4">
+                    @csrf
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition">
+                        Enviar enlace de confirmación
+                    </button>
+                </form>
+            </div>
+        </div>
+    @elseif(isset($promoCode))
     <div class="m-3 mb-5">
         <div class="bg-slate-900 border border-white/10 rounded-2xl p-6 shadow-xl"
             x-data="{ 

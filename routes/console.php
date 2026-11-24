@@ -85,3 +85,14 @@ Schedule::command('payouts:generate-batch')
     ->weeklyOn(5, '06:00')
     ->withoutOverlapping()
     ->onOneServer();
+
+Schedule::command('ai-chat:close-sessions')->everyMinute()->withoutOverlapping(5)->onOneServer();
+
+// Revisión de modelos de IA: corre a diario, pero el comando solo consulta a las APIs cada 15 días.
+Schedule::command('ai-models:check')->dailyAt('07:30')->withoutOverlapping(10)->onOneServer();
+
+Schedule::command('ai-chat:reports')->everyMinute()->withoutOverlapping(5)->onOneServer();
+
+Schedule::command('ai-chat:reminders')->everyTenMinutes()->withoutOverlapping(10)->onOneServer();
+Schedule::command('ai-chat:cleanup')->hourly()->withoutOverlapping(10)->onOneServer();
+Schedule::command('ai-chat:purge')->dailyAt('03:20')->withoutOverlapping(30)->onOneServer();

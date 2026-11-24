@@ -56,6 +56,10 @@ class PaymentReturnController extends Controller
             return $this->skinResult($payment);
         }
 
+        if ($payment->kind === PaymentKind::AiChat) {
+            return app(\App\Http\Controllers\AiChatPurchaseController::class)->result($payment);
+        }
+
         if ($payment->kind !== PaymentKind::Appointment) {
             return redirect()->route('home');
         }

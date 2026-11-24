@@ -29,7 +29,7 @@ final class AppointmentQuote
     /** Fee estimado de la pasarela sobre lo que paga el cliente. */
     public function estimatedFeeCents(): int
     {
-        return (int) round($this->totalCents * $this->feeRate / 100);
+        return GatewayFee::providerFee($this->totalCents);
     }
 
     public function ownerBearsDiscount(): bool

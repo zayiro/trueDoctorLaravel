@@ -258,14 +258,37 @@ $inputBase = 'w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg te
                                    min="0"
                                    max="100"
                                    required>
-                            @if ($field === 'wompi_fee')
-                                <p class="text-xs text-slate-400">Comisión por pago con Wompi</p>
-                            @endif
                         </div>
                     @endforeach
                 </div>
             </div>
 
+            <!-- 5️⃣b COMISIÓN DE LA PASARELA (WOMPI) -->
+            <div class="bg-slate-950 border border-white/10 rounded-2xl p-6 space-y-4">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-credit-card text-cyan-400"></i>
+                    Comisión de la pasarela (Wompi)
+                </h2>
+                <p class="text-slate-400 text-sm">Tarifa real de Wompi: un porcentaje más un valor fijo, con IVA sobre esa comisión. Se usa en todos los módulos: citas, exámenes, piel y Chat de Salud IA.</p>
+
+                <div class="grid md:grid-cols-3 gap-4">
+                    @foreach ($gateway as $field => [$label, $default, $step, $min, $max, $help])
+                        <div class="space-y-2">
+                            <label for="{{ $field }}" class="text-sm font-bold text-white">{{ $label }}</label>
+                            <input type="number"
+                                   id="{{ $field }}"
+                                   name="{{ $field }}"
+                                   value="{{ old($field, $settings->get($field, $default)) }}"
+                                   class="{{ $inputBase }} focus:ring-cyan-500"
+                                   step="{{ $step }}"
+                                   min="{{ $min }}"
+                                   max="{{ $max }}"
+                                   required>
+                            <p class="text-xs text-slate-400">{{ $help }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
             <!-- BOTÓN GUARDAR -->
             <div class="flex gap-3 sticky bottom-4">
                 <button type="submit"

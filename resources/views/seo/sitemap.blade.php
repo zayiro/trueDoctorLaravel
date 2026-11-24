@@ -24,6 +24,14 @@
         <priority>0.9</priority>
     </url>
 
+    {{-- Chat de Salud con IA (página pública de ventas) --}}
+    <url>
+        <loc>https://opendoctor.online/chat-salud-ia</loc>
+        <lastmod>{{ now()->toIso8601String() }}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
     <url>
         <loc>https://opendoctor.online/search-symptom</loc>
         <lastmod>{{ now()->toIso8601String() }}</lastmod>

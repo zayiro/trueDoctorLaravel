@@ -27,7 +27,7 @@ class SettingController extends Controller
     /** Modelos de IA que el panel permite elegir (valor guardado => nombre). */
     private const AI_MODELS = [
         'gpt-4o' => 'GPT-4o (OpenAI)',
-        'claude-sonnet-4-5' => 'Claude Sonnet 4.5',
+        'claude-sonnet-5-5' => 'Claude Sonnet 5.5',
     ];
 
     /** Un modelo primario y uno de respaldo por cada grupo de análisis. */
@@ -53,7 +53,13 @@ class SettingController extends Controller
         'virtual_commission_clinic' => ['Comisión Cita Virtual - Clínica (%)', 0],
         'presential_commission_doctor' => ['Comisión Cita Presencial - Doctor (%)', 0],
         'presential_commission_clinic' => ['Comisión Cita Presencial - Clínica (%)', 0],
-        'wompi_fee' => ['Fee Wompi (%)', 2.9],
+    ];
+
+    /** Comisión de la pasarela (fórmula: % + valor fijo, más IVA sobre esa comisión). Se usa en todos los módulos (citas, exámenes, piel y Chat de Salud IA). */
+    private const GATEWAY = [
+        'ai_chat_wompi_percent' => ['Porcentaje de Wompi (%)', 2.65, '0.01', 0, 10, 'Tarjeta: 2,65 %. Con Puntos Colombia sube a 4,43 %.'],
+        'ai_chat_wompi_fixed_fee' => ['Valor fijo de Wompi por transacción (COP)', 700, '1', 0, 5000, 'Confírmalo con tu contrato de Wompi.'],
+        'ai_chat_wompi_iva_percent' => ['IVA sobre la comisión de Wompi (%)', 19, '1', 0, 30, 'Pon 0 si tu tarifa de Wompi ya lo incluye.'],
     ];
 
     /**
@@ -67,6 +73,7 @@ class SettingController extends Controller
             'decimationTypes' => $this->decimationTypes(),
             'aiModels' => self::AI_MODELS,
             'commissions' => self::COMMISSIONS,
+            'gateway' => self::GATEWAY,
             'company' => self::COMPANY,
         ]);
     }
@@ -136,6 +143,13 @@ class SettingController extends Controller
             $schema[$field] = [
                 'group' => 'commissions',
                 'rules' => ['required', 'numeric', 'min:0', 'max:100'],
+            ];
+        }
+
+        foreach (self::GATEWAY as $field => [$label, $default, $step, $min, $max, $help]) {
+            $schema[$field] = [
+                'group' => 'ai_chat',
+                'rules' => ['required', 'numeric', "min:{$min}", "max:{$max}"],
             ];
         }
 

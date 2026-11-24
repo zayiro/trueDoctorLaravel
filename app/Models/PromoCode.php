@@ -90,11 +90,40 @@ class PromoCode extends Model
         return $this->isRedeemable();
     }
 
+    /** ¿Lo puede usar este usuario? Un código personal es solo de su dueño; los demás sirven para cualquiera. */
+    public function isUsableBy(?int $userId): bool
+    {
+        return $this->user_id === null || ($userId !== null && (int) $this->user_id === $userId);
+    }
+
+    /** ¿El dueño del código (si es personal) ya confirmó su correo? Los códigos sin dueño siempre pasan. */
+    public function ownerEmailVerified(): bool
+    {
+        if ($this->user_id === null) {
+            return true;
+        }
+
+        $owner = $this->user;
+
+        return $owner !== null && $owner->email_verified_at !== null;
+    }
+
+    /** Código personal cuyo dueño todavía no confirma su correo. */
+    public function needsEmailVerification(): bool
+    {
+        return !$this->ownerEmailVerified();
+    }
+
     /**
      * ¿El código se puede usar ahora? (activo, con cupo y dentro de su vigencia)
      */
     public function isRedeemable(): bool
     {
+        // Un código personal solo se puede usar si su dueño ya confirmó su correo.
+        if (!$this->ownerEmailVerified()) {
+            return false;
+        }
+
         if (!$this->is_active) {
             return false;
         }

@@ -208,7 +208,12 @@ class MedicalAnalysisController extends Controller
 
         // Si enviaron un código que ya no es válido, no se cobra un precio distinto al que vieron.
         if ($promoInput !== '' && !$promo) {
-            return $this->jsonError('El código promocional ya no es válido. Quítalo o prueba con otro.', 422);
+            $msgPromo = 'El código promocional ya no es válido. Quítalo o prueba con otro.';
+            $pc = PromoCode::forModule(PromoCode::MODULE_EXAM)->where('code', strtoupper($promoInput))->first();
+            if ($pc && $pc->isUsableBy(auth()->id()) && $pc->needsEmailVerification()) {
+                $msgPromo = 'Primero confirma tu correo desde tu panel para usar tu código de bienvenida.';
+            }
+            return $this->jsonError($msgPromo, 422);
         }
 
         $isFree = $price === 0;
@@ -435,6 +440,14 @@ class MedicalAnalysisController extends Controller
             return response()->json(['valid' => false, 'message' => 'Código no encontrado.']);
         }
 
+        if (!$code->isUsableBy(auth()->id())) {
+            return response()->json(['valid' => false, 'message' => 'Código no encontrado.']);
+        }
+
+        if ($code->needsEmailVerification()) {
+            return response()->json(['valid' => false, 'message' => 'Primero confirma tu correo desde tu panel para usar tu código de bienvenida.']);
+        }
+
         if (!$code->is_active) {
             return response()->json(['valid' => false, 'message' => 'Código inactivo.']);
         }
@@ -630,7 +643,7 @@ class MedicalAnalysisController extends Controller
     /** Comisión de la pasarela sobre el precio ya con descuento, en pesos. */
     private function commissionFor(int|float $amount): int
     {
-        return (int) round($amount * self::WOMPI_COMMISSION_RATE);
+        return \App\Services\Payments\GatewayFee::surcharge($amount);
     }
 
     private function basePriceFor(string $examType): int
@@ -658,7 +671,7 @@ class MedicalAnalysisController extends Controller
         if ($code !== '') {
             $candidate = PromoCode::forModule(PromoCode::MODULE_EXAM)->where('code', strtoupper($code))->first();
 
-            if ($candidate && $candidate->isRedeemable()) {
+            if ($candidate && $candidate->isRedeemable() && $candidate->isUsableBy(auth()->id())) {
                 $promo = $candidate;
                 $discount = $candidate->discountFor($basePrice);
             }
@@ -839,7 +852,7 @@ class MedicalAnalysisController extends Controller
     private function providerOrder(string $examType): array
     {
         $group = in_array($examType, self::IMAGING_TYPES, true) ? 'imaging' : 'lab';
-        $providers = ['gpt-4o' => 'openai', 'claude-sonnet-4-5' => 'claude'];
+        $providers = ['gpt-4o' => 'openai', 'claude-sonnet-5-5' => 'claude', 'claude-sonnet-4-5' => 'claude'];
 
         $primaryModel = Setting::where('key', "{$group}_ai_primary_model")->value('value');
         $fallbackModel = Setting::where('key', "{$group}_ai_fallback_model")->value('value');

@@ -284,6 +284,9 @@
         </div>
     </section>
 
+    {{-- Promo Chat de Salud con IA --}}
+    @include('public.home-chat-ia')
+
     <!-- Skin Analysis Hero Section -->
     <section class="relative z-40 bg-white md:py-10 overflow-hidden">
         <!-- Destellos de luz orgánicos muy suaves en el fondo de la página -->

@@ -272,6 +272,14 @@ PROMPT;
             return response()->json(['valid' => false, 'message' => 'Código no encontrado.']);
         }
 
+        if (!$code->isUsableBy(auth()->id())) {
+            return response()->json(['valid' => false, 'message' => 'Código no encontrado.']);
+        }
+
+        if ($code->needsEmailVerification()) {
+            return response()->json(['valid' => false, 'message' => 'Primero confirma tu correo desde tu panel para usar tu código de bienvenida.']);
+        }
+
         if (!$code->isRedeemable()) {
             return response()->json(['valid' => false, 'message' => 'El código no está disponible (inactivo, vencido o agotado).']);
         }
@@ -326,6 +334,14 @@ PROMPT;
 
         if ($promoInput !== '') {
             $candidate = PromoCode::forModule(PromoCode::MODULE_SKIN_ANALYSIS)->where('code', $promoInput)->first();
+
+            if ($candidate && !$candidate->isUsableBy(auth()->id())) {
+                $candidate = null;
+            }
+
+            if ($candidate && $candidate->needsEmailVerification()) {
+                return $backToPreview('Primero confirma tu correo desde tu panel para usar tu código de bienvenida.');
+            }
 
             if (!$candidate || !$candidate->isRedeemable()) {
                 return $backToPreview('El código promocional no es válido o ya no está disponible.');
@@ -583,7 +599,7 @@ PROMPT;
 
     private function commissionFor(int|float $amount): int
     {
-        return (int) round($amount * self::WOMPI_COMMISSION_RATE);
+        return \App\Services\Payments\GatewayFee::surcharge($amount);
     }
 
     /**

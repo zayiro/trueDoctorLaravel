@@ -41,7 +41,7 @@ final class AppointmentCheckout
         $isClinic = $appointment->clinic_id !== null;
 
         $commissionRate = CommissionRates::forAppointment($appointment);
-        $feeRate = (float) (Setting::where('key', 'wompi_fee')->value('value') ?? 2.9);
+        $feeRate = \App\Services\Payments\GatewayFee::percent();
 
         $baseCents = (int) round(((float) $appointment->price) * 100);
         $commissionCents = (int) round($baseCents * $commissionRate / 100);
