@@ -68,7 +68,7 @@ $urgencyLabels = [
             @forelse($analyses as $analysis)
                 @php
                     [$statusLabel, $statusStyle] = $statusLabels[$analysis->status] ?? [$analysis->status, 'bg-gray-100 text-gray-600'];
-                    $urgency = $urgencyLabels[$analysis->report['urgencia']['nivel'] ?? ''] ?? null;
+                    $urgency = null; // Privacidad: el administrador no ve el nivel de urgencia (dato de salud).
                 @endphp
 
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -84,7 +84,7 @@ $urgencyLabels = [
                         </div>
 
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 truncate mb-2">
-                            {{ $analysis->body_location ?: 'Zona no especificada' }}
+                            Análisis de piel #{{ $analysis->id }}
                         </h3>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm text-gray-600">
@@ -103,9 +103,7 @@ $urgencyLabels = [
                             <div>
                                 Idioma: <span class="font-medium text-gray-800 uppercase">{{ $analysis->analysis_language }}</span>
                             </div>
-                            <div class="sm:col-span-2 truncate">
-                                Token: <span class="font-mono text-xs bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded text-gray-800">{{ $analysis->access_token }}</span>
-                            </div>
+                            {{-- Token oculto: el administrador no necesita (ni debe tener) acceso directo al informe del paciente. --}}
                             @if ($analysis->failure_reason)
                                 <div class="sm:col-span-2 text-xs text-rose-600 truncate">Motivo del error: {{ $analysis->failure_reason }}</div>
                             @endif
@@ -118,6 +116,13 @@ $urgencyLabels = [
                                 @csrf
                                 <button type="submit" class="w-full sm:w-auto text-sm bg-indigo-600 text-white font-semibold px-4 py-3 border border-transparent rounded-lg shadow-sm hover:bg-indigo-700 transition text-center justify-center flex items-center">
                                     Reenviar
+                                </button>
+                            </form>
+                        @elseif ($analysis->status === 'error')
+                            <form action="{{ route('administrator.skin-analyses.retry', $analysis) }}" method="POST" onsubmit="return confirm('¿Reintentar este análisis? Se volverá a procesar con las fotos guardadas y el informe se enviará a {{ $analysis->customer_email }}.')" class="w-full sm:w-auto">
+                                @csrf
+                                <button type="submit" class="w-full sm:w-auto text-sm bg-amber-500 text-white font-semibold px-4 py-3 border border-transparent rounded-lg shadow-sm hover:bg-amber-600 transition text-center justify-center flex items-center">
+                                    Reintentar
                                 </button>
                             </form>
                         @endif

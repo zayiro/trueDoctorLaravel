@@ -23,6 +23,7 @@
         ['id' => 'datos', 'title' => 'Tus datos y la inteligencia artificial', 'p' => [
             'Para generar las respuestas y el informe, el contenido de tu conversación se envía a <strong>proveedores externos de modelos de inteligencia artificial</strong>. Lo que escribas en el chat llega a ese proveedor; por eso <strong>no escribas datos que no quieras compartir</strong>, como tu nombre completo, tu documento o tu dirección.',
             'OpenDoctor no envía a la IA tu nombre registrado ni tu número de identificación. Si los escribes tú en la conversación, sí llegarían.',
+            'El acceso del personal de OpenDoctor a tu conversación se limita a fines estrictamente técnicos y de soporte (por ejemplo, resolver una falla del servicio o atender una solicitud tuya), y solo cuando es necesario.',
             'Si lo autorizas al comprar, también usamos información opcional de tu perfil para que la orientación sea más precisa. Es voluntario y puedes no marcarlo.',
             // REVISAR CON ABOGADO: transferencia internacional de datos (Ley 1581 de 2012) y encargados del tratamiento.
             'Tratamos tus datos personales conforme a nuestra <a href="' . route('privacy.show') . '" class="text-teal-600 underline">Política de Privacidad</a> y a la Ley 1581 de 2012. Los datos de salud son datos sensibles: solo los usamos para prestarte este servicio.',

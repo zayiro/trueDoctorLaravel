@@ -22,6 +22,10 @@
                 <!-- Alerta de Errores Globales de Alpine -->
                 <div x-show="errorMessage" x-transition x-cloak class="bg-red-50 border-l-4 border-red-500 p-4 rounded-xl">
                     <p class="text-red-700 text-sm font-medium" x-text="errorMessage"></p>
+                    <div x-show="canForce" x-cloak class="mt-3 pt-3 border-t border-red-200">
+                        <p class="text-xs text-red-700 mb-2">Si crees que la foto muestra bien la zona, puedes continuar con ella. Ten en cuenta que una imagen de calidad limitada puede reducir la precisión del análisis.</p>
+                        <button type="button" @click="verificarImagen(true)" :disabled="loadingValidation" class="inline-flex items-center rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-40">Continuar con esta foto de todas formas</button>
+                    </div>
                 </div>
 
                 <!-- Formulario Único unificado para Laravel -->
@@ -69,7 +73,11 @@
                     <div x-show="step === 'form'" x-transition:enter="transition ease-out duration-500" x-transition:enter-start="opacity-0 transform translate-y-4" x-transition:enter-end="opacity-100 transform translate-y-0" class="space-y-6" x-cloak>
                         
                         <!-- Banner Informativo de Éxito Técnico -->
-                        <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex gap-3 items-center">
+                        <div x-show="forced" x-cloak class="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3 items-center">
+                            <span class="text-xl text-amber-600">⚠️</span>
+                            <p class="text-xs text-amber-800 font-medium">Continuaste con una foto de calidad limitada. El análisis será más cauteloso y puede ser menos preciso. Si puedes, vuelve a tomarla con más luz y enfoque.</p>
+                        </div>
+                        <div x-show="!forced" class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex gap-3 items-center">
                             <span class="text-xl text-emerald-600">✨</span>
                             <p class="text-xs text-emerald-800 font-medium">
                                 ¡Imagen aprobada con éxito! Cuenta con los parámetros de luz, enfoque y nitidez necesarios para el análisis dermatológico.
@@ -147,6 +155,8 @@
             return {
                 step: @json($resumeToken ? 'form' : 'upload'),
                 errorMessage: '',
+                canForce: false,
+                forced: false,
                 loadingValidation: false,
                 previewUrl: null,
                 validatedFilesToken: @json($resumeToken),
@@ -176,7 +186,7 @@
                     });
                 },
 
-                async verificarImagen() {
+                async verificarImagen(force = false) {
                     const fileInput = document.getElementById('image-file');
                     if (fileInput.files.length === 0) {
                         this.errorMessage = 'Por favor, selecciona una imagen primero.';
@@ -184,6 +194,7 @@
                     }
 
                     this.loadingValidation = true;
+                    this.canForce = false;
                     this.errorMessage = '';
 
                     try {
@@ -192,6 +203,7 @@
                         const formData = new FormData();
                         formData.append('file', blob, 'foto.jpg');
                         formData.append('_token', '{{ csrf_token() }}');
+                        if (force === true) { formData.append('force', '1'); }
 
                         const response = await fetch('{{ route('skin-analysis.validate-image') }}', {
                             method: 'POST',
@@ -210,8 +222,11 @@
                         if (result.success && result.is_viable) {
                             this.step = 'form';
                             this.validatedFilesToken = result.temp_token;
+                            this.forced = result.forced === true;
+                            this.canForce = false;
                         } else if (result.success) {
                             this.errorMessage = result.reason || 'La imagen no tiene la calidad requerida. Intenta con otra toma.';
+                            this.canForce = result.can_force === true;
                         } else {
                             this.errorMessage = result.error || 'Ocurrió un error inesperado al procesar la validación.';
                         }
@@ -226,6 +241,8 @@
                     const file = event.target.files[0];
                     if (file) {
                         if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);
+                        this.canForce = false;
+                        this.forced = false;
                         this.previewUrl = URL.createObjectURL(file);
                         this.errorMessage = '';
                         this.validatedFilesToken = '';
@@ -249,6 +266,8 @@
                     this.previewUrl = null;
                     this.errorMessage = '';
                     document.getElementById('image-file').value = '';
+                    this.canForce = false;
+                    this.forced = false;
                 },
             }
         }

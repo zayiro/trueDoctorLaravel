@@ -127,9 +127,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/users/create-admin', [UserManagementController::class, 'storeAdmin'])->name('administrator.users.storeAdmin');
 
     Route::get('/medical-exams', [ExamAnalysisController::class, 'index'])->name('administrator.exams.index');    
-    Route::post('/admin/exams/{medicalAnalysis}/resend', [ExamAnalysisController::class, 'resend'])->name('administrator.exams.resend');
-    Route::patch('/admin/exams/{examAnalysis}/toggle', [ExamAnalysisController::class, 'toggleStatus'])->name('administrator.exams.toggle');
-    Route::delete('/administrator/medical-analyses/{analysis}', [MedicalAnalysisController::class, 'destroy'])->name('administrator.exams.destroy');
+    Route::post('/admin/exams/{medicalAnalysis:id}/resend', [ExamAnalysisController::class, 'resend'])->name('administrator.exams.resend');
+    Route::patch('/admin/exams/{examAnalysis:id}/toggle', [ExamAnalysisController::class, 'toggleStatus'])->name('administrator.exams.toggle');
+    Route::delete('/administrator/medical-analyses/{analysis:id}', [MedicalAnalysisController::class, 'destroy'])->name('administrator.exams.destroy');
 
     Route::get('/admin/settings', [SettingController::class, 'index'])->name('administrator.settings.index');
     Route::put('/admin/settings', [SettingController::class, 'update'])->name('administrator.settings.update');
@@ -720,8 +720,9 @@ Route::middleware(['auth', 'role:doctor|clinic'])->group(function () {
 // Análisis de piel en el panel del administrador (reenviar informe y eliminar).
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/skin-analyses', [\App\Http\Controllers\Admin\SkinAnalysisAdminController::class, 'index'])->name('administrator.skin-analyses.index');
-    Route::post('/admin/skin-analyses/{skinAnalysis}/resend', [\App\Http\Controllers\Admin\SkinAnalysisAdminController::class, 'resend'])->name('administrator.skin-analyses.resend');
-    Route::delete('/admin/skin-analyses/{skinAnalysis}', [\App\Http\Controllers\Admin\SkinAnalysisAdminController::class, 'destroy'])->name('administrator.skin-analyses.destroy');
+    Route::post('/admin/skin-analyses/{skinAnalysis:id}/resend', [\App\Http\Controllers\Admin\SkinAnalysisAdminController::class, 'resend'])->name('administrator.skin-analyses.resend');
+    Route::post('/admin/skin-analyses/{skinAnalysis:id}/retry', [\App\Http\Controllers\Admin\SkinAnalysisAdminController::class, 'retry'])->name('administrator.skin-analyses.retry');
+    Route::delete('/admin/skin-analyses/{skinAnalysis:id}', [\App\Http\Controllers\Admin\SkinAnalysisAdminController::class, 'destroy'])->name('administrator.skin-analyses.destroy');
 });
 
 // ETAPA0B: servicios para doctor y clinica (un solo ServiceController; el propietario sale del rol)

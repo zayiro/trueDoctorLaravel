@@ -496,7 +496,8 @@ class MedicalAnalysisController extends Controller
      */
     public function destroy(MedicalAnalysis $analysis): RedirectResponse
     {
-        if ($analysis->status === 'processing') {
+        // Solo se bloquea si de verdad está en curso; con más de 60 min sin cambios se considera atascado.
+        if ($analysis->status === 'processing' && $analysis->updated_at && $analysis->updated_at->gt(now()->subMinutes(60))) {
             return redirect()->back()->with('error', 'El examen se está procesando. Inténtalo cuando termine.');
         }
 

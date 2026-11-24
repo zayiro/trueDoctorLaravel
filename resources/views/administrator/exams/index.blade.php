@@ -52,7 +52,7 @@ $breadcrumbs = [
                         <!-- Especialidad y Fecha -->
                         <div class="flex flex-wrap items-center gap-2 mb-1.5">
                             <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider">
-                                {{ $exam->ai_response['especialidad_slug'] ?? 'Medicina General' }}
+                                Análisis de exámenes
                             </span>
                             <span class="hidden sm:inline text-gray-300">•</span>
                             <span class="text-xs text-gray-400">
@@ -62,7 +62,7 @@ $breadcrumbs = [
 
                         <!-- Nombre del Examen -->
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 truncate mb-2">
-                            {{ $exam->ai_response['nombre_examen'] ?? 'Examen sin procesar' }}
+                            {{ 'Examen #' . $exam->id . ($exam->ai_response ? ' (procesado)' : ' (sin procesar)') }}
                         </h3>
 
                         <!-- Meta Datos en Grid Responsivo -->
@@ -73,9 +73,7 @@ $breadcrumbs = [
                             <div>
                                 ID: <span class="font-medium text-gray-800">{{ $exam->id }}</span>
                             </div>
-                            <div class="sm:col-span-2 truncate">
-                                Token: <span class="font-mono text-xs bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded text-gray-800">{{ $exam->access_token }}</span>
-                            </div>
+                            {{-- Token oculto: el administrador no necesita (ni debe tener) acceso directo al informe del paciente. --}}
                         </div>
                     </div>
 

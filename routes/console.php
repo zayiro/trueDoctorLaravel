@@ -96,3 +96,6 @@ Schedule::command('ai-chat:reports')->everyMinute()->withoutOverlapping(5)->onOn
 Schedule::command('ai-chat:reminders')->everyTenMinutes()->withoutOverlapping(10)->onOneServer();
 Schedule::command('ai-chat:cleanup')->hourly()->withoutOverlapping(10)->onOneServer();
 Schedule::command('ai-chat:purge')->dailyAt('03:20')->withoutOverlapping(30)->onOneServer();
+
+// Análisis de piel/exámenes que quedaron en "processing" porque el proceso murió: se marcan como fallidos.
+Schedule::command('analyses:sweep-stuck')->everyTenMinutes()->withoutOverlapping(10)->onOneServer();

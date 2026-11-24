@@ -93,7 +93,7 @@
                             <span class="text-[10px] text-slate-400 mt-1">JPG, PNG o PDF hasta 4MB</span>
                         </div>
                     </div>
-                    @error('professional_card') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                    @error('identity_card') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
                 </div>
                 <!-- Campo 2: Tarjeta Profesional o Licencia REPS Institucional -->
                 <div class="space-y-2 mb-3" x-data="{ 

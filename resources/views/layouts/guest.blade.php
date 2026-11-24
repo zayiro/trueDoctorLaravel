@@ -323,6 +323,19 @@
 
                     // 2. Si estás usando Alpine en las tarjetas, forzar la restauración de sus estados locales
                     window.dispatchEvent(new CustomEvent('restore-booking-buttons'));
+
+                    // 2b. Alpine: si al ir al pago quedó una bandera de envío en true (botón «Redirigiendo al pago...»), reiniciarla.
+                    try {
+                        if (window.Alpine && typeof window.Alpine.$data === 'function') {
+                            document.querySelectorAll('[x-data]').forEach(function (el) {
+                                try {
+                                    var d = window.Alpine.$data(el);
+                                    if (d && d.isSubmitting === true) { d.isSubmitting = false; }
+                                    if (d && d.submitting === true) { d.submitting = false; }
+                                } catch (e) { /* un componente que no responde no debe frenar al resto */ }
+                            });
+                        }
+                    } catch (e) { /* no es crítico */ }
                     
                     // 3. Fallback nativo: Si tus botones cambian mediante clases HTML puras o deshabilitación
                     document.querySelectorAll('button[disabled]').forEach(button => {

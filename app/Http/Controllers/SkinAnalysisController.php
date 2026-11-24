@@ -36,6 +36,9 @@ class SkinAnalysisController extends Controller
 
     private const AI_MODEL = 'claude-sonnet-5-5';
 
+    /** Rechazos de calidad seguidos tras los cuales se ofrece continuar con la foto de todas formas. */
+    private const FORCE_AFTER_REJECTS = 2;
+
     /** Especialidad que se recomienda tras un análisis de piel (slug de la tabla specialties). */
     private const SUGGESTED_SPECIALTY = 'dermatologia';
 
@@ -54,8 +57,10 @@ Evalúa solo: que la imagen muestre piel humana, que esté enfocada, que tenga i
 
 No rechaces una imagen por la zona del cuerpo que muestre. Rechaza únicamente por calidad técnica o porque no muestra piel.
 
+Si la imagen no es viable, indica en "category" el tipo de problema: "no_es_piel" cuando la imagen no muestra piel humana (un objeto, un documento, una pantalla, un animal, un paisaje, etc.) y "calidad" cuando sí muestra piel pero hay un problema técnico (desenfoque, poca luz, demasiado lejos, cortada, filtros). Si es viable, "category" es una cadena vacía.
+
 Responde ÚNICAMENTE con un JSON válido, sin markdown ni texto adicional:
-{"is_viable": true|false, "reason": "Si no es viable, explica en una frase amable en español qué mejorar. Si es viable, cadena vacía."}
+{"is_viable": true|false, "category": "no_es_piel|calidad|", "reason": "Si no es viable, explica en una frase amable en español qué mejorar. Si es viable, cadena vacía."}
 PROMPT;
 
     public function __construct(protected WompiService $wompiService)
@@ -112,6 +117,11 @@ PROMPT;
         ]);
 
         if ($validator->fails()) {
+            Log::info('skin.upload_rejected', [
+                'errores' => $validator->errors()->all(),
+                'error_php' => $request->file('file')?->getError(),
+                'bytes' => ($request->hasFile('file') && $request->file('file')->isValid()) ? $request->file('file')->getSize() : null,
+            ]);
             return response()->json([
                 'success' => false,
                 'error' => $validator->errors()->first(),
@@ -122,6 +132,15 @@ PROMPT;
             $file = $request->file('file');
             $verdict = $this->checkImageQuality(file_get_contents($file->getRealPath()), $file->getMimeType());
 
+            // Diagnóstico: por qué se aceptó o rechazó la foto (no se guarda la imagen).
+            Log::info('skin.image_checked', [
+                'sin_veredicto' => $verdict === null,
+                'viable' => $verdict['is_viable'] ?? null,
+                'razon' => $verdict['reason'] ?? null,
+                'bytes' => $file->getSize(),
+                'mime' => $file->getMimeType(),
+            ]);
+
             if ($verdict === null) {
                 return response()->json([
                     'success' => false,
@@ -129,12 +148,29 @@ PROMPT;
                 ], 422);
             }
 
+            $lowQuality = null;
+
             if (!$verdict['is_viable']) {
-                return response()->json([
-                    'success' => true,
-                    'is_viable' => false,
-                    'reason' => $verdict['reason'] ?: 'La imagen no cumple con la calidad requerida.',
-                ]);
+                $overridable = ($verdict['category'] ?? '') === 'calidad';
+                $rejects = (int) session('skin_quality_rejects', 0);
+
+                if ($overridable && $request->boolean('force') && $rejects >= self::FORCE_AFTER_REJECTS) {
+                    // La persona decidió continuar con una foto que el control de calidad objetó:
+                    // se marca para que el análisis sea prudente y lo diga en el informe.
+                    $lowQuality = $verdict['reason'] ?: 'La calidad de la imagen es limitada.';
+                    Log::info('skin.image_forced', ['rechazos_previos' => $rejects, 'razon' => $lowQuality]);
+                } else {
+                    if ($overridable) {
+                        session(['skin_quality_rejects' => $rejects + 1]);
+                    }
+
+                    return response()->json([
+                        'success' => true,
+                        'is_viable' => false,
+                        'reason' => $verdict['reason'] ?: 'La imagen no cumple con la calidad requerida.',
+                        'can_force' => $overridable && ($rejects + 1) >= self::FORCE_AFTER_REJECTS,
+                    ]);
+                }
             }
 
             $tempToken = Str::uuid()->toString();
@@ -157,12 +193,15 @@ PROMPT;
             session([
                 'skin_validated_' . $tempToken => true,
                 'skin_last_token' => $tempToken,
+                'skin_lowq_' . $tempToken => $lowQuality,
+                'skin_quality_rejects' => 0,
             ]);
 
             return response()->json([
                 'success' => true,
                 'is_viable' => true,
                 'temp_token' => $tempToken,
+                'forced' => $lowQuality !== null,
             ]);
         } catch (\Throwable $e) {
             Log::error('Skin validate-image failed', [
@@ -398,9 +437,16 @@ PROMPT;
             return $backToPreview('No pudimos guardar tu fotografía. Intenta nuevamente.');
         }
 
+        // Si la persona continuó con una foto objetada por calidad, la orden queda marcada.
+        $lowQ = session('skin_lowq_' . $sessionId);
+        if (is_string($lowQ) && $lowQ !== '') {
+            SkinAnalysis::whereKey($analysis->id)->update(['image_quality_note' => mb_substr($lowQ, 0, 500)]);
+        }
+
         session()->forget([
             'skin_analysis_' . $sessionId,
             'skin_validated_' . $sessionId,
+            'skin_lowq_' . $sessionId,
             'skin_last_token',
         ]);
 
@@ -606,7 +652,7 @@ PROMPT;
      * Consulta a la IA si la foto es técnicamente adecuada.
      * Devuelve ['is_viable' => bool, 'reason' => string] o null si la respuesta no es interpretable.
      */
-    private function checkImageQuality(string $contents, string $mimeType): ?array
+    protected function checkImageQuality(string $contents, string $mimeType): ?array
     {
         $client = new Client(apiKey: config('services.anthropic.key'));
 
@@ -654,6 +700,7 @@ PROMPT;
         return [
             'is_viable' => (bool) $result['is_viable'],
             'reason' => (string) ($result['reason'] ?? ''),
+            'category' => in_array(($result['category'] ?? ''), ['calidad', 'no_es_piel'], true) ? $result['category'] : '',
         ];
     }
 

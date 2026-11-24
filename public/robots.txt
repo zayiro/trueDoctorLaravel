@@ -32,7 +32,15 @@ Disallow: /oauth/
 Disallow: /login
 Disallow: /register
 Disallow: /notifications
-Disallow: /chat
+# Chat interno paciente-doctor (no toca /chat-salud-ia)
+Disallow: /chat$
+Disallow: /chat/
+# Chat de Salud IA: compra, datos, pago, sesiones personales y lista de espera
+Disallow: /chat-salud-ia/compra
+Disallow: /chat-salud-ia/datos
+Disallow: /chat-salud-ia/pago/
+Disallow: /chat-salud-ia/s/
+Disallow: /chat-salud-ia/avisame
 Disallow: /medical-analysis/before-preview
 Disallow: /medical-analysis/process-documents
 Disallow: /medical-analysis/upload

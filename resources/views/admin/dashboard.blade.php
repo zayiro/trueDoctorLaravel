@@ -404,42 +404,48 @@
                     @endif
 
                     @if ($hasIndividualPlan || $user->role !== 'patient')
-                    <!-- CUADRÍCULA DE KPIs FINANCIEROS Y OPERATIVOS -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">                        
-                        <div class="lg:col-span-1 bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100">
+                    <!-- CUADRÍCULA DE KPIs FINANCIEROS Y OPERATIVOS (kpigrid) -->
+                    @php
+                        // Ingresos: cifras grandes en formato compacto para que nunca se salgan de la tarjeta.
+                        $kpiRevenue = (float) $monthlyRevenue;
+                        $kpiRevenueFull = '$' . number_format($kpiRevenue, 2);
+                        $kpiRevenueShow = abs($kpiRevenue) >= 1000000
+                            ? '$' . rtrim(rtrim(number_format($kpiRevenue / 1000000, 2), '0'), '.') . ' M'
+                            : '$' . number_format($kpiRevenue, 0);
+                    @endphp
+                    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+                        <div class="min-w-0 h-full bg-white border rounded-[2rem] p-5 shadow-lg border-slate-100" title="{{ $kpiRevenueFull }}">
                             <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Ingresos Mensuales</span>
-                            <h3 class="text-2xl font-black text-emerald-600 mt-2">${{ number_format($monthlyRevenue, 2) }}</h3>
+                            <h3 class="text-xl 2xl:text-2xl font-black text-emerald-600 mt-2 whitespace-nowrap">{{ $kpiRevenueShow }}</h3>
                         </div>
 
-                        <!-- CONSULTAS DE HOY - SEPARADAS POR MODALIDAD (REEMPLAZADO) -->
-                        <div class="lg:col-span-1 bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100">
+                        <div class="min-w-0 h-full bg-white border rounded-[2rem] p-5 shadow-lg border-slate-100">
                             <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Total Consultas Hoy</span>
-                            <h3 class="text-2xl font-black text-slate-800 mt-2">{{ $appointmentsToday }}</h3>
+                            <h3 class="text-xl 2xl:text-2xl font-black text-slate-800 mt-2">{{ $appointmentsToday }}</h3>
                         </div>
 
-                        <div class="lg:col-span-1 bg-gradient-to-br from-blue-50 to-blue-100 border rounded-[2rem] p-6 shadow-lg border-blue-200">
+                        <div class="min-w-0 h-full bg-gradient-to-br from-blue-50 to-blue-100 border rounded-[2rem] p-5 shadow-lg border-blue-200">
                             <span class="text-[10px] font-black text-blue-600 uppercase tracking-wider block">📱 Virtuales</span>
-                            <h3 class="text-2xl font-black text-blue-900 mt-2">{{ $appointmentsTodayVirtual }}</h3>
+                            <h3 class="text-xl 2xl:text-2xl font-black text-blue-900 mt-2">{{ $appointmentsTodayVirtual }}</h3>
                         </div>
 
-                        <div class="lg:col-span-1 bg-gradient-to-br from-emerald-50 to-emerald-100 border rounded-[2rem] p-6 shadow-lg border-emerald-200">
+                        <div class="min-w-0 h-full bg-gradient-to-br from-emerald-50 to-emerald-100 border rounded-[2rem] p-5 shadow-lg border-emerald-200">
                             <span class="text-[10px] font-black text-emerald-600 uppercase tracking-wider block">🏥 Presenciales</span>
-                            <h3 class="text-2xl font-black text-emerald-900 mt-2">{{ $appointmentsTodayPresencial }}</h3>
+                            <h3 class="text-xl 2xl:text-2xl font-black text-emerald-900 mt-2">{{ $appointmentsTodayPresencial }}</h3>
                         </div>
 
-                        <a href="{{ $appointmentRouteSection }}">
-                            <div class="lg:col-span-1 bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100">
+                        <a href="{{ $appointmentRouteSection }}" class="block min-w-0 h-full">
+                            <div class="h-full bg-white border rounded-[2rem] p-5 shadow-lg border-slate-100 hover:shadow-xl transition-shadow">
                                 <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Próximos espacios</span>
-                                <h3 class="text-2xl font-black text-slate-800 mt-2">{{ $upcomingAppointmentsCount }}</h3>
+                                <h3 class="text-xl 2xl:text-2xl font-black text-slate-800 mt-2">{{ $upcomingAppointmentsCount }}</h3>
                             </div>
                         </a>
 
-                        <div class="lg:col-span-1 bg-white border rounded-[2rem] p-6 shadow-lg border-slate-100">
+                        <div class="min-w-0 h-full bg-white border rounded-[2rem] p-5 shadow-lg border-slate-100">
                             <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Absentismo Global</span>
-                            <h3 class="text-2xl font-black text-rose-600 mt-2">{{ $cancellationRate }}%</h3>
+                            <h3 class="text-xl 2xl:text-2xl font-black text-rose-600 mt-2">{{ $cancellationRate }}%</h3>
                         </div>
                     </div>
-
                     <!-- CUADRÍCULA DE GRÁFICOS -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <!-- 📊 SECCIÓN: HISTORIAL DE FACTURACIÓN CONSOLIDADA -->

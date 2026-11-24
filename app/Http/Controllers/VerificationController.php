@@ -16,7 +16,8 @@ class VerificationController extends Controller
         $user = auth()->user();
 
         // 1. VALIDACIÓN MAESTRA DE ARCHIVOS INDEPENDIENTE DEL ROL
-        $request->validate([
+        try {
+            $request->validate([
             'identity_card' => ['required', 'file', 'mimes:jpeg,png,jpg,pdf', 'max:4096'],
             'professional_card' => ['required', 'file', 'mimes:jpeg,png,jpg,pdf', 'max:4096'],
         ], [
@@ -27,6 +28,27 @@ class VerificationController extends Controller
             'professional_card.mimes' => 'El archivo debe ser en formato JPG, PNG o PDF.',
             'professional_card.max' => 'El archivo no debe pesar más de 4MB.',
         ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Diagnóstico: motivo, tamaño y tipo del archivo. No se guarda la imagen.
+            $info = [];
+            foreach (['identity_card', 'professional_card'] as $campo) {
+                $f = $request->file($campo);
+                $info[$campo] = $f ? [
+                    'valido' => $f->isValid(),
+                    'error_php' => $f->getError(),
+                    'extension' => $f->getClientOriginalExtension(),
+                    'mime_cliente' => $f->getClientMimeType(),
+                    'bytes' => $f->isValid() ? $f->getSize() : null,
+                ] : 'no_llego';
+            }
+            \Illuminate\Support\Facades\Log::warning('partner.verify_rejected', [
+                'user_id' => $user?->id,
+                'role' => $user?->role,
+                'errores' => $e->errors(),
+                'archivos' => $info,
+            ]);
+            throw $e;
+        }
 
         // 2. ABSTRACCIÓN DINÁMICA DEL TENANT (Inversión de Control)
         $profile = null;
