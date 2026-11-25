@@ -1,4 +1,11 @@
 
+{{-- nav-overlay-movil: en móvil el menú se abre POR ENCIMA del contenido (no lo desplaza). Escritorio no cambia. --}}
+<style>
+@media (max-width: 767.98px) {
+  #navbar-default { position: absolute; top: 100%; left: 0; right: 0; padding: 0 1rem; z-index: 60; }
+  #navbar-default > ul { margin-top: .25rem; background-color: #fff; box-shadow: 0 12px 24px -8px rgba(15, 23, 42, .25); }
+}
+</style>
 <nav class="bg-white sticky w-full z-50 top-0 start-0 border-b border-default">
   <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
     <a href="https://opendoctor.online" class="flex items-center space-x-3 rtl:space-x-reverse" alt="OpenDoctorOnline" title="OpenDoctorOnline">
@@ -111,3 +118,19 @@
     </div>
   </div>
 </nav>
+<script>
+(function () {
+  var menu = document.getElementById('navbar-default');
+  var btn = document.querySelector('[data-collapse-toggle="navbar-default"]');
+  if (!menu || !btn) { return; }
+  function isMobile() { return window.matchMedia('(max-width: 767.98px)').matches; }
+  function isOpen() { return !menu.classList.contains('hidden'); }
+  // Toca fuera del menú (o una opción de enlace) y se cierra; se usa el propio botón para no desincronizar el estado.
+  document.addEventListener('click', function (e) {
+    if (!isMobile() || !isOpen()) { return; }
+    if (btn.contains(e.target)) { return; }
+    if (menu.contains(e.target) && !e.target.closest('a')) { return; }
+    btn.click();
+  });
+})();
+</script>

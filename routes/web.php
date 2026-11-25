@@ -752,3 +752,17 @@ Route::middleware(['auth', 'role:doctor|clinic'])->group(function () {
 Route::prefix('chat-salud-ia')->name('ai-chat.')->group(function () {
     Route::get('/terminos', [\App\Http\Controllers\AiChatTermsController::class, 'show'])->name('terms');
 });
+
+// ---------- Datos fiscales (datosfiscales): cada rol ve y edita solo el suyo ----------
+Route::middleware(['auth', 'role:doctor'])->group(function () {
+    Route::get('/partner/billing', [\App\Http\Controllers\BillingProfileController::class, 'edit'])->name('partner.billing.edit');
+    Route::put('/partner/billing', [\App\Http\Controllers\BillingProfileController::class, 'update'])->middleware('throttle:20,1')->name('partner.billing.update');
+});
+Route::middleware(['auth', 'role:clinic'])->group(function () {
+    Route::get('/clinic/billing', [\App\Http\Controllers\BillingProfileController::class, 'edit'])->name('partner.clinic.billing.edit');
+    Route::put('/clinic/billing', [\App\Http\Controllers\BillingProfileController::class, 'update'])->middleware('throttle:20,1')->name('partner.clinic.billing.update');
+});
+Route::middleware(['auth', 'role:patient'])->group(function () {
+    Route::get('/patient/billing', [\App\Http\Controllers\BillingProfileController::class, 'edit'])->name('patient.billing.edit');
+    Route::put('/patient/billing', [\App\Http\Controllers\BillingProfileController::class, 'update'])->middleware('throttle:20,1')->name('patient.billing.update');
+});

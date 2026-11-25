@@ -17,6 +17,8 @@ Allow: /terms
 Allow: /privacy
 Allow: /support
 Allow: /plans/show
+# Página pública de elección de registro (los formularios /register* y el login siguen bloqueados más abajo)
+Allow: /register-options
 
 # 2. BLOQUEAR zonas privadas, paneles e infraestructura de Laravel
 Disallow: /api/

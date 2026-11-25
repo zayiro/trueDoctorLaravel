@@ -88,6 +88,14 @@
         <priority>0.7</priority>
     </url>
 
+    {{-- Página pública de elección de registro (Doctor, Clínica o Paciente) --}}
+    <url>
+        <loc>https://opendoctor.online/register-options</loc>
+        <lastmod>{{ now()->toIso8601String() }}</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
     {{-- Directorio de síntomas indexados --}}
     <url>
         <loc>https://opendoctor.online/sintomas</loc>
