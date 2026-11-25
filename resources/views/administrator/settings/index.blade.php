@@ -310,6 +310,48 @@ $inputBase = 'w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg te
                     @endforeach
                 </div>
             </div>
+            <!-- 6️⃣ PROVEEDOR DE SMS -->
+            @php
+                $smsMgr = app(\App\Sms\SmsManager::class);
+                $smsProviders = $smsProviders ?? $smsMgr->options();
+                $smsCurrent = old('sms_provider', $settings->get('sms_provider')) ?: $smsMgr->primaryName();
+                $smsBackup = old('sms_fallback', $settings->get('sms_fallback'));
+            @endphp
+            <div class="bg-slate-950 border border-white/10 rounded-2xl p-6 space-y-4">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-message text-green-400"></i>
+                    Proveedor de SMS
+                </h2>
+                <p class="text-slate-400 text-sm">Con qué proveedor se envían los SMS de recordatorios y avisos de plan. Las llaves de cada proveedor van en el archivo .env; aquí solo eliges cuál usar.</p>
+
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label for="sms_provider" class="text-sm font-bold text-white">Proveedor principal</label>
+                        <select id="sms_provider" name="sms_provider" class="w-full px-3 py-2 bg-slate-800 border border-white/10 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                            @foreach ($smsProviders as $key => $name)
+                                <option value="{{ $key }}" @selected($smsCurrent === $key)>{{ $name }}{{ $smsMgr->configured($key) ? '' : ' — sin configurar en .env' }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label for="sms_fallback" class="text-sm font-bold text-white">Proveedor de respaldo</label>
+                        <select id="sms_fallback" name="sms_fallback" class="w-full px-3 py-2 bg-slate-800 border border-white/10 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="">Sin respaldo</option>
+                            @foreach ($smsProviders as $key => $name)
+                                <option value="{{ $key }}" @selected($smsBackup === $key)>{{ $name }}{{ $smsMgr->configured($key) ? '' : ' — sin configurar en .env' }}</option>
+                            @endforeach
+                        </select>
+                        <p class="text-xs text-slate-400">Se usa si el principal falla o no está configurado.</p>
+                    </div>
+                </div>
+
+                <div class="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+                    <p class="text-slate-300 text-xs">
+                        <strong>ℹ️</strong> El cambio aplica a los SMS nuevos. Un proveedor marcado «sin configurar» no enviará nada hasta que sus llaves estén en el .env.
+                    </p>
+                </div>
+            </div>
+
             <!-- BOTÓN GUARDAR -->
             <div class="flex gap-3 sticky bottom-4">
                 <button type="submit"

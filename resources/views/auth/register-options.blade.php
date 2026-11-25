@@ -1,6 +1,6 @@
 <x-guest-layout
     meta_title="Crear Cuenta Gratis | Únete a OpenDoctorOnline" 
-    meta_description="Regístrate gratis en OpenDoctor. Elige tu perfil como Paciente para agendar citas y gestionar tu historial, o como Doctor para digitalizar tu agenda y consultas"
+    meta_description="Regístrate gratis en OpenDoctor. Elige tu perfil como Paciente para agendar citas y gestionar tu historial, o como Doctor para digitalizar tu agenda y consultas, o como Clínica para administrar tu centro médico y tus especialistas"
 >
     @if (session('info'))
         <div id="alert-info" class="flex items-center p-4 mb-4 text-info-800 rounded-2xl bg-info-50 border border-info-100 shadow-sm transition-opacity duration-500" role="alert">
@@ -27,7 +27,7 @@
                 <p class="text-lg text-slate-600 font-medium">Selecciona tu perfil para comenzar tu experiencia</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 
                 <!-- Opción: Paciente -->
                 <a href="{{ route('register') }}" class="group bg-white p-8 rounded-3xl shadow-sm border-2 border-transparent hover:border-blue-500 hover:shadow-xl transition-all duration-300 text-center">
@@ -128,21 +128,28 @@
                 </a>
 
                 <!-- Opción: Clínica -->
-                <!--
                 <a href="{{ route('clinic.register') }}" class="group bg-white p-8 rounded-3xl shadow-sm border-2 border-transparent hover:border-blue-500 hover:shadow-xl transition-all duration-300 text-center">
                     <div class="bg-purple-100 text-purple-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
                     </div>
-                    <h3 class="text-xl font-bold text-slate-800 mb-2">Soy Gerente</h3>
-                    <p class="text-sm text-slate-500">Administra múltiples doctores, sedes y servicios hospitalarios.</p>
-                </a>-->
+                    <h3 class="text-xl font-bold text-slate-800 mb-2">Soy Clínica o Centro Médico</h3>
+                    <p class="text-sm text-slate-500 text-left pt-3">Administra a tus especialistas, tus servicios y los pacientes que atienden.</p>
+                    <ul class="text-sm space-y-1.5 pt-3 pb-3">
+                        <li class="flex items-start gap-1.5"><svg class="w-3.5 h-3.5 mt-0.5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg><span class="text-gray-500 dark:text-gray-400">Vincula a tus especialistas</span></li>
+                        <li class="flex items-start gap-1.5"><svg class="w-3.5 h-3.5 mt-0.5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg><span class="text-gray-500 dark:text-gray-400">Sede virtual incluida; sedes físicas con plan Gold</span></li>
+                        <li class="flex items-start gap-1.5"><svg class="w-3.5 h-3.5 mt-0.5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg><span class="text-gray-500 dark:text-gray-400">Directorio de pacientes atendidos</span></li>
+                        <li class="flex items-start gap-1.5"><svg class="w-3.5 h-3.5 mt-0.5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg><span class="text-gray-500 dark:text-gray-400">Empieza gratis con el Plan Esencial</span></li>
+                    </ul>
+
+                    <span class="inline-flex items-center gap-x-1.5 py-1.5 px-3 rounded-full text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-500/20 dark:text-teal-400 mt-3">SELECCIONAR</span>
+                </a>
 
             </div>
             
-            <div class="bg-white border-gray-100 dark:border-gray-700 rounded-2xl p-1 my-5">
+            <div class="my-8">
                 <!-- User Intent: Context: Tailwind CSS UI components | Constraints: Responsive design | Intent: Recreate section from image -->
-                <section class="w-full max-w-5xl mx-auto p-4 sm:p-6 bg-gray-600">
-                    <div class="bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700 rounded-2xl p-6 sm:p-8 shadow-xs">
+                <section class="w-full">
+                    <div class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm">
                         
                         <!-- Encabezado superior: USO REAL -->
                         <div class="flex items-center gap-2 text-xs font-semibold tracking-wider text-gray-500 dark:text-gray-400 uppercase mb-5">
@@ -159,7 +166,7 @@
                             <div class="grid grid-cols-2 gap-3 sm:gap-4 shrink-0">
                                 
                                 <!-- Tarjeta 1: +130% -->
-                                <div class="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl p-4 sm:px-6 sm:py-5 shadow-sm flex flex-col items-center justify-center text-center min-w-[130px] sm:min-w-[145px]">
+                                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:px-6 sm:py-5 flex flex-col items-center justify-center text-center min-w-[130px] sm:min-w-[145px]">
                                 <span class="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
                                     +130%
                                 </span>
@@ -169,7 +176,7 @@
                                 </div>
 
                                 <!-- Tarjeta 2: 98% -->
-                                <div class="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl p-4 sm:px-6 sm:py-5 shadow-sm flex flex-col items-center justify-center text-center min-w-[130px] sm:min-w-[145px]">
+                                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:px-6 sm:py-5 flex flex-col items-center justify-center text-center min-w-[130px] sm:min-w-[145px]">
                                 <span class="text-2xl sm:text-3xl font-extrabold text-blue-600 dark:text-blue-400 tracking-tight">
                                     98%
                                 </span>

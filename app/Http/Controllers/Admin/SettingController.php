@@ -74,6 +74,7 @@ class SettingController extends Controller
             'commissions' => self::COMMISSIONS,
             'gateway' => self::GATEWAY,
             'company' => self::COMPANY,
+            'smsProviders' => app(\App\Sms\SmsManager::class)->options(),
         ]);
     }
 
@@ -137,6 +138,11 @@ class SettingController extends Controller
             'group' => 'ai',
             'rules' => ['nullable', Rule::in(array_keys(\App\Services\AiModels\AiModelResolver::SKIN_OPTIONS))],
         ];
+
+        // Proveedor de SMS: principal y respaldo. Opcionales a propósito: si la vista no los envía, el guardado sigue funcionando.
+        $smsKeys = array_keys(app(\App\Sms\SmsManager::class)->options());
+        $schema['sms_provider'] = ['group' => 'sms', 'rules' => ['nullable', Rule::in($smsKeys)]];
+        $schema['sms_fallback'] = ['group' => 'sms', 'rules' => ['nullable', Rule::in($smsKeys)]];
 
         $schema['support_email'] = [
             'group' => 'saas',

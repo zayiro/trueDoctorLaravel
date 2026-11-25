@@ -41,8 +41,8 @@ final class PlanSmsNotifier
         if (!config('plans.sms_enabled', true)) {
             return false;
         }
-        if (!config('services.twilio.account_sid') || !config('services.twilio.auth_token') || !config('services.twilio.phone_number')) {
-            return false;
+        if (!app(\App\Sms\SmsManager::class)->hasConfiguredProvider()) {
+            return false; // ningún proveedor de SMS tiene sus llaves puestas
         }
 
         $phone = $this->phoneFor($user);
