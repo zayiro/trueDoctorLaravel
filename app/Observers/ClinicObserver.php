@@ -30,7 +30,7 @@ class ClinicObserver
         try {
             DB::transaction(function () use ($clinic) {
                 // 1. Buscar el plan institucional por defecto
-                $institutionalPlan = Plan::where('slug', 'clinic_gold')->first();
+                $institutionalPlan = Plan::where('slug', 'clinic_free')->first() ?? Plan::where('slug', 'clinic_gold')->first();
                 $planId = $institutionalPlan?->id ?? 1;
 
                 // 2. 🔒 VALIDACIÓN: Evitar duplicados de ClinicSetting

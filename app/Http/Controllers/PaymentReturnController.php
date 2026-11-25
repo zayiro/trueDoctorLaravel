@@ -48,6 +48,10 @@ class PaymentReturnController extends Controller
             }
         }
 
+        if ($payment->kind === PaymentKind::Subscription) {
+            return app(\App\Http\Controllers\PlanPaymentResultController::class)->show($payment);
+        }
+
         if ($payment->kind === PaymentKind::Exam) {
             return $this->examResult($payment);
         }

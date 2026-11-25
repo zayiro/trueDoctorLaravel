@@ -11,11 +11,11 @@
                     </div>
                     <h1 class="text-2xl font-black text-slate-800">¡Pago exitoso!</h1>
                     <p class="text-slate-500 text-sm leading-relaxed">
-                        Tu plan ha sido activado correctamente.
+                        Tu plan ha sido activado correctamente. Te enviamos el comprobante a tu correo.
                     </p>
-                    <a href="{{ route('admin.dashboard') }}"
+                    <a href="{{ $homeUrl ?? route('admin.dashboard') }}"
                         class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold px-8 py-3 rounded-2xl transition">
-                        Ir al dashboard
+                        {{ $homeLabel ?? 'Ir al dashboard' }}
                     </a>
                 </div>
 
@@ -45,11 +45,11 @@
                     </div>
                     <h1 class="text-2xl font-black text-slate-800">Estado pendiente</h1>
                     <p class="text-slate-500 text-sm leading-relaxed">
-                        Tu pago está siendo procesado. Te notificaremos pronto.  {{ $status }}
+                        Tu pago está siendo procesado. En cuanto el banco lo confirme, tu plan se activa solo y te llega un correo.
                     </p>
-                    <a href="{{ route('admin.dashboard') }}"
+                    <a href="{{ $homeUrl ?? route('admin.dashboard') }}"
                         class="mt-4 bg-slate-700 hover:bg-slate-800 text-white font-bold px-8 py-3 rounded-2xl transition">
-                        Ir al dashboard
+                        {{ $homeLabel ?? 'Ir al dashboard' }}
                     </a>
                 </div>
             @endif

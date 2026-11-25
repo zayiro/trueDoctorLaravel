@@ -47,8 +47,14 @@ class AiModelMonitor
             $add($value, self::USAGE_SETTINGS[$key]);
         }
 
-        $add(config('services.anthropic.vision_model'), 'Exámenes: modelo real de Claude (.env)');
-        $add(config('services.openai.vision_model'), 'Exámenes: modelo de OpenAI (.env)');
+        // Lo que realmente se llama (panel → .env → código), incluida la piel.
+        foreach (AiModelResolver::effective() as $row) {
+            $add($row['model'], $row['place']);
+        }
+
+        // Respaldo por .env si el panel no tiene un modelo válido; la búsqueda por síntomas usa el de OpenAI.
+        $add(config('services.anthropic.vision_model'), 'Exámenes: modelo de respaldo de Claude (.env)');
+        $add(config('services.openai.vision_model'), 'Búsqueda por síntomas y respaldo de exámenes (.env)');
 
         foreach ((array) config('ai_models.in_code', []) as $id => $place) {
             $add($id, $place);

@@ -39,4 +39,10 @@ class AIServiceProvider extends ServiceProvider
             };
         });
     }
+
+    public function boot(): void
+    {
+        // Detecta "sin crédito" de los proveedores de IA sin tocar los drivers (ver AiCreditMonitor).
+        \App\Services\AI\AiCreditMonitor::listen();
+    }
 }

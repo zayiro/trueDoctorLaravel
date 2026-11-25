@@ -166,7 +166,7 @@ class Clinic extends Model
         $plan = $this->plan;
         if (!$plan) return false;
 
-        return $this->addresses()->count() < $plan->max_addresses;
+        return $this->addresses()->where('type', 'physical')->count() < $plan->max_addresses;
     }
 
     public function canAddMoreServices(): bool

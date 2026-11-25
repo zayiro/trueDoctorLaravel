@@ -176,6 +176,27 @@ $inputBase = 'w-full px-4 py-2 bg-slate-900 border border-white/10 rounded-lg te
                 </div>
             </div>
 
+            <!-- 2️⃣b MODELO DE IA PARA ANÁLISIS DE PIEL -->
+            <div class="bg-slate-950 border border-white/10 rounded-2xl p-6 space-y-4">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-microchip text-pink-400"></i>
+                    Modelo de IA para Análisis de Piel
+                </h2>
+                <p class="text-slate-400 text-sm">Modelo que redacta el informe y que valida la calidad de la foto.</p>
+
+                <div class="bg-slate-900 rounded-lg p-4 space-y-2 border-l-4 border-pink-500">
+                    <label for="skin_ai_model" class="text-xs font-bold text-white">Modelo de Claude</label>
+                    <select id="skin_ai_model"
+                            name="skin_ai_model"
+                            class="w-full px-3 py-2 bg-slate-800 border border-white/10 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-pink-500">
+                        @foreach ($skinModels as $value => $name)
+                            <option value="{{ $value }}" @selected(old('skin_ai_model', $skinModelCurrent) === $value)>{{ $name }}</option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-slate-400">Aplica a los análisis nuevos. El Chat de Salud IA tiene su propio panel.</p>
+                </div>
+            </div>
+
             <!-- 3️⃣ FACTORES DE DECIMACIÓN -->
             <div class="bg-slate-950 border border-white/10 rounded-2xl p-6 space-y-4">
                 <h2 class="text-xl font-bold text-white flex items-center gap-2">

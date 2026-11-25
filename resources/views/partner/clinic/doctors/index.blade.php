@@ -274,6 +274,20 @@ $breadcrumbs = [
         </div> <!-- Cierre de la sección de pestañas -->
         <!-- LISTADO DE LA NÓMINA CORPORATIVA -->
         <div class="space-y-4">
+            @php
+                $pausados = $doctors->filter(fn ($d) => $d->pivot->status === 'plan_suspended')->count();
+                $cupoPlan = (int) ($clinic->plan?->max_doctors ?? 0);
+            @endphp
+            @if ($pausados > 0)
+                <div class="p-5 rounded-2xl bg-amber-50 border border-amber-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-black text-amber-800">{{ $pausados }} {{ $pausados === 1 ? 'especialista está pausado' : 'especialistas están pausados' }} por tu plan</p>
+                        <p class="text-xs text-amber-700 font-medium mt-1">Tu plan {{ $clinic->plan?->name }} permite {{ $cupoPlan }} especialista(s). No se eliminó a nadie ni se perdieron sus horarios: vuelven solos al mejorar o renovar tu plan.</p>
+                    </div>
+                    <a href="/planes" class="inline-flex items-center justify-center bg-amber-600 hover:bg-amber-700 text-white font-black px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-sm whitespace-nowrap">Ver planes</a>
+                </div>
+            @endif
+
             <div class="flex items-center justify-between mb-4 px-2">
                 <h4 class="text-xs font-black uppercase text-slate-400 tracking-wider">Cuerpo Médico Actual</h4>
                 <span class="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
@@ -330,6 +344,14 @@ $breadcrumbs = [
                                             </button>
                                         </form>
                                     </div>
+                                @elseif($status === 'plan_suspended')
+                                    <div class="flex flex-col gap-1.5">
+                                        <span class="inline-flex items-center w-max px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>Pausado por el plan
+                                        </span>
+                                        <span class="text-[11px] text-slate-400 font-medium max-w-[16rem]">Tu plan actual no incluye este cupo. Se reactiva solo al mejorar o renovar tu plan.</span>
+                                        <a href="/planes" class="text-[11px] font-black text-indigo-600 hover:text-indigo-800 underline">Ver planes</a>
+                                    </div>
                                 @else
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-red-50 text-red-700 border border-red-100">
                                         <span class="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5"></span>Inactivo
@@ -338,7 +360,7 @@ $breadcrumbs = [
                             </div>
 
                             <div class="flex items-center gap-1.5">
-                                @if($status !== 'pending')
+                                @if(!in_array($status, ['pending', 'plan_suspended'], true))
                                     <form action="{{ route('partner.clinic.doctors.toggle', $doctor) }}" method="POST" class="inline">
                                         @csrf @method('PATCH')
                                         <button type="submit" class="inline-flex items-center justify-center px-3 py-2 border rounded-xl text-xs font-bold transition-all {{ $status === 'approved' ? 'border-amber-100 text-amber-700 bg-amber-50 hover:bg-amber-100' : 'border-emerald-100 text-emerald-700 bg-emerald-50 hover:bg-emerald-100' }}">

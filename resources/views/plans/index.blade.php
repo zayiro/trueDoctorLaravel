@@ -53,6 +53,9 @@
                                             <span class="text-4xl font-black text-gray-900">${{ number_format($plan->price, 0) }}</span>
                                             <span class="text-gray-500">/año</span>
                                         </div>
+                                        @if ((float) $plan->price > 0)
+                                            <p class="text-sm text-gray-500 mt-1">Pago único por {{ $plan->durationLabel() }} · equivale a ${{ number_format($plan->perMonth(), 0) }}/mes</p>
+                                        @endif
                                     </div>
 
                                     <ul class="space-y-4 mb-8 flex-1">                                                                                
@@ -145,7 +148,7 @@
                             <p class="text-lg text-gray-600">Planes optimizados para centros médicos y clínicas con múltiples especialistas</p>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            @foreach($plans->where('applicable_role', 'clinic') as $plan)
+                            @foreach($plans->where('applicable_role', 'clinic')->sortBy('price') as $plan)
                                 <div class="bg-white rounded-3xl shadow-xl p-8 border border-gray-100 flex flex-col {{ $plan->plan === 'clinic_gold' ? 'ring-4 ring-blue-600 relative' : '' }}">
                                     
                                     @if($plan->plan === 'clinic_gold')
@@ -160,16 +163,23 @@
                                             <span class="text-4xl font-black text-gray-900">${{ number_format($plan->price, 0) }}</span>
                                             <span class="text-gray-500">/año</span>
                                         </div>
+                                        @if ((float) $plan->price > 0)
+                                            <p class="text-sm text-gray-500 mt-1">Pago único por {{ $plan->durationLabel() }} · equivale a ${{ number_format($plan->perMonth(), 0) }}/mes</p>
+                                        @endif
                                     </div>
 
                                     <ul class="space-y-4 mb-8 flex-1">
                                         <li class="flex items-center gap-3 text-gray-700">
                                             <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                            <span>Hasta <strong>{{ $plan->max_addresses }}</strong> sedes físicas</span>
+                                            <span>@if ($plan->max_addresses > 0)Hasta <strong>{{ $plan->max_addresses }}</strong> {{ $plan->max_addresses === 1 ? 'sede física' : 'sedes físicas' }}@else<strong>Solo atención virtual</strong> (las sedes físicas son de los planes de pago)@endif</span>
                                         </li>
                                         <li class="flex items-center gap-3 text-gray-700">
                                             <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                             <span>Hasta <strong>{{ $plan->max_services }}</strong> servicios globales</span>
+                                        </li>
+                                        <li class="flex items-center gap-3 text-gray-700">
+                                            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            <span>Hasta <strong>{{ $plan->max_doctors }}</strong> especialistas</span>
                                         </li>
                                         <li class="flex items-center gap-3 text-gray-700">
                                             <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -197,12 +207,16 @@
                                         </li>                        
                                     </ul>
 
+                                    @if ((float) $plan->price > 0)
                                     <form action="{{ route('plans.subscribe', $plan) }}" method="POST">
                                         @csrf
                                         <button type="submit" class="w-full py-4 rounded-2xl font-black transition {{ $plan->plan === 'clinic_premium' ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg' : 'bg-gray-100 text-gray-800 hover:bg-gray-200' }}">
                                             Seleccionar {{ $plan->name }}
                                         </button>
                                     </form>
+                                    @else
+                                        <a href="/register-clinic" class="block w-full py-4 rounded-2xl font-black text-center transition bg-gray-100 text-gray-800 hover:bg-gray-200">Registrar mi clínica gratis</a>
+                                    @endif
                                 </div>
                             @endforeach
                         </div>

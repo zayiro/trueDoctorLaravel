@@ -99,3 +99,14 @@ Schedule::command('ai-chat:purge')->dailyAt('03:20')->withoutOverlapping(30)->on
 
 // Análisis de piel/exámenes que quedaron en "processing" porque el proceso murió: se marcan como fallidos.
 Schedule::command('analyses:sweep-stuck')->everyTenMinutes()->withoutOverlapping(10)->onOneServer();
+
+Schedule::command('ai:check-credits')->everyThirtyMinutes()->withoutOverlapping(10)->onOneServer();
+
+// Avisos por correo al administrador (dashalerts): saldos y cobros
+Schedule::command('alerts:send')->cron('5,35 * * * *')->withoutOverlapping(10)->onOneServer();
+
+// Planes de suscripción (planreglas): baja a gratuito los vencidos y avisa 3 días antes
+Schedule::command('plans:expire')->timezone('America/Bogota')->dailyAt('06:10')->withoutOverlapping(10)->onOneServer();
+
+// Planes de suscripción (planpagos): limpia intentos de pago abandonados
+Schedule::command('plans:cleanup')->timezone('America/Bogota')->dailyAt('06:20')->withoutOverlapping(10)->onOneServer();

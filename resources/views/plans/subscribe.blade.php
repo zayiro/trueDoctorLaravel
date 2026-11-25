@@ -26,6 +26,7 @@
                         <div class="pt-10">
                             <p class="text-sm opacity-80">Total a pagar hoy:</p>
                             <p class="text-5xl font-black">${{ number_format($plan->price, 0) }} <span class="text-lg font-normal">COP</span></p>
+                            <p class="text-sm opacity-80 mt-2">Acceso por {{ $plan->durationLabel() }} · pago único, sin renovación automática</p>
                         </div>
                     </div>
                 </div>
@@ -64,4 +65,4 @@
             </div>
         </div>
     </div>
-</x-app-layout>
+</x-guest-layout>

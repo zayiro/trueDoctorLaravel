@@ -569,11 +569,13 @@ class MedicalAnalysisController extends Controller
         }
 
         try {
+            $plan = $this->examPlan($analysis->exam_type);
+
             $order = $provider
                 ? array_unique([$provider, $provider === 'claude' ? 'openai' : 'claude'])
-                : $this->providerOrder($analysis->exam_type);
+                : $plan['order'];
 
-            $outcome = AIVisionManager::analyzeWithFallback($systemPrompt, $userText, $images, $order);
+            $outcome = AIVisionManager::analyzeWithFallback($systemPrompt, $userText, $images, $order, $plan['models']);
 
             $result = is_string($outcome['result'])
                 ? (json_decode($outcome['result'], true) ?? [])
@@ -847,21 +849,16 @@ class MedicalAnalysisController extends Controller
     }
 
     /**
-     * Orden de proveedores de IA según los ajustes del panel (primario y fallback).
-     * Laboratorio e imagenología tienen cada uno el suyo.
+     * Plan de IA del análisis: proveedores en orden y el modelo exacto de cada uno.
+     * Laboratorio e imagenología tienen cada uno el suyo en el panel; la lógica vive en AiModelResolver.
+     *
+     * @return array{order: string[], models: array<string,string>}
      */
-    private function providerOrder(string $examType): array
+    private function examPlan(string $examType): array
     {
         $group = in_array($examType, self::IMAGING_TYPES, true) ? 'imaging' : 'lab';
-        $providers = ['gpt-4o' => 'openai', 'claude-sonnet-5-5' => 'claude', 'claude-sonnet-4-5' => 'claude'];
 
-        $primaryModel = Setting::where('key', "{$group}_ai_primary_model")->value('value');
-        $fallbackModel = Setting::where('key', "{$group}_ai_fallback_model")->value('value');
-
-        $primary = $providers[$primaryModel] ?? 'claude';
-        $fallback = $providers[$fallbackModel] ?? 'openai';
-
-        return array_values(array_unique([$primary, $fallback]));
+        return \App\Services\AiModels\AiModelResolver::examPlan($group);
     }
 
     /**

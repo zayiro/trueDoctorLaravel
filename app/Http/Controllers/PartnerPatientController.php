@@ -38,52 +38,64 @@ class PartnerPatientController extends Controller
         return $user->doctor ?? abort(403, 'Perfil de médico no encontrado o no configurado.');
     }
 
+    /** Estados de cita que NO dan derecho a abrir la ficha del paciente. */
+    private const BLOCKED_STATUSES = ['cancelled', 'canceled', 'expired', 'no_show', 'rejected'];
+
     /**
-     * 🔒 Valida que el médico tenga una relación histórica con el paciente.
-     * Previene vulnerabilidades IDOR (Insecure Direct Object Reference).
+     * 🔒 Valida que el médico tenga una relación con el paciente a través de una cita válida
+     * (no cancelada ni expirada) y que el paciente esté activo. Previene IDOR y deja rastro del acceso.
      */
     private function ensurePatientRelation(Patient $patient, int $doctorId): void
     {
-        $hasRelation = $patient->appointments()->where('doctor_id', $doctorId)->exists();
+        $hasRelation = $patient->appointments()
+            ->where('doctor_id', $doctorId)
+            ->whereNotIn('status', self::BLOCKED_STATUSES)
+            ->exists();
+
         if (!$hasRelation) {
+            \App\Services\Patients\PatientAccessLog::record($patient->id, 'denegado', $doctorId);
             abort(403, 'No tienes permiso para acceder o modificar la información de este paciente.');
         }
+
+        if (!$patient->active) {
+            $msg = 'Este paciente está desactivado y su ficha no está disponible.';
+            if (request()->expectsJson() || request()->ajax()) {
+                throw new \Illuminate\Http\Exceptions\HttpResponseException(response()->json(['success' => false, 'message' => $msg], 403));
+            }
+            throw new \Illuminate\Http\Exceptions\HttpResponseException(redirect()->route('partner.patients.index')->with('error', $msg));
+        }
+
+        \App\Services\Patients\PatientAccessLog::record($patient->id, null, $doctorId);
     }
 
     /**
-     * Muestra la lista de pacientes del médico, con búsqueda optimizada en SQL.
+     * Directorio del médico: solo pacientes ATENDIDOS (con al menos una cita completada con él, por Zoom o presencial).
      */
     public function index(Request $request)
     {
-        $doctor = $this->getAuthenticatedDoctor();
-        $doctorId = $doctor->id;
-        $plan = $doctor->settings?->plan;
-        $querySearch = $request->input('query');
-
-        // Query base: Pacientes que han tenido citas con este doctor
-        $baseQuery = Patient::whereHas('appointments', function ($q) use ($doctorId) {
-            $q->where('doctor_id', $doctorId);
-        })->with(['user', 'appointments']);
-
-        if ($plan?->can_search_patients && $querySearch) {
-            // ✅ CORRECCIÓN CRÍTICA: Búsqueda en SQL, no en memoria (previene OOM)
-            $patients = $baseQuery->where(function ($q) use ($querySearch) {
-                $q->whereHas('user', function ($uq) use ($querySearch) {
-                    $uq->where('name', 'LIKE', "%{$querySearch}%")
-                       ->orWhere('email', 'LIKE', "%{$querySearch}%");
-                })->orWhere('identification', 'LIKE', "%{$querySearch}%");
-            })->paginate(15)->withQueryString();
-        } else {
-            // Modo restringido: Solo pacientes con citas de hoy, limitado por plan
-            $patients = $baseQuery->whereHas('appointments', function ($q) use ($doctorId) {
-                $q->where('doctor_id', $doctorId)
-                  ->whereDate('date', Carbon::today());
-            })
-            ->limit($plan?->max_patients_list ?? 15)
-            ->paginate(15);
+        $user = Auth::user();
+        if ($user && $user->role === 'clinic' && !$user->doctor) {
+            return redirect()->route('partner.clinic.patients.index');
         }
 
-        return view('partner.patients.index', compact('patients', 'plan'));
+        $doctor = $this->getAuthenticatedDoctor();
+        $plan = $doctor->settings?->plan;
+        $canSearch = (bool) ($plan?->can_search_patients);
+        $cap = (int) ($plan?->max_patients_list ?? 15);
+        $term = trim((string) $request->input('query')) ?: null;
+
+        $patients = app(\App\Services\Patients\PatientDirectory::class)
+            ->paginate(['doctor_id' => $doctor->id], $canSearch, $cap, $term)
+            ->withQueryString();
+
+        return view('partner.patients.index', [
+            'patients'   => $patients,
+            'plan'       => $plan,
+            'isClinic'   => false,
+            'searchTerm' => $term,
+            'searching'  => $canSearch && $term !== null && mb_strlen($term) >= \App\Services\Patients\PatientDirectory::SEARCH_MIN_LENGTH,
+            'cap'        => $cap,
+        ]);
     }
 
     /**

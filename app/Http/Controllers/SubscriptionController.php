@@ -27,6 +27,23 @@ class SubscriptionController extends Controller
                 ->with('info', 'Primero crea tu cuenta para activar el ' . $plan->name);
         }
 
+        // Reglas de plan (planreglas): subir siempre; bajar solo cuando termina el tiempo pagado; sin pagar dos veces el mismo plan vigente.
+        $rules = app(\App\Services\Plans\PlanRules::class);
+        $decision = $rules->evaluate(Auth::user(), $plan);
+        if (!$decision['ok']) {
+            return redirect($rules->homeFor(Auth::user()))->with('error', $decision['message']);
+        }
+
+        // Plan gratuito permitido: pantalla de confirmación (nunca se cobra ni se cambia con un solo clic).
+        if ((float) $plan->price <= 0) {
+            $doctor = $rules->doctorOf(Auth::user());
+
+            return view('plans.downgrade', [
+                'plan'    => $plan,
+                'preview' => $rules->downgradePreview($doctor, $plan),
+            ]);
+        }
+
         return view('plans.subscribe', compact('plan'));
     }
 
@@ -35,9 +52,33 @@ class SubscriptionController extends Controller
      */
     public function checkout(Plan $plan)
     {
-        $result = $this->wompi->buildCheckoutUrl(Auth::id(), $plan);        
+        if (Auth::guest()) {
+            session(['selected_plan_id' => $plan->id]);
 
-        return redirect($result['checkout_url']);
+            return redirect()->route('register.options')->with('info', 'Primero crea tu cuenta para activar el ' . $plan->name);
+        }
+
+        // Mismas reglas que al mostrar el plan: el servidor decide, no la pantalla.
+        $rules = app(\App\Services\Plans\PlanRules::class);
+        $decision = $rules->evaluate(Auth::user(), $plan);
+        if (!$decision['ok']) {
+            return redirect($rules->homeFor(Auth::user()))->with('error', $decision['message']);
+        }
+        if ((float) $plan->price <= 0) {
+            return redirect($rules->homeFor(Auth::user()))->with('error', 'El plan gratuito no requiere pago.');
+        }
+
+        // planpagos: el cobro queda en `payments` (tipo suscripción) y la pasarela devuelve al médico a /payments/return/{referencia}.
+        try {
+            $checkout = app(\App\Services\Payments\PlanCheckout::class);
+            $payment  = $checkout->start(Auth::user(), $plan);
+
+            return redirect()->away($checkout->checkoutUrl($payment));
+        } catch (\Throwable $e) {
+            \Log::error('plans.checkout_failed', ['user_id' => Auth::id(), 'plan_id' => $plan->id, 'error' => $e->getMessage()]);
+
+            return redirect($rules->homeFor(Auth::user()))->with('error', 'No pudimos iniciar el pago. Inténtalo de nuevo en unos segundos.');
+        }
     }
 
     /**
@@ -111,20 +152,59 @@ class SubscriptionController extends Controller
      */
     private function applyTransactionResult(Subscription $subscription, array $transaction): void
     {
-        $status = strtolower($transaction['status']); // approved, declined, voided, error
+        $status = strtolower((string) ($transaction['status'] ?? '')); // approved, declined, voided, error
 
-        $subscription->update([
-            'wompi_transaction_id' => $transaction['id'],
-            'status'               => $status,
-            'paid_at'              => $status === 'approved' ? now() : null,
-            'ends_at'              => $status === 'approved' ? now()->addDays(30) : $subscription->ends_at,
-        ]);
-
-        // Actualizar el plan del doctor si fue aprobado
-        if ($status === 'approved') {
-            $subscription->doctor->doctorSetting()->update([
-                'plan_id' => $subscription->plan_id,
-            ]);
+        // Idempotencia: un pago ya aprobado no se vuelve a aplicar (la página de resultado y el webhook
+        // llegan los dos, y Wompi puede reenviar). Antes cada llegada reiniciaba el periodo de 30 días.
+        if ($subscription->status === 'approved') {
+            return;
         }
+
+        if ($status !== 'approved') {
+            $subscription->update([
+                'wompi_transaction_id' => $transaction['id'] ?? $subscription->wompi_transaction_id,
+                'status'               => $status,
+            ]);
+
+            return;
+        }
+
+        // El monto confirmado por Wompi debe ser el de la suscripción. Si no coincide NO se activa nada:
+        // la suscripción queda como estaba (pending), se guarda el id de la transacción y se deja el aviso en el log.
+        if ((int) ($transaction['amount_in_cents'] ?? 0) !== (int) $subscription->amount_in_cents) {
+            \Log::warning('Suscripción: monto de Wompi distinto al esperado; no se activó el plan', [
+                'subscription_id' => $subscription->id,
+                'esperado'        => $subscription->amount_in_cents,
+                'recibido'        => $transaction['amount_in_cents'] ?? null,
+                'transaction_id'  => $transaction['id'] ?? null,
+            ]);
+            $subscription->update([
+                'wompi_transaction_id' => $transaction['id'] ?? $subscription->wompi_transaction_id,
+            ]);
+
+            return;
+        }
+
+        $rules = app(\App\Services\Plans\PlanRules::class);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($subscription, $transaction, $rules) {
+            $locked = Subscription::lockForUpdate()->find($subscription->id);
+            if (!$locked || $locked->status === 'approved') {
+                return;
+            }
+
+            // Si renueva el mismo plan vigente, los 30 días nuevos se suman al vencimiento actual.
+            [$starts, $ends] = $rules->periodFor($locked);
+
+            $locked->update([
+                'wompi_transaction_id' => $transaction['id'] ?? $locked->wompi_transaction_id,
+                'status'               => 'approved',
+                'paid_at'              => now(),
+                'starts_at'            => $starts,
+                'ends_at'              => $ends,
+            ]);
+
+            $rules->activatePlan($locked);
+        });
     }
 }

@@ -291,6 +291,7 @@ Route::middleware(['auth', 'role:clinic'])->group(function () {
     Route::put('/clinic/payouts/bank', [\App\Http\Controllers\PartnerPayoutController::class, 'saveAccount'])->middleware('throttle:10,60')->name('partner.clinic.payouts.bank');
 
     Route::get('/clinic/doctors', [ClinicDoctorController::class, 'index'])->name('partner.clinic.doctors.index');
+    Route::get('/clinic/patients', [\App\Http\Controllers\ClinicPatientController::class, 'index'])->name('partner.clinic.patients.index');
     Route::post('/clinic/doctors', [ClinicDoctorController::class, 'store'])->name('partner.clinic.doctors.store');
     Route::patch('/clinic/doctors/{doctor}/toggle', [ClinicDoctorController::class, 'toggleStatus'])->name('partner.clinic.doctors.toggle');
     Route::delete('/clinic/doctors/{doctor}', [ClinicDoctorController::class, 'destroy'])->name('partner.clinic.doctors.destroy');

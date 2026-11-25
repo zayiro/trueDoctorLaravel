@@ -28,7 +28,6 @@ return [
 
     // Modelos que están escritos directamente en el código (no se configuran en el panel).
     'in_code' => [
-        'claude-sonnet-5-5' => 'Análisis de piel (código)',
         'claude-sonnet-4-6' => 'Driver de Claude por defecto (código)',
     ],
 ];

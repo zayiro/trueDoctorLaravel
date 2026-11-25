@@ -34,8 +34,6 @@ class SkinAnalysisController extends Controller
     private const WOMPI_COMMISSION_RATE = 0.03;
     private const CURRENCY = 'COP';
 
-    private const AI_MODEL = 'claude-sonnet-5-5';
-
     /** Rechazos de calidad seguidos tras los cuales se ofrece continuar con la foto de todas formas. */
     private const FORCE_AFTER_REJECTS = 2;
 
@@ -409,7 +407,7 @@ PROMPT;
             'wompi_fee' => $price['fee'],
             'total_amount' => $price['total'],
             'promo_code' => $promo?->code,
-            'ai_model' => self::AI_MODEL,
+            'ai_model' => \App\Services\AiModels\AiModelResolver::skinModel(),
         ]);
 
         // Mover la foto: temporal privado -> definitivo privado
@@ -658,7 +656,7 @@ PROMPT;
 
         $message = $client->messages->create(
             maxTokens: 300,
-            model: self::AI_MODEL,
+            model: \App\Services\AiModels\AiModelResolver::skinModel(),
             system: self::IMAGE_VALIDATION_SYSTEM_PROMPT,
             messages: [
                 [

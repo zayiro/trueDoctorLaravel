@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\Storage;
 class SkinAnalysisService
 {
     private const DISK = 'private';
-    private const AI_MODEL = 'claude-sonnet-5-5';
     private const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
 
     /** Idioma en el que la IA redacta el informe (el que eligió el paciente). */
@@ -68,7 +67,7 @@ PROMPT;
 
         $analysis->update([
             'report' => $report,
-            'ai_model' => self::AI_MODEL,
+            'ai_model' => \App\Services\AiModels\AiModelResolver::skinModel(),
             'status' => SkinAnalysis::STATUS_COMPLETED,
             'completed_at' => now(),
             'failure_reason' => null,
@@ -175,7 +174,7 @@ PROMPT;
 
         $message = $client->messages->create(
             maxTokens: 2000,
-            model: self::AI_MODEL,
+            model: \App\Services\AiModels\AiModelResolver::skinModel(),
             system: $system,
             messages: [
                 ['role' => 'user', 'content' => $content],

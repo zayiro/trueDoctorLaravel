@@ -11,35 +11,35 @@ class PlanController extends Controller
 {
     public function update(Request $request)
     {
-        /*$request->validate(['plan' => 'required|exists:plans,plan']);
+        // Confirmación de pasar al plan gratuito (planreglas). Los planes de pago se contratan con el botón de pago.
+        $request->validate(['plan' => 'required|string']);
 
-        $doctor = auth()->user()->doctor;
-        $nuevoPlan = Plan::where('plan', $request->plan)->first();
-        $limiteGlobal = $nuevoPlan->max_services; // Ejemplo: 3
+        $user   = auth()->user();
+        $rules  = app(\App\Services\Plans\PlanRules::class);
+        $target = Plan::where('plan', $request->plan)->first();
 
-        // 1. Ajustar Sedes
-        $addresses = $doctor->addresses()->orderBy('created_at', 'asc')->get();
-        foreach ($addresses as $index => $address) {
-            $address->update(['status' => ($index < $nuevoPlan->max_addresses)]);
+        if (!$target || (float) $target->price > 0) {
+            return redirect($rules->homeFor($user))->with('error', 'Este cambio de plan no está disponible.');
         }
 
-        // 2. Ajustar Servicios (Lógica Robusta)
-        // Traemos TODOS los servicios del doctor
-        $allServices = Service::whereHas('addresses', function($q) use ($doctor) {
-            $q->where('doctor_id', $doctor->id);
-        })->orderBy('created_at', 'asc')->get();
-
-        foreach ($allServices as $index => $service) {            
-            $service->update([
-                'active' => ($index < $limiteGlobal) 
-            ]);
+        $decision = $rules->evaluate($user, $target);
+        if (!$decision['ok']) {
+            return redirect($rules->homeFor($user))->with('error', $decision['message']);
         }
 
-        // 3. Actualizar Settings y Doctor
-        $doctor->settings()->update(['plan_id' => $nuevoPlan->id]);
-        $doctor->update(['plan' => $nuevoPlan->plan]);*/
+        $doctor = $rules->doctorOf($user);
+        if (!$doctor) {
+            return redirect($rules->homeFor($user))->with('error', 'No encontramos tu perfil de médico.');
+        }
 
-        return back()->with('success', "Plan actualizado.");
+        $summary = $rules->downgradeToFree($doctor, $target, 'solicitado por el médico');
+
+        $msg = "Listo, ahora estás en el {$target->name}.";
+        if ($summary['addresses_off'] > 0) {
+            $msg .= " Se desactivaron {$summary['addresses_off']} " . ($summary['addresses_off'] === 1 ? 'sede' : 'sedes') . ' que superan el límite del plan; no se borró nada.';
+        }
+
+        return redirect($rules->homeFor($user))->with('success', $msg);
     }
 
     public function showPlans()

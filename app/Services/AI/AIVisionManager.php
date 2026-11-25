@@ -5,6 +5,7 @@ namespace App\Services\AI;
 use App\Services\AI\Contracts\AIVisionDriver;
 use App\Services\AI\Drivers\ClaudeDriver;
 use App\Services\AI\Drivers\OpenAIDriver;
+use App\Services\AI\Drivers\MedGemmaDriver;
 use Illuminate\Support\Facades\Log;
 
 class AIVisionManager
@@ -20,6 +21,8 @@ class AIVisionManager
     public static function driver(?string $provider = null, ?string $model = null): AIVisionDriver
     {
         $provider = $provider ?? config('services.ai_vision.default', 'openai');
+        // AI_VISION_PROVIDER=anthropic se acepta como sinónimo de claude
+        $provider = $provider === 'anthropic' ? 'claude' : $provider;
 
         return match ($provider) {
             'openai' => new OpenAIDriver(
@@ -45,6 +48,7 @@ class AIVisionManager
      * automáticamente con un proveedor de respaldo (fallback entre proveedores).
      *
      * @param  string[]  $providerOrder  Ej. ['claude', 'openai'] — intenta en ese orden
+     * @param  array<string,string>  $models  Modelo exacto por proveedor, ej. ['openai' => 'gpt-4o', 'claude' => 'claude-sonnet-5-5'] (si falta, el de config)
      * @return array{result: array, provider_used: string}
      *
      * @throws \RuntimeException si TODOS los proveedores fallan
@@ -53,13 +57,14 @@ class AIVisionManager
         string $systemPrompt,
         string $userText,
         array $images,
-        array $providerOrder = ['openai', 'claude']
+        array $providerOrder = ['openai', 'claude'],
+        array $models = []
     ): array {
         $errors = [];
 
         foreach ($providerOrder as $provider) {
             try {
-                $driver = self::driver($provider);
+                $driver = self::driver($provider, $models[$provider] ?? null);
                 $result = $driver->analyzeImages($systemPrompt, $userText, $images);
 
                 return [

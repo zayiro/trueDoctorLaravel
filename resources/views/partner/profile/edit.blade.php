@@ -60,6 +60,16 @@
             @if ($hasIndividualPlan)
             <div class="mt-5 md:mt-0 md:col-span-2">
                 <div class="shadow overflow-hidden sm:rounded-2xl bg-white p-6 border border-gray-100">
+                    {{-- planStatus: estado del plan y mensajes de planreglas --}}
+                    @php
+                        $planStatus = app(\App\Services\Plans\PlanRules::class)->statusFor(auth()->user());
+                    @endphp
+                    @if (session('error') || session('info'))
+                        <div class="mb-4 p-4 rounded-2xl border text-sm font-medium {{ session('error') ? 'bg-rose-50 border-rose-100 text-rose-800' : 'bg-blue-50 border-blue-100 text-blue-800' }}">{{ session('error') ?? session('info') }}</div>
+                    @endif
+                    @if ($planStatus)
+                        <p class="mb-4 text-xs text-gray-500">{{ $planStatus['text'] }}</p>
+                    @endif
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         @foreach($plans as $plan)
                             <form action="{{ route('plans.subscribe', $plan) }}" method="POST">
@@ -82,7 +92,7 @@
                                             {{ $plan->max_addresses }} {{ Str::plural('Sede', $plan->max_addresses) }}
                                         </p>
                                         <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                                            {{ $plan->max_services_per_address }} Servicios x Sede
+                                            {{ $plan->max_services }} Servicios en total
                                         </p>
                                         <div class="mt-3 pt-2 border-t border-gray-100">
                                             <span class="text-sm font-black text-blue-600">

@@ -245,7 +245,21 @@ class ClinicDoctorController extends Controller
             return back()->with('error', 'Acción no permitida o relación inexistente.');
         }
 
+        // Pausado por el plan: solo vuelve solo al mejorar/renovar el plan (PlanRules::restoreClinicOverflow).
+        if ($pivot->status === 'plan_suspended') {
+            return back()->with('error', 'Este especialista está pausado porque tu plan actual no alcanza para todo el equipo. Mejora tu plan para reactivarlo.');
+        }
+
         $newStatus = $pivot->status === 'approved' ? 'inactive' : 'approved';
+
+        if ($newStatus === 'approved') {
+            $maxDoctors = (int) ($clinic->plan?->max_doctors ?? 0);
+            $activos = DB::table('clinic_doctor')->where('clinic_id', $clinic->id)->where('status', 'approved')->count();
+            if ($activos >= $maxDoctors) {
+                return back()->with('error', "Tu plan permite {$maxDoctors} especialista(s) activo(s) y ya los tienes. Desactiva a otro o mejora tu plan.");
+            }
+        }
+
         $clinic->doctors()->updateExistingPivot($doctor->id, ['status' => $newStatus]);
 
         // Los horarios NO se tocan: el motor de disponibilidad exige membresía 'approved',

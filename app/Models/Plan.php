@@ -22,6 +22,7 @@ class Plan extends Model
         'has_telemedicine',
         'ai_scribe_enabled',
         'price',
+        'duration_days',
         'active',
     ];
 
@@ -33,5 +34,34 @@ class Plan extends Model
         'ai_scribe_enabled' => 'boolean',
         'active' => 'boolean',
         'price' => 'decimal:2',
+        'duration_days' => 'integer',
     ];
+
+    /** Días de acceso que compra un pago de este plan (por defecto 30). */
+    public function durationDays(): int
+    {
+        return max(1, (int) ($this->duration_days ?: 30));
+    }
+
+    /** «12 meses», «1 mes», «45 días». */
+    public function durationLabel(): string
+    {
+        $d = $this->durationDays();
+        if ($d >= 360 && $d <= 370) {
+            return '12 meses';
+        }
+        if ($d % 30 === 0) {
+            $months = intdiv($d, 30);
+
+            return $months === 1 ? '1 mes' : "{$months} meses";
+        }
+
+        return "{$d} días";
+    }
+
+    /** Lo que cuesta al mes (precio ÷ meses de acceso). */
+    public function perMonth(): float
+    {
+        return (float) $this->price / max(1, $this->durationDays() / 30);
+    }
 }

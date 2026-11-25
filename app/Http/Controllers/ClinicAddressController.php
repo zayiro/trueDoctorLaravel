@@ -79,12 +79,14 @@ class ClinicAddressController extends Controller
         // 2. Control Multi-tenant de límites de infraestructura
         $currentAddressesCount = Address::where('clinic_id', $clinic->id)
             ->whereNull('doctor_id')
+            ->where('type', 'physical')
             ->whereNull('deleted_at')
             ->count();
 
         if ($currentAddressesCount >= ($plan->max_addresses ?? 0)) {
-            return back()->with('error', 
-                "Has alcanzado el límite máximo de sedes permitidas en tu plan {$plan->name} ({$plan->max_addresses}).");
+            return back()->with('error', ((int) $plan->max_addresses) === 0
+                    ? "Las sedes físicas están incluidas en los planes de pago. Mejora tu plan para crearlas (tu {$plan->name} incluye solo la sede virtual)."
+                    : "Has alcanzado el límite máximo de sedes permitidas en tu plan {$plan->name} ({$plan->max_addresses}).");
         }
 
         try {

@@ -25,10 +25,7 @@ class SettingController extends Controller
     ];
 
     /** Modelos de IA que el panel permite elegir (valor guardado => nombre). */
-    private const AI_MODELS = [
-        'gpt-4o' => 'GPT-4o (OpenAI)',
-        'claude-sonnet-5-5' => 'Claude Sonnet 5.5',
-    ];
+    private const AI_MODELS = \App\Services\AiModels\AiModelResolver::EXAM_OPTIONS;
 
     /** Un modelo primario y uno de respaldo por cada grupo de análisis. */
     private const AI_FIELDS = [
@@ -72,6 +69,8 @@ class SettingController extends Controller
             'examTypes' => self::EXAM_TYPES,
             'decimationTypes' => $this->decimationTypes(),
             'aiModels' => self::AI_MODELS,
+            'skinModels' => \App\Services\AiModels\AiModelResolver::SKIN_OPTIONS,
+            'skinModelCurrent' => \App\Services\AiModels\AiModelResolver::skinModel(),
             'commissions' => self::COMMISSIONS,
             'gateway' => self::GATEWAY,
             'company' => self::COMPANY,
@@ -133,6 +132,11 @@ class SettingController extends Controller
                 'rules' => ['required', Rule::in(array_keys(self::AI_MODELS))],
             ];
         }
+
+        $schema[\App\Services\AiModels\AiModelResolver::SKIN_KEY] = [
+            'group' => 'ai',
+            'rules' => ['nullable', Rule::in(array_keys(\App\Services\AiModels\AiModelResolver::SKIN_OPTIONS))],
+        ];
 
         $schema['support_email'] = [
             'group' => 'saas',

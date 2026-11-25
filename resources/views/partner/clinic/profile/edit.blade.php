@@ -92,7 +92,7 @@
                                         </p>
                                         <div class="mt-3 pt-2 border-t border-gray-100 dark:border-gray-700">
                                             <span class="text-sm font-black text-indigo-600 dark:text-indigo-400">
-                                                {{ $plan->price > 0 ? '$' . number_format($plan->price, 0) : 'Gratis' }}
+                                                {{ $plan->price > 0 ? '$' . number_format($plan->price, 0) . '/año' : 'Gratis' }}
                                             </span>
                                         </div>
                                     </div>
