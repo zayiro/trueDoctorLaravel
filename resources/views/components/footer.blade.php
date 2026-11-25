@@ -61,7 +61,8 @@
                 <h3 class="od-footer-title">Legal</h3>
                 <ul class="od-footer-list">
                     <li><a href="{{ route('terms.show') }}">Términos de Servicio</a></li>
-                    <li><a href="{{ route('privacy.show') }}">Política de Privacidad</a></li>
+                    <li><a href="{{ route('privacy.show') }}">Privacidad y Tratamiento de Datos</a></li>
+                    <li><a href="#" onclick="if (window.odCookiePrefs) { window.odCookiePrefs(); } return false;">Preferencias de cookies</a></li>
                     <li><a href="https://web.sispro.gov.co/THS/Cliente/ConsultasPublicas/ConsultaPublicaDeTHxIdentificacion.aspx" target="_blank" rel="noopener">ReTHUS</a></li>
                 </ul>
             </nav>

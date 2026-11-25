@@ -87,21 +87,9 @@
                             </div>
                         </div>
 
-                        @if (Laravel\Jetstream\Jetstream::hasTermsAndPrivacyPolicyFeature())
-                            <div class="mt-5">
-                                <x-label for="terms">
-                                    <div class="flex items-start gap-2">
-                                        <x-checkbox name="terms" id="terms" required class="mt-0.5 rounded border-slate-300 text-[#1F6E63] focus:ring-[#1F6E63]" />
-                                        <div class="text-sm text-slate-600">
-                                            {!! __('Acepto los :terms_of_service y la :privacy_policy', [
-                                                    'terms_of_service' => '<a target="_blank" href="'.route('terms.show').'" class="underline hover:text-[#12302E] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1F6E63] rounded-md">'.__('Términos de Servicio').'</a>',
-                                                    'privacy_policy' => '<a target="_blank" href="'.route('policy.show').'" class="underline hover:text-[#12302E] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1F6E63] rounded-md">'.__('Política de Privacidad').'</a>',
-                                            ]) !!}
-                                        </div>
-                                    </div>
-                                </x-label>
-                            </div>
-                        @endif
+                        <div class="mt-5">
+                            <x-terms-checkbox />
+                        </div>
                         
                         <div class="flex flex-col items-center mt-7 pt-6 space-y-6">
                             <button type="submit" ::disabled="loading"

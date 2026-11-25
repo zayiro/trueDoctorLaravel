@@ -381,8 +381,8 @@
                                         <ul class="text-sm text-white space-y-1">
                                             @foreach($popularSpecialties as $item)
                                                 <li class="flex justify-between items-center">
-                                                    <span>{{ ucwords(str_replace('-', ' ', $item->specialty)) }}</span>
-                                                    <span class="text-xs bg-indigo-600 px-2 py-0.5 rounded-full">({{ $item->total_searches }} búsquedas)</span>
+                                                    <span>{{ $item->specialty_name ?? ucwords(str_replace('-', ' ', $item->specialty)) }}</span>
+                                                    <span class="text-xs bg-indigo-600 px-2 py-0.5 rounded-full">({{ $item->total_searches }} {{ $item->total_searches == 1 ? 'búsqueda' : 'búsquedas' }})</span>
                                                 </li>
                                             @endforeach
                                         </ul>
@@ -392,8 +392,8 @@
                                         <ul class="text-sm text-white space-y-1">
                                             @foreach($popularCities as $item)
                                                 <li class="flex justify-between items-center">
-                                                    <span>{{ $item->city }}</span>
-                                                    <span class="text-xs bg-green-600 px-2 py-0.5 rounded-full">({{ $item->total_searches }} búsquedas)</span>
+                                                    <span>{{ ucwords(str_replace('-', ' ', $item->city)) }}</span>
+                                                    <span class="text-xs bg-green-600 px-2 py-0.5 rounded-full">({{ $item->total_searches }} {{ $item->total_searches == 1 ? 'búsqueda' : 'búsquedas' }})</span>
                                                 </li>
                                             @endforeach
                                         </ul>

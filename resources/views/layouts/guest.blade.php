@@ -190,7 +190,18 @@
 
         @if(env('GOOGLE_ANALYTICS_ID'))
         <!-- Google tag (gtag.js) -->
-        <script async src="https://www.googletagmanager.com/gtag/js?id={{ env('GOOGLE_ANALYTICS_ID') }}"></script>
+        <script>
+            // cookiesaviso: Google Analytics solo se carga si la persona aceptó las cookies de analítica (od_consent=all).
+            window.odLoadGA = function () {
+                if (window.__odGaLoaded) { return; }
+                window.__odGaLoaded = true;
+                var s = document.createElement('script');
+                s.async = true;
+                s.src = 'https://www.googletagmanager.com/gtag/js?id={{ env('GOOGLE_ANALYTICS_ID') }}';
+                document.head.appendChild(s);
+            };
+            if (/(?:^|; )od_consent=all(?:;|$)/.test(document.cookie)) { window.odLoadGA(); }
+        </script>
         <script>
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
@@ -212,6 +223,7 @@
         </main>        
 
         @include('components.footer')
+        @include('components.cookie-consent')
 
         @livewireScripts
 

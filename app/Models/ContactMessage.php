@@ -20,6 +20,9 @@ class ContactMessage extends Model
         'subject',
         'message',
         'is_read', // Útil para tu panel de administración
+        'replied_at',
+        'replied_by',
+        'reply_body',
     ];
 
     /**
@@ -27,5 +30,12 @@ class ContactMessage extends Model
      */
     protected $attributes = [
         'is_read' => false,
+    ];
+
+    /**
+     * Conversiones de tipo.
+     */
+    protected $casts = [
+        'replied_at' => 'datetime',
     ];
 }

@@ -1,9 +1,21 @@
 @php
     // BORRADOR para revisión de abogado. Los puntos marcados «REVISAR CON ABOGADO» dependen de criterio legal.
     $retentionDays = max(1, (int) (\App\Models\Setting::get('ai_chat_retention_days', 30) ?: 30));
+    // privacidaddatos: datos del responsable, leídos de Configuración → Datos de empresa (si falta alguno, no se muestra).
+    $empresa = [
+        'nombre'    => trim((string) \App\Models\Setting::get('company_legal_name', '')) ?: 'OpenDoctorOnline',
+        'nit'       => trim((string) \App\Models\Setting::get('company_nit', '')),
+        'direccion' => trim((string) \App\Models\Setting::get('company_address', '')),
+        'ciudad'    => trim((string) \App\Models\Setting::get('company_city', '')),
+        'correo'    => trim((string) \App\Models\Setting::get('company_email', '')) ?: (trim((string) \App\Models\Setting::get('support_email', '')) ?: 'support@opendoctor.online'),
+    ];
+    $empresa['detalle'] = ($empresa['nit'] ? ' (NIT ' . $empresa['nit'] . ')' : '')
+        . (($empresa['direccion'] || $empresa['ciudad'])
+            ? ', con domicilio en ' . trim($empresa['direccion'] . ($empresa['ciudad'] ? ' – ' . $empresa['ciudad'] : ''), ' –')
+            : '');
 @endphp
 <x-guest-layout
-    meta_title="Política de Privacidad | Citas Médicas en Línea - OpenDoctor"
+    meta_title="Política de Privacidad y Tratamiento de Datos Personales | OpenDoctor"
     meta_description="Cómo OpenDoctor trata tus datos personales y de salud conforme a la Ley 1581 de 2012: qué recolectamos, para qué, con quién los compartimos y cómo ejercer tus derechos."
     keywords="política de privacidad médica, protección de datos de salud, habeas data, Ley 1581 de 2012, citas médicas en línea, confidencialidad médica, privacidad datos salud"
 >
@@ -15,10 +27,10 @@
                     Privacidad y Confidencialidad
                 </span>
                 <h1 class="text-3xl font-extrabold text-white sm:text-4xl tracking-tight">
-                    Política de Privacidad
+                    Política de Privacidad y Tratamiento de Datos Personales
                 </h1>
                 <p class="mt-3 max-w-2xl mx-auto text-teal-100 text-sm">
-                    Última actualización: 24 de noviembre de 2026
+                    Última actualización: 25 de noviembre de 2026
                 </p>
             </header>
 
@@ -35,6 +47,10 @@
                         <a href="#terceros" class="block px-3 py-2 text-sm font-medium text-slate-600 hover:text-teal-600 hover:bg-slate-100/50 rounded-lg border-l-2 border-transparent transition-all">6. Terceros y Transferencia</a>
                         <a href="#conservacion" class="block px-3 py-2 text-sm font-medium text-slate-600 hover:text-teal-600 hover:bg-slate-100/50 rounded-lg border-l-2 border-transparent transition-all">7. Conservación</a>
                         <a href="#derechos" class="block px-3 py-2 text-sm font-medium text-slate-600 hover:text-teal-600 hover:bg-slate-100/50 rounded-lg border-l-2 border-transparent transition-all">8. Sus Derechos</a>
+                        <a href="#consultas-reclamos" class="block px-3 py-2 text-sm font-medium text-slate-600 hover:text-teal-600 hover:bg-slate-100/50 rounded-lg border-l-2 border-transparent transition-all">9. Consultas y Reclamos</a>
+                        <a href="#cookies" class="block px-3 py-2 text-sm font-medium text-slate-600 hover:text-teal-600 hover:bg-slate-100/50 rounded-lg border-l-2 border-transparent transition-all">10. Cookies</a>
+                        <a href="#menores" class="block px-3 py-2 text-sm font-medium text-slate-600 hover:text-teal-600 hover:bg-slate-100/50 rounded-lg border-l-2 border-transparent transition-all">11. Menores de Edad</a>
+                        <a href="#vigencia" class="block px-3 py-2 text-sm font-medium text-slate-600 hover:text-teal-600 hover:bg-slate-100/50 rounded-lg border-l-2 border-transparent transition-all">12. Vigencia y Cambios</a>
                     </nav>
                 </aside>
 
@@ -51,7 +67,8 @@
                             </h2>
                             {{-- REVISAR CON ABOGADO: la Ley 1581 pide identificar al responsable con razón social/nombre, domicilio, correo y teléfono. Completar aquí NIT/razón social, dirección y teléfono. --}}
                             <p class="text-slate-600">
-                                El responsable del tratamiento de sus datos personales recolectados a través de esta plataforma es <strong>OpenDoctorOnline</strong>. Para consultas, reclamos o solicitudes sobre sus datos puede escribirnos a <a href="mailto:support@opendoctor.online" class="text-teal-600 underline">support@opendoctor.online</a>.
+                                El responsable del tratamiento de sus datos personales recolectados a través de esta plataforma es <strong>{{ $empresa['nombre'] }}</strong>{{ $empresa['detalle'] }}.
+                                Para consultas, reclamos o solicitudes sobre sus datos puede escribirnos a <a href="mailto:{{ $empresa['correo'] }}" class="text-teal-600 underline">{{ $empresa['correo'] }}</a>.
                             </p>
                         </section>
 
@@ -136,6 +153,7 @@
                                 <li>Mensajes de texto: <strong>Twilio</strong>.</li>
                                 <li>Modelos de inteligencia artificial: proveedores externos de modelos de IA.</li>
                                 <li>Correo electrónico e infraestructura en la nube.</li>
+                                <li>Analítica web, solo si usted acepta las cookies de analítica: <strong>Google Analytics</strong>.</li>
                             </ul>
                             <p class="text-slate-600 mt-3">
                                 Algunos de estos proveedores pueden procesar información fuera de Colombia. No vendemos sus datos ni los cedemos con fines comerciales o publicitarios.
@@ -171,6 +189,60 @@
                             </ul>
                             <p class="text-slate-600 mt-3">
                                 Para ejercer estos derechos escríbanos a <a href="mailto:support@opendoctor.online" class="text-teal-600 underline">support@opendoctor.online</a>, indicando su nombre, su documento y lo que solicita.
+                            </p>
+                        </section>
+
+                        {{-- privacidaddatos --}}
+                        <section id="consultas-reclamos" class="scroll-mt-28">
+                            <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mb-4 flex items-center">
+                                <span class="text-teal-600 me-2">9.</span> Consultas y Reclamos
+                            </h2>
+                            {{-- REVISAR CON ABOGADO: plazos de los arts. 14 y 15 de la Ley 1581 de 2012 y requisito de procedibilidad del art. 16 ante la SIC. --}}
+                            <p class="text-slate-600 mb-3">
+                                Puede presentar su consulta o reclamo por escrito a <a href="mailto:{{ $empresa['correo'] }}" class="text-teal-600 underline">{{ $empresa['correo'] }}</a>, indicando su nombre completo, su documento de identidad, una descripción clara de lo que solicita y un medio para responderle.
+                            </p>
+                            <ul class="list-disc list-inside text-slate-600 space-y-2 text-sm pl-2">
+                                <li><strong>Consultas</strong> (saber qué datos suyos tenemos y cómo los usamos): las respondemos en un máximo de <strong>diez (10) días hábiles</strong> desde su recibo. Si no es posible, le informamos el motivo y la nueva fecha, que no superará cinco (5) días hábiles adicionales.</li>
+                                <li><strong>Reclamos</strong> (corregir, actualizar o suprimir datos, revocar la autorización o denunciar un posible incumplimiento): los respondemos en un máximo de <strong>quince (15) días hábiles</strong>. Si el reclamo está incompleto, le pediremos completarlo dentro de los cinco (5) días siguientes; si necesitamos más tiempo, se lo informaremos, sin superar ocho (8) días hábiles adicionales.</li>
+                                <li>Solo después de agotar este trámite con nosotros puede presentar una queja ante la Superintendencia de Industria y Comercio.</li>
+                            </ul>
+                        </section>
+
+                        <section id="cookies" class="scroll-mt-28">
+                            <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mb-4 flex items-center">
+                                <span class="text-teal-600 me-2">10.</span> Cookies y Tecnologías Similares
+                            </h2>
+                            {{-- REVISAR CON ABOGADO: clasificación de cookies, duración, transferencia a Google (fuera de Colombia) y forma del consentimiento. --}}
+                            <p class="text-slate-600 mb-3">
+                                Usamos pequeños archivos en su navegador. Las <strong>necesarias</strong> siempre están activas porque el sitio no funcionaría sin ellas; las demás solo se activan si usted pulsa «Aceptar» en el aviso de cookies.
+                            </p>
+                            <div class="bg-slate-50 rounded-xl p-5 border border-slate-100 space-y-3">
+                                <p class="text-sm text-slate-700">• <strong>Necesarias (siempre activas):</strong> la cookie de sesión de la plataforma, la cookie de seguridad de los formularios (<code>XSRF-TOKEN</code>) y <code>od_consent</code>, que recuerda su elección sobre las cookies durante 12 meses.</p>
+                                <p class="text-sm text-slate-700">• <strong>De preferencias (solo si acepta):</strong> <code>od_last_specialty</code>, que recuerda por 30 días la última especialidad que buscó para ofrecerle un acceso rápido a ella cuando vuelva.</p>
+                                <p class="text-sm text-slate-700">• <strong>De analítica (solo si acepta):</strong> Google Analytics (<code>_ga</code> y <code>_ga_*</code>), para conocer de forma agregada cómo se usa el sitio y mejorarlo. Google puede procesar esa información fuera de Colombia.</p>
+                                <p class="text-sm text-slate-700">• <strong>Almacenamiento del navegador:</strong> <code>opendoctor_location_consent</code> guarda su decisión sobre compartir la ubicación para mostrarle doctores cercanos.</p>
+                            </div>
+                            <p class="text-slate-600 mt-3">
+                                Si pulsa «Solo necesarias», no cargamos la analítica ni guardamos su última especialidad, y el servicio funciona igual. Puede cambiar su decisión cuando quiera desde «Preferencias de cookies» en el pie de página, o borrando las cookies en la configuración de su navegador.
+                            </p>
+                        </section>
+
+                        <section id="menores" class="scroll-mt-28">
+                            <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mb-4 flex items-center">
+                                <span class="text-teal-600 me-2">11.</span> Menores de Edad
+                            </h2>
+                            {{-- REVISAR CON ABOGADO: tratamiento de datos de niños, niñas y adolescentes (art. 7 de la Ley 1581 y su reglamentación). --}}
+                            <p class="text-slate-600">
+                                La plataforma está dirigida a personas mayores de edad. Si usted es madre, padre o representante legal y agenda una cita para un menor, es usted quien autoriza el tratamiento de los datos del menor, y nosotros los usamos únicamente para prestar ese servicio, respetando el interés superior del menor y la prevalencia de sus derechos.
+                            </p>
+                        </section>
+
+                        <section id="vigencia" class="scroll-mt-28">
+                            <h2 class="text-xl sm:text-2xl font-bold text-slate-900 mb-4 flex items-center">
+                                <span class="text-teal-600 me-2">12.</span> Vigencia y Cambios
+                            </h2>
+                            <p class="text-slate-600">
+                                Esta política rige desde el 25 de noviembre de 2026. Si la modificamos de forma sustancial, se lo informaremos en este sitio o por correo electrónico antes de aplicar los cambios, y actualizaremos la fecha de arriba. Sus datos se conservan mientras exista la finalidad para la que fueron recolectados y los deberes legales de conservación descritos en la sección 7.
                             </p>
                         </section>
 

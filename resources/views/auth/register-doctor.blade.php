@@ -213,6 +213,10 @@
                             </div>
                         </div>
 
+                        <div class="mt-5">
+                            <x-terms-checkbox />
+                        </div>
+
                         <div class="flex flex-col items-center mt-7 pt-6 space-y-6">
                             <button type="submit" ::disabled="loading"
                                 class="group w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-200 shadow-md shadow-blue-600/15 flex items-center justify-center gap-2.5 text-base transform active:scale-[0.98]">                                                                

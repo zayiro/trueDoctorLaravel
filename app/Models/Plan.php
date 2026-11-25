@@ -62,6 +62,10 @@ class Plan extends Model
     /** Lo que cuesta al mes (precio ÷ meses de acceso). */
     public function perMonth(): float
     {
-        return (float) $this->price / max(1, $this->durationDays() / 30);
+        $d = $this->durationDays();
+        // Un plan anual (360-370 días) son 12 meses exactos; si no, días ÷ 30.
+        $months = ($d >= 360 && $d <= 370) ? 12 : max(1, $d / 30);
+
+        return (float) $this->price / $months;
     }
 }

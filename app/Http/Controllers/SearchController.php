@@ -91,6 +91,24 @@ class SearchController extends Controller
         ]);
     }
 
+    // slugsespecialidades: slugs antiguos (mal escritos) que ya no existen; se redirigen con 301 al correcto.
+    private const OLD_SPECIALTY_SLUGS = [
+        'fonoaudiilogia' => 'fonoaudiologia',
+        'protologo'      => 'proctologo',
+    ];
+
+    private function redirectOldSpecialtySlug(Request $request)
+    {
+        $slug = $request->query('specialty');
+        if ($request->isMethod('GET') && is_string($slug) && isset(self::OLD_SPECIALTY_SLUGS[$slug])) {
+            $query = array_merge($request->query(), ['specialty' => self::OLD_SPECIALTY_SLUGS[$slug]]);
+
+            return redirect()->to($request->url() . '?' . http_build_query($query), 301);
+        }
+
+        return null;
+    }
+
     /**
      * Método privado asíncrono para despachar el log de búsqueda.
      * Guarda en la tabla 'search_logs' cada intento de búsqueda con especialidad, ciudad, país e IP.
@@ -98,10 +116,10 @@ class SearchController extends Controller
     private function trackSearchAsync(Request $request): void
     {
         $specialty = $request->input('specialty');
-        $city = $request->input('city');
+        $city = $request->input('city') ?: $request->input('city_name'); // metricabusquedas
         
         if (!empty($specialty)) {
-            LogSearchJob::dispatch($specialty, $city, $request->ip())->afterResponse();
+            LogSearchJob::dispatch($specialty, $city, $request->ip(), (string) $request->userAgent(), $request->input('city_countryName'))->afterResponse();
         }
     }
 
@@ -110,10 +128,10 @@ class SearchController extends Controller
      */
     private function logAiTrackSearchAsync(Request $request, $specialty): void
     {
-        $city = $request->input('city');
+        $city = $request->input('city') ?: $request->input('city_name'); // metricabusquedas
         
         if (!empty($specialty)) {
-            LogSearchJob::dispatch($specialty, $city, $request->ip())->afterResponse();
+            LogSearchJob::dispatch($specialty, $city, $request->ip(), (string) $request->userAgent(), $request->input('city_countryName'))->afterResponse();
         }
     }
 
@@ -127,6 +145,10 @@ class SearchController extends Controller
      */
     public function index(Request $request)
     {
+        if ($redirect = $this->redirectOldSpecialtySlug($request)) { // slugsespecialidades
+            return $redirect;
+        }
+
         $this->trackSearchAsync($request);
         
         $specialties = Specialty::where('status', true)->orderBy('name', 'asc')->get();
@@ -201,10 +223,23 @@ class SearchController extends Controller
 
         // Filtro por Ciudad
         $searchQuery->when($request->city_id, function ($query) use ($request) {
-            $query->whereIn('addresses.city_id', \App\Support\CitySearch::ids((string) $request->city_id, $request->input('city_name'), $request->input('city_countryCode')));
+            // busquedavirtual: la sede virtual no tiene ciudad real; se ofrece en toda ciudad (después de las sedes físicas).
+            $cityIds = \App\Support\CitySearch::ids((string) $request->city_id, $request->input('city_name'), $request->input('city_countryCode'));
+            $countryIso = strtoupper(trim((string) $request->input('city_countryCode')));
+            $query->where(function ($q) use ($cityIds, $countryIso) {
+                $q->whereIn('addresses.city_id', $cityIds)
+                  ->orWhere(function ($v) use ($countryIso) {
+                      $v->where('addresses.type', 'virtual');
+                      if ($countryIso !== '') {
+                          $v->where(fn ($c) => $c->where('addresses.country_code', $countryIso)->orWhereNull('addresses.country_code'));
+                      }
+                  });
+            });
         });
 
-        $addresses = $searchQuery->orderBy('owner_plan_price', 'desc')
+        $addresses = $searchQuery
+            ->when($request->city_id, fn ($q) => $q->orderByRaw("CASE WHEN addresses.type = 'virtual' THEN 1 ELSE 0 END"))
+            ->orderBy('owner_plan_price', 'desc')
             ->orderBy('owner_rating', 'desc')
             ->get();
 
@@ -213,7 +248,7 @@ class SearchController extends Controller
         $targetSpecialty = $request->specialty ? Specialty::where('slug', $request->specialty)->first() : null;
 
         // Lógica de Fallback (Ciudad -> País -> Virtual)
-        if ($request->city_id && $addresses->isEmpty()) {
+        if ($request->city_id && !$addresses->contains(fn ($a) => $a->type !== 'virtual')) {
             $showingSuggestions = true;
             $addresses = $backupSearchQuery
                 ->when($request->country_code, function ($query) use ($request) {
@@ -406,6 +441,10 @@ class SearchController extends Controller
      */
     public function search(Request $request)
     {
+        if ($redirect = $this->redirectOldSpecialtySlug($request)) { // slugsespecialidades
+            return $redirect;
+        }
+
         $request->validate([
             'specialty' => 'required',
         ], [

@@ -6,6 +6,7 @@
     <!---hacer que la descripcion sea un array y cambiarlo aleatoriamente--->
     {{-- Aviso de reserva en curso: ver App\Services\Appointments\PendingBookingService --}}
     @include('public.pending-booking-notice')
+    @include('public.last-specialty-notice')
 
      @if(session('error'))
         <div class="relative z-40 bg-white pb-10 pt-10">
@@ -383,6 +384,7 @@
         </div>
     </section>
 
+    @guest
     <!-- Sección registro de profesionales de la salud en el directorio de opendoctor.online -->
     <section class="relative z-40 bg-white overflow-hidden py-16 sm:py-24">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -486,6 +488,7 @@
             </div>
         </div>
     </section>
+    @endguest
 
     <!-- Agendar una cita medica por telemedicina -->
     <section class="py-10 px-4 bg-gray-50">

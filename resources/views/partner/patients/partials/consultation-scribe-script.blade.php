@@ -145,6 +145,7 @@
                 const blob = new Blob(this.chunks, { type: 'audio/webm' });
                 const formData = new FormData();
                 formData.append('audio', blob, 'consultation.webm');
+                formData.append('appointment_id', appointmentId);
 
                 try {
                     const res = await fetch(uploadUrl, {

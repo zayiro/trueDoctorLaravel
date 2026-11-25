@@ -154,12 +154,26 @@ class BankAccountService
             if ($o['email']) {
                 Mail::to($o['email'])->send(new BankAccountChangedMail(false, $o['name'], $acc->masked(), $acc->bank_name, $acc->typeLabel(), $when, $created));
             }
-            foreach (User::whereIn('role', ['administrator', 'admin'])->pluck('email')->filter()->unique() as $to) {
+            foreach (self::teamRecipients() as $to) {
                 Mail::to($to)->send(new BankAccountChangedMail(true, $o['name'], $acc->masked(), $acc->bank_name, $acc->typeLabel(), $when, $created));
             }
         } catch (\Throwable $e) {
             report($e);
         }
+    }
+
+    /**
+     * Correos del equipo que reciben los avisos de seguridad: la dirección de administración configurada
+     * (MAIL_ADMIN_ADDRESS); si no existe, los correos de los usuarios admin.
+     */
+    private static function teamRecipients(): \Illuminate\Support\Collection
+    {
+        $configured = config('services.mail_site.mail_admin_address');
+        if ($configured) {
+            return collect([$configured]);
+        }
+
+        return User::whereIn('role', ['administrator', 'admin'])->pluck('email')->filter()->unique();
     }
 
     /** Registra que alguien del equipo vio el número completo. */

@@ -137,6 +137,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::put('/admin/ai-chat', [\App\Http\Controllers\Admin\AiChatSettingController::class, 'update'])->name('administrator.ai-chat.update');
     Route::get('/admin/contact', [UserManagementController::class, 'contactMessages'])->name('administrator.contact.index');
     Route::delete('/admin/contact/{id}/delete', [UserManagementController::class, 'destroyContact'])->name('administrator.contact.destroy');
+    Route::post('/admin/contact/{id}/reply', \App\Http\Controllers\Admin\ContactReplyController::class)->middleware('throttle:20,1')->name('administrator.contact.reply');
 
     Route::get('/administrator/payouts', [\App\Http\Controllers\Admin\PayoutController::class, 'index'])->name('administrator.payouts.index');
     Route::get('/administrator/payouts/export', [\App\Http\Controllers\Admin\PayoutController::class, 'export'])->name('administrator.payouts.export');
@@ -477,22 +478,23 @@ Route::post('/availability/notify', [ContactController::class, 'storeAvailabilit
 
 Route::get('/terms', [ContactController::class, 'showTerms'])->name('terms.show');
 Route::get('/privacy', [ContactController::class, 'showPrivacy'])->name('privacy.show');
+Route::get('/tratamiento-de-datos', [ContactController::class, 'showPrivacy'])->name('data-policy.show');
 Route::get('/support', [ContactController::class, 'showSupport'])->name('support.show');
 Route::get('/about', [ContactController::class, 'showAbout'])->name('about.show');
 
 Route::get('/register-options', function () {
     return view('auth.register-options');
-})->name('register.options');
+})->middleware(\App\Http\Middleware\RedirectAuthenticatedToHome::class)->name('register.options');
 
 // Ruta para mostrar el formulario de registro de doctores (registro independiente)
-Route::get('/register-partner', [RegisterDoctorController::class, 'register'])->name('partner.register');
-Route::post('/register-partner', [RegisterDoctorController::class, 'store'])->name('partner.register.store');
+Route::get('/register-partner', [RegisterDoctorController::class, 'register'])->middleware(\App\Http\Middleware\RedirectAuthenticatedToHome::class)->name('partner.register');
+Route::post('/register-partner', [RegisterDoctorController::class, 'store'])->middleware(\App\Http\Middleware\RedirectAuthenticatedToHome::class)->name('partner.register.store');
 
 // Rutas para registro/invitación de doctores a través de una clínica
 // Estas rutas permiten que una clínica invite a médicos existentes o registre nuevos
 
 // Ruta para mostrar el formulario de registro de clinicas
-Route::get('/register-clinic', [RegisterClinicController::class, 'register'])->name('clinic.register');
+Route::get('/register-clinic', [RegisterClinicController::class, 'register'])->middleware(\App\Http\Middleware\RedirectAuthenticatedToHome::class)->name('clinic.register');
 Route::post('/register-clinic', [RegisterClinicController::class, 'store'])->name('clinic.register.store');
 
 Route::post('/reviews', [ReviewController::class, 'store'])->middleware(['auth', 'throttle:5,1'])->name('reviews.store');

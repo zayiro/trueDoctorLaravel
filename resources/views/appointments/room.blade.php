@@ -301,6 +301,8 @@ $cfg = [
                 <div class="bg-white rounded-xl shadow-md border border-gray-100 p-5 space-y-5">
 
                     {{-- ── 1. ASISTENTE IA (Consultation Scribe) ── --}}
+                    @php $scribeAllowed = app(\App\Services\Plans\AiScribeAccess::class)->allows(\App\Models\Doctor::where('user_id', auth()->id())->first(), $appointment); @endphp
+                    @if ($scribeAllowed)
                     <div x-data="consultationScribe({
                         patientId: {{ $appointment->patient->id }},
                         appointmentId: {{ $appointment->id }},
@@ -368,6 +370,14 @@ $cfg = [
                             </div>
                         </template>
                     </div>
+                    @else
+                        <div class="rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-900 space-y-1">
+                            <p class="font-bold">Asistente IA con dictado</p>
+                            <p>Graba la consulta y deja que la IA llene la nota SOAP. Disponible en los planes de pago.</p>
+                            <p>Mientras tanto, completa el formulario SOAP de abajo: sigue incluido en tu plan.</p>
+                            <a href="{{ route('plans.index') }}" target="_blank" rel="noopener" class="inline-block font-bold underline">Ver planes</a>
+                        </div>
+                    @endif
 
                     {{-- ── 2. FORMULARIO SOAP (con AJAX + detección IA + Borrador/Firma) ── --}}
                     @php

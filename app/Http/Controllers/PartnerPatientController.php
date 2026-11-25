@@ -245,7 +245,8 @@ class PartnerPatientController extends Controller
         $this->ensurePatientRelation($patient, $doctor->id);
 
         $plan = $doctor->settings?->plan;
-        if (!$plan?->ai_scribe_enabled) {
+        $scribeAppointment = \App\Models\Appointment::where('id', (int) $request->input('appointment_id'))->where('doctor_id', $doctor->id)->where('patient_id', $patient->id)->first();
+        if (!app(\App\Services\Plans\AiScribeAccess::class)->allows($doctor, $scribeAppointment)) {
             return response()->json(['message' => 'Tu plan actual no incluye el asistente de consulta con IA.'], 403);
         }
 

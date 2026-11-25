@@ -26,7 +26,10 @@ class CreateNewUser implements CreatesNewUsers
             'name'     => ['required', 'string', 'max:255'],
             'email'    => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => $this->passwordRules(),
-            'terms'    => Jetstream::hasTermsAndPrivacyPolicyFeature() ? ['accepted', 'required'] : '',
+            'terms'    => ['required', 'accepted'], // aceptacionregistro
+        ], [
+            'terms.required' => 'Debes aceptar los Términos de Servicio y la autorización de tratamiento de datos para crear tu cuenta.',
+            'terms.accepted' => 'Debes aceptar los Términos de Servicio y la autorización de tratamiento de datos para crear tu cuenta.',
         ])->validate();
 
         // 2. Crear el Usuario base con su rol
@@ -40,6 +43,7 @@ class CreateNewUser implements CreatesNewUsers
         // ESTO ES LO QUE LE ASIGNA EL ROL EN SPATIE:
         $role = Role::firstOrCreate(['name' => 'patient']);        
         $user->assignRole($role);
+        \App\Support\TermsAcceptance::record($user); // aceptacionregistro
 
         // 3. Crear el registro en la tabla patients usando solo el ID generado
         Patient::create([

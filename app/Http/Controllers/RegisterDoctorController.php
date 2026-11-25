@@ -29,6 +29,9 @@ class RegisterDoctorController extends Controller
             'password' => 'required|min:8|confirmed',
             'specialties' => 'required|array|min:1',
             'specialties.*' => 'exists:specialties,id',
+            'terms' => 'accepted', // aceptacionregistro
+        ], [
+            'terms.accepted' => 'Debes aceptar los Términos de Servicio y la autorización de tratamiento de datos para crear tu cuenta.',
         ]);
 
         $cleanPhone = preg_replace('/[^0-9]/', '', trim($request->phone));
@@ -50,6 +53,7 @@ class RegisterDoctorController extends Controller
                 // ESTO ES LO QUE LE ASIGNA EL ROL EN SPATIE:
                 $role = Role::firstOrCreate(['name' => 'doctor']);
                 $user->assignRole($role);
+                \App\Support\TermsAcceptance::record($user); // aceptacionregistro
 
                 // 4. Crear Perfil de Doctor asociado
                 $doctor = $user->doctor()->create([

@@ -74,6 +74,7 @@ class RegisterClinicController extends Controller
             'password' => ['required', 'min:8', 'confirmed'],
             'specialties' => 'required|array|min:1',
             'specialties.*' => 'exists:specialties,id',
+            'terms' => ['accepted'], // aceptacionregistro
         ], [
             'nit.regex' => 'El formato del NIT debe ser solo números o incluir el dígito de verificación (ej: 12345678-9).',
             'phone.regex' => 'El número celular debe contener exactamente 10 dígitos numéricos (ej: 3001234567).',
@@ -82,6 +83,7 @@ class RegisterClinicController extends Controller
             'reps_code.required' => 'El código de habilitación REPS es obligatorio.',
             'reps_code.digits' => 'El código REPS debe tener exactamente 10 números.',
             'reps_code.unique' => 'Este código REPS ya se encuentra registrado.',
+            'terms.accepted' => 'Debes aceptar los Términos de Servicio y la autorización de tratamiento de datos para crear tu cuenta.',
         ]);        
 
         $cleanPhone = preg_replace('/[^0-9]/', '', trim($request->phone));
@@ -107,6 +109,7 @@ class RegisterClinicController extends Controller
                 // 2. Sincronización blindada de permisos con Spatie
                 $role = Role::firstOrCreate(['name' => 'clinic']);                
                 $user->assignRole($role);
+                \App\Support\TermsAcceptance::record($user); // aceptacionregistro
 
                 // 3. Crear el perfil de la clínica
                 // Al ejecutarse este create(), Laravel dispara el ClinicObserver para inyectar ClinicSetting y la Sede Virtual
