@@ -10,4 +10,8 @@ return [
     // Cuántos días antes del vencimiento se avisa por correo (una vez por aviso).
     'warn_days_annual' => [30, 7, 1],
     'warn_days_short' => [3],
+
+    // SMS de aviso (además del correo): activar/desactivar y cuántos días antes del vencimiento.
+    'sms_enabled' => true,
+    'sms_days' => [7, 1],
 ];

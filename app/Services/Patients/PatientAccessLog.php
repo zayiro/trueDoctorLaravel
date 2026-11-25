@@ -14,6 +14,24 @@ use Illuminate\Support\Facades\Log;
  */
 class PatientAccessLog
 {
+    /** Cómo se llama cada acción (nombre de la ruta) para mostrarla a personas. */
+    public const LABELS = [
+        'partner.patients.show'                              => 'Abrió la ficha',
+        'partner.patients.store-history'                     => 'Registró una nota de evolución',
+        'partner.patients.store-allergy'                     => 'Registró una alergia',
+        'partner.patients.store-surgery'                     => 'Registró una cirugía',
+        'partner.patients.store-family-history'              => 'Registró un antecedente familiar',
+        'partner.patients.update-condition'                  => 'Actualizó las condiciones permanentes',
+        'partner.patients.consultation-audio.upload'         => 'Subió el audio de la consulta (asistente de IA)',
+        'partner.patients.consultation-audio.notify-pending' => 'Avisó de un audio pendiente',
+        'denegado'                                           => 'Intento bloqueado',
+    ];
+
+    public static function label(string $action): string
+    {
+        return self::LABELS[$action] ?? 'Consultó la ficha';
+    }
+
     /** Abrir la ficha varias veces seguidas se registra una sola vez dentro de esta ventana. */
     public const VIEW_WINDOW_MINUTES = 10;
 

@@ -68,7 +68,7 @@ class DoctorClinicController extends Controller
 
         // 🛡️ CONTROL DE INTEGRIDAD OPERATIVA:
         // Si el médico ya estaba activo e intenta retirarse, validamos que no deje citas colgadas
-        if ($pivot->status === 'approved') {
+        if (in_array($pivot->status, ['approved', 'plan_suspended', 'inactive'], true)) {
             $hasPendingAppointments = Appointment::where('clinic_id', $clinic->id)
                 ->where('doctor_id', $doctor->id)
                 ->whereIn('status', ['pending', 'confirmed'])

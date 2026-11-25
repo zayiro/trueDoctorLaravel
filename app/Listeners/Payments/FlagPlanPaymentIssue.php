@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Situaciones de un pago de plan que requieren una persona: monto que no coincide (queda en revisión) y pagos aprobados
- * que luego se anulan. No cambia el plan del médico por su cuenta: deja el rastro en el historial y en el log.
+ * que luego se anulan. Si el plan ya estaba aplicado, se retira (reembolso automático) y el usuario recibe un correo.
  * (Laravel descubre cada método `handle…` por el tipo de su parámetro.)
  */
 class FlagPlanPaymentIssue
@@ -57,7 +57,14 @@ class FlagPlanPaymentIssue
             'meta'            => ['reference' => $payment->reference, 'subscription_status' => $sub?->status],
         ]);
 
-        // Si el plan ya estaba activo, decidir qué hacer (reembolso, quitar plan) es de una persona.
+        // Si el plan ya estaba activo, se retira con el mismo servicio que usa el reembolso manual.
+        if (isset($sub) && $sub) {
+            try {
+                app(\App\Services\Plans\PlanRefundService::class)->handleVoidedSubscription($sub, $payment);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('plans.void_withdraw_failed', ['message' => $e->getMessage()]);
+            }
+        }
         Log::critical('plans.payment_voided', ['payment' => $payment->reference, 'subscription_id' => $payment->payable_id]);
     }
 }

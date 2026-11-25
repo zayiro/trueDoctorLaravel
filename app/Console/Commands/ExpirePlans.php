@@ -67,6 +67,7 @@ class ExpirePlans extends Command
                             $graceEnd->copy()->timezone('America/Bogota')->format('d/m/Y'),
                             url('/partner/profile')
                         ));
+                        app(\App\Services\Plans\PlanSmsNotifier::class)->grace($user, $plan->name, $graceEnd);
                     }
                     continue;
                 }
@@ -123,6 +124,7 @@ class ExpirePlans extends Command
                                 $graceEnd->copy()->timezone('America/Bogota')->format('d/m/Y'),
                                 $rules->homeFor($user)
                             ));
+                            app(\App\Services\Plans\PlanSmsNotifier::class)->grace($user, $plan->name, $graceEnd);
                         }
                         continue;
                     }
@@ -147,6 +149,8 @@ class ExpirePlans extends Command
         $warned = 0;
         $annualDays = array_map('intval', (array) config('plans.warn_days_annual', [30, 7, 1]));
         $shortDays = array_map('intval', (array) config('plans.warn_days_short', [3]));
+        $smsDays = array_map('intval', (array) config('plans.sms_days', [7, 1]));
+        $smsOn = (bool) config('plans.sms_enabled', true);
         foreach (array_unique(array_merge($annualDays, $shortDays)) as $daysLeft) {
             $from = now()->addDays($daysLeft)->startOfDay();
             $to = now()->addDays($daysLeft)->endOfDay();
@@ -161,12 +165,12 @@ class ExpirePlans extends Command
                         continue; // ya renovó: hay un periodo posterior
                     }
                     $user = User::find($sub->doctor_id);
-                    if (!$user || !$user->email || $user->role !== 'doctor') {
-                        continue; // el vencimiento automático solo aplica a médicos
+                    if (!$user || !$user->email || !in_array($user->role, ['doctor', 'clinic'], true)) {
+                        continue; // el aviso de vencimiento llega a médicos y clínicas
                     }
                     $warned++;
                     $planName = optional($subPlan)->name ?? 'plan';
-                    $this->line("  [aviso {$daysLeft} días] usuario {$user->id} · {$planName} vence el " . $sub->ends_at->format('d/m/Y'));
+                    $this->line("  [aviso {$daysLeft} días] usuario {$user->id} · {$planName} vence el " . $sub->ends_at->format('d/m/Y') . ($smsOn && in_array($daysLeft, $smsDays, true) ? ' · + SMS' : ''));
                     if ($dry || !Cache::add("plan-expiry-warn:{$sub->id}:{$daysLeft}", 1, now()->addDays(3))) {
                         continue;
                     }
@@ -178,6 +182,9 @@ class ExpirePlans extends Command
                         $daysLeft,
                         $subPlan ? $subPlan->durationLabel() : '30 días',
                     ));
+                    if ($smsOn && in_array($daysLeft, $smsDays, true)) {
+                        app(\App\Services\Plans\PlanSmsNotifier::class)->expiring($user, $planName, $sub->ends_at, $daysLeft);
+                    }
                 } catch (\Throwable $e) {
                     Log::error('plans:expire (aviso) falló para la suscripción ' . $sub->id . ': ' . $e->getMessage());
                 }

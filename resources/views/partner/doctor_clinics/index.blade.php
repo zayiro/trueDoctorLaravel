@@ -98,6 +98,12 @@ $breadcrumbs = [
                                     <span class="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-lg bg-green-50 text-green-800 border border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800">
                                         Staff Activo
                                     </span>
+                                @elseif($clinic->pivot->status === 'plan_suspended')
+                                    <span class="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-lg bg-amber-50 text-amber-800 border border-amber-200">Pausado por la clínica</span>
+                                    <p class="mt-2 text-xs text-gray-500">La clínica pausó tu vinculación mientras ajusta su plan. No recibes citas nuevas en sus sedes; tus horarios se conservan y todo vuelve solo cuando ella lo reactive.</p>
+                                @elseif($clinic->pivot->status === 'inactive')
+                                    <span class="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-lg bg-gray-100 text-gray-600 border border-gray-200">Inactivo en la clínica</span>
+                                    <p class="mt-2 text-xs text-gray-500">La clínica desactivó tu agenda en sus sedes. Si crees que es un error, comunícate con su administración.</p>
                                 @endif
                             </div>
                         </div>

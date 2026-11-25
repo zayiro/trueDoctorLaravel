@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
  * Solo se agregan filas; sirve para soporte y para explicar por qué un médico tiene el plan que tiene.
  * Registrar un evento NUNCA debe romper el flujo que lo origina.
  *
- * Tipos: purchased | renewed | upgraded | changed | grace | expired | downgraded | payment_review | payment_voided
+ * Tipos: purchased | renewed | upgraded | changed | grace | expired | downgraded | refunded | payment_review | payment_voided
  */
 class PlanEvent extends Model
 {

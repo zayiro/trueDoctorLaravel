@@ -157,6 +157,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::put('/administrator/commissions/{type}/{id}', [\App\Http\Controllers\Admin\SpecialCommissionController::class, 'update'])->where('type', 'doctor|clinic')->where('id', '[0-9]+')->middleware('throttle:30,1')->name('administrator.commissions.update');
 
     Route::get('/administrator/refunds', [AdminController::class, 'refunds'])->name('administrator.refunds.index');
+    Route::get('/administrator/access-log', [\App\Http\Controllers\AccessLogController::class, 'admin'])->name('administrator.access-log.index');
+    Route::get('/administrator/plan-refunds', [\App\Http\Controllers\Admin\PlanRefundController::class, 'index'])->name('administrator.plan-refunds.index');
+    Route::post('/administrator/plan-refunds/{payment}/refund', [\App\Http\Controllers\Admin\PlanRefundController::class, 'refund'])->name('administrator.plan-refunds.refund');
     Route::post('/administrator/refunds/{refund}/mark-done', [AdminController::class, 'markRefundDone'])->name('administrator.refunds.mark-done');
     Route::delete('/administrator/users/{user}/delete', [UserManagementController::class, 'destroy'])->name('administrator.users.destroy');
 
@@ -224,6 +227,7 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     // ========================================================
     //buscador de pacientes
     Route::get('/partner/patients', [PartnerPatientController::class, 'index'])->name('partner.patients.index');
+    Route::get('/partner/access-log', [\App\Http\Controllers\AccessLogController::class, 'doctor'])->name('partner.access-log.index');
     //vista detallada del paciente
     Route::get('partner/patients/{id}/{reference?}', [PartnerPatientController::class, 'show'])->name('partner.patients.show');
 
@@ -364,6 +368,7 @@ Route::middleware(['auth', 'role:patient'])->group(function () {
     // Ruta de la sala de espera para el paciente
     
     Route::get('/payments', [PatientController::class, 'payments'])->name('patient.payments.index');
+    Route::get('/patient/access-log', [\App\Http\Controllers\AccessLogController::class, 'mine'])->name('patient.access-log.index');
     Route::get('/patient/ai-chats', [\App\Http\Controllers\AiChatPatientController::class, 'index'])->name('patient.ai-chats.index');
     Route::get('/payments/{appointment}/receipt', [PatientController::class, 'downloadReceipt'])->name('patient.payments.receipt');
 });
