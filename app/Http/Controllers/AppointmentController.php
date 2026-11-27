@@ -243,7 +243,41 @@ class AppointmentController extends Controller
             }
         }
         
-        return view('appointments.patient', compact('isSelfBooking', 'isVirtualAddress', 'bookingData'));
+        // Si quien reserva tiene cuenta de personal (doctor, clínica, admin), la vista explica qué hacer en vez de mostrar el formulario.
+        $staffBlock = $this->staffBookingBlock(Auth::user(), $isSelfBooking);
+
+        return view('appointments.patient', compact('isSelfBooking', 'isVirtualAddress', 'bookingData', 'staffBlock'));
+    }
+
+    /**
+     * Si quien reserva tiene una cuenta de personal (doctor, clínica o administración) devuelve lo que se le debe explicar;
+     * null si puede reservar (paciente o visitante). Los profesionales usan una cuenta personal de paciente.
+     */
+    private function staffBookingBlock($user, bool $isSelfBooking = false): ?array
+    {
+        if (!$user || $user->role === 'patient') {
+            return null;
+        }
+
+        $hint = 'Crea tu cuenta de paciente con otro correo. Puedes usar un alias que llega a la misma bandeja, por ejemplo tunombre+paciente@gmail.com.';
+
+        if ($user->role === 'doctor') {
+            $paragraphs = [];
+
+            if ($isSelfBooking) {
+                $paragraphs[] = 'Elegiste tu propio perfil: un profesional no puede reservar una cita consigo mismo.';
+            }
+
+            $paragraphs[] = 'Para reservar una cita como paciente necesitas una cuenta personal de paciente. Así tu agenda de atención y tus citas como paciente no se mezclan, y tu historia clínica personal queda separada de la de tus pacientes.';
+
+            return ['title' => 'Estás con una cuenta de profesional', 'paragraphs' => $paragraphs, 'hint' => $hint];
+        }
+
+        if ($user->role === 'clinic') {
+            return ['title' => 'Las clínicas no reservan citas como paciente', 'paragraphs' => ['Una clínica es una entidad, no una persona, por eso su cuenta no puede reservar consultas como paciente. Si quien administra la clínica necesita una consulta médica, puede hacerlo con una cuenta personal de paciente.'], 'hint' => $hint];
+        }
+
+        return ['title' => 'Las cuentas de administración no reservan citas', 'paragraphs' => ['Para reservar una cita como paciente usa una cuenta personal de paciente, separada de la cuenta de administración.'], 'hint' => $hint];
     }
 
     public function processPatient(ProcessPatientAppointmentRequest $request)
@@ -257,7 +291,8 @@ class AppointmentController extends Controller
         $hasAccount = $request->has_account == 'yes';
 
         if (Auth::check() && Auth::user()->role !== 'patient') {
-            return redirect()->back()->withInput()->with('error', 'Tu cuenta actual pertenece al personal del sistema. No tienes permisos para registrar citas como paciente.');
+            // La pantalla del paso paciente ya explica qué hacer (staffBookingBlock); no hace falta un error aparte.
+            return redirect()->back()->withInput();
         }
 
         if (Auth::guest() && $hasAccount) {
@@ -266,7 +301,7 @@ class AppointmentController extends Controller
             
             $targetUser = User::where('email', $login_email)->first();
             if ($targetUser && $targetUser->role !== 'patient') {
-                return back()->withErrors(['login_email' => 'Esta cuenta pertenece al personal del sistema.'])->withInput();
+                return back()->withErrors(['login_email' => 'Ese correo es de una cuenta de profesional. Para reservar como paciente usa una cuenta personal de paciente con otro correo (puedes usar un alias como tunombre+paciente@gmail.com).'])->withInput();
             }
 
             if (!Auth::attempt(['email' => $login_email, 'password' => $login_password])) {
@@ -285,7 +320,7 @@ class AppointmentController extends Controller
                 $newUser = User::create([
                     'name'     => trim($request->name),
                     'email'    => trim($request->email),
-                    'password' => Hash::make($cleanIdentification),
+                    'password' => \App\Support\PasswordSetup::randomFor(trim($request->email)),
                     'role'     => 'patient',
                 ]);
 

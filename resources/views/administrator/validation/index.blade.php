@@ -24,6 +24,12 @@ $breadcrumbs = [
             </div>
         </div>
 
+        <div class="mb-6 flex justify-end">
+            <a href="{{ route('administrator.rethus.index') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 hover:text-indigo-900 bg-white border border-indigo-100 rounded-xl px-4 py-2 shadow-sm">
+                Verificaciones ReTHUS ({{ \App\Models\Doctor::where('rethus_status', 'requested')->count() }} pendientes) →
+            </a>
+        </div>
+        
         @if (session('success'))
             <div class="p-4 mb-6 text-sm text-emerald-800 rounded-xl bg-emerald-50 border border-emerald-200 shadow-sm">
                 <span class="font-semibold">Éxito:</span> {{ session('success') }}

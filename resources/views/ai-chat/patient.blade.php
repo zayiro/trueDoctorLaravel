@@ -37,6 +37,7 @@
             <form action="{{ route('ai-chat.process') }}" method="POST"
                   x-data="{ loading: false, mode: '{{ $startMode }}' }" x-on:submit="loading = true" class="mt-6 space-y-5">
                 @csrf
+                @honeypot
 
                 @guest
                     <div class="flex p-1 bg-gray-100 rounded-2xl">

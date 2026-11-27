@@ -249,12 +249,16 @@ class AppointmentClinicalController extends Controller
             return response()->json([]);
         }
 
+        // Un código escrito sin punto (J029) también encuentra J02.9.
+        $dotted = \App\Services\Cie10\Cie10Format::normalize($query);
+
         $results = Cie10Code::where('is_active', true)
-            ->where(function ($q) use ($query) {
+            ->where(function ($q) use ($query, $dotted) {
                 $q->where('code', 'LIKE', "{$query}%")
+                  ->orWhere('code', 'LIKE', ($dotted ?? $query) . '%')
                   ->orWhere('description', 'LIKE', "%{$query}%");
             })
-            ->orderByRaw('CASE WHEN code LIKE ? THEN 0 ELSE 1 END', ["{$query}%"])
+            ->orderByRaw('CASE WHEN code = ? OR code = ? THEN 0 WHEN code LIKE ? THEN 1 ELSE 2 END', [$query, $dotted ?? $query, "{$query}%"])
             ->orderBy('code', 'asc')
             ->limit(15)
             ->get(['id', 'code', 'description'])

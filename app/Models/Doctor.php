@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Doctor extends Model
 {
+    use \App\Models\Concerns\HasRethusVerification;
+
     protected $fillable = [
         'slug', 'user_id', 'medical_license', 'phone', 'country_code', 
         'experience_years', 'languages', 'bio', 'rating',

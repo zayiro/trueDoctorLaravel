@@ -94,6 +94,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     // Procesar aprobación o rechazo
     Route::post('/validation/update', [ValidationController::class, 'update'])->name('administrator.validation.update');
     Route::post('/validation/notify', [ValidationController::class, 'notify'])->name('administrator.validation.notify');
+    Route::get('/rethus', [\App\Http\Controllers\AdminRethusController::class, 'index'])->name('administrator.rethus.index');
+    Route::post('/rethus/{doctor:id}/verify', [\App\Http\Controllers\AdminRethusController::class, 'verify'])->name('administrator.rethus.verify');
+    Route::post('/rethus/{doctor:id}/mismatch', [\App\Http\Controllers\AdminRethusController::class, 'mismatch'])->name('administrator.rethus.mismatch');
     
     // Visualizador seguro de documentos
     Route::get('/document/view/{type}', [ValidationController::class, 'viewDocument'])->name('administrator.document.view');
@@ -189,6 +192,8 @@ Route::middleware(['auth', 'role:doctor'])->group(function () {
     // Ver y editar el perfil
     Route::get('/partner/profile', [ProfileDoctorController::class, 'edit'])->name('partner.profile.edit');
     Route::put('/partner/profile', [ProfileDoctorController::class, 'update'])->name('partner.profile.update');
+    Route::get('/partner/profile/rethus', [\App\Http\Controllers\PartnerRethusController::class, 'show'])->name('partner.rethus.show');
+    Route::post('/partner/profile/rethus/request', [\App\Http\Controllers\PartnerRethusController::class, 'request'])->middleware('throttle:6,1')->name('partner.rethus.request');
     Route::post('/partner/profile/plan', [PlanController::class, 'update'])->name('partner.profile.plan.update');    
             
 
@@ -331,6 +336,7 @@ Route::middleware(['auth', 'role:patient'])->group(function () {
     Route::get('/patient/patient-identification', [PatientController::class, 'index'])->name('patient.patient-identification.index');
     Route::put('/patient/patient-identification/{patient}', [PatientController::class, 'update'])->name('patient.patient-identification.update');
     Route::get('/patient/appointments', [PatientController::class, 'appointments'])->name('patient.appointments.index');
+    Route::get('/patient/certificates/{certificate}/download', [\App\Http\Controllers\PatientCertificateController::class, 'download'])->name('patient.certificates.download');
     Route::get('/patient/appointments/{appointment}/reschedule/slots', [PatientController::class, 'rescheduleSlots'])->name('patient.appointments.reschedule.slots');
     Route::get('/patient/allergies', [PatientController::class, 'indexAllergy'])->name('patient.allergies.index');
     Route::get('/patient/history', [PatientController::class, 'history'])->name('patient.history.index');
@@ -453,6 +459,13 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/', [AppointmentClinicalController::class, 'show'])->name('show');
             Route::post('/soap', [AppointmentClinicalController::class, 'storeSoap'])->name('soap.store');
             Route::post('/notes', [AppointmentClinicalController::class, 'storeExtemporaneousNote'])->name('notes.store');
+            // Certificados electrónicos (constancia de asistencia y certificado médico) emitidos por el doctor
+            Route::post('/certificates', [\App\Http\Controllers\PartnerCertificateController::class, 'store'])->middleware('throttle:10,1')->name('certificates.store');
+            // Incapacidad médica (reglas de fondo en CertificateIssuer + IncapacityRules)
+            Route::post('/incapacities', [\App\Http\Controllers\PartnerIncapacityController::class, 'store'])->middleware('throttle:10,1')->name('incapacities.store');
+            Route::get('/certificates/{certificate}/download', [\App\Http\Controllers\PartnerCertificateController::class, 'download'])->name('certificates.download');
+            Route::post('/certificates/{certificate}/revoke', [\App\Http\Controllers\PartnerCertificateController::class, 'revoke'])->middleware('throttle:10,1')->name('certificates.revoke');
+            Route::post('/certificates/{certificate}/resend', [\App\Http\Controllers\PartnerCertificateController::class, 'resend'])->middleware('throttle:5,1')->name('certificates.resend');
         });
 
     // Endpoint de búsqueda autocompletable para diagnósticos CIE-10
@@ -521,6 +534,8 @@ Route::get('/appointments/payment/result', [AppointmentController::class, 'payme
 Route::post('/appointments/step-two', [AppointmentController::class, 'storeStepTwo'])->name('appointments.step-two');
 Route::get('/appointments/patient', [AppointmentController::class, 'patient'])->name('appointments.patient');
 Route::post('/appointments/process-patient', [AppointmentController::class, 'processPatient'])->name('appointments.process-patient');
+Route::get('/crear-contrasena/{token}', \App\Http\Controllers\PasswordSetupController::class)->middleware('throttle:20,1')->name('password.setup');
+Route::get('/conservar-cuenta/{user}', \App\Http\Controllers\KeepAccountController::class)->middleware('throttle:20,1')->name('account.keep');
 Route::get('/appointments/preview/{id}', [AppointmentController::class, 'preview'])->name('appointments.preview');
 Route::post('/appointments/cancel-flow', [AppointmentController::class, 'cancelFlow'])->name('appointments.cancel-flow');
 // Agregar esta ruta en tu archivo de rutas
@@ -654,8 +669,16 @@ Route::post('/skin-analysis/promo-codes/validate', [SkinAnalysisController::clas
     ->name('skin-analysis.promo-codes.validate');    
 
 // Pública para verificación
-Route::get('/verify/{signatureHash}', [PrescriptionController::class, 'verify'])
-     ->name('document.verify');  
+Route::get('/verify/{signatureHash}', [\App\Http\Controllers\CertificateVerificationController::class, 'legacy'])
+     ->name('document.verify');
+
+// Verificación pública de certificados (código o QR). No muestra datos clínicos.
+Route::get('/verify-certificate', [\App\Http\Controllers\CertificateVerificationController::class, 'form'])
+    ->middleware('throttle:30,1')
+    ->name('certificates.verify.form');
+Route::get('/verify-certificate/{code}', [\App\Http\Controllers\CertificateVerificationController::class, 'show'])
+    ->middleware('throttle:30,1')
+    ->name('certificates.verify.show');  
      
 
 Route::get('/cities/search', [CityController::class, 'search'])->name('cities.search');

@@ -24,6 +24,7 @@ class RegisterDoctorController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'identification' => 'required|string|max:30|unique:doctors,identification',
+            'identification_type' => 'required|in:' . implode(',', array_keys((array) config('rethus.document_types', []))),
             'phone' => ['required', 'string', 'regex:/^[0-9]{10}$/'], 
             'medical_license' => 'nullable|string|max:50',
             'password' => 'required|min:8|confirmed',
@@ -32,6 +33,8 @@ class RegisterDoctorController extends Controller
             'terms' => 'accepted', // aceptacionregistro
         ], [
             'terms.accepted' => 'Debes aceptar los Términos de Servicio y la autorización de tratamiento de datos para crear tu cuenta.',
+            'identification_type.required' => 'Selecciona el tipo de documento.',
+            'identification_type.in' => 'El tipo de documento no es válido.',
         ]);
 
         $cleanPhone = preg_replace('/[^0-9]/', '', trim($request->phone));
@@ -59,6 +62,7 @@ class RegisterDoctorController extends Controller
                 $doctor = $user->doctor()->create([
                     'medical_license'   => trim($request->medical_license),
                     'identification'    => $cleanIdentification,
+                    'identification_type' => $request->identification_type,
                     'phone'             => $fullPhone,
                     'validation_status' => 'missing', 
                     'active'            => true

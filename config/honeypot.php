@@ -39,7 +39,7 @@ return [
      * If the form is submitted faster than this amount of seconds
      * the form submission will be considered invalid.
      */
-    'amount_of_seconds' => (int) env('HONEYPOT_SECONDS', 1),
+    'amount_of_seconds' => max(3, (int) env('HONEYPOT_SECONDS', 4)),
 
     /*
      * This class is responsible for sending a response to requests that
@@ -55,7 +55,7 @@ return [
      * if so the request will be stamped as spam. Be careful! When using the
      * global middleware be sure to add honeypot fields to each form.
      */
-    'honeypot_fields_required_for_all_forms' => false,
+    'honeypot_fields_required_for_all_forms' => true,
 
     /*
      * This class is responsible for applying all spam protection

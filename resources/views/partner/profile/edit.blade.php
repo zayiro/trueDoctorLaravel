@@ -15,6 +15,7 @@
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">  
     <div class="max-w-7xl mx-auto py-10 px-4 sm:px-6">
+    @include('partner.rethus.partials.banner', ['doctor' => $doctor])
         
         {{-- Mensajes de Éxito --}}
         @if (session('success'))
@@ -242,6 +243,21 @@
                                             : 'border-slate-200 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500' 
                                         }}">
                                         
+                                    @php $rethusLocked = in_array($doctor->rethus_status ?? 'none', ['verified', 'requested'], true); @endphp
+                                    <div class="mt-3 flex flex-col">
+                                        <x-label for="identification_type" value="Tipo de documento" class="mb-1 text-slate-500 font-bold text-xs" />
+                                        <select name="identification_type" id="identification_type" @disabled($rethusLocked)
+                                            class="w-full rounded-2xl py-3 px-4 text-sm border-slate-200 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 {{ $rethusLocked ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : '' }}">
+                                            <option value="">Selecciona…</option>
+                                            @foreach (config('rethus.document_types', []) as $code => $label)
+                                                <option value="{{ $code }}" @selected(old('identification_type', $doctor->identification_type) === $code)>{{ $label }}</option>
+                                            @endforeach
+                                        </select>
+                                        @if ($rethusLocked)
+                                            <span class="text-[10px] text-slate-500 font-semibold mt-1">Bloqueado mientras tu verificación en ReTHUS está vigente o en revisión.</span>
+                                        @endif
+                                    </div>
+                                    
                                     {{-- Nota de auditoría sutil si el campo es de solo lectura --}}
                                     @if($doctor->validation_status === 'approved')
                                         <span class="text-[10px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
@@ -282,6 +298,21 @@
                                             Registro habilitado. Cambios regulatorios requieren validación de soporte.
                                         </span>
                                     @endif
+                                </div>
+
+                                <!-- Habilitación del prestador (NIT y código REPS) para incapacidades médicas -->
+                                <div class="flex flex-col mb-2">
+                                    <x-label for="habilitation_nit" value="NIT (con dígito de verificación, si lo tienes)" class="mb-1 text-slate-500 font-bold text-xs" />
+                                    <input type="text" name="habilitation_nit" id="habilitation_nit" maxlength="20" inputmode="numeric" autocomplete="off"
+                                        value="{{ old('habilitation_nit', $doctor->habilitation_nit ?? '') }}" placeholder="Ej: 900123456-7"
+                                        class="w-full rounded-2xl py-4 px-5 text-sm shadow-inner transition-colors border-slate-200 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    @error('habilitation_nit') <span class="text-[11px] text-rose-600 font-semibold mt-1">{{ $message }}</span> @enderror
+                                    <x-label for="habilitation_reps" value="Código de habilitación REPS" class="mt-3 mb-1 text-slate-500 font-bold text-xs" />
+                                    <input type="text" name="habilitation_reps" id="habilitation_reps" maxlength="12" inputmode="numeric" autocomplete="off"
+                                        value="{{ old('habilitation_reps', $doctor->habilitation_reps ?? '') }}" placeholder="Ej: 760010000101"
+                                        class="w-full rounded-2xl py-4 px-5 text-sm shadow-inner transition-colors border-slate-200 text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    @error('habilitation_reps') <span class="text-[11px] text-rose-600 font-semibold mt-1">{{ $message }}</span> @enderror
+                                    <span class="text-[10px] text-slate-500 font-semibold mt-1">Los exige la incapacidad médica cuando atiendes de forma independiente. Si atiendes a nombre de una clínica, se usan el NIT y el código REPS de esa clínica. Son opcionales hasta que emitas tu primera incapacidad.</span>
                                 </div>
 
                                 <!-- Número Celular Expandido (Corregido sin ciclos indexados) -->

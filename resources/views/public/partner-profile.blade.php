@@ -56,11 +56,11 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
                     <h2 class="text-md font-bold text-sky-600 uppercase tracking-wider mb-2">Perfil Profesional</h2>
                     <h1 class="text-base font-bold text-gray-800">Dr. {{ $doctor->user->name }}</h1>
                     <p class="text-xs text-gray-500 mt-0.5 font-medium">{{ $doctor->specialties->first()->name ?? 'Especialista' }}</p>
+                    @include('partner.rethus.partials.public-badge', ['doctor' => $doctor])
                     
                     {{-- Credenciales Académicas --}}
                     <div class="mt-3 text-xs text-gray-600 space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-100/80">
                         <p class="font-bold text-gray-700">Licencia Médica: <span class="font-normal text-gray-600">{{ $doctor->medical_license ?? 'En proceso de verificación' }}</span></p>
-                        <p class="font-bold text-gray-700">Identificación: <span class="font-normal text-gray-600">{{ $doctor->identification }}</span></p>
                     </div>
                 </div>
 

@@ -171,6 +171,12 @@ $breadcrumbs = [
                                             <x-label value="Número de cédula / ID" class="mb-1 text-slate-500 font-bold text-xs" />
                                         </template>
                                         <input type="text" :name="`doctors[${index}][identification]`" required placeholder="Cédula de ciudadanía" class="w-full rounded-2xl border-slate-200 py-4 px-5 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-inner">
+                                        <select :name="`doctors[${index}][identification_type]`" required class="mt-2 w-full rounded-2xl border-slate-200 py-3 px-4 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                                            <option value="">Tipo de documento…</option>
+                                            @foreach (config('rethus.document_types', []) as $code => $label)
+                                                <option value="{{ $code }}">{{ $label }}</option>
+                                            @endforeach
+                                        </select>
                                     </div>
                                 </div>
 

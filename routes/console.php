@@ -110,3 +110,9 @@ Schedule::command('plans:expire')->timezone('America/Bogota')->dailyAt('06:10')-
 
 // Planes de suscripción (planpagos): limpia intentos de pago abandonados
 Schedule::command('plans:cleanup')->timezone('America/Bogota')->dailyAt('06:20')->withoutOverlapping(10)->onOneServer();
+
+// Verificación ReTHUS: marca vencidas y avisa a quienes vencen pronto (cada día, hora de Colombia).
+\Illuminate\Support\Facades\Schedule::command('rethus:check-expiry')->dailyAt('06:30')->timezone('America/Bogota');
+
+// Cuentas de paciente que nunca se usaron: aviso a los 13 días, eliminación al día 14 (hora de Colombia). Para ver qué haría: php artisan accounts:cleanup --reporte
+\Illuminate\Support\Facades\Schedule::command('accounts:cleanup')->timezone('America/Bogota')->dailyAt('04:30')->withoutOverlapping(30)->onOneServer();

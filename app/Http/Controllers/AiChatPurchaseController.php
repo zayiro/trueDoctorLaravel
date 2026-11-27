@@ -235,8 +235,8 @@ class AiChatPurchaseController extends Controller
                     $newUser = User::create([
                         'name' => trim((string) $request->input('name')),
                         'email' => trim(strtolower((string) $request->input('email'))),
-                        // Igual que el registro de citas: la clave inicial es el documento.
-                        'password' => Hash::make($identification),
+                        // Clave aleatoria: la persona crea la suya con el enlace del correo de bienvenida.
+                        'password' => \App\Support\PasswordSetup::randomFor(trim(strtolower((string) $request->input('email')))),
                         'role' => 'patient',
                     ]);
 

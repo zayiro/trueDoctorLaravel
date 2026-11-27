@@ -69,6 +69,8 @@ $breadcrumbs = [
             </div>
         </div>
 
+        @include('partner.appointments.partials.certificates-panel', ['appointment' => $appointment])
+
         {{-- Contenedor Principal: Izquierda (35%) + Derecha (65%) --}}
         <div class="w-full flex flex-col lg:flex-row items-start gap-8">
 

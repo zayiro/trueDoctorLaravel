@@ -40,6 +40,14 @@
                 
                 <p>A partir de este momento, tienes acceso a un ecosistema de salud digital completo donde podrás gestionar tus consultas médicas con total libertad.</p>
 
+                @if (\App\Support\PasswordSetup::isExpected($user))
+                <div style="background-color:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:20px;margin:25px 0;text-align:center;">
+                    <p style="margin:0 0 12px 0;font-size:16px;color:#7c2d12;"><strong>Crea tu contraseña</strong> para volver a entrar cuando quieras.</p>
+                    <a href="{{ \App\Support\PasswordSetup::url($user) }}" target="_blank" style="display:inline-block;padding:12px 24px;background-color:#28a745;color:#ffffff;border-radius:6px;text-decoration:none;font-weight:bold;">Crear mi contraseña</a>
+                    <p style="margin:12px 0 0 0;font-size:13px;color:#9a3412;">Tu usuario es <strong>{{ $user->email }}</strong>. El enlace se usa una sola vez y vence en {{ \App\Support\PasswordSetup::minutes() }} minutos. Si ya venció, entra a <a href="{{ route('password.request') }}">{{ route('password.request') }}</a> y pide uno nuevo con tu correo.</p>
+                </div>
+                @endif
+                
                 <!-- GUÍA DE INICIO RÁPIDO -->
                 <div class="steps-box">
                     <h4>¿Cómo agendar tu primera cita?</h4>

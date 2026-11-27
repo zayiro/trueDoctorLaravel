@@ -77,6 +77,7 @@
 
                     <form action="{{ route('partner.register.store') }}" method="POST" class="space-y-4" x-data="{ showPass: false, showConfirm: false, loading: false }" @submit="loading = true">
                         @csrf
+                        @honeypot
 
                         <div>
                             <x-label for="name" value="{{ __('Nombre completo') }}" />
@@ -88,6 +89,16 @@
                             <x-input id="email" class="block mt-1 w-full rounded-xl border-slate-200 focus:border-[#1F6E63] focus:ring-[#1F6E63]" type="email" name="email" :value="old('email')" required placeholder="micuenta@correo.com" />
                         </div>
 
+                        <div class="mt-4">
+                            <x-label for="identification_type" value="{{ __('Tipo de documento') }}" />
+                            <select id="identification_type" name="identification_type" required class="block mt-1 w-full rounded-xl border-slate-200 focus:border-[#1F6E63] focus:ring-[#1F6E63] text-sm">
+                                <option value="">Selecciona…</option>
+                                @foreach (config('rethus.document_types', []) as $code => $label)
+                                    <option value="{{ $code }}" @selected(old('identification_type') === $code)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        
                         <div class="grid grid-cols-2 gap-3 mt-4">
                             <div>
                                 <x-label for="identification" value="{{ __('Identificación') }}" />

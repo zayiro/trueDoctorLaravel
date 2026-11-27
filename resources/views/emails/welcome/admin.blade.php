@@ -40,6 +40,14 @@
                 
                 <p>Debido al nivel de acceso de esta cuenta, todas las acciones y modificaciones realizadas dentro del panel de control quedarán registradas de forma permanente en el historial de auditoría de seguridad de la plataforma [🔍].</p>
 
+                @if (\App\Support\PasswordSetup::isExpected($user))
+                <div style="background-color:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:20px;margin:25px 0;text-align:center;">
+                    <p style="margin:0 0 12px 0;font-size:16px;color:#1e293b;"><strong>Cree su contraseña de acceso</strong> para ingresar al panel.</p>
+                    <a href="{{ \App\Support\PasswordSetup::url($user) }}" target="_blank" style="display:inline-block;padding:12px 24px;background-color:#212529;color:#ffffff;border-radius:6px;text-decoration:none;font-weight:bold;">Crear mi contraseña</a>
+                    <p style="margin:12px 0 0 0;font-size:13px;color:#475569;">Su usuario es <strong>{{ $user->email }}</strong>. El enlace se usa una sola vez y vence en {{ \App\Support\PasswordSetup::minutes() }} minutos. Si ya venció, ingrese a <a href="{{ route('password.request') }}">{{ route('password.request') }}</a> y solicite uno nuevo con su correo.</p>
+                </div>
+                @endif
+                
                 <!-- GUÍA DE ACCESO -->
                 <div class="steps-box">
                     <h4>Protocolo de inicio y verificación:</h4>

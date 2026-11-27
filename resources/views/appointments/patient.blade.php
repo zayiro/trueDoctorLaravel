@@ -33,10 +33,13 @@
         <div class="bg-white rounded-3xl shadow-xl p-8 mt-5 mb-8 border border-gray-100">
             <h2 class="text-2xl font-black text-gray-800 mb-6">Completa tus datos</h2>
             
-            @if (!$isSelfBooking)
+            @if (!empty($staffBlock))
+                @include('appointments.partials.staff-booking-block', ['staffBlock' => $staffBlock])
+            @elseif (!$isSelfBooking)
                 <!-- Inicializamos un estado de carga seguro para el control de los botones -->
                 <form action="{{ route('appointments.process-patient') }}" method="POST" x-data="{ loading: false }" x-on:submit="loading = true">
                     @csrf
+                    @honeypot
                     
                     <div class="space-y-5">
                         @guest

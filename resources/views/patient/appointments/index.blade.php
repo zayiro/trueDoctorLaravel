@@ -466,6 +466,7 @@ $hasStatusFilter = filled(request('status'));
                                             📋 Ver notas del doctor
                                         </button>
                                     @endif
+                                    @include('patient.appointments.partials.certificates-links', ['appointment' => $appointment, 'certificates' => ($certificatesByAppointment ?? collect())->get($appointment->id, collect())])
 
                                 </div>
 

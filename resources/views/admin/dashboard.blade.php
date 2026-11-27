@@ -25,6 +25,12 @@
 @endphp
 
 <x-admin-layout :breadcrumbs="$breadcrumbs">
+    @if ($isDoctor ?? false)
+        @include('partner.rethus.partials.dashboard-notice', ['doctor' => $user->doctor])
+    @endif
+    @if ($isClinic ?? false)
+        @include('partner.rethus.partials.dashboard-notice-clinic', ['clinic' => $user->clinic])
+    @endif
     @if ($isAdmin ?? false)
         @include('admin.partials.ai-model-alert')
     @endif    

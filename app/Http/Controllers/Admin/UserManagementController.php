@@ -134,16 +134,17 @@ class UserManagementController extends Controller
      */
     public function storeAdmin(Request $request)
     {
+        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
+        
         $request->validate([
             'name'     => 'required|string|max:255',
             'email'    => 'required|string|email|max:255|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
         ]);
 
         $user = User::create([
             'name'              => $request->name,
             'email'             => $request->email,
-            'password'          => Hash::make($request->password),
+            'password'          => \App\Support\PasswordSetup::randomFor($request->email),
             'role'              => 'admin', // Forzado a nivel de backend por seguridad
             'email_verified_at' => now(),   // Autoverificado al ser cuenta del staff
         ]);
@@ -153,13 +154,18 @@ class UserManagementController extends Controller
         $user->assignRole($role);
 
         return redirect()->route('administrator.users.index')
-            ->with('success', 'Nuevo administrador creado correctamente en el sistema.');
+            ->with('success', 'Nuevo administrador creado correctamente. Le enviamos un correo para que cree su contraseña.');
     }
 
     public function destroy(User $user)
     {
         if ($user->id === Auth::id()) {
             return back()->with('error', 'No puedes eliminarte a ti mismo.');
+        }
+
+        // Pacientes con historia clínica, certificados o documentos: no se eliminan desde aquí (se desactivan).
+        if ($user->role === 'patient' && ($why = app(\App\Services\Accounts\PatientErasure::class)->blockedBy($user)) !== null) {
+            return back()->with('error', app(\App\Services\Accounts\PatientErasure::class)->blockedMessage($user, $why));
         }
 
         try {
@@ -186,17 +192,13 @@ class UserManagementController extends Controller
         $patient = $user->patient;
         if (!$patient) return;
 
-        // RESTRICT → manejar manualmente
-        Appointment::where('patient_id', $patient->id)
-            ->update(['status' => 'cancelled', 'patient_id' => null]);
-
-        DB::table('signed_documents')->where('patient_id', $patient->id)->delete();
-        DB::table('patient_consents')->where('patient_id', $patient->id)->delete();
+        // Las citas se conservan (pagos, liquidaciones y registro del médico) pero a nombre del paciente anónimo y sin notas.
+        // Si el paciente tiene historia clínica, certificados o documentos, destroy() ya lo rechazó antes de llegar aquí.
+        app(\App\Services\Accounts\PatientErasure::class)->anonymizeAppointments($user, $patient);
 
         // CASCADE automático al borrar patient:
-        // patient_allergies, patient_family_histories, patient_histories,
-        // patient_history_attachments, patient_medications, patient_surgeries,
-        // affected_appointments, reviews, exam_analyses
+        // patient_allergies, patient_family_histories, patient_histories, patient_history_attachments,
+        // patient_medications, patient_surgeries, affected_appointments, reviews, exam_analyses
         $patient->delete();
     }
 

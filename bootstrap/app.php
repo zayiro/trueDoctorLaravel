@@ -42,6 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureDoctorContext::class,
             TenantMiddleware::class,
             BlockSqlInjection::class,
+            \App\Http\Middleware\ProtectSignup::class,
         ]);
         $middleware->trustProxies(at: '*');
     })

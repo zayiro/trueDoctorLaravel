@@ -55,18 +55,8 @@ $breadcrumbs = [
                 <input type="email" name="email" id="email" value="{{ old('email') }}" required class="w-full border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 rounded-xl text-sm py-2.5">
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <!-- Contraseña -->
-                <div>
-                    <label for="password" class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">Contraseña</label>
-                    <input type="password" name="password" id="password" required class="w-full border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 rounded-xl text-sm py-2.5">
-                </div>
-
-                <!-- Confirmación de Contraseña -->
-                <div>
-                    <label for="password_confirmation" class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">Confirmar Contraseña</label>
-                    <input type="password" name="password_confirmation" id="password_confirmation" required class="w-full border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 rounded-xl text-sm py-2.5">
-                </div>
+            <div class="p-3 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-xl">
+                La contraseña no se define aquí: la persona recibirá un correo con un enlace para crear la suya (vence en 60 minutos; si vence, puede pedir otro con «¿Olvidaste tu contraseña?»).
             </div>
 
             <!-- Botones de Acción -->

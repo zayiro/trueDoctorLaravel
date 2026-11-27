@@ -197,11 +197,11 @@ class StaffBookingService
                     return $existing;
                 }
             } else {
-                // 3) Nuevo (misma regla que el registro público: contraseña inicial = documento).
+                // 3) Nuevo: clave aleatoria; la persona crea la suya con el enlace del correo de bienvenida.
                 $user = User::create([
                     'name'     => trim((string) $data['name']),
                     'email'    => $email,
-                    'password' => Hash::make($identification),
+                    'password' => \App\Support\PasswordSetup::randomFor($email),
                     'role'     => 'patient',
                 ]);
                 $user->assignRole(Role::firstOrCreate(['name' => 'patient']));

@@ -359,10 +359,23 @@ class PatientController extends Controller
 
         $maxReschedules = $this->maxReschedules;
         
+        // Certificados emitidos para las citas del historial (si algo falla, la página sigue igual, sin certificados).
+        try {
+            $certificatesByAppointment = \App\Models\Certificate::query()
+                ->where('patient_id', $patient->id)
+                ->whereIn('appointment_id', $pastAppointments->pluck('id'))
+                ->orderByDesc('id')
+                ->get()
+                ->groupBy('appointment_id');
+        } catch (\Throwable $e) {
+            $certificatesByAppointment = collect();
+        }
+
         return view('patient.appointments.index', compact(
             'upcomingAppointments',
             'pastAppointments',
-            'maxReschedules'
+            'maxReschedules',
+            'certificatesByAppointment'
         ));
     }
 

@@ -210,6 +210,10 @@
                             </div>
                         @endif
                         
+                        @if (($result['type'] ?? '') === 'doctor')
+                            @include('partner.rethus.partials.public-badge', ['doctor' => $result['model'] ?? null])
+                        @endif
+                        
                         {{-- 📍 BADGE "CERCA DE TI": solo si el visitante dio su ubicación y la sede física más cercana está a pocos km --}}
                         @if(!empty($result['near_label']))
                             <div class="mt-2">

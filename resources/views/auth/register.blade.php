@@ -28,6 +28,7 @@
 
                     <form method="POST" action="{{ route('register') }}" class="space-y-4" x-data="{ showPass: false, showConfirm: false, loading: false }" @submit="loading = true">
                         @csrf
+                        @honeypot
 
                         <div>
                             <x-label for="name" value="{{ __('Nombre completo') }}" />

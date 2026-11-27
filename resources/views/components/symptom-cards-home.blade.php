@@ -23,7 +23,7 @@
                     ¿No sabes a qué especialista
                     <span class="text-blue-600">médico consultar?</span>
                 </h2>
-                <p class="text-slate-500 text-sm sm:text-base mt-1 dark:text-slate-400">
+                <p class="text-slate-600 text-sm sm:text-base mt-1 dark:text-slate-400">
                     Orientación clínica basada en síntomas comunes y derivación médica inmediata.
                 </p>
             </div>
@@ -38,11 +38,11 @@
         <!-- Grilla con las 2 Tarjetas Semánticas -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             @foreach($randomSymptoms as $symptom)
-                <article class="bg-slate-300 border border-slate-100 rounded-2xl p-6 shadow-lg flex flex-col justify-between transition hover:shadow-md dark:bg-gray-800 dark:border-gray-700">
+                <article class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between transition hover:shadow-md hover:border-blue-200 dark:bg-gray-800 dark:border-gray-700">
                     <div>
                         <!-- Cabecera de la tarjeta -->
                         <div class="flex items-center justify-between gap-2 mb-4">
-                            <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-600 bg-purple-50 px-2.5 py-1 rounded-md dark:bg-purple-900/30 dark:text-purple-400">
+                            <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-700 bg-purple-50 border border-purple-100 px-2.5 py-1 rounded-md dark:bg-purple-900/30 dark:text-purple-400">
                                 <!-- SVG Nativo: Sparkles de Heroicons -->
                                 <svg class="w-3.5 h-3.5" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 21l-.813-5.096L3 15l5.096-.813L9 9l.813 5.096L15 15l-5.187.904zM18 10.5l-.5 3-.5-3-3-.5 3-.5.5-3 .5 3 3 .5-3 .5zM14.25 4.5l-.25 1.5-.25-1.5-1.5-.25 1.5-.25.25-1.5.25 1.5 1.5.25-1.5.25z" />
@@ -51,11 +51,11 @@
                             </span>
 
                             @if(strtolower($symptom->urgency_level) === 'alta')
-                                <span class="text-[10px] uppercase font-black bg-rose-50 text-rose-700 border border-rose-100 px-2 py-0.5 rounded-full dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800 tracking-wide">Urgencia Alta</span>
+                                <span class="text-[10px] uppercase font-black bg-rose-100 text-rose-800 border border-rose-200 px-2 py-0.5 rounded-full dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800 tracking-wide">Urgencia Alta</span>
                             @elseif(strtolower($symptom->urgency_level) === 'media')
-                                <span class="text-[10px] uppercase font-black bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-full dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800 tracking-wide">Moderada</span>
+                                <span class="text-[10px] uppercase font-black bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800 tracking-wide">Moderada</span>
                             @else
-                                <span class="text-[10px] uppercase font-black bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 tracking-wide">Baja</span>
+                                <span class="text-[10px] uppercase font-black bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 tracking-wide">Baja</span>
                             @endif
                         </div>
 
@@ -65,24 +65,24 @@
                                 "{{ $symptom->search_query }}"
                             </a>
                         </h3>
-                        <p class="text-slate-600 text-sm leading-relaxed mb-4 line-clamp-2 dark:text-slate-300">
+                        <p class="text-slate-700 text-sm leading-relaxed mb-4 line-clamp-2 dark:text-slate-300">
                             {{ $symptom->ai_advice }}
                         </p>
 
                         <!-- Indicación del especialista idóneo -->
-                        <div class="bg-slate-50 border border-slate-100 p-3 rounded-xl mb-5 flex items-center gap-2.5 dark:bg-gray-700/50 dark:border-gray-700">
+                        <div class="bg-blue-50 ring-1 ring-inset ring-blue-700/10 p-3 rounded-xl mb-5 flex items-center gap-2.5 dark:bg-gray-700/50 dark:border-gray-700">
                             <!-- SVG Nativo: User-Group de Heroicons -->
                             <svg class="w-4 h-4 text-blue-600 flex-shrink-0 dark:text-blue-400" xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94-3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
                             </svg>
-                            <p class="text-xs text-slate-700 dark:text-slate-300 font-medium">
-                                Atendido por especialistas en <strong class="text-slate-900 font-bold dark:text-white">{{ $symptom->specialty_name }}</strong>
+                            <p class="text-xs text-blue-800 dark:text-slate-300 font-medium">
+                                Atendido por especialistas en <strong class="text-blue-900 font-bold dark:text-white">{{ $symptom->specialty_name }}</strong>
                             </p>
                         </div>
                     </div>
 
                     <!-- Enlace comercial directo del buscador -->
-                    <div class="pt-3 border-t border-slate-50 dark:border-gray-700">                        
+                    <div class="pt-3 border-t border-slate-100 dark:border-gray-700">                        
                         <a href="{{ url('/search') }}?specialty={{ $symptom->specialty_slug }}" 
                         class="group w-full sm:w-auto max-w-max sm:max-w-none bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 shadow-md shadow-blue-600/15 flex items-center justify-center gap-2.5 text-base transform active:scale-[0.98]">
                             Agendar Especialista de {{ $symptom->specialty_name }}
