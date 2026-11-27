@@ -162,6 +162,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::get('/administrator/refunds', [AdminController::class, 'refunds'])->name('administrator.refunds.index');
     Route::get('/administrator/access-log', [\App\Http\Controllers\AccessLogController::class, 'admin'])->name('administrator.access-log.index');
+    Route::get('/administrator/review-reports', [\App\Http\Controllers\Admin\ReviewReportAdminController::class, 'index'])->name('administrator.review-reports.index');
+    Route::post('/administrator/review-reports/{review}/resolve', [\App\Http\Controllers\Admin\ReviewReportAdminController::class, 'resolve'])->whereNumber('review')->middleware('throttle:60,1')->name('administrator.review-reports.resolve');
+    Route::post('/administrator/review-reports/{review}/restore', [\App\Http\Controllers\Admin\ReviewReportAdminController::class, 'restore'])->whereNumber('review')->middleware('throttle:60,1')->name('administrator.review-reports.restore');
     Route::get('/administrator/plan-refunds', [\App\Http\Controllers\Admin\PlanRefundController::class, 'index'])->name('administrator.plan-refunds.index');
     Route::post('/administrator/plan-refunds/{payment}/refund', [\App\Http\Controllers\Admin\PlanRefundController::class, 'refund'])->name('administrator.plan-refunds.refund');
     Route::post('/administrator/refunds/{refund}/mark-done', [AdminController::class, 'markRefundDone'])->name('administrator.refunds.mark-done');
@@ -511,6 +514,7 @@ Route::get('/register-clinic', [RegisterClinicController::class, 'register'])->m
 Route::post('/register-clinic', [RegisterClinicController::class, 'store'])->name('clinic.register.store');
 
 Route::post('/reviews', [ReviewController::class, 'store'])->middleware(['auth', 'throttle:5,1'])->name('reviews.store');
+Route::post('/reviews/{review}/report', [\App\Http\Controllers\ReviewReportController::class, 'store'])->whereNumber('review')->middleware(['auth', 'throttle:10,1'])->name('reviews.report');
 
 Route::get('/search', [SearchController::class, 'index'])->middleware('throttle:search')->name('search');
 // Asegúrate de colocarla con método GET para que la paginación funcione correctamente

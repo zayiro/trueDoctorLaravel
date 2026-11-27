@@ -21,7 +21,7 @@ final class AdminAlerts
 
     public function collect(): array
     {
-        return array_merge($this->credits(), $this->bills());
+        return array_merge($this->credits(), $this->bills(), $this->reviewReports());
     }
 
     private function credits(): array
@@ -50,6 +50,24 @@ final class AdminAlerts
         }
 
         return $items;
+    }
+
+    /** Reseñas reportadas que esperan decisión (se avisa una vez al día mientras haya pendientes). */
+    private function reviewReports(): array
+    {
+        if (!Schema::hasTable('review_reports')) {
+            return [];
+        }
+
+        $n = (int) DB::table('review_reports')->where('status', 'pending')->distinct()->count('review_id');
+
+        if ($n === 0) {
+            return [];
+        }
+
+        return [['key' => 'reviews:reports', 'level' => 'warn',
+            'title' => $n === 1 ? '1 reseña reportada por revisar' : "{$n} reseñas reportadas por revisar",
+            'detail' => 'Revísalas en Administración → Reseñas reportadas y decide si se mantienen u ocultan.']];
     }
 
     private function bills(): array

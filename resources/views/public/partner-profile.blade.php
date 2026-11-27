@@ -216,6 +216,7 @@ Variables: $doctor (App\Models\Doctor) y, opcional, $bookingUrl.
                             @if ($review->comment)
                                 <p class="mt-3 text-sm text-slate-600 leading-relaxed whitespace-pre-line">{{ $review->comment }}</p>
                             @endif
+                            @include('public.partials.review-report', ['review' => $review])
                         </article>
                     @empty
                         <div class="border border-dashed border-slate-200 rounded-2xl p-10 text-center flex flex-col items-center justify-center bg-white">

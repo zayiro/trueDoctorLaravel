@@ -3,118 +3,71 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Services\GoogleAnalyticsService;
+use App\Services\Analytics\BusinessLineDb;
+use App\Services\Analytics\BusinessLineReport;
+use App\Services\Analytics\GoogleAnalyticsReports;
+use Illuminate\Support\Facades\Log;
 use Spatie\Analytics\Facades\Analytics;
 use Spatie\Analytics\Period;
-use Illuminate\Support\Facades\Log;
 
 class AnalyticsController extends Controller
 {
-    protected GoogleAnalyticsService $gaService;
-
-    public function __construct(GoogleAnalyticsService $gaService)
-    {
-        $this->gaService = $gaService;
-    }
-
     public function index()
     {
+        $errors = [];
+
+        // Los últimos 7 días, contando hoy
+        $end = now()->toDateString();
+        $start = now()->subDays(6)->toDateString();
+
+        // 1) Métricas generales (Spatie Analytics)
+        $generalStats = collect();
+        $maxViews = 1;
+        $mostVisited = $topReferrers = $topCountries = collect();
+
         try {
             $period = Period::days(7);
 
-            // === DATOS GENERALES (Spatie Analytics) ===
-            $rawStats = Analytics::fetchVisitorsAndPageViewsByDate($period);
-
-            // ✅ AGRUPA POR FECHA PARA EVITAR DUPLICADOS
-            $generalStats = $rawStats
-                ->groupBy('date')
-                ->map(function($group) {
-                    return [
-                        'date' => $group->first()['date'],
-                        'screenPageViews' => $group->sum('screenPageViews'),
-                        'activeUsers' => $group->sum('activeUsers') ?? 0
-                    ];
-                })
-                ->sortBy('date')
+            $generalStats = Analytics::fetchVisitorsAndPageViewsByDate($period)
+                ->groupBy(fn ($row) => data_get($row, 'date') instanceof \DateTimeInterface ? data_get($row, 'date')->format('Y-m-d') : (string) data_get($row, 'date'))
+                ->map(fn ($rows, $date) => [
+                    'date' => $date,
+                    'views' => (int) collect($rows)->sum(fn ($r) => (int) data_get($r, 'screenPageViews', 0)),
+                    'users' => (int) collect($rows)->sum(fn ($r) => (int) data_get($r, 'activeUsers', 0)),
+                ])
+                ->sortKeys()
                 ->values();
 
-            $maxViews = $generalStats->max('screenPageViews') ?: 1;
+            $maxViews = max(1, (int) $generalStats->max('views'));
             $mostVisited = Analytics::fetchMostVisitedPages($period, 5);
             $topReferrers = Analytics::fetchTopReferrers($period, 5);
             $topCountries = Analytics::fetchTopCountries($period, 5);
-
-            // === CITAS MÉDICAS (Google Analytics API) ===
-            $appointmentMetrics = $this->gaService->getBusinessLineMetrics(
-                [
-                    'search_specialist',
-                    'view_item_list',
-                    'view_item',
-                    'begin_checkout',
-                    'add_shipping_info',
-                    'purchase',
-                    'view_confirmation',
-                    'payment_processed',
-                    'payment_failed'
-                ],
-                $period->startDate->format('Y-m-d'),
-                $period->endDate->format('Y-m-d')
-            );
-
-            // Calcular conversión específica de citas
-            $appointmentConversion = $this->gaService->getConversionBetweenEvents(
-                'search_specialist',
-                'purchase',
-                $period->startDate->format('Y-m-d'),
-                $period->endDate->format('Y-m-d')
-            );
-            $appointmentMetrics['funnel_conversion'] = $appointmentConversion['conversion_rate'] ?? 0;
-
-            // === ANÁLISIS IA (Google Analytics API) ===
-            $labAnalysisMetrics = $this->gaService->getBusinessLineMetrics(
-                [
-                    'view_medical_analysis_landing',
-                    'start_medical_analysis',
-                    'view_medical_analysis_index',
-                    'start_medical_analysis_upload',
-                    'view_medical_analysis_upload',
-                    'add_lab_report',
-                    'begin_lab_analysis',
-                    'complete_lab_analysis',
-                    'lab_analysis_payment_processed',
-                    'lab_analysis_payment_failed'
-                ],
-                $period->startDate->format('Y-m-d'),
-                $period->endDate->format('Y-m-d')
-            );
-
-            // Calcular conversión específica de análisis
-            $labConversion = $this->gaService->getConversionBetweenEvents(
-                'view_medical_analysis_landing',
-                'complete_lab_analysis',
-                $period->startDate->format('Y-m-d'),
-                $period->endDate->format('Y-m-d')
-            );
-            $labAnalysisMetrics['funnel_conversion'] = $labConversion['conversion_rate'] ?? 0;
-
-            return view('administrator.analytics.index', compact(
-                'generalStats',
-                'maxViews',
-                'mostVisited',
-                'topReferrers',
-                'topCountries',
-                'appointmentMetrics',
-                'labAnalysisMetrics',
-                'period'
-            ));
-
-        } catch (\Exception $e) {
-            /*Log::error('Error en Analytics Dashboard', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);*/
-
-            return view('administrator.analytics.index')
-                ->with('error', 'Error cargando analytics: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('Analytics (general): ' . $e->getMessage());
+            $errors[] = 'No se pudieron cargar las métricas generales de Google Analytics: ' . $e->getMessage();
         }
+
+        // 2) Líneas de negocio (config/business_lines.php): una consulta a GA por tipo de dato, no una por evento
+        $lines = [];
+
+        try {
+            $report = new BusinessLineReport(app(GoogleAnalyticsReports::class), new BusinessLineDb());
+            $lines = $report->build((array) config('business_lines', []), $start, $end);
+        } catch (\Throwable $e) {
+            Log::error('Analytics (líneas de negocio): ' . $e->getMessage());
+            $errors[] = 'No se pudieron cargar las líneas de negocio: ' . $e->getMessage();
+        }
+
+        return view('administrator.analytics.index', [
+            'generalStats' => $generalStats,
+            'maxViews' => $maxViews,
+            'mostVisited' => $mostVisited,
+            'topReferrers' => $topReferrers,
+            'topCountries' => $topCountries,
+            'lines' => $lines,
+            'rangeStart' => $start,
+            'rangeEnd' => $end,
+            'errors' => $errors,
+        ]);
     }
 }

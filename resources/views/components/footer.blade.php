@@ -11,6 +11,10 @@
         .od-footer-status { display:inline-flex; align-items:center; gap:6px; padding:2px 10px; border-radius:999px; font-size:.75rem; font-weight:700; background:#ecfdf5; color:#047857; border:1px solid #d1fae5; }
         .od-footer-dot { width:6px; height:6px; border-radius:999px; background:#10b981; animation:od-pulse 2s cubic-bezier(.4,0,.6,1) infinite; }
         @keyframes od-pulse { 50% { opacity:.4; } }
+        .od-footer-social { display:flex; gap:10px; margin-top:14px; }
+        .od-footer-social a { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:999px; background:#f1f5f9; color:#64748b; transition:background .15s, color .15s, transform .15s; }
+        .od-footer-social a:hover { background:#4f46e5; color:#fff; transform:translateY(-1px); }
+        .od-footer-social a:focus-visible { outline:2px solid #4f46e5; outline-offset:2px; }
         .od-footer-title { margin:0 0 12px; font-size:.6875rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#0f172a; }
         .od-footer-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
         .od-footer-list a { font-size:.875rem; font-weight:500; color:#64748b; text-decoration:none; transition:color .15s; }
@@ -34,6 +38,15 @@
                 <div class="od-footer-logo">Open<span class="d">Doctor</span><span class="o">Online</span></div>
                 <p class="od-footer-tag">Consulta médica en línea y agenda tus citas con doctores verificados.</p>
                 <span class="od-footer-status"><span class="od-footer-dot"></span>SaaS Activo</span>
+                @if (collect(config('social.links', []))->contains(fn ($l) => !empty($l['url'])))
+                    <div class="od-footer-social">
+                        @foreach (config('social.links', []) as $name => $link)
+                            @if (!empty($link['url']))
+                                <a href="{{ $link['url'] }}" target="_blank" rel="noopener noreferrer" aria-label="{{ $link['label'] ?? ucfirst($name) }}" title="{{ $link['label'] ?? ucfirst($name) }}"><x-social-icon :name="$name" /></a>
+                            @endif
+                        @endforeach
+                    </div>
+                @endif
             </div>
 
             <!-- Plataforma -->

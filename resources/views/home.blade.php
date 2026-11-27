@@ -720,59 +720,8 @@
         </section>
     </section>
 
-    <!-- Comentarios de los pacientes -->
-    <section class="py-10 px-4 bg-gray-50">
-        <div class="max-w-6xl mx-auto pb-5">
-            <h2 class="text-5xl lg:text-7xl text-center font-black text-slate-900 tracking-tight mb-10">
-                Lo que dicen nuestros
-                <span class="text-blue-600">pacientes</span>
-            </h2>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <!-- Testimonio 1 -->
-                <div class="bg-white p-8 rounded-2xl shadow-md border-l-4 border-blue-600">
-                    <div class="flex items-center gap-1 mb-4">
-                        @for($i = 0; $i < 5; $i++)
-                            <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                            </svg>
-                        @endfor
-                    </div>
-                    <p class="text-gray-700 mb-4 italic">"Excelente servicio. El doctor fue muy atento y resolvió mis dudas rápidamente. Sin esperas."</p>
-                    <p class="font-black text-gray-900">María González</p>
-                    <p class="text-sm text-gray-500">Paciente verificado</p>
-                </div>
-                
-                <!-- Testimonio 2 -->
-                <div class="bg-white p-8 rounded-2xl shadow-md border-l-4 border-green-600">
-                    <div class="flex items-center gap-1 mb-4">
-                        @for($i = 0; $i < 5; $i++)
-                            <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                            </svg>
-                        @endfor
-                    </div>
-                    <p class="text-gray-700 mb-4 italic">"Muy práctico. Pude agendar en 2 minutos y consulté desde mi oficina."</p>
-                    <p class="font-black text-gray-900">Carlos Rodríguez</p>
-                    <p class="text-sm text-gray-500">Paciente verificado</p>
-                </div>
-                
-                <!-- Testimonio 3 -->
-                <div class="bg-white p-8 rounded-2xl shadow-md border-l-4 border-purple-600">
-                    <div class="flex items-center gap-1 mb-4">
-                        @for($i = 0; $i < 5; $i++)
-                            <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                            </svg>
-                        @endfor
-                    </div>
-                    <p class="text-gray-700 mb-4 italic">"Confiable y seguro. Mi información está protegida. Recomendado."</p>
-                    <p class="font-black text-gray-900">Laura Martínez</p>
-                    <p class="text-sm text-gray-500">Paciente verificado</p>
-                </div>
-            </div>
-        </div>
-    </section>
+    {{-- Opiniones de pacientes: reseñas reales + testimonios con permiso (config/testimonials.php), carrusel al azar --}}
+    @include('public.home-reviews')
 
     <!-- Texto de Privacidad de los datos del paciente medico -->
     <section class="py-16 px-4 bg-white">

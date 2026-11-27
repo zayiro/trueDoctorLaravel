@@ -33,6 +33,7 @@
     @endif
     @if ($isAdmin ?? false)
         @include('admin.partials.ai-model-alert')
+        @include('admin.partials.review-reports-alert')
     @endif    
     @if(session('status') === 'correo-verificado')
         <div class="m-3 mb-5">
@@ -356,7 +357,8 @@
                     </div>
 
                     @if($user->role === 'admin')
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-900 p-6 rounded-[2rem] text-white">                           
+                        {{-- ov-panel-fix: antes era una rejilla de 2/4 columnas con hijos col-span-6, que creaba columnas extra y desbordaba en móvil --}}
+                        <div class="flex flex-col gap-4 bg-slate-900 p-6 rounded-[2rem] text-white min-w-0">
                             <div class="col-span-6 mt-4 border-t border-slate-800 pt-4">
                                 <h4 class="text-sm font-black text-slate-400 uppercase tracking-wide mb-2">Visión general del ecosistema</h4>
                                 <div class="flex flex-col sm:flex-row gap-6">

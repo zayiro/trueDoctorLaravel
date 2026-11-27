@@ -94,6 +94,13 @@
             }, 0) ?: null,
         ],
         [
+            'name'   => 'Reseñas reportadas',
+            'icon'   => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5"/></svg>',
+            'href'   => route('administrator.review-reports.index'),
+            'active' => request()->routeIs('administrator.review-reports.*'),
+            'badge'  => rescue(fn () => \App\Models\ReviewReport::pendingReviewsCount(), 0) ?: null,
+        ],
+        [
             'name' => 'Limpiar caché',
             'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0 0 21 17.25l-5.83-5.83m-3.75 3.75c-.139-.139-.21-.318-.21-.497v-2.25c0-.179.071-.358.21-.497l3.75-3.75c.139-.139.318-.21.497-.21h2.25c.179 0 .358.071.497.21l3.75 3.75c.139.139.21.318.21.497v2.25c0 .179-.071.358-.21.497l-3.75 3.75a.749.749 0 0 1-1.06 0l-3.75-3.75ZM3 16.5V19.5A1.5 1.5 0 0 0 4.5 21h3m-6-4.5V4.5A1.5 1.5 0 0 1 3 3h18a1.5 1.5 0 0 1 1.5 1.5V9M3 16.5h4.5m4.5-12h3M4.5 7.5h15"/></svg>',
             'href' => route('administrator.clearcache.index'),
